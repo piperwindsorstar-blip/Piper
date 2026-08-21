@@ -1,0 +1,11 @@
+# One-shot nightly backup of the database.
+[Unit]
+Description=Piper database backup
+
+[Service]
+Type=oneshot
+User=piper
+WorkingDirectory=/srv/piper
+Environment=PIPER_DATA_DIR=/var/lib/piper
+Environment=PIPER_BACKUP_KEEP=30
+ExecStart=/usr/bin/npx tsx scripts/backup-db.ts /var/backups/piper

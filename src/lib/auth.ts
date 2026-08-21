@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, nowIso } from "./db";
 export { hashPassword, verifyPassword } from "./password";
+import { USER_COLUMNS } from "./user-columns";
+export { USER_COLUMNS };
 
 export type Role = "admin" | "dj";
 
@@ -20,14 +22,6 @@ export type User = {
   staff_notes: string | null;
   created_at: string;
 };
-
-/**
- * The columns safe to hand around the app. Never `SELECT *` for a user: the row
- * carries password_hash, and anything handed to a Client Component is
- * serialised into the page's HTML where the browser can read it.
- */
-export const USER_COLUMNS =
-  "id, email, name, phone, role, active, emergency_contact, start_date, gear, staff_notes, created_at";
 
 const SESSION_COOKIE = "piper_session";
 const SESSION_DAYS = 30;

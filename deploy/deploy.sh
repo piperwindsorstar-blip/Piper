@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Updates a running Piper to the latest code.
+#
+#   sudo bash /srv/piper/deploy/deploy.sh
+#
+# Backs the database up before touching anything, so a bad deploy is one file
+# copy away from being undone.
+
+set -euo pipefail
+
+APP_DIR=/srv/piper
+DATA_DIR=/var/lib/piper
+BACKUP_DIR=/var/backups/piper
+BRANCH="${PIPER_BRANCH:-claude/wedding-dj-crm-sltogo}"
+
+if [[ $EUID -ne 0 ]]; then
+  echo "Run this with sudo." >&2
+  exit 1
+fi
+
+echo "==> Backing up the database first"
+sudo -u piper env PIPER_DATA_DIR="$DATA_DIR" \
+  npx --prefix "$APP_DIR" tsx "$APP_DIR/scripts/backup-db.ts" "$BACKUP_DIR"
+
+echo "==> Fetching latest code"
+git -C "$APP_DIR" fetch --quiet origin "$BRANCH"
+BEFORE=$(git -C "$APP_DIR" rev-parse HEAD)
+git -C "$APP_DIR" checkout --quiet -B "$BRANCH" "origin/$BRANCH"
+AFTER=$(git -C "$APP_DIR" rev-parse HEAD)
+
+if [[ "$BEFORE" == "$AFTER" ]]; then
+  echo "    already up to date ($AFTER)"
+else
+  echo "    $BEFORE -> $AFTER"
+fi
+
+echo "==> Installing dependencies"
+# Full install: build needs typescript, scripts need tsx (both devDependencies).
+sudo -u piper env PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm --prefix "$APP_DIR" ci --silent \
+  || sudo -u piper env PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm --prefix "$APP_DIR" install --silent
+
+echo "==> Building"
+sudo -u piper env NODE_ENV=production PIPER_DATA_DIR="$DATA_DIR" npm --prefix "$APP_DIR" run build
+
+echo "==> Restarting"
+# Any pending schema migrations run on the first database connection after this.
+systemctl restart piper
+sleep 3
+systemctl is-active --quiet piper && echo "    piper is running" || {
+  echo "    piper FAILED to start — check: journalctl -u piper -n 50" >&2
+  exit 1
+}
+
+echo ""
+echo "Deployed. Rolling back if needed:"
+echo "  sudo systemctl stop piper"
+echo "  sudo -u piper cp $BACKUP_DIR/<backup>.db $DATA_DIR/piper.db"
+echo "  cd $APP_DIR && sudo git checkout $BEFORE && sudo bash deploy/deploy.sh"

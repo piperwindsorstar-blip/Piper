@@ -11,11 +11,12 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx scripts/seed.ts",
-    "db:reset": "rm -f data/piper.db data/piper.db-shm data/piper.db-wal && tsx scripts/seed.ts",
+    "db:reset": "tsx scripts/reset-db.ts",
     "smoke": "node scripts/smoke.mjs",
     "create-admin": "tsx scripts/create-admin.ts",
     "responsive": "node scripts/responsive.mjs",
-    "import:reports": "tsx scripts/import-reports.ts"
+    "import:reports": "tsx scripts/import-reports.ts",
+    "db:backup": "tsx scripts/backup-db.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

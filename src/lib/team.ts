@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { hashPassword } from "./password";
-import { USER_COLUMNS } from "./auth";
+import { USER_COLUMNS } from "./user-columns";
 import type { Role, User } from "./auth";
 
 export function listUsers(includeInactive = false): User[] {

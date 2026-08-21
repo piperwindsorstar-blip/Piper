@@ -109,16 +109,65 @@ npm run dev
 Then add the rest of your team from the **Team** page. The same command gets you
 back in if you ever lock yourself out.
 
-### Production
+### Deploying to a server
+
+`deploy/` holds everything needed to run Piper on a small Ubuntu VPS. On a
+fresh droplet, as root:
 
 ```bash
-npm run build
-npm run start
+sudo bash deploy/setup.sh crm.yourdomain.ca
 ```
 
-Serve it behind HTTPS. Session cookies are marked `Secure` when
-`NODE_ENV=production`, so a plain-HTTP deployment will not keep anyone signed
-in (localhost is exempt, which is why `npm run start` works locally).
+That installs Node 22 and Caddy, creates a `piper` service user, builds the app,
+runs it under systemd so it survives reboots, turns on a nightly database
+backup, opens the firewall, and gets an HTTPS certificate automatically. Point
+the domain's DNS at the server first, or the certificate can't be issued.
+
+Then create your account:
+
+```bash
+cd /srv/piper && sudo -u piper env PIPER_DATA_DIR=/var/lib/piper \
+  npx tsx scripts/create-admin.ts "you@example.com" "Your Name" "a-real-password"
+```
+
+To ship changes later:
+
+```bash
+sudo bash /srv/piper/deploy/deploy.sh
+```
+
+which backs up the database, pulls, rebuilds, and restarts — applying any
+pending migrations on the first connection after the restart.
+
+Where things live on the server:
+
+| Path | What |
+| --- | --- |
+| `/srv/piper` | the checkout |
+| `/var/lib/piper/piper.db` | the database — **outside** the checkout, so no deploy can delete it |
+| `/var/backups/piper` | nightly backups, 30 kept |
+| `/etc/piper.env` | secrets, including the crew-report import token |
+
+**HTTPS isn't optional.** Session cookies are marked `Secure` in production and
+browsers discard a `Secure` cookie sent over plain HTTP, so without TLS you'd
+log in and bounce straight back to the login page. Caddy handles this; that's
+why it's in the setup.
+
+### Backing up
+
+```bash
+npm run db:backup                 # ./backups
+npm run db:backup -- /some/path
+```
+
+Uses SQLite's `VACUUM INTO` rather than copying the file. Piper runs in WAL
+mode, so a plain `cp` of a live database can capture it without its
+write-ahead log — a backup that looks fine and restores missing the most recent
+bookings.
+
+`npm run db:reset` destroys everything and reseeds the demo season. It refuses
+to run when `NODE_ENV=production`, and refuses when the database holds more
+than the demo seed. `--force` overrides the second check, never the first.
 
 ### Tests
 

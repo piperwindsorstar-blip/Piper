@@ -1,0 +1,14 @@
+# Caddy terminates HTTPS and proxies to Piper. It obtains and renews a
+# Let's Encrypt certificate automatically — no certbot, no renewal cron.
+#
+# Install: sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#          (replace the domain first), then: sudo systemctl reload caddy
+#
+# HTTPS is not optional here: Piper marks its session cookie Secure in
+# production, and browsers discard a Secure cookie sent over plain HTTP — you
+# would log in and be bounced straight back to the login page.
+
+crm.example.com {
+	encode zstd gzip
+	reverse_proxy localhost:3000
+}
