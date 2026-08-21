@@ -1,5 +1,5 @@
 import { db, nowIso } from "./db";
-import type { Questionnaire, Song, TimelineItem } from "./types";
+import type { EntranceEntry, Questionnaire, Recommendation, Song, SpeechEntry, TimelineItem } from "./types";
 
 /* ----------------------------------------------------------------- songs */
 
@@ -24,6 +24,8 @@ export type SongInput = {
   category: string;
   title: string;
   artist: string | null;
+  cue: string | null;
+  link: string | null;
   notes: string | null;
   source: "team" | "client";
 };
@@ -35,10 +37,20 @@ export function addSong(input: SongInput): number {
 
   const result = db()
     .prepare(
-      `INSERT INTO songs (event_id, category, title, artist, notes, position, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO songs (event_id, category, title, artist, cue, link, notes, position, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(input.event_id, input.category, input.title, input.artist, input.notes, next.pos, input.source);
+    .run(
+      input.event_id,
+      input.category,
+      input.title,
+      input.artist,
+      input.cue,
+      input.link,
+      input.notes,
+      next.pos,
+      input.source,
+    );
   return Number(result.lastInsertRowid);
 }
 
@@ -181,36 +193,122 @@ export function getQuestionnaire(eventId: number): Questionnaire | null {
 
 export type QuestionnaireInput = Omit<Questionnaire, "event_id" | "updated_at">;
 
+export const QUESTIONNAIRE_FIELDS: (keyof QuestionnaireInput)[] = [
+  "preferred_genres", "avoid_genres", "vibe_notes", "announcements", "wedding_party",
+  "mic_needs", "request_policy", "contact_on_day", "dedications", "last_name_taken",
+  "arrival_time", "mc_name", "bridesmaids", "groomsmen", "venue_phone", "coordinator_email",
+  "table_reserved", "space_reserved", "power_each_space", "outdoor_portions",
+  "uplight_colours", "photobooth_hours", "playlist_pre_ceremony", "playlist_cocktail",
+  "playlist_dinner", "playlist_dance",
+];
+
 export function saveQuestionnaire(eventId: number, input: QuestionnaireInput): void {
+  const columns = ["event_id", ...QUESTIONNAIRE_FIELDS, "updated_at"];
+  const updates = QUESTIONNAIRE_FIELDS.map((f) => `${f} = excluded.${f}`).join(", ");
+
   db()
     .prepare(
-      `INSERT INTO questionnaires
-         (event_id, preferred_genres, avoid_genres, vibe_notes, announcements,
-          wedding_party, mic_needs, takes_requests, contact_on_day, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(event_id) DO UPDATE SET
-         preferred_genres = excluded.preferred_genres,
-         avoid_genres     = excluded.avoid_genres,
-         vibe_notes       = excluded.vibe_notes,
-         announcements    = excluded.announcements,
-         wedding_party    = excluded.wedding_party,
-         mic_needs        = excluded.mic_needs,
-         takes_requests   = excluded.takes_requests,
-         contact_on_day   = excluded.contact_on_day,
-         updated_at       = excluded.updated_at`,
+      `INSERT INTO questionnaires (${columns.join(", ")})
+       VALUES (${columns.map(() => "?").join(", ")})
+       ON CONFLICT(event_id) DO UPDATE SET ${updates}, updated_at = excluded.updated_at`,
     )
-    .run(
-      eventId,
-      input.preferred_genres,
-      input.avoid_genres,
-      input.vibe_notes,
-      input.announcements,
-      input.wedding_party,
-      input.mic_needs,
-      input.takes_requests,
-      input.contact_on_day,
-      nowIso(),
+    .run(eventId, ...QUESTIONNAIRE_FIELDS.map((f) => input[f] ?? null), nowIso());
+}
+
+/* ------------------------------------------------------- entrance order */
+
+export function entranceOrder(eventId: number): EntranceEntry[] {
+  return db()
+    .prepare("SELECT * FROM entrance_order WHERE event_id = ? ORDER BY position, id")
+    .all(eventId) as EntranceEntry[];
+}
+
+export function replaceEntranceOrder(
+  eventId: number,
+  rows: { role: string; names: string | null }[],
+): void {
+  const write = db().transaction(() => {
+    db().prepare("DELETE FROM entrance_order WHERE event_id = ?").run(eventId);
+    const insert = db().prepare(
+      "INSERT INTO entrance_order (event_id, position, role, names) VALUES (?, ?, ?, ?)",
     );
+    rows.forEach((row, i) => {
+      if (row.role.trim()) insert.run(eventId, i, row.role.trim(), row.names);
+    });
+  });
+  write();
+}
+
+/* ------------------------------------------------------------- speeches */
+
+export function speeches(eventId: number): SpeechEntry[] {
+  return db()
+    .prepare("SELECT * FROM speeches WHERE event_id = ? ORDER BY position, id")
+    .all(eventId) as SpeechEntry[];
+}
+
+export type SpeechInput = {
+  who: string;
+  when_text: string | null;
+  song_title: string | null;
+  song_artist: string | null;
+  song_cue: string | null;
+};
+
+export function replaceSpeeches(eventId: number, rows: SpeechInput[]): void {
+  const write = db().transaction(() => {
+    db().prepare("DELETE FROM speeches WHERE event_id = ?").run(eventId);
+    const insert = db().prepare(
+      `INSERT INTO speeches (event_id, position, who, when_text, song_title, song_artist, song_cue)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    rows.forEach((row, i) => {
+      if (row.who.trim()) {
+        insert.run(eventId, i, row.who.trim(), row.when_text, row.song_title, row.song_artist, row.song_cue);
+      }
+    });
+  });
+  write();
+}
+
+/* ------------------------------------------------------ recommendations */
+
+/**
+ * What past couples picked for a slot, most popular first. Compiled from the
+ * planning forms and stored in aggregate — a couple filling in their planner
+ * sees the picks, never whose wedding they came from.
+ */
+export function recommendationsFor(category: string, limit = 6): Recommendation[] {
+  return db()
+    .prepare(
+      `SELECT * FROM recommendations WHERE category = ?
+       ORDER BY times_picked DESC, title COLLATE NOCASE LIMIT ?`,
+    )
+    .all(category, limit) as Recommendation[];
+}
+
+export function allRecommendations(): Recommendation[] {
+  return db()
+    .prepare("SELECT * FROM recommendations ORDER BY category, times_picked DESC, title COLLATE NOCASE")
+    .all() as Recommendation[];
+}
+
+/** Records a pick, bumping the count when the same song shows up again. */
+export function recordRecommendation(
+  category: string,
+  title: string,
+  artist: string | null,
+  note: string | null = null,
+): void {
+  db()
+    .prepare(
+      `INSERT INTO recommendations (category, title, artist, times_picked, note)
+       VALUES (?, ?, ?, 1, ?)
+       ON CONFLICT(category, title, COALESCE(artist, '')) DO UPDATE SET
+         times_picked = times_picked + 1,
+         note = COALESCE(recommendations.note, excluded.note)`,
+    )
+    .run(category, title.trim(), artist?.trim() || null, note);
 }
 
 export function markPlanSubmitted(eventId: number): void {

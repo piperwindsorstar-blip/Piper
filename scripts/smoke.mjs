@@ -367,6 +367,59 @@ await reportDj.ctx.close();
   await ops.ctx.close();
 }
 
+
+/* ---------- 15. couple's planner, realigned to the Pynx form ---------- */
+{
+  const plannerCtx = await browser.newContext({ viewport: { width: 900, height: 1000 } });
+  const planner = await plannerCtx.newPage();
+  const planEvent = await (async () => {
+    const admin2 = await signIn("owner@piper.test");
+    await admin2.page.goto(`${BASE}/events/1`);
+    const link = await admin2.page.locator("input[readonly]").inputValue();
+    await admin2.ctx.close();
+    return link.split("/plan/")[1];
+  })();
+  await planner.goto(`${BASE}/plan/${planEvent}`);
+  let body = await planner.textContent("body");
+
+  check("planner uses the form's own sections", ["Ceremony", "Cocktail Time", "Reception"].every((s) => body.includes(s)));
+  check("planner has the slots the form has", ["Signing of the registry", "Grand entrance — wedding party", "Father / daughter dance"].every((s) => body.includes(s)));
+  check("planner asks for cue points", (await planner.locator('input[name="cue"]').count()) > 15);
+  check("planner asks for song links", (await planner.locator('input[name="link"]').count()) > 15);
+  check("planner asks the setup questions", ["6ft table reserved", "Power in each space"].every((s) => body.includes(s)));
+
+  const chips = await planner.locator(".reco-chip").count();
+  check("recommendations offered from past forms", chips > 10, `${chips} suggestions`);
+
+  const slot = planner.locator('form:has(input[name="category"][value="first_dance"])');
+  await slot.locator(".reco-chip").first().click();
+  await planner.waitForTimeout(250);
+  const filled = await slot.locator('input[name="title"]').inputValue();
+  check("tapping a suggestion fills the slot", filled.length > 0, filled);
+
+  await slot.locator('input[name="cue"]').fill("fade out at 2:20");
+  await slot.locator('button[type="submit"]').click();
+  await planner.waitForTimeout(1200);
+  check("cue point saved with the song", (await planner.textContent("body")).includes("fade out at 2:20"));
+
+  await planner.locator('input[name="speech_who[]"]').first().fill("Best man — Jacob");
+  await planner.locator('input[name="speech_song[]"]').first().fill("Bad Girlfriend — Theory of a Deadman");
+  await planner.fill("#request_policy", "Requests fine, but don't hand anyone the mic");
+  await planner.locator('button:has-text("Send this to our DJ"), button:has-text("Save changes")').first().click();
+  await planner.waitForTimeout(1500);
+  await planner.reload();
+  await planner.waitForTimeout(400);
+  check("walk-up song saved", (await planner.locator('input[name="speech_song[]"]').first().inputValue()).includes("Bad Girlfriend"));
+  check("request policy kept as written", (await planner.locator("#request_policy").inputValue()).includes("don't hand anyone the mic"));
+  await plannerCtx.close();
+
+  const djView = await signIn("owner@piper.test");
+  await djView.page.goto(`${BASE}/events/1/music`);
+  body = await djView.page.textContent("body");
+  check("DJ sees the cue point and walk-up songs", body.includes("fade out at 2:20") && body.includes("Bad Girlfriend"));
+  await djView.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

@@ -22,6 +22,16 @@ bill, no setup beyond `npm install`.
   work out once (parking, power, elevator, curfew).
 
 **Music & timeline planning**
+- Song slots mirror the Pynx planning form exactly — same sections (Ceremony,
+  Cocktail Time, Reception), same activity names, same order — so couples and
+  DJs see the shape they already know.
+- Every song carries a **cue point** ("start at 1:28", "fade out ~2:20") and a
+  link to the exact version. These are what separate a clean first dance from a
+  guess, and the planner asks for them on every slot.
+- Grand entrance order, and speeches with each speaker's walk-up song.
+- **Recommendations under each slot** — what past couples picked, compiled from
+  planning forms. Tap one to fill the slot in. Stored in aggregate: a song and
+  how often it was chosen, never whose wedding it came from.
 - Song slots in the order a wedding runs — prelude, processional, recessional,
   cocktail, dinner, grand entrance, first dance, parent dances, cake, bouquet,
   must-play, **do-not-play**, last dance.
@@ -203,6 +213,7 @@ scripts/
   seed.ts          demo season
   import-reports.ts  file/stdin import for crew reports
   create-admin.ts  bootstrap a real admin account
+  seed-recommendations.ts  loads the per-slot suggestions
   smoke.mjs        end-to-end checks
   responsive.mjs   layout checks across screen widths
 ```

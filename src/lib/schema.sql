@@ -74,6 +74,10 @@ CREATE TABLE IF NOT EXISTS songs (
   category   TEXT NOT NULL,
   title      TEXT NOT NULL,
   artist     TEXT,
+  -- "start at 1:28", "fade out ~1:50" — the difference between a clean
+  -- first dance and the DJ guessing.
+  cue        TEXT,
+  link       TEXT,
   notes      TEXT,
   position   INTEGER NOT NULL DEFAULT 0,
   source     TEXT NOT NULL DEFAULT 'team' CHECK (source IN ('team', 'client')),
@@ -101,10 +105,63 @@ CREATE TABLE IF NOT EXISTS questionnaires (
   announcements     TEXT,
   wedding_party     TEXT,
   mic_needs         TEXT,
-  takes_requests    INTEGER NOT NULL DEFAULT 1,
+  request_policy    TEXT,
   contact_on_day    TEXT,
+  dedications       TEXT,
+  last_name_taken   TEXT,
+  arrival_time      TEXT,
+  mc_name           TEXT,
+  bridesmaids       TEXT,
+  groomsmen         TEXT,
+  venue_phone       TEXT,
+  coordinator_email TEXT,
+  table_reserved    TEXT,
+  space_reserved    TEXT,
+  power_each_space  TEXT,
+  outdoor_portions  TEXT,
+  uplight_colours   TEXT,
+  photobooth_hours  TEXT,
+  playlist_pre_ceremony TEXT,
+  playlist_cocktail     TEXT,
+  playlist_dinner       TEXT,
+  playlist_dance        TEXT,
   updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- The grand-entrance running order: which position, and who walks in it.
+CREATE TABLE IF NOT EXISTS entrance_order (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL DEFAULT 0,
+  role     TEXT NOT NULL,
+  names    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_entrance_event ON entrance_order(event_id, position);
+
+-- Speeches, each with the walk-up song the speaker enters to.
+CREATE TABLE IF NOT EXISTS speeches (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id     INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  position     INTEGER NOT NULL DEFAULT 0,
+  who          TEXT NOT NULL,
+  when_text    TEXT,
+  song_title   TEXT,
+  song_artist  TEXT,
+  song_cue     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_speeches_event ON speeches(event_id, position);
+
+-- What past couples picked for each slot, compiled from planning forms.
+-- Aggregate only: no couple is identifiable from this table.
+CREATE TABLE IF NOT EXISTS recommendations (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  category     TEXT NOT NULL,
+  title        TEXT NOT NULL,
+  artist       TEXT,
+  times_picked INTEGER NOT NULL DEFAULT 1,
+  note         TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reco_unique ON recommendations(category, title, COALESCE(artist, ''));
 
 -- ---------------------------------------------------------------- crew reports
 -- Post-job reports emailed in by crew (who are not Piper users), imported and

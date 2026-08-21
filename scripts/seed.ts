@@ -207,11 +207,11 @@ const [first] = ids;
 seedDefaultTimeline(first);
 
 const picks: [string, string, string | null, "team" | "client"][] = [
-  ["ceremony_processional", "Canon in D", "Pachelbel", "client"],
-  ["ceremony_recessional", "Signed, Sealed, Delivered", "Stevie Wonder", "client"],
-  ["grand_entrance", "Feel It Still", "Portugal. The Man", "client"],
+  ["bridal_party_processional", "Canon in D", "Pachelbel", "client"],
+  ["recessional", "Signed, Sealed, Delivered", "Stevie Wonder", "client"],
+  ["grand_entrance_couple", "Feel It Still", "Portugal. The Man", "client"],
   ["first_dance", "Lover", "Taylor Swift", "client"],
-  ["parent_dance_one", "Landslide", "Fleetwood Mac", "client"],
+  ["father_daughter", "Landslide", "Fleetwood Mac", "client"],
   ["cake_cutting", "Sugar, Sugar", "The Archies", "team"],
   ["must_play", "September", "Earth, Wind & Fire", "client"],
   ["must_play", "Dancing Queen", "ABBA", "client"],
@@ -224,7 +224,7 @@ const picks: [string, string, string | null, "team" | "client"][] = [
 ];
 
 for (const [category, title, artist, source] of picks) {
-  addSong({ event_id: first, category, title, artist, notes: null, source });
+  addSong({ event_id: first, category, title, artist, cue: null, link: null, notes: null, source });
 }
 
 saveQuestionnaire(first, {
@@ -235,8 +235,26 @@ saveQuestionnaire(first, {
   announcements: "Rosa's grandmother is Abuela Delgado (deh-GAH-do). Shuttle leaves at 12:45 AM sharp.",
   wedding_party: "Kai & Priya\nMarcus & Jen\nSofia & Andre",
   mic_needs: "Officiant, two toasts, one reading during the ceremony",
-  takes_requests: 1,
+  request_policy: "Requests are welcome — read the room",
   contact_on_day: "Kai Nakamura (maid of honour) — 555-0180",
+  dedications: "Grandma Delgado — 'At Last' by Etta James, during dinner",
+  last_name_taken: "Nakamura-Delgado",
+  arrival_time: "2:00 PM",
+  mc_name: "Kai Nakamura (maid of honour)",
+  bridesmaids: "4",
+  groomsmen: "4",
+  venue_phone: "555-0140",
+  coordinator_email: "events@lakesidepavilion.test",
+  table_reserved: "Yes",
+  space_reserved: "Yes",
+  power_each_space: "Yes — two 20A circuits on the stage wall",
+  outdoor_portions: "Ceremony on the terrace, reception inside",
+  uplight_colours: "Warm amber",
+  photobooth_hours: "N/A",
+  playlist_pre_ceremony: null,
+  playlist_cocktail: null,
+  playlist_dinner: null,
+  playlist_dance: null,
 });
 
 conn.prepare("UPDATE events SET plan_submitted_at = datetime('now') WHERE id = ?").run(first);

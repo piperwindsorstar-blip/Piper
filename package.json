@@ -16,7 +16,8 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "responsive": "node scripts/responsive.mjs",
     "import:reports": "tsx scripts/import-reports.ts",
-    "db:backup": "tsx scripts/backup-db.ts"
+    "db:backup": "tsx scripts/backup-db.ts",
+    "db:recommendations": "tsx scripts/seed-recommendations.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

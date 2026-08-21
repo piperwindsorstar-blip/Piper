@@ -48,6 +48,8 @@ export async function addSongAction(formData: FormData): Promise<void> {
     category,
     title,
     artist: String(formData.get("artist") ?? "").trim() || null,
+    cue: String(formData.get("cue") ?? "").trim() || null,
+    link: String(formData.get("link") ?? "").trim() || null,
     notes: String(formData.get("notes") ?? "").trim() || null,
     source: "team" as const,
   };

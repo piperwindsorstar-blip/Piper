@@ -1,5 +1,5 @@
-import { getQuestionnaire, songsByCategory } from "@/lib/planning";
-import { SONG_CATEGORIES, type Song } from "@/lib/types";
+import { entranceOrder, getQuestionnaire, songsByCategory, speeches } from "@/lib/planning";
+import { SONG_CATEGORIES, SONG_SECTIONS, type Song } from "@/lib/types";
 import { addSongAction, deleteSongAction, moveSongAction } from "../planning-actions";
 import { loadEvent } from "../guard";
 
@@ -17,12 +17,21 @@ function SongRow({ song, eventId, list }: { song: Song; eventId: number; list: S
             </span>
           )}
         </div>
-        {(song.artist || song.notes) && (
+        {(song.artist || song.cue || song.notes) && (
           <div className="song-sub">
-            {song.artist}
-            {song.artist && song.notes ? " · " : ""}
-            {song.notes}
+            {[song.artist, song.notes].filter(Boolean).join(" · ")}
+            {song.cue && (
+              <>
+                {(song.artist || song.notes) && " · "}
+                <strong style={{ color: "var(--accent-text)" }}>{song.cue}</strong>
+              </>
+            )}
           </div>
+        )}
+        {song.link && (
+          <a className="small" href={song.link} target="_blank" rel="noreferrer">
+            Listen
+          </a>
         )}
       </div>
 
@@ -70,6 +79,8 @@ export default async function MusicPage({ params }: { params: Promise<{ id: stri
 
   const songs = songsByCategory(event.id);
   const questionnaire = getQuestionnaire(event.id);
+  const entrance = entranceOrder(event.id);
+  const speechRows = speeches(event.id);
 
   return (
     <>
@@ -91,9 +102,7 @@ export default async function MusicPage({ params }: { params: Promise<{ id: stri
               </div>
               <div className="meta-item">
                 <div className="meta-label">Guest requests</div>
-                <div className="meta-value">
-                  {questionnaire.takes_requests ? "Taking requests" : "No requests from the floor"}
-                </div>
+                <div className="meta-value">{questionnaire.request_policy || "—"}</div>
               </div>
               <div className="meta-item">
                 <div className="meta-label">Mic needs</div>
@@ -108,6 +117,50 @@ export default async function MusicPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
             )}
+            {(questionnaire.table_reserved || questionnaire.power_each_space ||
+              questionnaire.outdoor_portions || questionnaire.arrival_time) && (
+              <div style={{ marginTop: "1rem" }}>
+                <div className="meta-label">Setup</div>
+                <div className="meta-list">
+                  <div className="meta-item">
+                    <div className="meta-label">Access from</div>
+                    <div className="meta-value">{questionnaire.arrival_time || "—"}</div>
+                  </div>
+                  <div className="meta-item">
+                    <div className="meta-label">Table / space</div>
+                    <div className="meta-value">
+                      {[questionnaire.table_reserved, questionnaire.space_reserved]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </div>
+                  </div>
+                  <div className="meta-item">
+                    <div className="meta-label">Power</div>
+                    <div className="meta-value">{questionnaire.power_each_space || "—"}</div>
+                  </div>
+                  <div className="meta-item">
+                    <div className="meta-label">Outdoors</div>
+                    <div className="meta-value">{questionnaire.outdoor_portions || "—"}</div>
+                  </div>
+                  <div className="meta-item">
+                    <div className="meta-label">MC</div>
+                    <div className="meta-value">{questionnaire.mc_name || "—"}</div>
+                  </div>
+                  <div className="meta-item">
+                    <div className="meta-label">Announced as</div>
+                    <div className="meta-value">{questionnaire.last_name_taken || "—"}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {questionnaire.dedications && (
+              <div style={{ marginTop: "1rem" }}>
+                <div className="meta-label">Dedications</div>
+                <div className="small muted" style={{ whiteSpace: "pre-wrap" }}>
+                  {questionnaire.dedications}
+                </div>
+              </div>
+            )}
             {questionnaire.announcements && (
               <div style={{ marginTop: "1rem" }}>
                 <div className="meta-label">Announcements &amp; pronunciations</div>
@@ -116,6 +169,56 @@ export default async function MusicPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {entrance.length > 0 && (
+        <div className="card" style={{ marginTop: "1.1rem" }}>
+          <div className="card-head">
+            <h2>Grand entrance order</h2>
+            <span className="badge badge-plain">{entrance.length}</span>
+          </div>
+          <div className="card-body tight">
+            {entrance.map((row, i) => (
+              <div className="song-line" key={row.id}>
+                <span className="time-stamp">{i + 1}</span>
+                <div className="song-main">
+                  <div className="song-title">{row.role}</div>
+                  {row.names && <div className="song-sub">{row.names}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {speechRows.length > 0 && (
+        <div className="card" style={{ marginTop: "1.1rem" }}>
+          <div className="card-head">
+            <h2>Speeches</h2>
+            <span className="badge badge-plain">{speechRows.length}</span>
+          </div>
+          <div className="card-body tight">
+            {speechRows.map((row) => (
+              <div className="song-line" key={row.id}>
+                <div className="song-main">
+                  <div className="song-title">
+                    {row.who}
+                    {row.when_text && <span className="faint small"> · {row.when_text}</span>}
+                  </div>
+                  {row.song_title && (
+                    <div className="song-sub">
+                      Walk-up: {row.song_title}
+                      {row.song_artist ? ` — ${row.song_artist}` : ""}
+                      {row.song_cue && (
+                        <strong style={{ color: "var(--accent-text)" }}> · {row.song_cue}</strong>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -152,7 +255,7 @@ export default async function MusicPage({ params }: { params: Promise<{ id: stri
               <form action={addSongAction}>
                 <input type="hidden" name="event_id" value={event.id} />
                 <input type="hidden" name="category" value={category.key} />
-                <div className="form-grid cols-3" style={{ gap: "0 0.6rem" }}>
+                <div className="form-grid cols-4" style={{ gap: "0 0.6rem" }}>
                   <div className="field" style={{ marginBottom: "0.6rem" }}>
                     <input name="title" type="text" placeholder="Song title" required />
                   </div>
@@ -160,8 +263,14 @@ export default async function MusicPage({ params }: { params: Promise<{ id: stri
                     <input name="artist" type="text" placeholder="Artist" />
                   </div>
                   <div className="field" style={{ marginBottom: "0.6rem" }}>
+                    <input name="cue" type="text" placeholder="Cue — e.g. start at 1:28, fade 2:20" />
+                  </div>
+                  <div className="field" style={{ marginBottom: "0.6rem" }}>
+                    <input name="link" type="text" placeholder="Link" />
+                  </div>
+                  <div className="field" style={{ marginBottom: "0.6rem" }}>
                     <div className="btn-row" style={{ flexWrap: "nowrap" }}>
-                      <input name="notes" type="text" placeholder="Note (version, cue…)" />
+                      <input name="notes" type="text" placeholder="Note" />
                       <button className="btn btn-sm" type="submit">
                         {category.single && list.length ? "Replace" : "Add"}
                       </button>

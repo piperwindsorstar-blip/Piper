@@ -293,6 +293,33 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .cal-event.cancelled { background: var(--surface-alt); color: var(--text-faint); text-decoration: line-through; }
 .cal-event.completed { background: var(--surface-alt); color: var(--text-muted); }
 
+/* ------------------------------------------------------- planner extras */
+
+.planner-section-head { margin: 2rem 0 0.75rem; }
+.planner-section-head h2 { font-size: 1.15rem; }
+.planner-section-head p { margin: 0.15rem 0 0; }
+
+.reco { margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px dashed var(--border); }
+.reco-label {
+  display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-faint); font-weight: 600; margin-bottom: 0.4rem;
+}
+.reco-chip { cursor: pointer; font-family: inherit; color: var(--text); text-align: left; }
+.reco-chip:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+.reco-count { font-size: 0.7rem; color: var(--accent-text); font-weight: 700; }
+
+.row-editor { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+.row-editor-line { display: flex; align-items: center; gap: 0.4rem; }
+.row-editor-num {
+  flex: 0 0 1.4rem; font-size: 0.75rem; color: var(--text-faint);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+@media (max-width: 760px) {
+  .row-editor-line { flex-wrap: wrap; }
+  .row-editor-line input { flex: 1 1 100% !important; }
+  .row-editor-num { flex-basis: 100%; text-align: left; font-weight: 600; }
+}
+
 /* ---------------------------------------------------------------- staff */
 
 .staff-row {

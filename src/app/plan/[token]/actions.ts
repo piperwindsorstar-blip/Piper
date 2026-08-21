@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getEventByToken } from "@/lib/events";
 import {
   addSong,
+  replaceEntranceOrder,
+  replaceSpeeches,
   deleteSong,
   getQuestionnaire,
   markPlanSubmitted,
@@ -36,6 +38,8 @@ export async function clientAddSong(formData: FormData): Promise<void> {
     category,
     title,
     artist: String(formData.get("artist") ?? "").trim() || null,
+    cue: String(formData.get("cue") ?? "").trim() || null,
+    link: String(formData.get("link") ?? "").trim() || null,
     notes: String(formData.get("notes") ?? "").trim() || null,
     source: "client" as const,
   };
@@ -72,11 +76,51 @@ export async function clientSaveQuestionnaire(formData: FormData): Promise<void>
     announcements: text("announcements"),
     wedding_party: text("wedding_party"),
     mic_needs: text("mic_needs"),
-    takes_requests: formData.get("takes_requests") ? 1 : 0,
+    request_policy: text("request_policy"),
     contact_on_day: text("contact_on_day"),
+    dedications: text("dedications"),
+    last_name_taken: text("last_name_taken"),
+    arrival_time: text("arrival_time"),
+    mc_name: text("mc_name"),
+    bridesmaids: text("bridesmaids"),
+    groomsmen: text("groomsmen"),
+    venue_phone: text("venue_phone"),
+    coordinator_email: text("coordinator_email"),
+    table_reserved: text("table_reserved"),
+    space_reserved: text("space_reserved"),
+    power_each_space: text("power_each_space"),
+    outdoor_portions: text("outdoor_portions"),
+    uplight_colours: text("uplight_colours"),
+    photobooth_hours: text("photobooth_hours"),
+    playlist_pre_ceremony: text("playlist_pre_ceremony"),
+    playlist_cocktail: text("playlist_cocktail"),
+    playlist_dinner: text("playlist_dinner"),
+    playlist_dance: text("playlist_dance"),
   });
 
   revalidatePath(`/plan/${event.plan_token}`);
+}
+
+/**
+ * The entrance order and speech list post as parallel arrays. Rows the couple
+ * left blank are dropped rather than saved as empty lines.
+ */
+function readRows(formData: FormData, names: string[]): string[][] {
+  const columns = names.map((n) => formData.getAll(`${n}[]`).map((v) => String(v).trim()));
+  const length = Math.max(0, ...columns.map((c) => c.length));
+  const rows: string[][] = [];
+  for (let i = 0; i < length; i++) {
+    const row = columns.map((c) => c[i] ?? "");
+    if (row.some((cell) => cell !== "")) rows.push(row);
+  }
+  return rows;
+}
+
+/** "Yours (Intl Mix) — Russell Dickerson" -> title and artist. */
+function splitSong(value: string): { title: string | null; artist: string | null } {
+  if (!value) return { title: null, artist: null };
+  const parts = value.split(/\s+[—–-]\s+/);
+  return { title: parts[0]?.trim() || null, artist: parts.slice(1).join(" - ").trim() || null };
 }
 
 export async function clientSubmitPlan(formData: FormData): Promise<void> {
@@ -85,6 +129,30 @@ export async function clientSubmitPlan(formData: FormData): Promise<void> {
 
   // Saving the details and submitting are one button for the couple.
   await clientSaveQuestionnaire(formData);
+
+  replaceEntranceOrder(
+    event.id,
+    readRows(formData, ["entrance_role", "entrance_names"]).map(([role, names]) => ({
+      role,
+      names: names || null,
+    })),
+  );
+
+  replaceSpeeches(
+    event.id,
+    readRows(formData, ["speech_who", "speech_when", "speech_song", "speech_cue"]).map(
+      ([who, when, song, cue]) => {
+        const { title, artist } = splitSong(song);
+        return {
+          who,
+          when_text: when || null,
+          song_title: title,
+          song_artist: artist,
+          song_cue: cue || null,
+        };
+      },
+    ),
+  );
   if (!getQuestionnaire(event.id)) return;
 
   markPlanSubmitted(event.id);
