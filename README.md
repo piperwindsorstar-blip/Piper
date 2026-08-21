@@ -158,7 +158,43 @@ scripts/
   responsive.mjs   layout checks across screen widths
 ```
 
-## On a phone
+## Opening it on your phone
+
+Until it's hosted, Piper only exists on the machine running it. To reach it from
+a phone on the **same Wi-Fi**:
+
+```bash
+npm run dev:lan
+```
+
+Then find your computer's address and open `http://THAT-ADDRESS:3000` on the
+phone:
+
+- **macOS** — System Settings → Wi-Fi → Details, or `ipconfig getifaddr en0`
+- **Windows** — `ipconfig`, the "IPv4 Address" under your Wi-Fi adapter
+
+It'll look like `http://192.168.1.42:3000`. In Safari or Chrome, **Share → Add to
+Home Screen** gives it an icon that opens without browser chrome.
+
+**Use `dev:lan`, not `npm run start`, for this.** Session cookies are marked
+`Secure` in production, and browsers refuse a `Secure` cookie over plain HTTP on
+anything other than localhost — so with `npm run start` you'd log in, get
+bounced straight back to the login page, and have nothing explaining why. That
+flag is doing its job; it wants HTTPS.
+
+To reach it from **anywhere** (cellular, not just your Wi-Fi), or to test the
+production build on a phone, put an HTTPS tunnel in front:
+
+```bash
+npm run start                       # in one terminal
+cloudflared tunnel --url http://localhost:3000   # in another
+```
+
+That prints a public `https://…trycloudflare.com` address that works from any
+network, and being HTTPS it keeps you signed in. It lasts as long as the command
+runs — fine for a demo or showing a DJ, not a substitute for hosting.
+
+### How it behaves on a small screen
 
 The app is built for a desktop first — that's where you'll do your booking — but
 it works on a phone, which is where your DJs and couples will actually open it:
