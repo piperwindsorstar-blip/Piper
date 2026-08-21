@@ -7,7 +7,7 @@ responsive-shots/
 next-env.d.ts
 
 # Local database — the CRM's data lives here, never commit it
-data/
+/data/
 *.db
 *.db-shm
 *.db-wal

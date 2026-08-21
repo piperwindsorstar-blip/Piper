@@ -1,0 +1,2566 @@
+{
+ "compiledFrom": 38,
+ "recommendations": [
+  {
+   "category": "bouquet_garter",
+   "title": "Gimme! Gimme! Gimme!",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bouquet_garter",
+   "title": "Girls Just Want to Have Fun",
+   "artist": "MATTN, Stavros Martina & Kevin D",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bouquet_garter",
+   "title": "Lady Marmalade",
+   "artist": "Christina Aguilera, Lil' Kim, Mya & Pink",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bouquet_garter",
+   "title": "Man I Need",
+   "artist": "Olivia Dean",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Beyond (Acoustic)",
+   "artist": "Leon Bridges",
+   "timesPicked": 2,
+   "note": "covers the groom and the wedding party"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Simply the Best",
+   "artist": "Billianne",
+   "timesPicked": 2,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Accidentally in Love",
+   "artist": "City Sessions",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Amsterdam",
+   "artist": "Gregory Alan Isakov",
+   "timesPicked": 1,
+   "note": "the version with the Colorado Symphony"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Bloom",
+   "artist": "The Paper Kites",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Can't Help Falling in Love",
+   "artist": "Haley Reinhart",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Canon in D (Instrumental)",
+   "artist": "Pachelbel",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Count on Me (Instrumental)",
+   "artist": "Bruno Mars",
+   "timesPicked": 1,
+   "note": "bridesmaids"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Dream a Little Dream of Me",
+   "artist": "Doris Day",
+   "timesPicked": 1,
+   "note": "live-cover version"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Dreams (Instrumental)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Everywhere, Everything (Piano)",
+   "artist": "Lucio Belmonte",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "For the Dancing and the Dreaming",
+   "artist": "Taylor Davis",
+   "timesPicked": 1,
+   "note": "one song runs through every processional"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Forever",
+   "artist": "The Little Dippers",
+   "timesPicked": 1,
+   "note": "play full song"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Here Comes the Sun",
+   "artist": "Midnite String Quartet",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Levels - Wedding Entrance - Piano",
+   "artist": "Paul Hankinson Covers",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Love Exists",
+   "artist": "Amy Lee",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Maybe I'm Amazed (Instrumental Guitar)",
+   "artist": "Go Fret",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Ordinary (Slow Version)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Sensi",
+   "artist": "Emilio Ingrosso",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Somewhere Only We Know",
+   "artist": "Vitamin String Quartet",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Stand by Me",
+   "artist": "Florence + the Machine",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Swinging Life Away (Instrumental)",
+   "artist": "The Hit Crew",
+   "timesPicked": 1,
+   "note": "groomsmen"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "The Only Exception",
+   "artist": "Guus Dieliseen / Casper Esmann",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "There Will Be Time",
+   "artist": "Midnite String Quartet",
+   "timesPicked": 1,
+   "note": "from the top up to 2:10"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Unchained Melody",
+   "artist": "The Righteous Brothers",
+   "timesPicked": 1,
+   "note": "fade after MOH enters"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Weight of the World",
+   "artist": "Chris Stapleton",
+   "timesPicked": 1,
+   "note": "groom's entrance with parents and siblings"
+  },
+  {
+   "category": "bridal_party_processional",
+   "title": "Wildest Dreams",
+   "artist": "Ana Done and Swift Strings",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Looking At Me Like That",
+   "artist": "Vance Joy",
+   "timesPicked": 2,
+   "note": "from the beginning, bride enters at 0:33"
+  },
+  {
+   "category": "bride_processional",
+   "title": "Can't Help Falling in Love",
+   "artist": "Elvis Presley",
+   "timesPicked": 1,
+   "note": "live-cover version"
+  },
+  {
+   "category": "bride_processional",
+   "title": "Canon in D (Instrumental)",
+   "artist": "Pachelbel",
+   "timesPicked": 1,
+   "note": "carried on from the party processional"
+  },
+  {
+   "category": "bride_processional",
+   "title": "Concerning Hobbits (Wedding Cover, Piano & Violin)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "start at 0:05, after the opening single piano notes"
+  },
+  {
+   "category": "bride_processional",
+   "title": "Cover Me in Sunshine",
+   "artist": "Piano Dreamers",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "For the Dancing and the Dreaming",
+   "artist": "Taylor Davis",
+   "timesPicked": 1,
+   "note": "continues from the party processional"
+  },
+  {
+   "category": "bride_processional",
+   "title": "From This Moment On (Wedding Version)",
+   "artist": "Matt Johnson, Bailey Rushlow",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "I Love You Always Forever (Piano)",
+   "artist": "Piano Peace",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Invisible String (Instrumental)",
+   "artist": "Taylor Swift",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Love Me Like You Do",
+   "artist": "Brooklyn Duo",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Lover",
+   "artist": "Taylor Swift",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Rainbow Connection",
+   "artist": "Stringspace",
+   "timesPicked": 1,
+   "note": "stop at 1:15"
+  },
+  {
+   "category": "bride_processional",
+   "title": "Romantic Flight (How to Train Your Dragon)",
+   "artist": "Geek Music",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Sensi",
+   "artist": "Emilio Ingrosso",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Simply the Best",
+   "artist": "Billianne",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Star Wars Wedding Procession",
+   "artist": "Paul Hankinson",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Stargazing (Moonlight Version)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Tenerife Sea (Instrumental)",
+   "artist": "Stven C",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "There Will Be Time",
+   "artist": "Midnite String Quartet",
+   "timesPicked": 1,
+   "note": "bride enters at the 2:10 mark"
+  },
+  {
+   "category": "bride_processional",
+   "title": "Unconditionally (Piano Version)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Wellerman (Sea Shanty)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "bride walked in with her grandfather"
+  },
+  {
+   "category": "bride_processional",
+   "title": "Wherever You Will Go (Piano Instrumental)",
+   "artist": "Marc Ato",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "You Are So Beautiful",
+   "artist": "Joe Cocker",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "You're the Inspiration",
+   "artist": "George Jacomel",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "bride_processional",
+   "title": "Young and Beautiful (violin)",
+   "artist": "Dramatica",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "All Love Everything",
+   "artist": "Aloe Blacc",
+   "timesPicked": 2,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "How Sweet It Is (To Be Loved By You)",
+   "artist": "James Taylor",
+   "timesPicked": 2,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "Angel Eyes",
+   "artist": "The Jeff Healey Band",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "At Last",
+   "artist": "Etta James",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "Hanging by a Moment",
+   "artist": "Lifehouse",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "I Can't Help Myself",
+   "artist": "Four Tops",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "Kiss Me",
+   "artist": "Sixpence None the Richer",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "Sugar",
+   "artist": "Maroon 5",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "Sugar, Sugar",
+   "artist": "The Archies",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cake_cutting",
+   "title": "Sweet Love",
+   "artist": "Stephen Sanchez",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cocktail",
+   "title": "Bridgerton-style instrumental covers",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "classical covers of pop love songs"
+  },
+  {
+   "category": "cocktail",
+   "title": "Jazz, with Richard Cheese every third song",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "cocktail",
+   "title": "Mix of decades (clean only)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "combined_parent_dance",
+   "title": "Always Be My Baby",
+   "artist": "Mariah Carey",
+   "timesPicked": 1,
+   "note": "mother/daughter dance"
+  },
+  {
+   "category": "combined_parent_dance",
+   "title": "Sunshine",
+   "artist": "Pink",
+   "timesPicked": 1,
+   "note": "groom dancing with his daughter"
+  },
+  {
+   "category": "dinner",
+   "title": "Acoustic love songs people know",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "dinner",
+   "title": "Mix of decades (clean only)",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "dinner",
+   "title": "Motown, mid-60s to 70s",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "(Everything I Do) I Do It for You",
+   "artist": "Bryan Adams",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "Butterfly Kisses",
+   "artist": "Bob Carlisle",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "Changes",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "Daughters",
+   "artist": "John Mayer",
+   "timesPicked": 1,
+   "note": "cut after the first chorus, then straight into the dance-floor opener"
+  },
+  {
+   "category": "father_daughter",
+   "title": "Drift Away",
+   "artist": "Dobie Gray",
+   "timesPicked": 1,
+   "note": "cut at 0:58 on the clap section"
+  },
+  {
+   "category": "father_daughter",
+   "title": "I Loved Her First",
+   "artist": "Heartland",
+   "timesPicked": 1,
+   "note": "straight after the father of the bride's speech"
+  },
+  {
+   "category": "father_daughter",
+   "title": "If I Can Dream",
+   "artist": "Elvis Presley",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "Landslide",
+   "artist": "Fleetwood Mac",
+   "timesPicked": 1,
+   "note": "fade at ~2:30 on the 'I'm getting older too'"
+  },
+  {
+   "category": "father_daughter",
+   "title": "Lauretta",
+   "artist": "Enrico Musiani",
+   "timesPicked": 1,
+   "note": "play 0:11 to 3:15"
+  },
+  {
+   "category": "father_daughter",
+   "title": "My Father's Daughter",
+   "artist": "Anne Wilson",
+   "timesPicked": 1,
+   "note": "fade out at 2:00"
+  },
+  {
+   "category": "father_daughter",
+   "title": "My Girl",
+   "artist": "The Temptations",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "My Old Man",
+   "artist": "Zac Brown Band",
+   "timesPicked": 1,
+   "note": "fade 1:25"
+  },
+  {
+   "category": "father_daughter",
+   "title": "My Wish",
+   "artist": "Rascal Flatts",
+   "timesPicked": 1,
+   "note": "fade out at 2:25"
+  },
+  {
+   "category": "father_daughter",
+   "title": "Sunshine on My Shoulders",
+   "artist": "John Denver",
+   "timesPicked": 1,
+   "note": "fade out around 2:50"
+  },
+  {
+   "category": "father_daughter",
+   "title": "Sweet Child O' Mine",
+   "artist": "Brent Morgan",
+   "timesPicked": 1,
+   "note": "cover version, original as backup"
+  },
+  {
+   "category": "father_daughter",
+   "title": "Unchained Melody",
+   "artist": "The Righteous Brothers",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "Vienna",
+   "artist": "Billy Joel",
+   "timesPicked": 1,
+   "note": "father takes the bride from the groom; stop at 2:40"
+  },
+  {
+   "category": "father_daughter",
+   "title": "When You Need Me",
+   "artist": "Bruce Springsteen",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "father_daughter",
+   "title": "Wildflowers",
+   "artist": "Jimmy Buffett",
+   "timesPicked": 1,
+   "note": "cut vocals at beginning and end"
+  },
+  {
+   "category": "father_daughter",
+   "title": "You'll Be in My Heart",
+   "artist": "Phil Collins",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "And Then Some (Acoustic)",
+   "artist": "Arkells",
+   "timesPicked": 3,
+   "note": "fade out 2:20"
+  },
+  {
+   "category": "first_dance",
+   "title": "In Case You Didn't Know",
+   "artist": "Brett Young",
+   "timesPicked": 2,
+   "note": "end around 2:20"
+  },
+  {
+   "category": "first_dance",
+   "title": "Perfect (Acoustic)",
+   "artist": "Ed Sheeran",
+   "timesPicked": 2,
+   "note": "play until 2:55"
+  },
+  {
+   "category": "first_dance",
+   "title": "A Place I Don't Know",
+   "artist": "Daniel Olsen, Jonathan Eng & Linnea Olsson",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Amazed",
+   "artist": "Lonestar",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Annie's Song",
+   "artist": "John Denver",
+   "timesPicked": 1,
+   "note": "fade out after 2:00"
+  },
+  {
+   "category": "first_dance",
+   "title": "At Last",
+   "artist": "Etta James",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Don't Give Up On Me",
+   "artist": "Andy Grammer",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "For Life",
+   "artist": "Kygo feat. Nile Rodgers",
+   "timesPicked": 1,
+   "note": "couple asked for an acoustic version, about 60 seconds"
+  },
+  {
+   "category": "first_dance",
+   "title": "Harvest Moon",
+   "artist": "Neil Young",
+   "timesPicked": 1,
+   "note": "cut at 1:46"
+  },
+  {
+   "category": "first_dance",
+   "title": "I Don't Want to Miss a Thing",
+   "artist": "Aerosmith",
+   "timesPicked": 1,
+   "note": "start at 0:20, encourage the room to sing along"
+  },
+  {
+   "category": "first_dance",
+   "title": "I Wanna Remember (feat. Carrie Underwood)",
+   "artist": "NEEDTOBREATHE",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Ih-Ah",
+   "artist": "Devin Townsend",
+   "timesPicked": 1,
+   "note": "live version"
+  },
+  {
+   "category": "first_dance",
+   "title": "Iris",
+   "artist": "Goo Goo Dolls",
+   "timesPicked": 1,
+   "note": "cover version"
+  },
+  {
+   "category": "first_dance",
+   "title": "La Vie en Rose",
+   "artist": "Michael Buble feat. Cecile McLorin Salvant",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Love on the Weekend",
+   "artist": "John Mayer",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Lover (First Dance Remix)",
+   "artist": "Taylor Swift",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Mary's Pub",
+   "artist": "Amble",
+   "timesPicked": 1,
+   "note": "after the first dessert course; stop at 2:50"
+  },
+  {
+   "category": "first_dance",
+   "title": "Neverending Love",
+   "artist": "Laney Bonnie",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Nobody Gets Me Like You Do",
+   "artist": "Arkells",
+   "timesPicked": 1,
+   "note": "first-dance edit; invite everyone up after the first chorus"
+  },
+  {
+   "category": "first_dance",
+   "title": "Sanctuary",
+   "artist": "Welshly Arms",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "She's Got a Way",
+   "artist": "Billy Joel",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Steady Heart (Wedding version)",
+   "artist": "Kameron Marlowe",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Steep",
+   "artist": "Jordyn",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "Sweet Symphony",
+   "artist": "Joy Oladokun & Chris Stapleton",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "The Only One",
+   "artist": "Music Travel Love",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "There's the Sun",
+   "artist": "Zach Top",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "first_dance",
+   "title": "This Will Be Our Year",
+   "artist": "The Zombies",
+   "timesPicked": 1,
+   "note": "whole song"
+  },
+  {
+   "category": "first_dance",
+   "title": "Wildflowers & Wine",
+   "artist": "Marcus King",
+   "timesPicked": 1,
+   "note": "fade out around 3:00"
+  },
+  {
+   "category": "first_dance",
+   "title": "Wondering Why",
+   "artist": "Red Clay Strays",
+   "timesPicked": 1,
+   "note": "live version, fade out around 2:30"
+  },
+  {
+   "category": "flower_girls",
+   "title": "For the Dancing and the Dreaming",
+   "artist": "Taylor Davis",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "flower_girls",
+   "title": "High Hopes",
+   "artist": "Panic! At The Disco",
+   "timesPicked": 1,
+   "note": "ring bearers"
+  },
+  {
+   "category": "flower_girls",
+   "title": "I'm a Believer",
+   "artist": "Smash Mouth",
+   "timesPicked": 1,
+   "note": "flower guys"
+  },
+  {
+   "category": "flower_girls",
+   "title": "Pure Imagination",
+   "artist": "Gene Wilder",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "You & Me (Flume Remix)",
+   "artist": "Flume ft. Eliza",
+   "timesPicked": 2,
+   "note": "start at 2:20, couple enters at 2:47"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Baila Conmigo",
+   "artist": "Dayvi & Willy William (remix)",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Burn the House Down",
+   "artist": "AJR",
+   "timesPicked": 1,
+   "note": "couple supplied their own edit"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Can't Take My Eyes Off You",
+   "artist": "Frankie Valli",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Control",
+   "artist": "Matrix & Futurebound feat. Max Marshall",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Crazy in Love",
+   "artist": "Beyonce feat. Jay-Z",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Gimme Gimme Gimme",
+   "artist": "Syzz",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Give Me Everything",
+   "artist": "Pitbull",
+   "timesPicked": 1,
+   "note": "same mix carried on from the party entrance"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Head Over Heels",
+   "artist": "Tears For Fears",
+   "timesPicked": 1,
+   "note": "start soft under the MC, build to the entrance"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "I Just Might",
+   "artist": "Bruno Mars",
+   "timesPicked": 1,
+   "note": "same track carried on from the party entrance"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Jubel",
+   "artist": "Klingande",
+   "timesPicked": 1,
+   "note": "live sax over the track, fading into the first dance"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Marry You",
+   "artist": "Bruno Mars",
+   "timesPicked": 1,
+   "note": "same track carried on from the party entrance"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Perfect",
+   "artist": "Ed Sheeran & Beyonce",
+   "timesPicked": 1,
+   "note": "entrance runs straight into the first dance"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Real Love Baby",
+   "artist": "Father John Misty",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Renegade",
+   "artist": "Styx",
+   "timesPicked": 1,
+   "note": "MC announces during build-up ~0:30, come in at beat drop, fade ~1:50"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Sizzling",
+   "artist": "Daphni ft. Paradise",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Stuntin' Like My Daddy",
+   "artist": "Lil Wayne",
+   "timesPicked": 1,
+   "note": "clean version"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "The Hell Song",
+   "artist": "Sum 41",
+   "timesPicked": 1,
+   "note": "first 0:20-0:50, fade after"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "This Will Be (An Everlasting Love)",
+   "artist": "Natalie Cole",
+   "timesPicked": 1,
+   "note": "play 0:33 to 0:53"
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "What I Like About You",
+   "artist": "The Romantics",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_couple",
+   "title": "Years in the Making",
+   "artist": "Arkells",
+   "timesPicked": 1,
+   "note": "continues from the wedding party entrance"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Chicago Bulls Intro Theme (Sirius)",
+   "artist": "Twilight Trio",
+   "timesPicked": 2,
+   "note": "start at 0:45, party enters at 1:00"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "All My Friends",
+   "artist": "A Day To Remember",
+   "timesPicked": 1,
+   "note": "groomsmen walk out on the second \"Ah, shit\""
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "All the Small Things",
+   "artist": "Blink-182",
+   "timesPicked": 1,
+   "note": "groomsmen and bridal party; backup was You Belong With Me"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Baila Conmigo",
+   "artist": "Dayvi & Willy William (remix)",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "California Gurls",
+   "artist": "Katy Perry",
+   "timesPicked": 1,
+   "note": "groomsmen"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Dancing Queen",
+   "artist": "ABBA",
+   "timesPicked": 1,
+   "note": "bridesmaids"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Fat Lip",
+   "artist": "Sum 41",
+   "timesPicked": 1,
+   "note": "groomsmen, play until 0:20"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Fireball",
+   "artist": "Pitbull ft. John Ryan",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Ghostbusters",
+   "artist": "Ray Parker Jr.",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Give Me Everything",
+   "artist": "Pitbull",
+   "timesPicked": 1,
+   "note": "mixed with the Bridgerton string version"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Go Insane",
+   "artist": "Lindsey Buckingham",
+   "timesPicked": 1,
+   "note": "parents of the groom, mix the intro into the chorus at 0:35"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Goddess",
+   "artist": "PVRIS",
+   "timesPicked": 1,
+   "note": "bridesmaids"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Happy",
+   "artist": "Pharrell Williams",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "I Just Might",
+   "artist": "Bruno Mars",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "I'm a Believer",
+   "artist": "Smash Mouth",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Let's Get Loud",
+   "artist": "Jennifer Lopez",
+   "timesPicked": 1,
+   "note": "bridesmaids"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Marry You",
+   "artist": "Bruno Mars",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Pump It",
+   "artist": "Black Eyed Peas",
+   "timesPicked": 1,
+   "note": "from start, MC announces as song starts"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Sir Duke",
+   "artist": "Stevie Wonder",
+   "timesPicked": 1,
+   "note": "parents of the bride"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Somebody to Love (Remix)",
+   "artist": "Justin Bieber & Usher",
+   "timesPicked": 1,
+   "note": "start at 1:32, on \"so baby listen\""
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "These Words (remix)",
+   "artist": "Badger, Natasha Bedingfield",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Totoy Bibbo",
+   "artist": "Vhong Navarro",
+   "timesPicked": 1,
+   "note": "parents of the bride"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Untouched",
+   "artist": "The Veronicas",
+   "timesPicked": 1,
+   "note": "bridesmaids, mix intro 0:11-0:18 into the chorus at 1:05"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "We Are Family",
+   "artist": "Sister Sledge",
+   "timesPicked": 1,
+   "note": "bridesmaids, play 0:27 to 0:50"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "We Dem Boyz",
+   "artist": "Wiz Khalifa",
+   "timesPicked": 1,
+   "note": "groomsmen, clip 0:14-0:44"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "We Like to Party!",
+   "artist": "Vengaboys",
+   "timesPicked": 1,
+   "note": "groomsmen"
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "Years in the Making",
+   "artist": "Arkells",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "grand_entrance_party",
+   "title": "You Make My Dreams (Come True)",
+   "artist": "Daryl Hall & John Oates",
+   "timesPicked": 1,
+   "note": "parents of the groom"
+  },
+  {
+   "category": "groom_processional",
+   "title": "Across the Stars",
+   "artist": "John Williams",
+   "timesPicked": 1,
+   "note": "groom, groomsmen and father of the groom"
+  },
+  {
+   "category": "groom_processional",
+   "title": "Beautiful Things",
+   "artist": "Benson Boone",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "groom_processional",
+   "title": "Can't Help Falling in Love (violin)",
+   "artist": "Alan Ng",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "groom_processional",
+   "title": "Infinity",
+   "artist": "AJR",
+   "timesPicked": 1,
+   "note": "groom and groomsmen; couple supplied their own edit"
+  },
+  {
+   "category": "groom_processional",
+   "title": "You and Me (Instrumental)",
+   "artist": "Allen & Bright",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "groom_processional",
+   "title": "Yours (Wedding Version)",
+   "artist": "Russell Dickerson",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "guest_arrival",
+   "title": "Can You Feel the Love Tonight",
+   "artist": "Elton John",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "guest_arrival",
+   "title": "Enya only (grandmother tribute)",
+   "artist": "Enya",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "guest_arrival",
+   "title": "Instrumental covers \u2014 country, pop",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "guest_arrival",
+   "title": "Instrumental pop playlist",
+   "artist": null,
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "guest_arrival",
+   "title": "Only of You",
+   "artist": "Green Day",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "guest_arrival",
+   "title": "You're Still the One",
+   "artist": "Shania Twain",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Closing Time",
+   "artist": "Semisonic",
+   "timesPicked": 3,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "And Then Some (Acoustic)",
+   "artist": "Arkells",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Angel",
+   "artist": "Shaggy",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Circles",
+   "artist": "Post Malone",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Don't Stop Me Now",
+   "artist": "Queen",
+   "timesPicked": 1,
+   "note": "get all guests to join in"
+  },
+  {
+   "category": "last_dance",
+   "title": "Everlong (Acoustic)",
+   "artist": "Foo Fighters",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Forever",
+   "artist": "Chris Brown",
+   "timesPicked": 1,
+   "note": "whole song"
+  },
+  {
+   "category": "last_dance",
+   "title": "Glad You Came",
+   "artist": "The Wanted",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Good Riddance (Time of Your Life)",
+   "artist": "Green Day",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Joy of My Life",
+   "artist": "Chris Stapleton",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Mamma Mia",
+   "artist": "ABBA",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Pink Pony Club",
+   "artist": "Chappell Roan",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Sweet Symphony",
+   "artist": "Joy Oladokun & Chris Stapleton",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Total Eclipse of the Heart",
+   "artist": "Bonnie Tyler",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "last_dance",
+   "title": "Weight of Your World",
+   "artist": "Chris Stapleton",
+   "timesPicked": 1,
+   "note": "lantern send-off"
+  },
+  {
+   "category": "mother_son",
+   "title": "Forever Young",
+   "artist": "Rod Stewart",
+   "timesPicked": 2,
+   "note": "cut after the first chorus"
+  },
+  {
+   "category": "mother_son",
+   "title": "My Wish",
+   "artist": "Rascal Flatts",
+   "timesPicked": 2,
+   "note": null
+  },
+  {
+   "category": "mother_son",
+   "title": "What a Wonderful World",
+   "artist": "Louis Armstrong",
+   "timesPicked": 2,
+   "note": null
+  },
+  {
+   "category": "mother_son",
+   "title": "Days Like This",
+   "artist": "Van Morrison",
+   "timesPicked": 1,
+   "note": "fade 1:25"
+  },
+  {
+   "category": "mother_son",
+   "title": "Hasta la Raiz",
+   "artist": "Natalia Lafourcade",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "mother_son",
+   "title": "Her Little Man",
+   "artist": "Jami Grooms",
+   "timesPicked": 1,
+   "note": "start as the MC calls them up"
+  },
+  {
+   "category": "mother_son",
+   "title": "How Long Will I Love You",
+   "artist": "Ellie Goulding",
+   "timesPicked": 1,
+   "note": "after the couple changed outfits"
+  },
+  {
+   "category": "mother_son",
+   "title": "Humble and Kind",
+   "artist": "Tim McGraw",
+   "timesPicked": 1,
+   "note": "couples invited to join at 2:10 to open the floor"
+  },
+  {
+   "category": "mother_son",
+   "title": "Photograph",
+   "artist": "Ed Sheeran",
+   "timesPicked": 1,
+   "note": "fade out at 3:00"
+  },
+  {
+   "category": "mother_son",
+   "title": "Simple Man",
+   "artist": "Lynyrd Skynyrd",
+   "timesPicked": 1,
+   "note": "cut at 2:26"
+  },
+  {
+   "category": "mother_son",
+   "title": "You Raise Me Up",
+   "artist": "Josh Groban",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "mother_son",
+   "title": "You'll Be In My Heart",
+   "artist": "Phil Collins",
+   "timesPicked": 1,
+   "note": "cut the second verse, fade after ~2:00"
+  },
+  {
+   "category": "mother_son",
+   "title": "You've Got a Friend in Me",
+   "artist": "Randy Newman",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Beautiful Soul",
+   "artist": "Jesse McCartney",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Cold Heart (PNAU Remix)",
+   "artist": "Elton John & Dua Lipa",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Crazy Frog",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "kids' request set"
+  },
+  {
+   "category": "must_play",
+   "title": "Cry (Just a Little)",
+   "artist": "Bingo Players",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Cupid Shuffle",
+   "artist": "Cupid",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Dancing Queen",
+   "artist": "ABBA",
+   "timesPicked": 1,
+   "note": "one of the classics for the parents"
+  },
+  {
+   "category": "must_play",
+   "title": "Dreams",
+   "artist": "Fleetwood Mac",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Fernando",
+   "artist": "ABBA",
+   "timesPicked": 1,
+   "note": "during dinner"
+  },
+  {
+   "category": "must_play",
+   "title": "Footloose",
+   "artist": "Kenny Loggins",
+   "timesPicked": 1,
+   "note": "one of the classics for the parents"
+  },
+  {
+   "category": "must_play",
+   "title": "Heaven",
+   "artist": "Bryan Adams",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "HOT TO GO!",
+   "artist": "Chappell Roan",
+   "timesPicked": 1,
+   "note": "table dash - each table comes up for a photo before the song ends"
+  },
+  {
+   "category": "must_play",
+   "title": "Humble and Kind",
+   "artist": "Tim McGraw",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "I Believe in a Thing Called Love",
+   "artist": "The Darkness",
+   "timesPicked": 1,
+   "note": "couple opened the karaoke portion with it"
+  },
+  {
+   "category": "must_play",
+   "title": "I Put a Spell on You",
+   "artist": "Nina Simone",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "I Wanna Dance with Somebody",
+   "artist": "Whitney Houston",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "I'm Gonna Be (500 Miles)",
+   "artist": "The Proclaimers",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Idol",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "kids' request set"
+  },
+  {
+   "category": "must_play",
+   "title": "Mamacita",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "kids' request set"
+  },
+  {
+   "category": "must_play",
+   "title": "Mr. Brightside",
+   "artist": "The Killers",
+   "timesPicked": 1,
+   "note": "one of the classics for the parents"
+  },
+  {
+   "category": "must_play",
+   "title": "Murder on the Dancefloor",
+   "artist": "Sophie Ellis-Bextor",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "My Love",
+   "artist": "Route 94 feat. Jess Glynne",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Oh Carolina",
+   "artist": "Shaggy",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Pink Pony Club",
+   "artist": "Chappell Roan",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Raspberry Beret",
+   "artist": "Prince",
+   "timesPicked": 1,
+   "note": "one of the classics for the parents"
+  },
+  {
+   "category": "must_play",
+   "title": "Simple Man",
+   "artist": "Lynyrd Skynyrd",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Soda Pop",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "kids' request set"
+  },
+  {
+   "category": "must_play",
+   "title": "Stand by Me",
+   "artist": "Ben E. King",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "Stickwitu",
+   "artist": "The Pussycat Dolls",
+   "timesPicked": 1,
+   "note": "later in the night"
+  },
+  {
+   "category": "must_play",
+   "title": "The Gummy Bear Song",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "kids' request set"
+  },
+  {
+   "category": "must_play",
+   "title": "The Only One",
+   "artist": "Lionel Richie",
+   "timesPicked": 1,
+   "note": "one set of parents' first-dance song"
+  },
+  {
+   "category": "must_play",
+   "title": "The Spins",
+   "artist": "Mac Miller",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "must_play",
+   "title": "The Wheels on the Bus",
+   "artist": null,
+   "timesPicked": 1,
+   "note": "kids' request set"
+  },
+  {
+   "category": "must_play",
+   "title": "Unforgettable",
+   "artist": "Nat King Cole",
+   "timesPicked": 1,
+   "note": "early in the evening"
+  },
+  {
+   "category": "must_play",
+   "title": "Yeah!",
+   "artist": "Usher",
+   "timesPicked": 1,
+   "note": "group picture song"
+  },
+  {
+   "category": "must_play",
+   "title": "You're the Best Thing",
+   "artist": "The Style Council",
+   "timesPicked": 1,
+   "note": "one set of parents' first-dance song"
+  },
+  {
+   "category": "open_dancing",
+   "title": "Yeah",
+   "artist": "Usher",
+   "timesPicked": 2,
+   "note": "group picture song"
+  },
+  {
+   "category": "open_dancing",
+   "title": "Bang the Drum All Day",
+   "artist": "Todd Rundgren",
+   "timesPicked": 1,
+   "note": "kickstarts the dancing straight out of the father/daughter dance"
+  },
+  {
+   "category": "open_dancing",
+   "title": "Boogie Wonderland",
+   "artist": "Earth, Wind & Fire",
+   "timesPicked": 1,
+   "note": "start after the group photo on the dance floor"
+  },
+  {
+   "category": "open_dancing",
+   "title": "Crocodile Rock",
+   "artist": "Elton John",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "Feel So Good",
+   "artist": "Mase",
+   "timesPicked": 1,
+   "note": "start the moment the group photo is taken"
+  },
+  {
+   "category": "open_dancing",
+   "title": "Get Down On It",
+   "artist": "Kool & The Gang",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "Gonna Make You Sweat (Everybody Dance Now)",
+   "artist": "C+C Music Factory",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "Hey Ya!",
+   "artist": "OutKast",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "I Gotta Feeling",
+   "artist": "Black Eyed Peas",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "I Wanna Dance with Somebody",
+   "artist": "Whitney Houston",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "Never Gonna Give You Up",
+   "artist": "Rick Astley",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "Sweet Caroline (Two Friends Remix)",
+   "artist": "Neil Diamond",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "Temperature",
+   "artist": "Sean Paul",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "open_dancing",
+   "title": "Who Let the Dogs Out",
+   "artist": "Baha Men",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "parent_dance",
+   "title": "Butterfly Kisses",
+   "artist": "Bob Carlisle",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "parent_dance",
+   "title": "Count on Me",
+   "artist": "Bruno Mars",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "parent_dance",
+   "title": "Drive (For Daddy Gene)",
+   "artist": "Alan Jackson",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "parent_dance",
+   "title": "My Little Girl",
+   "artist": "Tim McGraw",
+   "timesPicked": 1,
+   "note": "fade out early"
+  },
+  {
+   "category": "parent_dance",
+   "title": "My Wish",
+   "artist": "Rascal Flatts",
+   "timesPicked": 1,
+   "note": "fade out ~2:25"
+  },
+  {
+   "category": "recessional",
+   "title": "Everywhere, Everything",
+   "artist": "Noah Kahan & Gracie Abrams",
+   "timesPicked": 3,
+   "note": "start at 1:05 on the pronouncement and kiss"
+  },
+  {
+   "category": "recessional",
+   "title": "Accidentally in Love",
+   "artist": "Counting Crows",
+   "timesPicked": 2,
+   "note": "grand exit"
+  },
+  {
+   "category": "recessional",
+   "title": "Beautiful Day",
+   "artist": "U2",
+   "timesPicked": 1,
+   "note": "start around 0:55"
+  },
+  {
+   "category": "recessional",
+   "title": "Better Together",
+   "artist": "Luke Combs",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Concerning Hobbits (Wedding Piano Version)",
+   "artist": "Paul Hankinson",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Forever After All",
+   "artist": "Luke Combs",
+   "timesPicked": 1,
+   "note": "start low at 1:55, up at exactly 2:08 for the kiss"
+  },
+  {
+   "category": "recessional",
+   "title": "Hold My Hand",
+   "artist": "Hootie & The Blowfish",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "I Love You Always Forever",
+   "artist": "Donna Lewis",
+   "timesPicked": 1,
+   "note": "start at 2:38"
+  },
+  {
+   "category": "recessional",
+   "title": "It Takes Two",
+   "artist": "Rob Base & DJ EZ Rock",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Jubel",
+   "artist": "Klingande",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Kiss the Girl",
+   "artist": "Brent Morgan",
+   "timesPicked": 1,
+   "note": "final blessing into the pronouncement"
+  },
+  {
+   "category": "recessional",
+   "title": "Long Train Runnin'",
+   "artist": "The Doobie Brothers",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Love Like This",
+   "artist": "Natasha Bedingfield",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Man I Need",
+   "artist": "Olivia Dean",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Mr. Blue Sky",
+   "artist": "Electric Light Orchestra",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "My Girl",
+   "artist": "The Temptations",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Roses (Remix)",
+   "artist": "The Chainsmokers",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Signed, Sealed, Delivered",
+   "artist": "Stevie Wonder",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Soulful Strut",
+   "artist": "Young-Holt Unlimited",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Star Wars (Epic Theme)",
+   "artist": "Samuel Kim",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "The Best",
+   "artist": "Tina Turner",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "The Good Part",
+   "artist": "AJR",
+   "timesPicked": 1,
+   "note": "couple supplied their own edit"
+  },
+  {
+   "category": "recessional",
+   "title": "There Will Be Time",
+   "artist": "Mumford & Sons",
+   "timesPicked": 1,
+   "note": "start at 2:24 for the first kiss, recessional straight after"
+  },
+  {
+   "category": "recessional",
+   "title": "This Will Be (An Everlasting Love)",
+   "artist": "Natalie Cole",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "Wouldn't It Be Nice",
+   "artist": "The Beach Boys",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "recessional",
+   "title": "You Are The Best Thing",
+   "artist": "Ray LaMontagne",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Best Part of Me",
+   "artist": "Ed Sheeran",
+   "timesPicked": 2,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Can't Help Falling in Love",
+   "artist": "Elvis Presley",
+   "timesPicked": 2,
+   "note": "carried straight on from the processional"
+  },
+  {
+   "category": "signing_registry",
+   "title": "Better Together",
+   "artist": "Jack Johnson",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Birds of a Feather (wedding violin version)",
+   "artist": "Ana Done",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Crazy Love",
+   "artist": "Van Morrison",
+   "timesPicked": 1,
+   "note": "sung live by a bridesmaid over the instrumental"
+  },
+  {
+   "category": "signing_registry",
+   "title": "Deep Love of Jesus (Instrumental)",
+   "artist": "Draw Close",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "First Date",
+   "artist": "Taylor Acorn",
+   "timesPicked": 1,
+   "note": "second registry song"
+  },
+  {
+   "category": "signing_registry",
+   "title": "I Love You Always Forever (Acoustic)",
+   "artist": "Mateo Oxley",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "I Will Always Return",
+   "artist": "Bryan Adams",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Interlude (That's Love)",
+   "artist": "Chance the Rapper",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Make You Feel My Love",
+   "artist": "Adele",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Mystery of Love",
+   "artist": "Sufjan Stevens",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Perfect",
+   "artist": "Ed Sheeran",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Risk It All (cover)",
+   "artist": "Joseph Vincent",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Same Ole Me",
+   "artist": "George Strait",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Simply the Best",
+   "artist": "Billanne",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "So Easy (To Fall in Love)",
+   "artist": "Olivia Dean",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "Tenerife Sea (Piano Instrumental)",
+   "artist": "Playa Piano",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "We Go With the Sky (How to Train Your Dragon Epic Cover)",
+   "artist": "Lucas Ricciotti",
+   "timesPicked": 1,
+   "note": null
+  },
+  {
+   "category": "signing_registry",
+   "title": "You're Still The One",
+   "artist": "Shania Twain",
+   "timesPicked": 1,
+   "note": null
+  }
+ ],
+ "commonlyBanned": [
+  {
+   "title": "Cha Cha Slide",
+   "timesBanned": 8
+  },
+  {
+   "title": "YMCA",
+   "timesBanned": 7
+  },
+  {
+   "title": "Macarena",
+   "timesBanned": 6
+  },
+  {
+   "title": "Country",
+   "timesBanned": 6
+  },
+  {
+   "title": "Cheesy wedding classics",
+   "timesBanned": 6
+  },
+  {
+   "title": "Bruno Mars",
+   "timesBanned": 5
+  },
+  {
+   "title": "Happy",
+   "timesBanned": 4
+  },
+  {
+   "title": "Sweet Caroline",
+   "timesBanned": 3
+  },
+  {
+   "title": "Cupid Shuffle",
+   "timesBanned": 3
+  },
+  {
+   "title": "Justin Bieber",
+   "timesBanned": 3
+  },
+  {
+   "title": "Crude or explicit lyrics",
+   "timesBanned": 3
+  },
+  {
+   "title": "Single Ladies",
+   "timesBanned": 2
+  },
+  {
+   "title": "Shut Up and Dance",
+   "timesBanned": 2
+  },
+  {
+   "title": "Meghan Trainor",
+   "timesBanned": 2
+  },
+  {
+   "title": "Baby Shark",
+   "timesBanned": 2
+  },
+  {
+   "title": "Cotton Eyed Joe",
+   "timesBanned": 2
+  },
+  {
+   "title": "Taylor Swift",
+   "timesBanned": 2
+  },
+  {
+   "title": "Ed Sheeran",
+   "timesBanned": 2
+  },
+  {
+   "title": "Celebration",
+   "timesBanned": 2
+  },
+  {
+   "title": "ABBA",
+   "timesBanned": 2
+  },
+  {
+   "title": "Rap",
+   "timesBanned": 1
+  },
+  {
+   "title": "R&B",
+   "timesBanned": 1
+  },
+  {
+   "title": "Just Dance",
+   "timesBanned": 1
+  },
+  {
+   "title": "First Man",
+   "timesBanned": 1
+  },
+  {
+   "title": "Everybody (Backstreet Boys)",
+   "timesBanned": 1
+  },
+  {
+   "title": "We Found Love",
+   "timesBanned": 1
+  },
+  {
+   "title": "Ignition",
+   "timesBanned": 1
+  },
+  {
+   "title": "On the Floor",
+   "timesBanned": 1
+  },
+  {
+   "title": "Womanizer",
+   "timesBanned": 1
+  },
+  {
+   "title": "Let's Get It Started",
+   "timesBanned": 1
+  },
+  {
+   "title": "Island in the Sun",
+   "timesBanned": 1
+  },
+  {
+   "title": "Who Let the Dogs Out",
+   "timesBanned": 1
+  },
+  {
+   "title": "Bon Jovi",
+   "timesBanned": 1
+  },
+  {
+   "title": "It Wasn't Me",
+   "timesBanned": 1
+  },
+  {
+   "title": "Friends in Low Places (Garth Brooks)",
+   "timesBanned": 1
+  },
+  {
+   "title": "Pharrell Williams",
+   "timesBanned": 1
+  },
+  {
+   "title": "P!nk",
+   "timesBanned": 1
+  },
+  {
+   "title": "Aerosmith",
+   "timesBanned": 1
+  },
+  {
+   "title": "Sabrina Carpenter",
+   "timesBanned": 1
+  },
+  {
+   "title": "Mr. Brightside",
+   "timesBanned": 1
+  },
+  {
+   "title": "Fast Car",
+   "timesBanned": 1
+  },
+  {
+   "title": "Michael Jackson",
+   "timesBanned": 1
+  },
+  {
+   "title": "Beyonc\u00e9 (Cowboy Carter)",
+   "timesBanned": 1
+  },
+  {
+   "title": "Lips of an Angel",
+   "timesBanned": 1
+  },
+  {
+   "title": "Top 40",
+   "timesBanned": 1
+  },
+  {
+   "title": "Pitbull",
+   "timesBanned": 1
+  },
+  {
+   "title": "Bad Bunny",
+   "timesBanned": 1
+  },
+  {
+   "title": "Drake",
+   "timesBanned": 1
+  },
+  {
+   "title": "The Weeknd",
+   "timesBanned": 1
+  },
+  {
+   "title": "Wagon Wheel",
+   "timesBanned": 1
+  },
+  {
+   "title": "Don't Stop Believin'",
+   "timesBanned": 1
+  },
+  {
+   "title": "Love Story (Taylor Swift)",
+   "timesBanned": 1
+  },
+  {
+   "title": "The Git Up",
+   "timesBanned": 1
+  },
+  {
+   "title": "Harlem Shake",
+   "timesBanned": 1
+  },
+  {
+   "title": "Chicken Dance",
+   "timesBanned": 1
+  },
+  {
+   "title": "Turn Down for What",
+   "timesBanned": 1
+  },
+  {
+   "title": "Gangnam Style",
+   "timesBanned": 1
+  },
+  {
+   "title": "Electric Slide",
+   "timesBanned": 1
+  },
+  {
+   "title": "Blurred Lines",
+   "timesBanned": 1
+  },
+  {
+   "title": "Fancy Like",
+   "timesBanned": 1
+  },
+  {
+   "title": "Old Town Road",
+   "timesBanned": 1
+  },
+  {
+   "title": "WAP",
+   "timesBanned": 1
+  },
+  {
+   "title": "Anaconda",
+   "timesBanned": 1
+  },
+  {
+   "title": "Push It",
+   "timesBanned": 1
+  },
+  {
+   "title": "Can't Stop the Feeling",
+   "timesBanned": 1
+  },
+  {
+   "title": "Honey I'm Good",
+   "timesBanned": 1
+  },
+  {
+   "title": "I'm Gonna Be (500 Miles)",
+   "timesBanned": 1
+  },
+  {
+   "title": "Katy Perry",
+   "timesBanned": 1
+  },
+  {
+   "title": "Lizzo",
+   "timesBanned": 1
+  },
+  {
+   "title": "Robin Thicke",
+   "timesBanned": 1
+  },
+  {
+   "title": "Carly Rae Jepsen",
+   "timesBanned": 1
+  },
+  {
+   "title": "Nickelback",
+   "timesBanned": 1
+  },
+  {
+   "title": "Club/EDM tracks with no lyrics",
+   "timesBanned": 1
+  },
+  {
+   "title": "You Raise Me Up",
+   "timesBanned": 1
+  },
+  {
+   "title": "Justin Timberlake",
+   "timesBanned": 1
+  },
+  {
+   "title": "Gwen Stefani",
+   "timesBanned": 1
+  },
+  {
+   "title": "Shawn Mendes",
+   "timesBanned": 1
+  },
+  {
+   "title": "I Gotta Feeling",
+   "timesBanned": 1
+  },
+  {
+   "title": "Work",
+   "timesBanned": 1
+  },
+  {
+   "title": "Sublime",
+   "timesBanned": 1
+  },
+  {
+   "title": "Pearl Jam",
+   "timesBanned": 1
+  },
+  {
+   "title": "Spice Girls",
+   "timesBanned": 1
+  },
+  {
+   "title": "Boy bands",
+   "timesBanned": 1
+  },
+  {
+   "title": "Piano Man",
+   "timesBanned": 1
+  },
+  {
+   "title": "Dad rock",
+   "timesBanned": 1
+  }
+ ]
+}
