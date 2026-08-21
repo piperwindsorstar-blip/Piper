@@ -1,0 +1,28 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import LoginForm from "./LoginForm";
+
+export default async function LoginPage() {
+  if (await getCurrentUser()) redirect("/dashboard");
+
+  return (
+    <main className="centered">
+      <div className="auth-card">
+        <div className="auth-head">
+          <div className="brand" style={{ justifyContent: "center", marginBottom: "0.75rem" }}>
+            <span className="brand-mark">P</span>
+            <span className="brand-name">Piper</span>
+          </div>
+          <p className="muted small" style={{ margin: 0 }}>
+            Sign in to your wedding DJ workspace
+          </p>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <LoginForm />
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

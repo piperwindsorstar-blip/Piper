@@ -1,0 +1,34 @@
+{
+  "name": "piper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CRM for wedding DJ companies - events, calendar, music and timeline planning",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "rm -f data/piper.db data/piper.db-shm data/piper.db-wal && tsx scripts/seed.ts",
+    "smoke": "node scripts/smoke.mjs",
+    "create-admin": "tsx scripts/create-admin.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "playwright": "^1.62.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
