@@ -99,3 +99,28 @@ export function addMonths(year: number, month: number, delta: number): { year: n
 }
 
 export const WEEKDAY_INITIALS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * Reports carry UTC timestamps from Gmail; the office reads them in Eastern.
+ * Converting by hand once produced times four hours out, so this always goes
+ * through Intl with a named zone, which handles EDT/EST for the actual date.
+ */
+export function formatEastern(utcIso: string | null | undefined): string {
+  if (!utcIso) return "—";
+  const date = new Date(utcIso);
+  if (Number.isNaN(date.getTime())) return utcIso;
+
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+export function easternNow(): string {
+  return formatEastern(new Date().toISOString());
+}

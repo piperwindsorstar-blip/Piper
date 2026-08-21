@@ -312,6 +312,41 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .staff-meta { font-size: 0.82rem; color: var(--text-muted); word-break: break-word; }
 .staff-stats { text-align: right; font-size: 0.85rem; color: var(--text-muted); flex-shrink: 0; }
 
+/* -------------------------------------------------------- report bars */
+
+.barwrap { display: flex; align-items: center; gap: 0.5rem; min-width: 150px; }
+.bar {
+  flex: 1; height: 10px; border-radius: 999px; overflow: hidden;
+  display: flex; background: var(--surface-alt);
+}
+.bar span { display: block; height: 100%; }
+.seg-signed { background: var(--success); }
+.seg-notsigned { background: var(--danger); }
+.seg-notasked { background: var(--text-faint); }
+.seg-noreport { background: var(--border-strong); }
+.seg-q5 { background: var(--success); }
+.seg-q4 { background: #5b9c57; }
+.seg-q3 { background: var(--warning); }
+.seg-q2 { background: #c1521f; }
+.seg-q1 { background: var(--danger); }
+
+.legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-muted); }
+.legend .lg { display: inline-flex; align-items: center; gap: 0.35rem; }
+.legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.legend .dot.signed { background: var(--success); }
+.legend .dot.notsigned { background: var(--danger); }
+.legend .dot.notasked { background: var(--text-faint); }
+.legend .dot.noreport { background: var(--border-strong); }
+
+.chiplist { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip {
+  font-size: 0.8rem; background: var(--surface-alt); border: 1px solid var(--border);
+  padding: 0.2rem 0.55rem; border-radius: 999px; display: inline-flex; align-items: center; gap: 0.35rem;
+}
+
+/* The report tabs are numerous — let them scroll rather than wrap raggedly. */
+.tabs { overflow-x: auto; }
+
 /* ------------------------------------------------------- calendar agenda */
 
 .cal-agenda { display: none; }

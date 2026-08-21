@@ -13,6 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const admin: NavItem[] =
     user.role === "admin"
       ? [
+          { href: "/reports", label: "Crew Reports" },
           { href: "/venues", label: "Venues" },
           { href: "/team", label: "Staff" },
         ]

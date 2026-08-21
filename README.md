@@ -52,6 +52,22 @@ bill, no setup beyond `npm install`.
   event history, the gear they're holding, and their name and phone to edit.
   DJs see only their own.
 
+**Crew reports**
+- The Crew Report Tracker, moved in from the standalone dashboard. Show reports
+  and warehouse return reports are imported from the report emails and matched
+  to each other by job number — normalised so `260647`, `26-0647` and `26647`
+  all count as the same job.
+- Tabs for matched jobs, all show reports, all warehouse returns, crew stats,
+  monthly warehouse quality, crew aliases, and quarantined test entries.
+- Crew stats group names case-insensitively with aliases for the harder merges.
+  Manifest completion is measured only against manifests the form actually
+  asked about, so a job that didn't ask isn't held against anyone.
+- Manifest corrections are stored in the database, not the browser — a
+  correction you make is visible to your office manager too, and survives a new
+  laptop.
+- Timestamps are converted to Eastern through a named timezone, so EDT and EST
+  are both right.
+
 **Team & roles**
 - **Admin** (you and your office manager): sees and edits everything.
 - **DJ**: sees only the events they're assigned to — on the dashboard, the
@@ -129,13 +145,14 @@ small-phone, tablet and desktop widths and asserts the layout adapts.
 
 ```
 src/
-  lib/           db, migrations, auth, events, planning, team, dates, types
+  lib/           db, migrations, auth, events, planning, team, reports, dates, types
   app/
     (app)/       the signed-in application (dashboard, calendar, events, venues, team)
     login/       sign-in
     plan/[token] the couple's planner — public, token-only
 scripts/
   seed.ts          demo season
+  import-reports.ts  file/stdin import for crew reports
   create-admin.ts  bootstrap a real admin account
   smoke.mjs        end-to-end checks
   responsive.mjs   layout checks across screen widths
@@ -156,6 +173,46 @@ it works on a phone, which is where your DJs and couples will actually open it:
 Data lives in `data/piper.db` and is gitignored — it's your business records, not
 source code. Back it up by copying that file (all three `piper.db*` files if the
 server is running).
+
+## Importing crew reports
+
+Piper has no Google credentials, so it cannot read the mailbox itself. Reports
+are parsed elsewhere — today by the scheduled Claude session that already does
+it — and pushed in, either way:
+
+```bash
+# From a file
+npm run import:reports -- reports.json
+
+# Or over HTTP, for a scheduled job
+curl -X POST https://your-piper-host/api/reports/import \
+  -H "authorization: Bearer $PIPER_IMPORT_TOKEN" \
+  -H "content-type: application/json" \
+  -d @reports.json
+```
+
+The endpoint refuses every request unless `PIPER_IMPORT_TOKEN` is set on the
+server, rather than defaulting to open. Payload shape:
+
+```json
+{ "reports": [
+  { "kind": "dj", "reportType": "DJ/Photobooth", "job": "260647",
+    "crew": "Juice", "sentAt": "2026-08-19T03:30:27Z",
+    "client": "5 - Amazing", "crowd": 5, "staff": 5, "notes": "…" },
+  { "kind": "warehouse", "job": "26-0647", "sentAt": "2026-08-19T15:10:25Z",
+    "quality": 5, "manifest": "Yes", "notes": "…" }
+] }
+```
+
+Fields are coerced leniently because they come from email text: ratings accept
+`5` or `"5 - Amazing"`, manifest accepts `Yes`/`No`/absent. `sentAt` is UTC —
+display conversion is Piper's job. Imports are deduped on kind + normalised job
+number + send time, so re-running the same window is a no-op.
+
+Test submissions are detected from the job number (`00-xxxx`, or non-numeric
+junk) and quarantined. Notes are deliberately *not* scanned for the word
+"test" — a real report reading "sound test ran long" must not vanish from a
+crew member's record.
 
 ## Changing the schema
 

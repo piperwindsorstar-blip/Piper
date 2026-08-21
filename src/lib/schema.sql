@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS events (
   venue_room         TEXT,
   guest_count        INTEGER,
   package_name       TEXT,
+  job_number         TEXT,
   assigned_dj_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
   internal_notes     TEXT,
   plan_token         TEXT NOT NULL UNIQUE,
@@ -103,4 +104,43 @@ CREATE TABLE IF NOT EXISTS questionnaires (
   takes_requests    INTEGER NOT NULL DEFAULT 1,
   contact_on_day    TEXT,
   updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ---------------------------------------------------------------- crew reports
+-- Post-job reports emailed in by crew (who are not Piper users), imported and
+-- matched to each other by job number. A report may or may not correspond to a
+-- wedding in `events` — matching is report-to-report, by job_norm.
+
+CREATE TABLE IF NOT EXISTS crew_reports (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind          TEXT NOT NULL CHECK (kind IN ('dj', 'warehouse')),
+  report_type   TEXT,                        -- 'DJ/Photobooth', 'Event Production', 'Warehouse'
+  job_raw       TEXT NOT NULL,               -- exactly as typed on the form
+  job_norm      TEXT NOT NULL,               -- canonical YY + NNNN, see normalizeJob
+  crew_raw      TEXT,                        -- free text as submitted
+  sent_at       TEXT NOT NULL,               -- UTC, 'YYYY-MM-DDTHH:MM:SSZ'
+  vdp           TEXT,                        -- video dance party, DJ reports
+  rating_client INTEGER,
+  rating_crowd  INTEGER,
+  rating_staff  INTEGER,
+  quality       INTEGER,                     -- warehouse return quality 1-5
+  manifest      TEXT CHECK (manifest IN ('yes', 'no', 'na')),
+  manifest_override TEXT CHECK (manifest_override IN ('yes', 'no')),
+  notes         TEXT,
+  is_test       INTEGER NOT NULL DEFAULT 0,
+  source_id     TEXT,                        -- Gmail message id, when known
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- One report per kind per job per send time: re-importing the same email is a no-op.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_dedupe ON crew_reports(kind, job_norm, sent_at);
+CREATE INDEX IF NOT EXISTS idx_reports_job ON crew_reports(job_norm);
+CREATE INDEX IF NOT EXISTS idx_reports_sent ON crew_reports(sent_at);
+
+-- Crew write their names freely; aliases fold spellings together. Grouping is
+-- case-insensitive by default, so this is only for the harder merges.
+CREATE TABLE IF NOT EXISTS crew_aliases (
+  alias      TEXT PRIMARY KEY COLLATE NOCASE,
+  canonical  TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

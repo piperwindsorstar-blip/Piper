@@ -26,6 +26,43 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE users ADD COLUMN staff_notes TEXT;
     `,
   },
+  {
+    version: 2,
+    label: "crew reports, aliases and event job numbers",
+    up: `
+      CREATE TABLE IF NOT EXISTS crew_reports (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind          TEXT NOT NULL CHECK (kind IN ('dj', 'warehouse')),
+        report_type   TEXT,
+        job_raw       TEXT NOT NULL,
+        job_norm      TEXT NOT NULL,
+        crew_raw      TEXT,
+        sent_at       TEXT NOT NULL,
+        vdp           TEXT,
+        rating_client INTEGER,
+        rating_crowd  INTEGER,
+        rating_staff  INTEGER,
+        quality       INTEGER,
+        manifest      TEXT CHECK (manifest IN ('yes', 'no', 'na')),
+        manifest_override TEXT CHECK (manifest_override IN ('yes', 'no')),
+        notes         TEXT,
+        is_test       INTEGER NOT NULL DEFAULT 0,
+        source_id     TEXT,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_dedupe ON crew_reports(kind, job_norm, sent_at);
+      CREATE INDEX IF NOT EXISTS idx_reports_job ON crew_reports(job_norm);
+      CREATE INDEX IF NOT EXISTS idx_reports_sent ON crew_reports(sent_at);
+
+      CREATE TABLE IF NOT EXISTS crew_aliases (
+        alias      TEXT PRIMARY KEY COLLATE NOCASE,
+        canonical  TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      ALTER TABLE events ADD COLUMN job_number TEXT;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

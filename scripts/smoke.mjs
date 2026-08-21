@@ -287,6 +287,86 @@ let token;
   await owner.ctx.close();
 }
 
+/* ---------- 14. crew reports ---------- */
+{
+  const ops = await signIn("owner@piper.test");
+
+await ops.page.goto(`${BASE}/reports`);
+let body = await ops.page.textContent("body");
+check("matched tab loads", body.includes("Matched"));
+check("shows the real matched job", body.includes("26-0224"));
+check("dash-less job matched to dashed one", body.includes("26647"));
+check("test entries counted separately", body.includes("Test entries"));
+
+// Timezone: 2026-08-19T03:30:27Z is Aug 18, 11:30 PM Eastern.
+check("timestamps shown in Eastern", body.includes("Aug 18") && body.includes("11:30"), "03:30Z -> 11:30 p.m. Aug 18");
+
+await ops.page.goto(`${BASE}/reports/dj`);
+body = await ops.page.textContent("body");
+check("show reports listed", body.includes("Juice") && body.includes("Desiree"));
+check("test entries excluded from show reports", !body.includes("00-3333"));
+
+await ops.page.goto(`${BASE}/reports/warehouse`);
+body = await ops.page.textContent("body");
+check("warehouse returns listed", body.includes("Viper sub snake"));
+
+await ops.page.goto(`${BASE}/reports/crew`);
+body = await ops.page.textContent("body");
+check("crew stats computed", body.includes("Juice") && body.includes("Addison"));
+check("crew names split from free text", body.includes("eric"), '"Piper, eric" split');
+
+await ops.page.goto(`${BASE}/reports/quality`);
+body = await ops.page.textContent("body");
+check("monthly quality computed", body.includes("August 2026") && body.includes("3.91"));
+
+await ops.page.goto(`${BASE}/reports/test`);
+body = await ops.page.textContent("body");
+check("test entries quarantined", body.includes("00-0000") && body.includes("Im testing some shit"));
+
+/* ---- manifest override, now stored server-side ---- */
+await ops.page.goto(`${BASE}/reports/warehouse`);
+const firstNotSigned = ops.page.locator('button:has-text("Not signed")').first();
+await firstNotSigned.click();
+await ops.page.waitForTimeout(1500);
+body = await ops.page.textContent("body");
+check("manifest can be corrected", body.includes("Manually set"));
+
+// The correction must be visible to a different admin, not just this browser.
+const office = await signIn("office@piper.test");
+await office.page.goto(`${BASE}/reports/warehouse`);
+check("correction is shared, not per-browser", (await office.page.textContent("body")).includes("Manually set"));
+await office.ctx.close();
+
+/* ---- aliases ---- */
+await ops.page.goto(`${BASE}/reports/aliases`);
+await ops.page.fill("#alias", "eric");
+await ops.page.fill("#canonical", "Eric Tremblay");
+await ops.page.click('button:has-text("Add alias")');
+await ops.page.waitForTimeout(1500);
+check("alias saved", (await ops.page.textContent("body")).includes("Eric Tremblay"));
+
+await ops.page.goto(`${BASE}/reports/crew`);
+// Assert on the rendered rows: page text also carries the raw "Piper, eric"
+// inside React's serialised payload, which is not what the office sees.
+const crewNames = await ops.page.$$eval("tbody tr td:first-child", (tds) =>
+  tds.map((td) => td.innerText.trim()),
+);
+check(
+  "alias folds the name in crew stats",
+  crewNames.includes("Eric Tremblay") && !crewNames.includes("eric"),
+  crewNames.join(", "),
+);
+
+/* ---- access control ---- */
+const reportDj = await signIn("jordan@piper.test");
+await reportDj.page.goto(`${BASE}/reports`);
+check("DJ blocked from crew reports", reportDj.page.url().includes("/dashboard"), reportDj.page.url());
+await reportDj.page.goto(`${BASE}/reports/crew`);
+check("DJ blocked from crew stats", reportDj.page.url().includes("/dashboard"), reportDj.page.url());
+await reportDj.ctx.close();
+  await ops.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 
