@@ -30,6 +30,35 @@ const office = addUser("office@piper.test", "Dana Cole", "admin", "555-0101", "p
 const djJordan = addUser("jordan@piper.test", "Jordan Blake", "dj", "555-0102", "piper1234");
 const djMina = addUser("mina@piper.test", "Mina Osei", "dj", "555-0103", "piper1234");
 
+// Staff records, so the staff pages have something to show.
+conn
+  .prepare(
+    "UPDATE users SET emergency_contact = ?, start_date = ?, gear = ?, staff_notes = ? WHERE id = ?",
+  )
+  .run(
+    "Priya Blake (partner) — 555-0190",
+    "2021-04-12",
+    "Pioneer DDJ-1000, 2x QSC K12.2, 4x uplights, 2x wireless handheld",
+    "Strongest on big dance floors. Prefers reception-only bookings. Has his own van.",
+    djJordan,
+  );
+
+conn
+  .prepare(
+    "UPDATE users SET emergency_contact = ?, start_date = ?, gear = ?, staff_notes = ? WHERE id = ?",
+  )
+  .run(
+    "Kwame Osei (brother) — 555-0191",
+    "2023-08-01",
+    "Denon Prime 4, 2x RCF ART 912, ceremony PA and lav kit",
+    "Excellent with ceremonies and bilingual events. Happy to take short-notice work.",
+    djMina,
+  );
+
+conn
+  .prepare("UPDATE users SET start_date = ?, staff_notes = ? WHERE id = ?")
+  .run("2019-01-15", "Runs the books and answers the inbox.", office);
+
 const lakeside = createVenue({
   name: "Lakeside Pavilion",
   address: "18 Shoreline Dr",

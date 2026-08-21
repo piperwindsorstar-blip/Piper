@@ -1,37 +1,114 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { listUsers } from "@/lib/team";
+import { listUsers, statsForAll } from "@/lib/team";
+import { countdownLabel, formatDate } from "@/lib/dates";
 import AddMemberForm from "./AddMemberForm";
-import MemberCard from "./MemberCard";
-import { toggleMember } from "./actions";
 
-function assignmentCounts(): Map<number, number> {
-  const rows = db()
-    .prepare(
-      `SELECT assigned_dj_id AS id, COUNT(*) AS n FROM events
-       WHERE assigned_dj_id IS NOT NULL AND status != 'cancelled' GROUP BY assigned_dj_id`,
-    )
-    .all() as { id: number; n: number }[];
-  return new Map(rows.map((r) => [r.id, r.n]));
-}
-
-export default async function TeamPage() {
-  const admin = await requireAdmin();
+export default async function StaffPage() {
+  await requireAdmin();
   const members = listUsers(true);
-  const counts = assignmentCounts();
+  const stats = statsForAll();
+
+  const active = members.filter((m) => m.active);
+  const inactive = members.filter((m) => !m.active);
+  const unassignedWarning = active.filter(
+    (m) => m.role === "dj" && (stats.get(m.id)?.upcoming ?? 0) === 0,
+  );
 
   return (
     <>
       <header className="topbar">
         <div>
-          <h1>Team</h1>
+          <h1>Staff</h1>
           <div className="topbar-sub">
-            Admins see and edit everything. DJs see only the events they&rsquo;re assigned to.
+            {active.length} active · admins see everything, DJs see only their own events
           </div>
         </div>
       </header>
 
       <div className="content">
+        {unassignedWarning.length > 0 && (
+          <div className="alert alert-info">
+            <strong>Free right now:</strong>{" "}
+            {unassignedWarning.map((m) => m.name).join(", ")} — no upcoming events booked.
+          </div>
+        )}
+
+        <div className="card">
+          <div className="card-head">
+            <h2>Roster</h2>
+          </div>
+          <div className="card-body tight">
+            {active.map((member) => {
+              const s = stats.get(member.id);
+              return (
+                <Link key={member.id} href={`/team/${member.id}`} className="staff-row">
+                  <div className="staff-avatar">
+                    {member.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase()}
+                  </div>
+                  <div className="staff-main">
+                    <div className="staff-name">
+                      {member.name}{" "}
+                      <span className={`badge ${member.role === "admin" ? "badge-accent" : "badge-plain"}`}>
+                        {member.role === "admin" ? "Admin" : "DJ"}
+                      </span>
+                    </div>
+                    <div className="staff-meta">
+                      {member.email}
+                      {member.phone ? ` · ${member.phone}` : ""}
+                    </div>
+                  </div>
+                  <div className="staff-stats">
+                    <div>
+                      <strong>{s?.upcoming ?? 0}</strong> upcoming
+                    </div>
+                    <div className="faint small">
+                      {s?.nextDate
+                        ? `Next ${formatDate(s.nextDate)} · ${countdownLabel(s.nextDate)}`
+                        : "Nothing booked"}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {inactive.length > 0 && (
+          <div className="card">
+            <div className="card-head">
+              <h2>Deactivated</h2>
+              <span className="badge badge-plain">{inactive.length}</span>
+            </div>
+            <div className="card-body tight">
+              {inactive.map((member) => (
+                <Link key={member.id} href={`/team/${member.id}`} className="staff-row">
+                  <div className="staff-avatar muted">
+                    {member.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase()}
+                  </div>
+                  <div className="staff-main">
+                    <div className="staff-name">{member.name}</div>
+                    <div className="staff-meta">
+                      {member.email} · kept on past events, cannot sign in
+                    </div>
+                  </div>
+                  <span className="badge badge-cancelled">Deactivated</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="card">
           <div className="card-head">
             <h2>Add someone</h2>
@@ -40,30 +117,6 @@ export default async function TeamPage() {
             <AddMemberForm />
           </div>
         </div>
-
-        {members.map((member) => (
-          <div key={member.id}>
-            <MemberCard member={member} eventCount={counts.get(member.id) ?? 0} />
-            {member.id !== admin.id && (
-              <div className="card" style={{ marginTop: "-0.6rem" }}>
-                <div className="card-body row-between">
-                  <div className="small muted">
-                    {member.active
-                      ? "Deactivating signs them out and blocks access, but keeps their name on past events."
-                      : "Reactivating restores their sign-in."}
-                  </div>
-                  <form action={toggleMember}>
-                    <input type="hidden" name="id" value={member.id} />
-                    <input type="hidden" name="activate" value={member.active ? "0" : "1"} />
-                    <button className={`btn btn-sm ${member.active ? "btn-danger" : ""}`} type="submit">
-                      {member.active ? "Deactivate" : "Reactivate"}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
       </div>
     </>
   );

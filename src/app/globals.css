@@ -293,6 +293,25 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .cal-event.cancelled { background: var(--surface-alt); color: var(--text-faint); text-decoration: line-through; }
 .cal-event.completed { background: var(--surface-alt); color: var(--text-muted); }
 
+/* ---------------------------------------------------------------- staff */
+
+.staff-row {
+  display: flex; align-items: center; gap: 0.9rem; padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border); color: inherit;
+}
+.staff-row:last-child { border-bottom: none; }
+.staff-row:hover { text-decoration: none; }
+.staff-avatar {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+  display: grid; place-items: center; font-size: 0.8rem; font-weight: 680;
+  background: var(--accent-soft); color: var(--accent-text);
+}
+.staff-avatar.muted { background: var(--surface-alt); color: var(--text-faint); }
+.staff-main { flex: 1; min-width: 0; }
+.staff-name { font-weight: 600; color: var(--text); }
+.staff-meta { font-size: 0.82rem; color: var(--text-muted); word-break: break-word; }
+.staff-stats { text-align: right; font-size: 0.85rem; color: var(--text-muted); flex-shrink: 0; }
+
 /* ------------------------------------------------------- calendar agenda */
 
 .cal-agenda { display: none; }
@@ -414,6 +433,10 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   table.stacking td[data-label="Couple"] .cell-value { font-size: 1rem; font-weight: 550; }
 
   .meta-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .staff-row { flex-wrap: wrap; }
+  .staff-main { flex-basis: calc(100% - 48px); }
+  .staff-stats { text-align: left; flex-basis: 100%; padding-left: 48px; }
   .time-stamp { width: 68px; }
   .tabs a { padding: 0.5rem 0.7rem; }
 }

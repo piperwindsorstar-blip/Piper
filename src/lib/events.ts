@@ -80,6 +80,13 @@ export function eventsBetween(user: User, startDate: string, endDate: string): E
     .all(startDate, endDate, ...scope.params) as EventWithRefs[];
 }
 
+/** Every event assigned to one person, newest first. Admin-facing. */
+export function eventsAssignedTo(userId: number): EventWithRefs[] {
+  return db()
+    .prepare(`${EVENT_SELECT} WHERE e.assigned_dj_id = ? ORDER BY e.event_date DESC`)
+    .all(userId) as EventWithRefs[];
+}
+
 /* ------------------------------------------------------------------ writes */
 
 export type EventInput = {

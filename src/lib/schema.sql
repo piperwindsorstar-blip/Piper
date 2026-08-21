@@ -2,14 +2,19 @@
 -- SQLite stores dates as 'YYYY-MM-DD' and times as 'HH:MM' (24h) text.
 
 CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  name          TEXT NOT NULL,
-  phone         TEXT,
-  role          TEXT NOT NULL CHECK (role IN ('admin', 'dj')),
-  password_hash TEXT NOT NULL,
-  active        INTEGER NOT NULL DEFAULT 1,
-  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  email             TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  name              TEXT NOT NULL,
+  phone             TEXT,
+  role              TEXT NOT NULL CHECK (role IN ('admin', 'dj')),
+  password_hash     TEXT NOT NULL,
+  active            INTEGER NOT NULL DEFAULT 1,
+  -- Staff record. Everything below is optional and admin-maintained.
+  emergency_contact TEXT,
+  start_date        TEXT,
+  gear              TEXT,
+  staff_notes       TEXT,
+  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS sessions (

@@ -41,6 +41,17 @@ bill, no setup beyond `npm install`.
 - Lost the link, or sent it to the wrong address? Revoke and regenerate — the
   old link dies immediately.
 
+**Staff**
+- A roster showing everyone, their contact details, how many events they have
+  coming up and when the next one is — plus a nudge listing DJs with nothing
+  booked.
+- A page per person: their workload, every event they're on (upcoming and
+  played), and a staff record — start date, emergency contact, gear signed out
+  to them, and private notes only admins ever see.
+- Everyone gets **My page**: their next gig with its running order, their own
+  event history, the gear they're holding, and their name and phone to edit.
+  DJs see only their own.
+
 **Team & roles**
 - **Admin** (you and your office manager): sees and edits everything.
 - **DJ**: sees only the events they're assigned to — on the dashboard, the
@@ -111,13 +122,14 @@ small-phone, tablet and desktop widths and asserts the layout adapts.
 - **Next.js 16** (App Router, Server Components, Server Actions) + **React 19**
 - **SQLite** via `better-sqlite3`, schema in `src/lib/schema.sql`
 - **Sessions** in the database, cookie-based, scrypt-hashed passwords — no auth
-  dependency
+  dependency. User queries select an explicit column list so a password hash
+  can never ride along into a page
 - **Zod** for form validation
 - Plain CSS with light and dark themes, responsive down to 360px
 
 ```
 src/
-  lib/           db, auth, events, planning, team, dates, types
+  lib/           db, migrations, auth, events, planning, team, dates, types
   app/
     (app)/       the signed-in application (dashboard, calendar, events, venues, team)
     login/       sign-in
@@ -145,10 +157,24 @@ Data lives in `data/piper.db` and is gitignored — it's your business records, 
 source code. Back it up by copying that file (all three `piper.db*` files if the
 server is running).
 
+## Changing the schema
+
+`src/lib/schema.sql` describes the database as it is today and creates fresh
+ones. It cannot alter a database that already exists — every statement is
+`IF NOT EXISTS`, so a new column on an existing table would be skipped silently
+and the app would then query a column that isn't there.
+
+So schema changes go in **two** places: `schema.sql` for new installs, and a
+migration in `src/lib/migrations.ts` for existing ones. Migrations run once
+each, in order, inside a transaction, tracked by SQLite's `user_version`. Never
+edit a migration that has shipped — databases have already run it. Add another.
+
 ## Notes on scope
 
 This first version covers events, the calendar, and music/timeline planning.
 Deliberately **not** included yet: the lead/inquiry pipeline, quotes, contracts,
-and payment tracking. The event record has a `package_name` field as a
+and payment tracking. Staff pay is out too — the staff area tracks who worked
+what, not what they're owed. DJ availability is not tracked either; assignment
+is manual. The event record has a `package_name` field as a
 placeholder, but there's no money in the system — nothing tracks a deposit or
 tells you what's owed.

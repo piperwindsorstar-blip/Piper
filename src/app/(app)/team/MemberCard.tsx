@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { editMember, type TeamState } from "./actions";
 import type { User } from "@/lib/auth";
 
-export default function MemberCard({ member, eventCount }: { member: User; eventCount: number }) {
+export default function MemberCard({ member, title }: { member: User; title?: string }) {
   const [state, formAction, pending] = useActionState<TeamState, FormData>(editMember, {});
   const kept = state.values ?? {};
 
@@ -13,7 +13,7 @@ export default function MemberCard({ member, eventCount }: { member: User; event
       <summary className="card-head" style={{ listStyle: "none", cursor: "pointer" }}>
         <div>
           <h2>
-            {member.name}{" "}
+            {title ?? member.name}{" "}
             <span className={`badge ${member.role === "admin" ? "badge-accent" : "badge-plain"}`}>
               {member.role === "admin" ? "Admin" : "DJ"}
             </span>
@@ -23,14 +23,9 @@ export default function MemberCard({ member, eventCount }: { member: User; event
               </span>
             )}
           </h2>
-          <div className="faint small">
-            {member.email}
-            {member.phone ? ` · ${member.phone}` : ""}
-          </div>
+          <div className="faint small">Email, phone, role and password</div>
         </div>
-        <span className="badge badge-plain">
-          {eventCount} event{eventCount === 1 ? "" : "s"}
-        </span>
+        <span className="badge badge-plain">Edit</span>
       </summary>
 
       <div className="card-body">

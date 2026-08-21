@@ -9,9 +9,12 @@ import {
   getUserByEmail,
   setActive,
   setPassword,
+  updateOwnDetails,
+  updateStaffRecord,
   updateUser,
   type UserInput,
 } from "@/lib/team";
+import { requireUser } from "@/lib/auth";
 
 /**
  * Mirrors the event form: a rejected submit hands back what was typed so React's
@@ -111,4 +114,47 @@ export async function toggleMember(formData: FormData): Promise<void> {
 
   setActive(id, activate);
   revalidatePath("/team");
+}
+
+/* ------------------------------------------------------------ staff record */
+
+export async function saveStaffRecord(_prev: TeamState, formData: FormData): Promise<TeamState> {
+  await requireAdmin();
+
+  const id = Number(formData.get("id"));
+  if (!getUser(id)) return reject("That person no longer exists.", formData);
+
+  const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
+  const startDate = text("start_date");
+  if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+    return reject("Start date needs to be a real date.", formData);
+  }
+
+  updateStaffRecord(id, {
+    emergency_contact: text("emergency_contact"),
+    start_date: startDate,
+    gear: text("gear"),
+    staff_notes: text("staff_notes"),
+  });
+
+  revalidatePath(`/team/${id}`);
+  revalidatePath("/team");
+  return { ok: "Staff record saved." };
+}
+
+/* --------------------------------------------------------- your own details */
+
+export async function saveOwnDetails(_prev: TeamState, formData: FormData): Promise<TeamState> {
+  // Deliberately not admin-gated, and deliberately ignores any id in the form:
+  // this only ever edits the signed-in user.
+  const user = await requireUser();
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return reject("Your name can't be blank.", formData);
+
+  updateOwnDetails(user.id, name, String(formData.get("phone") ?? "").trim() || null);
+
+  revalidatePath("/me");
+  revalidatePath("/team");
+  return { ok: "Saved." };
 }

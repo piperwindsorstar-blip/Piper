@@ -52,6 +52,8 @@ for (const d of DEVICES) {
     ["timeline", "/events/1/timeline"],
     ["newevent", "/events/new"],
     ["team", "/team"],
+    ["staff-member", "/team/3"],
+    ["me", "/me"],
   ];
 
   for (const [label, path] of pages) {

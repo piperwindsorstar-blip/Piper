@@ -8,12 +8,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/dashboard", label: "Dashboard" },
     { href: "/calendar", label: "Calendar" },
     { href: "/events", label: "Events" },
+    { href: "/me", label: "My page" },
   ];
   const admin: NavItem[] =
     user.role === "admin"
       ? [
           { href: "/venues", label: "Venues" },
-          { href: "/team", label: "Team" },
+          { href: "/team", label: "Staff" },
         ]
       : [];
 

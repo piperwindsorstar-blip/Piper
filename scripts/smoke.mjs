@@ -249,6 +249,44 @@ let token;
   check("sign out ends the session", admin.page.url().includes("/login"));
 }
 
+
+/* ---------- 13. staff area ---------- */
+{
+  const owner = await signIn("owner@piper.test");
+  await owner.page.goto(`${BASE}/team`);
+  let body = await owner.page.textContent("body");
+  check("roster lists staff", ["Jordan Blake", "Mina Osei"].every((n) => body.includes(n)));
+
+  await owner.page.locator(".staff-row", { hasText: "Jordan Blake" }).click();
+  await owner.page.waitForURL(/\/team\/\d+$/, { timeout: 15000 });
+  const staffUrl = owner.page.url();
+  body = await owner.page.textContent("body");
+  check("staff page shows their events", body.includes("Ava Nakamura"));
+  check("staff page shows gear on file", body.includes("Pioneer DDJ-1000"));
+
+  await owner.page.fill("#staff_notes", "Note set by the smoke suite.");
+  await owner.page.click('button:has-text("Save staff record")');
+  await owner.page.waitForSelector(".alert-ok", { timeout: 10000 });
+  await owner.page.reload();
+  check("staff record saves", (await owner.page.textContent("body")).includes("Note set by the smoke suite."));
+
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/me`);
+  body = await dj.page.textContent("body");
+  check("DJ has a personal page", body.includes("My page") && body.includes("Ava Nakamura"));
+
+  // Anything handed to a Client Component lands in the HTML — these must not.
+  const html = await dj.page.content();
+  check("admin's private staff notes never reach the DJ", !html.includes("Note set by the smoke suite."));
+  check("password hashes never reach the browser", !html.includes("password_hash"));
+
+  await dj.page.goto(staffUrl);
+  check("DJ blocked from a staff record page", dj.page.url().includes("/dashboard"), dj.page.url());
+
+  await dj.ctx.close();
+  await owner.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 
