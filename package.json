@@ -12,7 +12,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "rm -f data/piper.db data/piper.db-shm data/piper.db-wal && tsx scripts/seed.ts",
     "smoke": "node scripts/smoke.mjs",
-    "create-admin": "tsx scripts/create-admin.ts"
+    "create-admin": "tsx scripts/create-admin.ts",
+    "responsive": "node scripts/responsive.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

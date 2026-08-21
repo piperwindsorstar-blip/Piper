@@ -12,6 +12,7 @@ import {
   WEEKDAY_INITIALS,
 } from "@/lib/dates";
 import type { EventWithRefs } from "@/lib/types";
+import StatusBadge from "@/components/StatusBadge";
 
 type Search = { year?: string; month?: string };
 
@@ -40,6 +41,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     list.push(event);
     byDate.set(event.event_date, list);
   }
+
+  const monthEvents = events
+    .filter((e) => e.event_date >= monthBounds(year, month).start && e.event_date <= monthBounds(year, month).end)
+    .sort((a, b) => a.event_date.localeCompare(b.event_date));
 
   const prev = addMonths(year, month, -1);
   const next = addMonths(year, month, 1);
@@ -83,7 +88,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           </div>
         )}
 
-        <div className="card">
+        <div className="card cal-month">
           <div className="cal-grid">
             {WEEKDAY_INITIALS.map((day) => (
               <div key={day} className="cal-head">
@@ -126,7 +131,44 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           </div>
         </div>
 
-        <div className="card">
+        {/* Phones get a readable agenda instead of seven squeezed columns. */}
+        <div className="card cal-agenda">
+          {monthEvents.length === 0 ? (
+            <div className="empty">Nothing booked this month.</div>
+          ) : (
+            <div className="card-body">
+              {monthEvents.map((event) => (
+                <Link key={event.id} href={`/events/${event.id}`} className="agenda-row">
+                  <div className="agenda-date">
+                    <span className="agenda-dow">{WEEKDAY_INITIALS[parseIso(event.event_date).getDay()]}</span>
+                    <span className="agenda-day">{parseIso(event.event_date).getDate()}</span>
+                  </div>
+                  <div className="agenda-main">
+                    <div className="agenda-couple">
+                      {event.partner_one_name}
+                      {event.partner_two_name ? ` & ${event.partner_two_name}` : ""}
+                    </div>
+                    <div className="agenda-meta">
+                      {formatTime(event.reception_time ?? event.ceremony_time)} ·{" "}
+                      {event.venue_name ?? "Venue TBD"}
+                    </div>
+                    <div className="agenda-meta">
+                      {event.dj_name ?? "Unassigned"}
+                      {clashes.has(event.event_date) && (
+                        <span className="badge badge-tentative" style={{ marginLeft: "0.4rem" }}>
+                          Shared date
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <StatusBadge status={event.status} />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card cal-month">
           <div className="card-head">
             <h2>Legend</h2>
           </div>

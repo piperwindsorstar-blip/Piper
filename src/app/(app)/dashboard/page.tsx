@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { listEvents, overbookedDates } from "@/lib/events";
 import { countdownLabel, formatDateLong, formatTime, monthBounds, todayIso } from "@/lib/dates";
 import StatusBadge from "@/components/StatusBadge";
+import Cell from "@/components/Cell";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -142,7 +143,7 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="table-wrap">
-              <table>
+              <table className="stacking">
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -156,28 +157,30 @@ export default async function DashboardPage() {
                 <tbody>
                   {upcoming.slice(0, 10).map((event) => (
                     <tr key={event.id}>
-                      <td style={{ whiteSpace: "nowrap" }}>
+                      <Cell label="Date" nowrap>
                         <div>{formatDateLong(event.event_date).replace(/,\s\d{4}$/, "")}</div>
                         <div className="faint small">{countdownLabel(event.event_date)}</div>
-                      </td>
-                      <td>
+                      </Cell>
+                      <Cell label="Couple">
                         <Link href={`/events/${event.id}`}>
                           {event.partner_one_name}
                           {event.partner_two_name ? ` & ${event.partner_two_name}` : ""}
                         </Link>
-                      </td>
-                      <td className="muted">{event.venue_name ?? "—"}</td>
-                      <td className={event.dj_name ? "" : "faint"}>{event.dj_name ?? "Unassigned"}</td>
-                      <td>
+                      </Cell>
+                      <Cell label="Venue" className="muted">{event.venue_name ?? "—"}</Cell>
+                      <Cell label="DJ" className={event.dj_name ? "" : "faint"}>
+                        {event.dj_name ?? "Unassigned"}
+                      </Cell>
+                      <Cell label="Status">
                         <StatusBadge status={event.status} />
-                      </td>
-                      <td>
+                      </Cell>
+                      <Cell label="Plan">
                         {event.plan_submitted_at ? (
                           <span className="badge badge-confirmed">Submitted</span>
                         ) : (
                           <span className="badge badge-plain">Open</span>
                         )}
-                      </td>
+                      </Cell>
                     </tr>
                   ))}
                 </tbody>

@@ -5,6 +5,7 @@ import { listDjs } from "@/lib/team";
 import { countdownLabel, formatDate, formatTime } from "@/lib/dates";
 import { EVENT_STATUSES, STATUS_LABELS, type EventStatus } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
+import Cell from "@/components/Cell";
 
 type Search = { status?: string; q?: string; dj?: string };
 
@@ -81,7 +82,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             <div className="empty">No events match those filters.</div>
           ) : (
             <div className="table-wrap">
-              <table>
+              <table className="stacking">
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -96,11 +97,11 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                 <tbody>
                   {events.map((event) => (
                     <tr key={event.id}>
-                      <td style={{ whiteSpace: "nowrap" }}>
+                      <Cell label="Date" nowrap>
                         <div>{formatDate(event.event_date)}</div>
                         <div className="faint small">{countdownLabel(event.event_date)}</div>
-                      </td>
-                      <td>
+                      </Cell>
+                      <Cell label="Couple">
                         <Link href={`/events/${event.id}`}>
                           {event.partner_one_name}
                           {event.partner_two_name ? ` & ${event.partner_two_name}` : ""}
@@ -108,23 +109,27 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                         {event.package_name && (
                           <div className="faint small">{event.package_name}</div>
                         )}
-                      </td>
-                      <td className="muted">
+                      </Cell>
+                      <Cell label="Venue" className="muted">
                         {event.venue_name ?? "—"}
                         {event.venue_city && <div className="faint small">{event.venue_city}</div>}
-                      </td>
-                      <td className="muted">{formatTime(event.reception_time ?? event.ceremony_time)}</td>
-                      <td className={event.dj_name ? "" : "faint"}>{event.dj_name ?? "Unassigned"}</td>
-                      <td>
+                      </Cell>
+                      <Cell label="Start" className="muted">
+                        {formatTime(event.reception_time ?? event.ceremony_time)}
+                      </Cell>
+                      <Cell label="DJ" className={event.dj_name ? "" : "faint"}>
+                        {event.dj_name ?? "Unassigned"}
+                      </Cell>
+                      <Cell label="Status">
                         <StatusBadge status={event.status} />
-                      </td>
-                      <td>
+                      </Cell>
+                      <Cell label="Plan">
                         {event.plan_submitted_at ? (
                           <span className="badge badge-confirmed">Submitted</span>
                         ) : (
                           <span className="badge badge-plain">Open</span>
                         )}
-                      </td>
+                      </Cell>
                     </tr>
                   ))}
                 </tbody>

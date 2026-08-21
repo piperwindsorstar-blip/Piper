@@ -98,11 +98,13 @@ in (localhost is exempt, which is why `npm run start` works locally).
 ```bash
 npm run typecheck
 npm run smoke        # needs a server running on the seeded demo data
+npm run responsive   # same, checks layout at four screen widths
 ```
 
 The smoke suite drives a real browser through 33 checks: sign-in, role scoping,
 event creation and validation, music slots, timeline seeding, the couple's
-planner, and token revocation.
+planner, and token revocation. The responsive suite loads every screen at phone,
+small-phone, tablet and desktop widths and asserts the layout adapts.
 
 ## How it's built
 
@@ -111,7 +113,7 @@ planner, and token revocation.
 - **Sessions** in the database, cookie-based, scrypt-hashed passwords — no auth
   dependency
 - **Zod** for form validation
-- Plain CSS with light and dark themes
+- Plain CSS with light and dark themes, responsive down to 360px
 
 ```
 src/
@@ -124,7 +126,20 @@ scripts/
   seed.ts          demo season
   create-admin.ts  bootstrap a real admin account
   smoke.mjs        end-to-end checks
+  responsive.mjs   layout checks across screen widths
 ```
+
+## On a phone
+
+The app is built for a desktop first — that's where you'll do your booking — but
+it works on a phone, which is where your DJs and couples will actually open it:
+
+- The sidebar collapses behind a menu button, so a page starts with its content.
+- The calendar swaps its seven-column grid for an agenda list, because a name
+  can't fit in a 50px column. Same events, actually readable.
+- Event tables become stacked cards with each field labelled.
+- The couple's planner is comfortable on a phone, which matters most — that's
+  where couples will fill it in.
 
 Data lives in `data/piper.db` and is gitignored — it's your business records, not
 source code. Back it up by copying that file (all three `piper.db*` files if the

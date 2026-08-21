@@ -91,6 +91,18 @@ p { margin: 0 0 0.75rem; }
   height: 100vh;
 }
 
+.sidebar-top { display: flex; align-items: center; justify-content: space-between; }
+.sidebar-panel { display: contents; }
+.nav-toggle {
+  display: none; background: none; border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 1.05rem;
+  padding: 0.3rem 0.6rem; cursor: pointer; line-height: 1;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
 .brand { display: flex; align-items: center; gap: 0.6rem; padding: 0 0.5rem; }
 .brand-mark {
   width: 30px; height: 30px; border-radius: 8px;
@@ -281,6 +293,26 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .cal-event.cancelled { background: var(--surface-alt); color: var(--text-faint); text-decoration: line-through; }
 .cal-event.completed { background: var(--surface-alt); color: var(--text-muted); }
 
+/* ------------------------------------------------------- calendar agenda */
+
+.cal-agenda { display: none; }
+
+.agenda-row {
+  display: flex; align-items: center; gap: 0.9rem; padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border); color: inherit;
+}
+.agenda-row:last-child { border-bottom: none; }
+.agenda-row:hover { text-decoration: none; }
+.agenda-date {
+  width: 44px; flex-shrink: 0; text-align: center; padding: 0.25rem 0;
+  border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-text);
+}
+.agenda-dow { display: block; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 650; }
+.agenda-day { display: block; font-size: 1.15rem; font-weight: 680; line-height: 1.1; }
+.agenda-main { flex: 1; min-width: 0; }
+.agenda-couple { font-weight: 600; color: var(--accent-text); }
+.agenda-meta { font-size: 0.8rem; color: var(--text-muted); }
+
 /* ----------------------------------------------------------------- misc */
 
 .tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
@@ -329,11 +361,66 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .planner-hero h1 { font-size: 1.9rem; }
 .planner-section { margin-bottom: 1.1rem; }
 
+/* Two-up stat tiles rather than one long column of single numbers. */
+@media (max-width: 900px) {
+  .grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-value { font-size: 1.5rem; }
+}
+
 @media (max-width: 760px) {
   .shell { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; position: static; flex-direction: column; }
+
+  /* The sidebar becomes a sticky bar; its contents collapse behind the toggle. */
+  .sidebar {
+    width: 100%; height: auto; position: sticky; top: 0; z-index: 20;
+    flex-direction: column; gap: 0; padding: 0.6rem 0.85rem;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .nav-toggle { display: block; }
+  .sidebar-panel { display: none; }
+  .sidebar.open .sidebar-panel {
+    display: block; padding-top: 0.75rem; margin-top: 0.6rem;
+    border-top: 1px solid var(--border);
+  }
+  .sidebar .nav a { padding: 0.6rem; }
+  .sidebar-foot { margin-top: 0.75rem; }
+
   .content, .topbar { padding-left: 1rem; padding-right: 1rem; }
-  .cal-cell { min-height: 72px; }
+  .topbar { flex-direction: column; align-items: flex-start; gap: 0.75rem; padding-top: 1rem; }
+  .topbar h1 { font-size: 1.3rem; }
+
+  /* Seven columns can't hold a name at this width — show the agenda instead. */
+  .cal-month { display: none; }
+  .cal-agenda { display: block; }
+
+  /* Table rows become stacked cards, each cell labelled by its column. */
+  .table-wrap { overflow-x: visible; }
+  table.stacking thead { display: none; }
+  table.stacking, table.stacking tbody, table.stacking tr, table.stacking td { display: block; width: 100%; }
+  table.stacking tr {
+    padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border);
+  }
+  table.stacking tr:last-child { border-bottom: none; }
+  table.stacking td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    padding: 0.2rem 0; border-bottom: none;
+  }
+  table.stacking td .cell-value { text-align: right; min-width: 0; }
+  table.stacking td::before {
+    content: attr(data-label);
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-faint); font-weight: 600; text-align: left; flex-shrink: 0;
+  }
+  table.stacking td[data-label="Couple"] .cell-value { font-size: 1rem; font-weight: 550; }
+
+  .meta-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .time-stamp { width: 68px; }
+  .tabs a { padding: 0.5rem 0.7rem; }
+}
+
+/* Very narrow phones: one stat per row reads better than two cramped ones. */
+@media (max-width: 380px) {
+  .grid.cols-4 { grid-template-columns: 1fr; }
 }
 
 /* Table wrappers so wide tables scroll instead of pushing the page sideways. */
