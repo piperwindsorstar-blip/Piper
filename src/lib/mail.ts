@@ -188,6 +188,58 @@ export function requeue(id: number): void {
 
 export type SendResult = { ok: true } | { ok: false; error: string };
 
+function transportFor(config: MailConfig) {
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
+  });
+}
+
+/**
+ * Sends an email straight out, with no trip through the approval queue.
+ *
+ * The queue exists so nothing client-facing leaves before Martin has read it.
+ * A password reset is neither: it goes to a staff address already on file, it
+ * is worthless to anyone but its recipient, and it expires in two hours. Held
+ * for approval it would routinely arrive after it had already died — which
+ * makes the feature useless exactly when someone needs it, at nine on a Friday
+ * night.
+ *
+ * Nothing is written to the outbox either, because the body contains a link
+ * that is a credential. The outbox is a screen an admin reads.
+ */
+export async function sendDirect(input: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<SendResult> {
+  const config = mailConfig();
+  if (!config) {
+    return {
+      ok: false,
+      error:
+        "No mail server is configured. Set PIPER_SMTP_HOST, PIPER_SMTP_USER, " +
+        "PIPER_SMTP_PASS and PIPER_MAIL_FROM in /etc/piper.env, then restart Piper.",
+    };
+  }
+
+  try {
+    await transportFor(config).sendMail({
+      from: config.from,
+      to: input.to,
+      replyTo: config.replyTo ?? undefined,
+      subject: input.subject,
+      text: input.body,
+      html: asHtml(input.body),
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message || "Sending failed." };
+  }
+}
+
 /**
  * Sends one queued email. Marks it sent, or failed with the reason kept so it
  * can be read in the outbox and retried rather than disappearing.
@@ -206,12 +258,7 @@ export async function sendQueued(id: number, approvedBy: number): Promise<SendRe
     return { ok: false, error };
   }
 
-  const transport = nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    auth: { user: config.user, pass: config.pass },
-  });
+  const transport = transportFor(config);
 
   try {
     await transport.sendMail({
@@ -240,15 +287,8 @@ export async function verifyMailConnection(): Promise<SendResult> {
   const config = mailConfig();
   if (!config) return { ok: false, error: "No mail server is configured." };
 
-  const transport = nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    auth: { user: config.user, pass: config.pass },
-  });
-
   try {
-    await transport.verify();
+    await transportFor(config).verify();
     return { ok: true };
   } catch (error) {
     return { ok: false, error: (error as Error).message };

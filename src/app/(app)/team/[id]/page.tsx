@@ -3,9 +3,15 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { eventsAssignedTo } from "@/lib/events";
 import { getUser, staffStats } from "@/lib/team";
-import { formatDate, todayIso } from "@/lib/dates";
+import { changesBy, signInsForUser } from "@/lib/activity";
+import { pendingReset } from "@/lib/password-reset";
+import { baseUrl } from "@/lib/urls";
+import CopyLink from "@/components/CopyLink";
+import { liveEventIds } from "@/lib/audit";
+import { formatDate, formatStoredTimestamp, todayIso } from "@/lib/dates";
 import StaffStatsRow from "@/components/StaffStatsRow";
 import StaffEventList from "@/components/StaffEventList";
+import StaffActivity from "@/components/StaffActivity";
 import MemberCard from "../MemberCard";
 import StaffRecordForm from "./StaffRecordForm";
 import { toggleMember } from "../actions";
@@ -27,6 +33,15 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
     e.event_date >= today && e.status !== "cancelled";
   const upcoming = events.filter(isUpcoming).reverse();
   const past = events.filter((e) => !isUpcoming(e));
+
+  const signIns = signInsForUser(member.id, 25);
+  const changes = changesBy(member.id, 60);
+
+  // A link they asked for and haven't used. Shown so it can be handed over by
+  // phone or text when mail isn't working — which is the exact situation where
+  // a locked-out person cannot receive the email that would help them.
+  const reset = pendingReset(member.id);
+  const resetLink = reset ? `${await baseUrl()}/reset/${reset.token}` : null;
 
   return (
     <>
@@ -85,7 +100,25 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
+        {reset && resetLink && (
+          <div className="card">
+            <div className="card-head">
+              <h2>Password reset in progress</h2>
+              <span className="small muted">Expires {formatStoredTimestamp(reset.expires_at)}</span>
+            </div>
+            <div className="card-body">
+              <p className="small muted">
+                {member.name} asked for a reset link. If the email hasn&rsquo;t arrived,
+                read them this link instead — it works once, and only for them.
+              </p>
+              <CopyLink value={resetLink} />
+            </div>
+          </div>
+        )}
+
         <MemberCard member={member} title="Login &amp; role" />
+
+        <StaffActivity signIns={signIns} changes={changes} liveEventIds={liveEventIds()} />
 
         {member.id !== admin.id && (
           <div className="card">

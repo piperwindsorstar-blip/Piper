@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { listUsers, statsForAll } from "@/lib/team";
-import { countdownLabel, formatDate } from "@/lib/dates";
+import { lastSignInForAll } from "@/lib/activity";
+import { countdownLabel, formatDate, formatStoredTimestamp } from "@/lib/dates";
 import AddMemberForm from "./AddMemberForm";
 
 export default async function StaffPage() {
   await requireAdmin();
   const members = listUsers(true);
   const stats = statsForAll();
+  const lastSeen = lastSignInForAll();
 
   const active = members.filter((m) => m.active);
   const inactive = members.filter((m) => !m.active);
@@ -61,6 +63,11 @@ export default async function StaffPage() {
                     <div className="staff-meta">
                       {member.email}
                       {member.phone ? ` · ${member.phone}` : ""}
+                    </div>
+                    <div className="staff-meta faint">
+                      {lastSeen.has(member.id)
+                        ? `Last signed in ${formatStoredTimestamp(lastSeen.get(member.id))}`
+                        : "Has never signed in"}
                     </div>
                   </div>
                   <div className="staff-stats">

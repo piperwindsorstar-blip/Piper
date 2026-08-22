@@ -1,15 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import LoginForm from "./LoginForm";
+import ForgotForm from "./ForgotForm";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ reset?: string }>;
-}) {
+export default async function ForgotPage() {
+  // Somebody already signed in doesn't need this, and landing here from a stale
+  // bookmark shouldn't look like their account is in trouble.
   if (await getCurrentUser()) redirect("/dashboard");
-
-  const { reset } = await searchParams;
 
   return (
     <main className="centered">
@@ -20,12 +16,12 @@ export default async function LoginPage({
             <span className="brand-name">Piper</span>
           </div>
           <p className="muted small" style={{ margin: 0 }}>
-            Sign in to your wedding DJ workspace
+            Forgotten your password
           </p>
         </div>
         <div className="card">
           <div className="card-body">
-            <LoginForm justReset={reset === "1"} />
+            <ForgotForm />
           </div>
         </div>
       </div>

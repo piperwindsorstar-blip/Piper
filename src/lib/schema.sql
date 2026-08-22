@@ -276,3 +276,61 @@ CREATE TABLE IF NOT EXISTS venue_aliases (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_venue_alias_venue ON venue_aliases(venue_id);
+
+-- Every attempt to sign in, successful or not. Answers two different
+-- questions: when a staff member was last working (the successes), and whether
+-- anyone is trying doors that aren't theirs (the failures).
+--
+-- Failures keep the email that was typed but never the password, and no row
+-- here ever records what a person did once inside — that lives in the audit
+-- tables. The IP is kept because a run of failures from one address is the
+-- signal worth seeing; it is admin-only, like everything else here.
+CREATE TABLE IF NOT EXISTS sign_ins (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  email_tried TEXT NOT NULL,
+  actor_label TEXT NOT NULL,             -- name as at the time, else the email
+  outcome     TEXT NOT NULL CHECK (outcome IN ('success', 'failed')),
+  reason      TEXT,                      -- set only on a failure
+  ip          TEXT,
+  user_agent  TEXT,
+  at          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_signins_at ON sign_ins(at DESC);
+CREATE INDEX IF NOT EXISTS idx_signins_user ON sign_ins(user_id, at DESC);
+
+-- Changes to everything that isn't a booking: staff records, venues, settings.
+-- Same shape and same rules as event_audit — display text rather than ids, and
+-- no cascade, so "who deleted this" survives the deletion.
+CREATE TABLE IF NOT EXISTS record_audit (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  subject_type  TEXT NOT NULL,           -- staff | venue | settings
+  subject_id    INTEGER,
+  subject_label TEXT NOT NULL,
+  actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  actor_label   TEXT NOT NULL,
+  action        TEXT NOT NULL,
+  field         TEXT,
+  old_value     TEXT,
+  new_value     TEXT,
+  at            TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_record_audit_at ON record_audit(at DESC);
+CREATE INDEX IF NOT EXISTS idx_record_audit_actor ON record_audit(actor_user_id, at DESC);
+CREATE INDEX IF NOT EXISTS idx_record_audit_subject
+  ON record_audit(subject_type, subject_id, at DESC);
+
+-- Single-use, time-limited links for staff who have forgotten their password.
+-- The token is the whole secret, so a row is spent the moment it is used and
+-- an unused one still expires on its own.
+CREATE TABLE IF NOT EXISTS password_resets (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token        TEXT NOT NULL UNIQUE,
+  requested_ip TEXT,
+  created_at   TEXT NOT NULL,
+  expires_at   TEXT NOT NULL,
+  used_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_resets_user ON password_resets(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_resets_created ON password_resets(created_at DESC);

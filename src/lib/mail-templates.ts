@@ -129,3 +129,32 @@ just leave it and let me know when you know.
 ${SIGN_OFF}`,
   };
 }
+
+/* ------------------------------------------------------- password reset */
+
+/**
+ * Unlike the others this one is never edited before sending — it goes straight
+ * out, so it has to read correctly as written. It is addressed to staff rather
+ * than to a couple, and it says how long the link lasts because a person who
+ * finds it the next morning needs to know why it no longer works.
+ */
+export function passwordReset(name: string, link: string, hours: number) {
+  const first = name.trim().split(/\s+/)[0];
+  return {
+    subject: "Reset your Piper password",
+    body: `Hi ${first},
+
+Someone asked to reset the password on your Piper account. Open this link and
+choose a new one:
+
+${link}
+
+The link works once and expires in ${hours} hours. Setting a new password signs
+you out everywhere, so you'll need to sign back in on your phone as well.
+
+If this wasn't you, you can ignore this — nothing has changed, and whoever
+asked can't see this email.
+
+${SIGN_OFF}`,
+  };
+}

@@ -225,6 +225,60 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_venue_alias_venue ON venue_aliases(venue_id);
     `,
   },
+  {
+    version: 7,
+    label: "sign-in log and audit for records other than bookings",
+    up: `
+      CREATE TABLE IF NOT EXISTS sign_ins (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        email_tried TEXT NOT NULL,
+        actor_label TEXT NOT NULL,
+        outcome     TEXT NOT NULL CHECK (outcome IN ('success', 'failed')),
+        reason      TEXT,
+        ip          TEXT,
+        user_agent  TEXT,
+        at          TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_signins_at ON sign_ins(at DESC);
+      CREATE INDEX IF NOT EXISTS idx_signins_user ON sign_ins(user_id, at DESC);
+
+      CREATE TABLE IF NOT EXISTS record_audit (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject_type  TEXT NOT NULL,
+        subject_id    INTEGER,
+        subject_label TEXT NOT NULL,
+        actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        actor_label   TEXT NOT NULL,
+        action        TEXT NOT NULL,
+        field         TEXT,
+        old_value     TEXT,
+        new_value     TEXT,
+        at            TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_record_audit_at ON record_audit(at DESC);
+      CREATE INDEX IF NOT EXISTS idx_record_audit_actor ON record_audit(actor_user_id, at DESC);
+      CREATE INDEX IF NOT EXISTS idx_record_audit_subject
+        ON record_audit(subject_type, subject_id, at DESC);
+    `,
+  },
+  {
+    version: 8,
+    label: "password reset links",
+    up: `
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token        TEXT NOT NULL UNIQUE,
+        requested_ip TEXT,
+        created_at   TEXT NOT NULL,
+        expires_at   TEXT NOT NULL,
+        used_at      TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_resets_user ON password_resets(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_resets_created ON password_resets(created_at DESC);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

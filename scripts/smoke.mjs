@@ -295,6 +295,19 @@ let token;
 await ops.page.goto(`${BASE}/reports`);
 let body = await ops.page.textContent("body");
 check("matched tab loads", body.includes("Matched"));
+
+// The rest of this section asserts against real reports imported from the
+// report mailbox, which the seed deliberately does not carry — they hold
+// client details and stay out of the repository. On a database that has only
+// been seeded there is nothing here to check, and pressing on turns every
+// assertion into a failure and then a crash on a button that was never
+// rendered. Say so once and move to the next section.
+await ops.page.goto(`${BASE}/reports/dj`);
+const haveReports = (await ops.page.locator("tbody tr").count()) > 0;
+await ops.page.goto(`${BASE}/reports`);
+if (!haveReports) {
+  console.log("SKIP  crew report checks — no reports imported (run npm run import:reports)");
+} else {
 check("shows the real matched job", body.includes("26-0224"));
 check("dash-less job matched to dashed one", body.includes("26647"));
 check("test entries counted separately", body.includes("Test entries"));
@@ -381,6 +394,7 @@ check("DJ blocked from crew reports", reportDj.page.url().includes("/dashboard")
 await reportDj.page.goto(`${BASE}/reports/crew`);
 check("DJ blocked from crew stats", reportDj.page.url().includes("/dashboard"), reportDj.page.url());
 await reportDj.ctx.close();
+}
   await ops.ctx.close();
 }
 
@@ -919,6 +933,190 @@ await reportDj.ctx.close();
   await dj.page.goto(`${BASE}/events/1`);
   check("a DJ gets no import form", (await dj.page.locator("#sheet").count()) === 0);
   await dj.ctx.close();
+}
+
+/* ---------- 20. sign-in log and staff activity ---------- */
+{
+  const stamp = Date.now();
+  const ops = await signIn("owner@piper.test");
+
+  // The failed attempt from check 1 and every sign-in since should be here.
+  await ops.page.goto(`${BASE}/activity/sign-ins`);
+  let body = await ops.page.textContent("body");
+  check("sign-ins page lists attempts", body.includes("Signed in"));
+  check("a failed attempt is recorded", body.includes("Wrong password"));
+  check(
+    "the failure names the account it was aimed at",
+    body.includes("owner@piper.test") || body.includes("Sam Rivera"),
+  );
+  check("the password itself is never shown", !body.includes("wrongpass"), "'wrongpass' absent");
+
+  // Changes to things that aren't bookings are attributed too.
+  const venueName = `Smoke Hall ${stamp}`;
+  await ops.page.goto(`${BASE}/venues`);
+  await ops.page.fill("#name", venueName);
+  await ops.page.click('button:has-text("Add venue")');
+  await ops.page.waitForTimeout(900);
+
+  await ops.page.goto(`${BASE}/activity`);
+  body = await ops.page.textContent("body");
+  check("a new venue lands in the activity feed", body.includes(venueName));
+  check("the venue change is attributed", body.includes("Sam Rivera"));
+
+  // And one person's own page shows both halves.
+  await ops.page.goto(`${BASE}/team/1`);
+  body = await ops.page.textContent("body");
+  check("a staff page shows their sign-ins", body.includes("Sign-ins"));
+  check("a staff page shows what they changed", body.includes("What they changed"));
+  check("their venue edit appears on their page", body.includes(venueName));
+
+  // Put the venue back so the suite is repeatable.
+  await ops.page.goto(`${BASE}/venues`);
+  const card = ops.page.locator(`details.card:has-text("${venueName}")`).first();
+  if ((await card.count()) > 0) {
+    await card.locator("summary").click();
+    await card.locator('button:has-text("Delete venue")').first().click();
+    await ops.page.waitForTimeout(900);
+  }
+  const stillThere = await ops.page
+    .locator(`details.card:has-text("${venueName}")`)
+    .count();
+  check("the suite removes the venue it added", stillThere === 0, `${stillThere} left`);
+  await ops.ctx.close();
+
+  // A DJ must not reach any of it.
+  const dj = await signIn("jordan@piper.test");
+  for (const path of ["/activity", "/activity/sign-ins"]) {
+    await dj.page.goto(`${BASE}${path}`);
+    check(`a DJ is bounced off ${path}`, !dj.page.url().includes(path), dj.page.url());
+  }
+  await dj.ctx.close();
+}
+
+/* ---------- 21. forgotten password ---------- */
+{
+  const stamp = Date.now();
+  // Deliberately a throwaway account rather than the seeded admin. A reset
+  // test that changes a real password leaves the whole suite locked out if it
+  // fails part way through — which is exactly what happened while writing it.
+  const email = `reset.${stamp}@piper.test`;
+  const startingPassword = "piper1234";
+
+  const ops = await signIn("owner@piper.test");
+  await ops.page.goto(`${BASE}/team`);
+  await ops.page.fill("#name", "Reset Test");
+  await ops.page.fill("#email", email);
+  await ops.page.fill("#password", startingPassword);
+  await ops.page.click('button:has-text("Add team member")');
+  await ops.page.waitForTimeout(900);
+
+  const memberLink = ops.page.locator(`a.staff-row:has-text("Reset Test")`).first();
+  const memberHref = await memberLink.getAttribute("href");
+  check("throwaway account created", Boolean(memberHref), String(memberHref));
+  await ops.ctx.close();
+
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+
+  await page.goto(`${BASE}/login`);
+  check("login offers a way out", (await page.locator('a[href="/forgot"]').count()) === 1);
+
+  // The reply must not differ between a real address and an invented one, or
+  // the form becomes a way to test which emails exist.
+  const replies = [];
+  for (const who of [email, `nobody-${stamp}@piper.test`]) {
+    await page.goto(`${BASE}/forgot`);
+    await page.fill("#email", who);
+    await page.click("button[type=submit]");
+    await page.waitForTimeout(800);
+    replies.push((await page.textContent(".card")).replace(/\s+/g, " ").trim());
+  }
+  check(
+    "a real and an unknown address get the same answer",
+    replies[0] === replies[1],
+    replies[0] === replies[1] ? "" : `"${replies[0]}" vs "${replies[1]}"`,
+  );
+  check("no reset link is ever shown on screen", !replies[0].includes("/reset/"));
+
+  // With no mail server configured nothing is issued at all — which is the
+  // point, but it means there is no link to walk. Everything above still
+  // holds; the rest of the walk needs a token to exist.
+  const mailOff = replies[0].includes("can't send email yet");
+
+  // A junk token gets the expired page, not a crash and not a form.
+  await page.goto(`${BASE}/reset/${"0".repeat(64)}`);
+  const junk = await page.textContent("body");
+  check("an unknown reset token is refused", junk.includes("expired"));
+  check("an unknown token offers no password form", (await page.locator("#password").count()) === 0);
+  await ctx.close();
+
+  if (mailOff) {
+    console.log(
+      "SKIP  reset-link walk — no mail server configured " +
+        "(set PIPER_SMTP_* to exercise it; 127.0.0.1:1 is enough)",
+    );
+  } else {
+  // The link an admin can read out is the one the reset actually issued.
+  const ops2 = await signIn("owner@piper.test");
+  await ops2.page.goto(`${BASE}${memberHref}`);
+  const shown = await ops2.page.textContent("body");
+  check("an admin can see the pending reset", shown.includes("Password reset in progress"));
+  const link = await ops2.page.locator('input[readonly][value*="/reset/"]').first().inputValue();
+  check("the reset link carries a real token", /\/reset\/[0-9a-f]{64}$/.test(link), link.slice(-12));
+  await ops2.ctx.close();
+
+  // Walking that link sets a new password.
+  const user = await browser.newContext();
+  const rp = await user.newPage();
+  await rp.goto(link);
+  check("the issued link opens the reset form", (await rp.locator("#password").count()) === 1);
+
+  await rp.fill("#password", "smoke-newpass-1");
+  await rp.fill("#confirm", "smoke-different");
+  await rp.click("button[type=submit]");
+  await rp.waitForTimeout(800);
+  check("mismatched passwords are refused", (await rp.locator(".alert-error").count()) === 1);
+
+  await rp.fill("#password", "smoke-newpass-1");
+  await rp.fill("#confirm", "smoke-newpass-1");
+  await rp.click("button[type=submit]");
+  await rp.waitForURL("**/login**", { timeout: 15000 });
+  check("a completed reset lands back on sign in", rp.url().includes("/login"));
+  await user.close();
+
+  // The token is spent.
+  const again = await browser.newContext();
+  const ap = await again.newPage();
+  await ap.goto(link);
+  check("the link cannot be used twice", (await ap.locator("#password").count()) === 0);
+  await again.close();
+
+  // The new password works and the old one does not.
+  const fresh = await signIn(email, "smoke-newpass-1");
+  check("the new password signs in", fresh.page.url().includes("/dashboard"));
+  await fresh.ctx.close();
+
+  const stale = await browser.newContext();
+  const sp = await stale.newPage();
+  await sp.goto(`${BASE}/login`);
+  await sp.fill("#email", email);
+  await sp.fill("#password", startingPassword);
+  await sp.click("button[type=submit]");
+  await sp.waitForTimeout(1200);
+  check("the old password no longer works", !sp.url().includes("/dashboard"), sp.url());
+  await stale.close();
+  }
+
+  // Deactivate the throwaway so a rerun doesn't accumulate accounts.
+  const cleanup = await signIn("owner@piper.test");
+  await cleanup.page.goto(`${BASE}${memberHref}`);
+  await cleanup.page.click('button:has-text("Deactivate")');
+  await cleanup.page.waitForTimeout(900);
+  check(
+    "the suite deactivates the account it made",
+    (await cleanup.page.textContent("body")).includes("Reactivate"),
+  );
+  await cleanup.ctx.close();
 }
 
 await admin.ctx.close();

@@ -225,6 +225,7 @@ export default async function VenuesPage() {
                       </span>
                       <form action={unmapVenueName}>
                         <input type="hidden" name="alias" value={a.alias} />
+                        <input type="hidden" name="venue_id" value={a.venue_id} />
                         <button className="btn btn-sm" type="submit">
                           Undo
                         </button>

@@ -2,6 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { asActor } from "@/lib/audit";
+import {
+  diffFields,
+  recordAction,
+  recordChanges,
+  staffSubject,
+} from "@/lib/activity";
 import {
   countAdmins,
   createUser,
@@ -55,8 +62,23 @@ function readUser(formData: FormData): UserInput | null {
   };
 }
 
+/** What an edit to the sign-in details is called in the history. */
+const LOGIN_FIELD_LABELS = {
+  email: "Email",
+  name: "Name",
+  phone: "Phone",
+  role: "Role",
+} as const;
+
+const STAFF_FIELD_LABELS = {
+  emergency_contact: "Emergency contact",
+  start_date: "Start date",
+  gear: "Gear",
+  staff_notes: "Staff notes",
+} as const;
+
 export async function addMember(_prev: TeamState, formData: FormData): Promise<TeamState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const input = readUser(formData);
   const password = String(formData.get("password") ?? "");
@@ -65,7 +87,8 @@ export async function addMember(_prev: TeamState, formData: FormData): Promise<T
   if (password.length < 8) return reject("Give them a password of at least 8 characters.", formData);
   if (getUserByEmail(input.email)) return reject("Someone already uses that email.", formData);
 
-  createUser(input, password);
+  const newId = createUser(input, password);
+  recordAction(staffSubject({ id: newId, name: input.name }), asActor(admin), "added");
   revalidatePath("/team");
   return { ok: `${input.name} can now sign in.` };
 }
@@ -92,11 +115,18 @@ export async function editMember(_prev: TeamState, formData: FormData): Promise<
   }
 
   updateUser(id, input);
+  recordChanges(
+    staffSubject({ id, name: input.name }),
+    asActor(admin),
+    diffFields(LOGIN_FIELD_LABELS, existing, input),
+  );
 
   const password = String(formData.get("password") ?? "");
   if (password) {
     if (password.length < 8) return reject("A new password needs at least 8 characters.", formData);
     setPassword(id, password);
+    // The password itself is never recorded — only that it was changed, by whom.
+    recordAction(staffSubject({ id, name: input.name }), asActor(admin), "password_set");
   }
 
   revalidatePath("/team");
@@ -113,16 +143,22 @@ export async function toggleMember(formData: FormData): Promise<void> {
   if (!activate && target.role === "admin" && countAdmins() <= 1) return;
 
   setActive(id, activate);
+  recordAction(
+    staffSubject(target),
+    asActor(admin),
+    activate ? "reactivated" : "deactivated",
+  );
   revalidatePath("/team");
 }
 
 /* ------------------------------------------------------------ staff record */
 
 export async function saveStaffRecord(_prev: TeamState, formData: FormData): Promise<TeamState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const id = Number(formData.get("id"));
-  if (!getUser(id)) return reject("That person no longer exists.", formData);
+  const existing = getUser(id);
+  if (!existing) return reject("That person no longer exists.", formData);
 
   const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
   const startDate = text("start_date");
@@ -130,12 +166,18 @@ export async function saveStaffRecord(_prev: TeamState, formData: FormData): Pro
     return reject("Start date needs to be a real date.", formData);
   }
 
-  updateStaffRecord(id, {
+  const record = {
     emergency_contact: text("emergency_contact"),
     start_date: startDate,
     gear: text("gear"),
     staff_notes: text("staff_notes"),
-  });
+  };
+  updateStaffRecord(id, record);
+  recordChanges(
+    staffSubject(existing),
+    asActor(admin),
+    diffFields(STAFF_FIELD_LABELS, existing, record),
+  );
 
   revalidatePath(`/team/${id}`);
   revalidatePath("/team");
@@ -152,7 +194,12 @@ export async function saveOwnDetails(_prev: TeamState, formData: FormData): Prom
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return reject("Your name can't be blank.", formData);
 
-  updateOwnDetails(user.id, name, String(formData.get("phone") ?? "").trim() || null);
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  updateOwnDetails(user.id, name, phone);
+  recordChanges(staffSubject({ id: user.id, name }), asActor(user), [
+    { field: "Name", from: user.name, to: name },
+    { field: "Phone", from: user.phone, to: phone },
+  ]);
 
   revalidatePath("/me");
   revalidatePath("/team");
