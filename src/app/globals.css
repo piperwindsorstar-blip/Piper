@@ -674,3 +674,17 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .venue-note-when { margin-left: 0; width: 100%; }
   .venue-map select, .venue-map .btn { flex: 1 1 100%; }
 }
+
+/* ---------------------------------------------------- planner spreadsheet */
+
+.sheet-upload {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem;
+  margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--border);
+}
+.sheet-upload .field { margin: 0; flex: 1 1 18rem; }
+.sheet-upload input[type="file"] { font-size: 0.85rem; }
+.sheet-note { margin: 0.7rem 0 0; }
+
+@media (max-width: 620px) {
+  .sheet-upload .field, .sheet-upload .btn { flex: 1 1 100%; }
+}

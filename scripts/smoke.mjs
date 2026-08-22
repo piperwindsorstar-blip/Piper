@@ -11,6 +11,7 @@
  * download isn't available.
  */
 import { chromium } from "playwright";
+import ExcelJS from "exceljs";
 
 const BASE = process.env.PIPER_URL ?? "http://localhost:3000";
 
@@ -542,14 +543,19 @@ await reportDj.ctx.close();
   if (!token) {
     console.log("      (set PIPER_IMPORT_TOKEN to also run the round trip)");
   } else {
+    // Reports dedupe on (kind, job, sent time), so a fixed job number would make
+    // every run after the first a duplicate. Vary the time instead, and keep it
+    // out of the months the seeded quality figures are asserted against.
     const stamp = Date.now();
+    const when = new Date(Date.UTC(2029, 0, 1) + (stamp % 86_400_000)).toISOString();
+    const later = new Date(Date.UTC(2029, 0, 2) + (stamp % 86_400_000)).toISOString();
     const reports = [
-      { kind: "dj", job: "26999", crew: "Smoke Crew", sentAt: "2026-08-21T18:14:00Z",
+      { kind: "dj", job: "26999", crew: "Smoke Crew", sentAt: when,
         client: "5 - Amazing", crowd: 4, staff: "5", notes: "Endpoint test",
         sourceId: `smoke-${stamp}-1` },
-      { kind: "warehouse", job: "26-0999", crew: "Smoke Crew", sentAt: "2026-08-22T09:02:00Z",
-        quality: "4 - Good", manifest: "Yes", sourceId: `smoke-${stamp}-2` },
-      { kind: "dj", job: "00-0001", crew: "martin", sentAt: "2026-08-21T18:20:00Z",
+      { kind: "warehouse", job: "26-0999", crew: "Smoke Crew", sentAt: later,
+        manifest: "Yes", sourceId: `smoke-${stamp}-2` },
+      { kind: "dj", job: "00-0001", crew: "martin", sentAt: when,
         notes: "test", sourceId: `smoke-${stamp}-3` },
       { kind: "dj", job: "26-0998", crew: "X", sentAt: "yesterday", sourceId: `smoke-${stamp}-4` },
     ];
@@ -612,7 +618,7 @@ await reportDj.ctx.close();
   await owner.page.goto(`${BASE}/outbox`);
   // Count only this booking's invitations — other sections of this suite create
   // events with contact emails, which legitimately draft invitations of their own.
-  const invites = await owner.page.locator('.mail:has-text("couple@example.test"):has-text("Planner invitation")').count();
+  const invites = await owner.page.locator('.mail-queued:has-text("couple@example.test"):has-text("Planner invitation")').count();
   check("saving twice doesn't duplicate the invitation", invites === 1, `${invites} found`);
 
   // Assigning a DJ drafts an introduction with the DJ copied in.
@@ -732,12 +738,15 @@ await reportDj.ctx.close();
 
     // "the grand oak barn" must match the venue named "The Grand Oak Barn":
     // crews type it however they type it.
+    // Dated well clear of the seeded months, and with no quality rating, so the
+    // crew and quality figures other checks assert on are left alone.
+    const when = new Date(Date.UTC(2029, 5, 1) + (stamp % 86_400_000)).toISOString();
     await post([
-      { kind: "dj", job: `26-91${stamp % 100}`, crew: "Juice", sentAt: "2026-08-20T16:14:00Z",
+      { kind: "dj", job: "26-9101", crew: "Smoke Venue Crew", sentAt: when,
         venue: "the grand oak barn ", notes: "Generator only until 4pm, bring the long runs.",
         sourceId: `venue-${stamp}-1` },
-      { kind: "warehouse", job: `26-92${stamp % 100}`, crew: "Addison", sentAt: "2026-08-20T18:00:00Z",
-        venue: "Tanaka's place", quality: 4, notes: "Loading door is round the back, not the front.",
+      { kind: "warehouse", job: "26-9202", crew: "Smoke Venue Crew", sentAt: when,
+        venue: "Tanaka's place", notes: "Loading door is round the back, not the front.",
         sourceId: `venue-${stamp}-2` },
     ]);
 
@@ -769,6 +778,146 @@ await reportDj.ctx.close();
   const dj = await signIn("jordan@piper.test");
   await dj.page.goto(`${BASE}/venues`);
   check("DJ blocked from venues", dj.page.url().endsWith("/dashboard"), dj.page.url());
+  await dj.ctx.close();
+}
+
+/* ---------- 20. the planner spreadsheet, both directions ---------- */
+{
+  const owner = await signIn("owner@piper.test");
+
+  // Download the workbook for a booking that already has songs.
+  const res = await owner.ctx.request.get(`${BASE}/api/events/1/sheet`);
+  check("the planner downloads as a spreadsheet", res.status() === 200, `status ${res.status()}`);
+  check(
+    "it is served as an xlsx",
+    (res.headers()["content-type"] ?? "").includes("spreadsheetml.sheet"),
+  );
+  check(
+    "the filename names the couple",
+    decodeURIComponent(res.headers()["content-disposition"] ?? "").includes("Ava Nakamura"),
+  );
+
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(Buffer.from(await res.body()));
+  check(
+    "it has a tab per part of the plan",
+    ["Timeline", "Details", "Entrances", "Speeches"].every((n) => wb.getWorksheet(n)),
+    wb.worksheets.map((w) => w.name).join(", "),
+  );
+
+  // Fill it in the way a couple would, then rearrange it the way Excel users do.
+  const stamp = Date.now();
+  const newTitle = `Smoke Anthem ${stamp}`;
+  const timeline = wb.getWorksheet("Timeline");
+  let placedFirst = false;
+  let placedMust = false;
+  let duplicatedExisting = false;
+
+  timeline.eachRow((row) => {
+    const activity = String(row.getCell(3).value ?? "");
+    if (activity === "First dance" && !placedFirst) {
+      row.getCell(4).value = newTitle;
+      row.getCell(5).value = "The Smoke Test Band";
+      row.getCell(6).value = "fade at 2:40";
+      placedFirst = true;
+    }
+    // Type a song the booking already has, to prove importing cannot duplicate it.
+    if (activity === "Must play" && !duplicatedExisting && !row.getCell(4).value) {
+      row.getCell(4).value = "September";
+      row.getCell(5).value = "Earth, Wind & Fire";
+      duplicatedExisting = true;
+    } else if (activity === "Must play" && !placedMust && !row.getCell(4).value) {
+      row.getCell(4).value = `Extra Track ${stamp}`;
+      placedMust = true;
+    }
+  });
+
+  timeline.spliceRows(6, 0, ["", "", "", "", "", "", ""]); // insert a row mid-sheet
+  timeline.spliceRows(12, 1); // delete one
+
+  const details = wb.getWorksheet("Details");
+  details.eachRow((row) => {
+    if (String(row.getCell(1).value ?? "").startsWith("Who is your MC")) {
+      row.getCell(2).value = `Uncle Jimmy ${stamp}`;
+    }
+  });
+
+  const filled = Buffer.from(await wb.xlsx.writeBuffer());
+
+  // Upload it through the form, the way Martin actually would.
+  await owner.page.goto(`${BASE}/events/1`);
+  await owner.page.setInputFiles("#sheet", {
+    name: "planner.xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: filled,
+  });
+  await owner.page.click('form.sheet-upload button[type="submit"]');
+  await owner.page.waitForTimeout(2500);
+
+  const result = await owner.page.textContent("body");
+  check("importing reports what it did", /Imported:/.test(result), (result.match(/Imported:[^.]*\./) ?? [""])[0]);
+
+  await owner.page.goto(`${BASE}/events/1/music`);
+  const music = await owner.page.textContent("body");
+  check("a song typed into the sheet lands on the booking", music.includes(newTitle));
+  check("its cue point comes across too", music.includes("fade at 2:40"));
+
+  // Count the artist, not the title: "September" also matches the booking's
+  // own date, which is printed at the top of the page.
+  const ewf = (music.match(/Earth, Wind &(amp;)? Fire/g) ?? []).length;
+  check("a song already there is not duplicated", ewf === 1, `${ewf} mentions`);
+
+  // Importing the identical file again must change nothing.
+  await owner.page.goto(`${BASE}/events/1`);
+  await owner.page.setInputFiles("#sheet", {
+    name: "planner.xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: filled,
+  });
+  await owner.page.click('form.sheet-upload button[type="submit"]');
+  await owner.page.waitForTimeout(2500);
+  const second = await owner.page.textContent("body");
+  check(
+    "re-importing the same sheet adds nothing",
+    !/\d+ songs? added/.test(second),
+    (second.match(/Imported:[^.]*\./) ?? [""])[0],
+  );
+
+  // A file that isn't a planner is refused with an explanation, not a stack trace.
+  await owner.page.setInputFiles("#sheet", {
+    name: "notes.xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: Buffer.from("this is definitely not a spreadsheet"),
+  });
+  await owner.page.click('form.sheet-upload button[type="submit"]');
+  await owner.page.waitForTimeout(2000);
+  check(
+    "a file that isn't a planner is refused kindly",
+    (await owner.page.textContent("body")).includes("couldn't read that file"),
+  );
+
+  // Take the imported songs back off the shared booking, so the next run
+  // starts where this one did.
+  await owner.page.goto(`${BASE}/events/1/music`);
+  for (const title of [newTitle, `Extra Track ${stamp}`]) {
+    const row = owner.page.locator(`.song-line:has-text("${title}")`).first();
+    if ((await row.count()) > 0) {
+      await row.locator('button[aria-label="Remove song"]').click();
+      await owner.page.waitForTimeout(900);
+    }
+  }
+  const leftBehind = await owner.page.locator(`.song-line:has-text("Smoke Anthem")`).count();
+  check("the suite puts the shared booking back as it found it", leftBehind === 0, `${leftBehind} left`);
+  await owner.ctx.close();
+
+  // A DJ can take the sheet away but cannot rewrite the booking with one.
+  const dj = await signIn("jordan@piper.test");
+  const djRes = await dj.ctx.request.get(`${BASE}/api/events/1/sheet`);
+  check("a DJ on the event can download it", djRes.status() === 200, `status ${djRes.status()}`);
+  const otherRes = await dj.ctx.request.get(`${BASE}/api/events/2/sheet`);
+  check("a DJ cannot download another DJ's booking", otherRes.status() === 404, `status ${otherRes.status()}`);
+  await dj.page.goto(`${BASE}/events/1`);
+  check("a DJ gets no import form", (await dj.page.locator("#sheet").count()) === 0);
   await dj.ctx.close();
 }
 

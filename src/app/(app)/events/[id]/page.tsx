@@ -8,6 +8,7 @@ import { removeEvent, rotatePlanLink } from "../actions";
 import CopyLink from "@/components/CopyLink";
 import History from "@/components/History";
 import AskAvailability from "./AskAvailability";
+import PlannerSheet from "./PlannerSheet";
 import { eventHistory, groupEntries } from "@/lib/audit";
 import { requestsForEvent } from "@/lib/availability";
 import { listDjs } from "@/lib/team";
@@ -281,6 +282,8 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
           </div>
         </div>
       )}
+
+      <PlannerSheet eventId={event.id} canUpload={isAdmin} />
 
       {isAdmin && (
         <AskAvailability eventId={event.id} djs={djs} requests={availability} />

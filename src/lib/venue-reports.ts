@@ -132,8 +132,36 @@ export function addVenueAlias(alias: string, venueId: number): void {
     .run(alias.trim(), venueId);
 }
 
+/**
+ * Removes a mapping and unlinks the reports it linked.
+ *
+ * Deleting the alias alone would leave every report it had already matched
+ * still pointing at the venue, so undoing a mistake would appear to do
+ * nothing. Reports that match the venue by name are left alone — those never
+ * needed the alias.
+ */
 export function removeVenueAlias(alias: string): void {
-  db().prepare("DELETE FROM venue_aliases WHERE alias = ?").run(alias);
+  const mapping = db()
+    .prepare("SELECT venue_id FROM venue_aliases WHERE alias = ?")
+    .get(alias) as { venue_id: number } | undefined;
+
+  const run = db().transaction(() => {
+    db().prepare("DELETE FROM venue_aliases WHERE alias = ?").run(alias);
+    if (!mapping) return;
+
+    const linked = db()
+      .prepare("SELECT id, venue_raw FROM crew_reports WHERE venue_id = ? AND venue_raw IS NOT NULL")
+      .all(mapping.venue_id) as { id: number; venue_raw: string }[];
+
+    const clear = db().prepare("UPDATE crew_reports SET venue_id = NULL WHERE id = ?");
+    for (const row of linked) {
+      // resolveVenue now runs without the alias, so anything that still
+      // resolves matched by name and keeps its link.
+      if (resolveVenue(row.venue_raw) === null) clear.run(row.id);
+    }
+  });
+
+  run();
 }
 
 export function listVenueAliases(): { alias: string; venue_id: number; venue_name: string }[] {
