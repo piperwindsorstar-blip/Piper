@@ -324,18 +324,34 @@ body = await ops.page.textContent("body");
 check("test entries quarantined", body.includes("00-0000") && body.includes("Im testing some shit"));
 
 /* ---- manifest override, now stored server-side ---- */
+// Corrections are real edits to real reports, so this sets one, checks it, and
+// puts it back. Toggling whichever badge is first — rather than hunting for a
+// "Not signed" one — keeps the check working whatever state the data is in.
 await ops.page.goto(`${BASE}/reports/warehouse`);
-const firstNotSigned = ops.page.locator('button:has-text("Not signed")').first();
-await firstNotSigned.click();
+const overridesBefore = await ops.page.locator('text="Manually set"').count();
+const firstManifest = ops.page.locator('form:has(input[name="value"]) button.badge').first();
+await firstManifest.click();
 await ops.page.waitForTimeout(1500);
 body = await ops.page.textContent("body");
-check("manifest can be corrected", body.includes("Manually set"));
+check(
+  "manifest can be corrected",
+  (await ops.page.locator('text="Manually set"').count()) === overridesBefore + 1,
+);
 
 // The correction must be visible to a different admin, not just this browser.
 const office = await signIn("office@piper.test");
 await office.page.goto(`${BASE}/reports/warehouse`);
 check("correction is shared, not per-browser", (await office.page.textContent("body")).includes("Manually set"));
 await office.ctx.close();
+
+// Put the report back the way it was found.
+await ops.page.reload();
+await ops.page.locator('button:has-text("reset")').first().click();
+await ops.page.waitForTimeout(1200);
+check(
+  "a correction can be reset",
+  (await ops.page.locator('text="Manually set"').count()) === overridesBefore,
+);
 
 /* ---- aliases ---- */
 await ops.page.goto(`${BASE}/reports/aliases`);
