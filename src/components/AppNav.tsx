@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout } from "@/app/login/actions";
+import Icon, { type IconName } from "./Icon";
 
-export type NavItem = { href: string; label: string };
+export type NavItem = { href: string; label: string; icon: IconName };
 
 type Props = {
   main: NavItem[];
@@ -24,7 +25,8 @@ export default function AppNav({ main, admin, user }: Props) {
     const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
     return (
       <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>
-        {item.label}
+        <Icon name={item.icon} size={17} />
+        <span>{item.label}</span>
       </Link>
     );
   };
@@ -43,7 +45,7 @@ export default function AppNav({ main, admin, user }: Props) {
           aria-expanded={open}
           aria-controls="app-nav"
         >
-          <span aria-hidden="true">{open ? "✕" : "☰"}</span>
+          <Icon name={open ? "close" : "dashboard"} size={17} />
           <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
         </button>
       </div>

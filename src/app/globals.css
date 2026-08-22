@@ -1,13 +1,13 @@
 /* ---------------------------------------------------------------- tokens */
 
 :root {
-  --bg: #f6f5f8;
+  --bg: #f5f4f8;
   --surface: #ffffff;
-  --surface-alt: #faf9fb;
-  --border: #e4e1e9;
-  --border-strong: #d0ccd8;
-  --text: #1c1a22;
-  --text-muted: #6b6676;
+  --surface-alt: #f8f7fb;
+  --border: #e6e3ed;
+  --border-strong: #cfcad9;
+  --text: #17151d;
+  --text-muted: #67626f;
   --text-faint: #948fa0;
   --accent: #6d4aff;
   --accent-hover: #5b39e8;
@@ -19,21 +19,35 @@
   --warning-soft: #fdf0dd;
   --danger: #b3261e;
   --danger-soft: #fdeceb;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --shadow: 0 1px 2px rgba(24, 20, 35, 0.06), 0 4px 14px rgba(24, 20, 35, 0.05);
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Radii climb with the size of the thing: a pill on a badge, a soft corner
+     on a card, and something in between for controls. One value for all three
+     makes small elements look bloated and large ones look sharp. */
+  --radius-lg: 14px;
+  --radius: 11px;
+  --radius-sm: 7px;
+
+  /* Two levels, not five. A page where everything floats has no hierarchy;
+     cards sit flat and only things that overlay the page lift. */
+  --shadow: 0 1px 2px rgba(23, 21, 29, 0.05), 0 1px 3px rgba(23, 21, 29, 0.04);
+  --shadow-lift: 0 4px 12px rgba(23, 21, 29, 0.08), 0 12px 32px rgba(23, 21, 29, 0.07);
+
+  /* System stacks, so the app looks native wherever it opens and nothing has
+     to be fetched before text can be drawn. */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131217;
-    --surface: #1b1a21;
-    --surface-alt: #201f27;
-    --border: #2e2c37;
-    --border-strong: #403d4c;
-    --text: #eeecf2;
-    --text-muted: #a29dae;
+    --bg: #100f14;
+    --surface: #191820;
+    --surface-alt: #201f28;
+    --border: #2c2a35;
+    --border-strong: #413e4d;
+    --text: #efedf3;
+    --text-muted: #a5a0b1;
     --text-faint: #7c7789;
     --accent: #9d84ff;
     --accent-hover: #b09aff;
@@ -45,7 +59,8 @@
     --warning-soft: #33280f;
     --danger: #f4867d;
     --danger-soft: #3a1d1c;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -67,10 +82,17 @@ html, body {
 a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
-h1 { font-size: 1.5rem; }
-h2 { font-size: 1.125rem; }
-h3 { font-size: 0.95rem; }
+/* Headings tighten as they grow: at 1.5rem the default tracking reads loose,
+   at 0.95rem the same negative tracking would read cramped. */
+h1, h2, h3, h4 { margin: 0; font-weight: 650; }
+h1 { font-size: 1.55rem; letter-spacing: -0.021em; line-height: 1.2; }
+h2 { font-size: 1.075rem; letter-spacing: -0.012em; line-height: 1.3; }
+h3 { font-size: 0.95rem; letter-spacing: -0.006em; }
+code { font-family: var(--font-mono); font-size: 0.88em; }
+
+/* Numbers line up in columns when they share a width. Tables of counts and
+   money are unreadable when they don't. */
+.stat-value, .table td.num, .num { font-variant-numeric: tabular-nums; }
 p { margin: 0 0 0.75rem; }
 
 /* ----------------------------------------------------------------- shell */
@@ -105,7 +127,7 @@ p { margin: 0 0 0.75rem; }
 
 .brand { display: flex; align-items: center; gap: 0.6rem; padding: 0 0.5rem; }
 .brand-mark {
-  width: 30px; height: 30px; border-radius: 8px;
+  width: 30px; height: 30px; border-radius: 9px;
   background: linear-gradient(135deg, var(--accent), #ff7ac6);
   display: grid; place-items: center;
   color: #fff; font-weight: 700; font-size: 0.9rem;
@@ -118,11 +140,22 @@ p { margin: 0 0 0.75rem; }
   color: var(--text-faint); padding: 0.5rem 0.6rem 0.25rem; font-weight: 600;
 }
 .nav a {
-  display: block; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm);
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.48rem 0.6rem; border-radius: var(--radius-sm);
   color: var(--text-muted); font-weight: 500; font-size: 0.9rem;
+  transition: background 120ms ease, color 120ms ease;
 }
 .nav a:hover { background: var(--surface-alt); color: var(--text); text-decoration: none; }
 .nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+/* Icons sit a shade quieter than their label until the row is the current one,
+   so the column reads as words with marks beside them rather than as a row of
+   competing symbols. */
+.nav a .icon { color: var(--text-faint); flex-shrink: 0; }
+.nav a:hover .icon { color: var(--text-muted); }
+.nav a[aria-current="page"] .icon { color: var(--accent); }
+
+.icon { display: inline-block; vertical-align: -0.18em; }
+.btn .icon { margin-right: -0.1rem; }
 
 .sidebar-foot { margin-top: auto; border-top: 1px solid var(--border); padding-top: 0.85rem; }
 .who { padding: 0 0.6rem 0.5rem; }
@@ -143,9 +176,19 @@ p { margin: 0 0 0.75rem; }
 
 .card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
 }
+/* A card that opens should say so before it is clicked. */
+details.card > summary { transition: background 120ms ease; }
+details.card > summary:hover { background: var(--surface-alt); }
+details.card[open] { box-shadow: var(--shadow-lift); }
+details.card > summary::-webkit-details-marker { display: none; }
+/* Stacked cards space themselves; cards in a grid are spaced by its gap. Left
+   unscoped, this margin lands inside grid cells too — every card but the first
+   gets pushed down, the row stretches to the tallest, and the first card ends
+   up visibly taller than its neighbours. */
 .card + .card { margin-top: 1.1rem; }
+.grid > .card + .card { margin-top: 0; }
 .card-head {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--border);
@@ -202,7 +245,14 @@ td.num, th.num { text-align: right; }
   font-size: 0.875rem; font-weight: 550; font-family: inherit; cursor: pointer;
   text-decoration: none; white-space: nowrap;
 }
+.btn {
+  transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+}
 .btn:hover { background: var(--surface-alt); text-decoration: none; }
+/* A press that moves is a press you felt. One pixel is enough; more reads as a
+   toy. */
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn-danger { color: var(--danger); border-color: var(--border-strong); }
@@ -510,6 +560,13 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 
 /* Table wrappers so wide tables scroll instead of pushing the page sideways. */
 .table-wrap { overflow-x: auto; }
+/* A scrolling table at the foot of a card is square while the card is round,
+   so its last row spills past the corner. Giving the wrapper the same radius
+   clips it — an element that scrolls already clips to its own border radius. */
+.card > .table-wrap:last-child {
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+}
 
 /* ------------------------------------------------------- event history */
 
@@ -744,7 +801,19 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
    squeezing the day columns into uselessness. */
 .board { table-layout: fixed; min-width: 56rem; }
 .board th, .board td { vertical-align: top; }
+/* The vehicle column is a row header, so it inherits the uppercase, letter-
+   spaced treatment meant for column headings. A van is a name, not a label —
+   put it back to ordinary text. */
 .board-vehicle { width: 10rem; text-align: left; }
+.board th[scope="row"] {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0.7rem 1.1rem;
+}
+.board th[scope="row"] .small { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .board-today { background: var(--accent-soft); }
 
 .run-chip {
@@ -774,3 +843,38 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   padding: 0.1rem 0.2rem;
 }
 .run-remove:hover { color: var(--danger); }
+
+
+/* ------------------------------------------------------------- polish */
+
+/* One focus ring, on the accent, for every focusable thing. The browser default
+   is invisible against the accent-soft backgrounds this app uses in places. */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Inputs answer when they are being typed in. */
+input, select, textarea {
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+/* Rows that lead somewhere lift very slightly on hover. */
+.staff-row { transition: background 120ms ease; }
+
+/* Empty states read as a considered blank rather than a missing thing. */
+.empty { color: var(--text-muted); }
+
+/* Everything that animates stops for anyone who has asked for that. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

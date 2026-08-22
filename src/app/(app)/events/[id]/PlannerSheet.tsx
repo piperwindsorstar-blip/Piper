@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { uploadSheet, type UploadState } from "./sheet-actions";
+import Icon from "@/components/Icon";
 
 /**
  * The spreadsheet route into and out of a booking, for couples who would
@@ -35,6 +36,7 @@ export default function PlannerSheet({
 
         <div className="btn-row">
           <a className="btn btn-sm" href={`/api/events/${eventId}/sheet`}>
+            <Icon name="download" size={15} />
             Download the planner
           </a>
         </div>
@@ -53,7 +55,7 @@ export default function PlannerSheet({
             </div>
             <input type="hidden" name="event_id" value={eventId} />
             <button className="btn btn-sm btn-primary" type="submit" disabled={uploading}>
-              {uploading ? "Reading…" : "Import"}
+              {uploading ? "Reading…" : <><Icon name="upload" size={15} />Import</>}
             </button>
           </form>
         )}

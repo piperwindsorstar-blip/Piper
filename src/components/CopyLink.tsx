@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Icon from "./Icon";
 
 export default function CopyLink({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -21,6 +22,7 @@ export default function CopyLink({ value }: { value: string }) {
     <div className="btn-row" style={{ flexWrap: "nowrap" }}>
       <input type="text" readOnly value={value} onFocus={(e) => e.currentTarget.select()} />
       <button className="btn btn-sm" type="button" onClick={copy}>
+        <Icon name={copied ? "check" : "copy"} size={15} />
         {copied ? "Copied" : "Copy"}
       </button>
     </div>

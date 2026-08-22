@@ -5,21 +5,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
 
   const main: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/calendar", label: "Calendar" },
-    { href: "/events", label: "Events" },
-    { href: "/me", label: "My page" },
+    { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/calendar", label: "Calendar", icon: "calendar" },
+    { href: "/events", label: "Events", icon: "events" },
+    { href: "/me", label: "My page", icon: "person" },
   ];
   const admin: NavItem[] =
     user.role === "admin"
       ? [
-          { href: "/reports", label: "Crew Reports" },
-          { href: "/venues", label: "Venues" },
-          { href: "/dispatch", label: "Dispatch" },
-          { href: "/team", label: "Staff" },
-          { href: "/outbox", label: "Outbox" },
-          { href: "/activity", label: "Activity" },
-          { href: "/settings", label: "Settings" },
+          { href: "/reports", label: "Crew Reports", icon: "clipboard" },
+          { href: "/venues", label: "Venues", icon: "pin" },
+          { href: "/dispatch", label: "Dispatch", icon: "truck" },
+          { href: "/team", label: "Staff", icon: "people" },
+          { href: "/outbox", label: "Outbox", icon: "mail" },
+          { href: "/activity", label: "Activity", icon: "activity" },
+          { href: "/settings", label: "Settings", icon: "settings" },
         ]
       : [];
 

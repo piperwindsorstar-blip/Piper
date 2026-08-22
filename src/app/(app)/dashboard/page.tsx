@@ -7,6 +7,7 @@ import Cell from "@/components/Cell";
 import AvailabilityAsks from "@/components/AvailabilityAsks";
 import { openRequestsFor } from "@/lib/availability";
 import DispatchToday from "@/components/DispatchToday";
+import Icon from "@/components/Icon";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
         </div>
         {isAdmin && (
           <Link className="btn btn-primary" href="/events/new">
+            <Icon name="plus" size={16} />
             New event
           </Link>
         )}

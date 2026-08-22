@@ -259,7 +259,66 @@ saveQuestionnaire(first, {
 
 conn.prepare("UPDATE events SET plan_submitted_at = datetime('now') WHERE id = ?").run(first);
 
-console.log(`Seeded ${ids.length} events, 3 venues and 4 users.`);
+/* ------------------------------------------------------------ dispatch */
+
+// A small fleet, so the dispatch board shows something on a fresh install
+// rather than an empty grid that gives no sense of what it is for.
+const vehicles = [
+  {
+    name: "Big van",
+    kind: "van",
+    plate: "PYNX 01",
+    capacity_note: "Full rig plus booth",
+    notes: null,
+    rental_from: null,
+    rental_due: null,
+  },
+  {
+    name: "Small van",
+    kind: "van",
+    plate: "PYNX 02",
+    capacity_note: "Ceremony kit and speakers",
+    notes: null,
+    rental_from: null,
+    rental_due: null,
+  },
+  {
+    name: "Pencar cube",
+    kind: "rental",
+    plate: null,
+    capacity_note: "Big loads, busy weekends",
+    notes: "Hired when both vans are out.",
+    rental_from: saturdayIn(2),
+    rental_due: saturdayIn(3),
+  },
+].map((v) =>
+  Number(
+    conn
+      .prepare(
+        `INSERT INTO vehicles (name, kind, plate, rental_from, rental_due, capacity_note, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(v.name, v.kind, v.plate, v.rental_from, v.rental_due, v.capacity_note, v.notes)
+      .lastInsertRowid,
+  ),
+);
+
+// The first two weddings get a van each, so the board reads as a week of work.
+conn
+  .prepare(
+    `INSERT INTO dispatch_runs (vehicle_id, event_id, label, starts_on, ends_on, driver_id, keys_with)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  )
+  .run(vehicles[0], ids[0], "Nakamura & Delgado", saturdayIn(2), saturdayIn(2), djJordan, "Jordan");
+
+conn
+  .prepare(
+    `INSERT INTO dispatch_runs (vehicle_id, event_id, label, starts_on, ends_on, driver_id, keys_with)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  )
+  .run(vehicles[1], ids[1], "Brennan & Brennan-Ross", saturdayIn(4), saturdayIn(4), djMina, "Mina");
+
+console.log(`Seeded ${ids.length} events, 3 venues, 3 vehicles and 4 users.`);
 console.log("");
 console.log("  Sign in with any of these (password: piper1234)");
 console.log("    owner@piper.test    Sam Rivera    admin");

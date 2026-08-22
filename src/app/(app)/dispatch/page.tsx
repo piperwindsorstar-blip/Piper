@@ -14,6 +14,7 @@ import {
 import { formatDate, formatDateShort, todayIso } from "@/lib/dates";
 import RunForm from "./RunForm";
 import { removeRun } from "./actions";
+import Icon from "@/components/Icon";
 
 /**
  * The week, vehicle by vehicle.
@@ -57,13 +58,15 @@ export default async function DispatchPage({
           </h2>
           <div className="btn-row">
             <Link className="btn btn-sm" href={`/dispatch?week=${shiftWeek(anchor, -1)}`}>
-              ← Previous
+              <Icon name="left" size={15} />
+              Previous
             </Link>
             <Link className="btn btn-sm" href="/dispatch">
               This week
             </Link>
             <Link className="btn btn-sm" href={`/dispatch?week=${shiftWeek(anchor, 1)}`}>
-              Next →
+              Next
+              <Icon name="right" size={15} />
             </Link>
           </div>
         </div>
@@ -125,7 +128,7 @@ export default async function DispatchPage({
                                 <form action={removeRun}>
                                   <input type="hidden" name="id" value={run.id} />
                                   <button className="run-remove" type="submit" aria-label="Remove run">
-                                    ×
+                                    <Icon name="close" size={13} />
                                   </button>
                                 </form>
                               )}
