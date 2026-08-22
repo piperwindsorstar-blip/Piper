@@ -30,10 +30,21 @@ sudo -u piper env PIPER_DATA_DIR="$DATA_DIR" \
   npx --prefix "$APP_DIR" tsx "$APP_DIR/scripts/backup-db.ts" "$BACKUP_DIR"
 
 echo "==> Fetching latest code"
-git -C "$APP_DIR" fetch --quiet origin "$BRANCH"
-BEFORE=$(git -C "$APP_DIR" rev-parse HEAD)
-git -C "$APP_DIR" checkout --quiet -B "$BRANCH" "origin/$BRANCH"
-AFTER=$(git -C "$APP_DIR" rev-parse HEAD)
+# Git runs as piper, not root, for two reasons. The checkout belongs to piper,
+# and git refuses to touch a repository owned by someone else ("dubious
+# ownership") -- but adding a safe.directory exception would only trade that
+# for a worse problem: a checkout run as root writes root-owned files into a
+# tree piper has to build in, and the failure would surface a deploy later,
+# somewhere else.
+as_piper() { sudo -u piper git -C "$APP_DIR" "$@"; }
+
+as_piper fetch --quiet origin "$BRANCH"
+BEFORE=$(as_piper rev-parse HEAD)
+as_piper checkout --quiet -B "$BRANCH" "origin/$BRANCH"
+AFTER=$(as_piper rev-parse HEAD)
+
+# Heals a checkout an earlier root-run deploy left partly root-owned.
+chown -R piper:piper "$APP_DIR"
 
 if [[ "$BEFORE" == "$AFTER" ]]; then
   echo "    already up to date ($AFTER)"

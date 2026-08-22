@@ -60,8 +60,10 @@ id -u piper >/dev/null 2>&1 || useradd --system --home "$APP_DIR" --shell /usr/s
 
 echo "==> Fetching the application"
 if [[ -d "$APP_DIR/.git" ]]; then
-  git -C "$APP_DIR" fetch --quiet origin "$BRANCH"
-  git -C "$APP_DIR" checkout --quiet -B "$BRANCH" "origin/$BRANCH"
+  # Re-running setup on an existing install: the checkout is piper's by now,
+  # so update it as piper. See deploy.sh for why not as root.
+  sudo -u piper git -C "$APP_DIR" fetch --quiet origin "$BRANCH"
+  sudo -u piper git -C "$APP_DIR" checkout --quiet -B "$BRANCH" "origin/$BRANCH"
 else
   rm -rf "$APP_DIR"
   git clone --quiet --branch "$BRANCH" "$REPO" "$APP_DIR"
