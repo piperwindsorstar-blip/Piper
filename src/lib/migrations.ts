@@ -139,6 +139,39 @@ export const MIGRATIONS: Migration[] = [
       UPDATE songs SET category = 'bouquet_garter'            WHERE category = 'bouquet_toss';
     `,
   },
+  {
+    version: 4,
+    label: "audit trail on events",
+    up: `
+      CREATE TABLE IF NOT EXISTS event_audit (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id      INTEGER NOT NULL,
+        event_label   TEXT NOT NULL,
+        actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        actor_label   TEXT NOT NULL,
+        action        TEXT NOT NULL CHECK (action IN
+                        ('created', 'updated', 'deleted', 'plan_link_rotated', 'plan_submitted')),
+        field         TEXT,
+        old_value     TEXT,
+        new_value     TEXT,
+        at            TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_event ON event_audit(event_id, at DESC);
+      CREATE INDEX IF NOT EXISTS idx_audit_at ON event_audit(at DESC);
+
+      -- Bookings that predate the trail still get a first entry, so their
+      -- history reads as "existed before this was turned on" rather than blank.
+      INSERT INTO event_audit (event_id, event_label, actor_user_id, actor_label, action, at)
+      SELECT
+        id,
+        partner_one_name || COALESCE(' & ' || partner_two_name, '') || ' · ' || event_date,
+        NULL,
+        'Before history was kept',
+        'created',
+        created_at
+      FROM events;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

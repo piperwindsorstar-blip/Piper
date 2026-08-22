@@ -5,8 +5,15 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import {
+  asActor,
+  eventLabel,
+  recordEventAction,
+  recordEventUpdate,
+} from "@/lib/audit";
+import {
   createEvent,
   deleteEvent,
+  getEventRaw,
   regeneratePlanToken,
   updateEvent,
   type EventInput,
@@ -97,7 +104,7 @@ function readEventForm(formData: FormData) {
 }
 
 export async function saveEvent(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const parsed = readEventForm(formData);
   if (!parsed.success) {
@@ -114,28 +121,51 @@ export async function saveEvent(_prev: FormState, formData: FormData): Promise<F
   let eventId: number;
   if (idRaw) {
     eventId = Number(idRaw);
+    // Read before writing: the history needs what each field used to say.
+    const before = getEventRaw(eventId);
     updateEvent(eventId, input);
+    if (before) {
+      recordEventUpdate(eventId, eventLabel(input), asActor(admin), before, input);
+    }
   } else {
     eventId = createEvent(input);
+    recordEventAction(eventId, eventLabel(input), asActor(admin), "created");
   }
 
   revalidatePath("/events");
+  revalidatePath("/activity");
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
   redirect(`/events/${eventId}`);
 }
 
 export async function removeEvent(formData: FormData): Promise<void> {
-  await requireAdmin();
-  deleteEvent(Number(formData.get("id")));
+  const admin = await requireAdmin();
+  const id = Number(formData.get("id"));
+
+  // Label it before it's gone — the audit row has to stand on its own.
+  const doomed = getEventRaw(id);
+  deleteEvent(id);
+  if (doomed) {
+    recordEventAction(id, eventLabel(doomed), asActor(admin), "deleted");
+  }
+
   revalidatePath("/events");
   revalidatePath("/calendar");
+  revalidatePath("/activity");
   redirect("/events");
 }
 
 export async function rotatePlanLink(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const id = Number(formData.get("id"));
+  const event = getEventRaw(id);
+
   regeneratePlanToken(id);
+  if (event) {
+    recordEventAction(id, eventLabel(event), asActor(admin), "plan_link_rotated");
+  }
+
   revalidatePath(`/events/${id}`);
+  revalidatePath("/activity");
 }

@@ -124,3 +124,13 @@ export function formatEastern(utcIso: string | null | undefined): string {
 export function easternNow(): string {
   return formatEastern(new Date().toISOString());
 }
+
+/**
+ * Timestamps written by nowIso() are UTC stored as 'YYYY-MM-DD HH:MM:SS' with
+ * no zone marker, which `new Date()` would read as local time. Mark it as UTC
+ * before formatting, so history reads correctly whatever the server's zone.
+ */
+export function formatStoredTimestamp(stored: string | null | undefined): string {
+  if (!stored) return "—";
+  return formatEastern(`${stored.replace(" ", "T")}Z`);
+}

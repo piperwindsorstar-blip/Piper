@@ -63,6 +63,15 @@ export function getEvent(user: User, id: number): EventWithRefs | null {
   return row ?? null;
 }
 
+/**
+ * An event by id with no role scoping. Only for callers that have already
+ * established the right to see it — the audit trail needs the row as it stands
+ * before a write, including on delete, where scoping would be beside the point.
+ */
+export function getEventRaw(id: number): EventRow | null {
+  return (db().prepare("SELECT * FROM events WHERE id = ?").get(id) as EventRow) ?? null;
+}
+
 export function getEventByToken(token: string): EventWithRefs | null {
   const row = db()
     .prepare(`${EVENT_SELECT} WHERE e.plan_token = ?`)

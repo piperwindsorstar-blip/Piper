@@ -201,3 +201,23 @@ CREATE TABLE IF NOT EXISTS crew_aliases (
   canonical  TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Who changed what on a booking. Rows outlive the event they describe — the
+-- most useful question an audit trail answers is "who deleted this?" — so
+-- there is no foreign key onto events, and event_label carries enough to read
+-- a deleted booking's history.
+CREATE TABLE IF NOT EXISTS event_audit (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id      INTEGER NOT NULL,
+  event_label   TEXT NOT NULL,             -- couple and date, as at the time
+  actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  actor_label   TEXT NOT NULL,             -- name as at the time, or 'The couple'
+  action        TEXT NOT NULL CHECK (action IN
+                  ('created', 'updated', 'deleted', 'plan_link_rotated', 'plan_submitted')),
+  field         TEXT,                      -- set only on 'updated'
+  old_value     TEXT,                      -- display text, not raw ids
+  new_value     TEXT,
+  at            TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_event ON event_audit(event_id, at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_at ON event_audit(at DESC);

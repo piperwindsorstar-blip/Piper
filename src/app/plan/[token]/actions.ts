@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { eventLabel, recordEventAction, THE_COUPLE } from "@/lib/audit";
 import { getEventByToken } from "@/lib/events";
 import {
   addSong,
@@ -155,7 +156,14 @@ export async function clientSubmitPlan(formData: FormData): Promise<void> {
   );
   if (!getQuestionnaire(event.id)) return;
 
+  // Only the first submit is news; later saves are the couple tweaking.
+  const first = event.plan_submitted_at === null;
   markPlanSubmitted(event.id);
+  if (first) {
+    recordEventAction(event.id, eventLabel(event), THE_COUPLE, "plan_submitted");
+  }
+
   revalidatePath(`/plan/${event.plan_token}`);
   revalidatePath(`/events/${event.id}`);
+  revalidatePath("/activity");
 }

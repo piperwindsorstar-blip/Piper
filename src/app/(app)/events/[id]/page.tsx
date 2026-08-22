@@ -6,6 +6,8 @@ import { formatDate, formatTime } from "@/lib/dates";
 import { SONG_CATEGORIES } from "@/lib/types";
 import { removeEvent, rotatePlanLink } from "../actions";
 import CopyLink from "@/components/CopyLink";
+import History from "@/components/History";
+import { eventHistory, groupEntries } from "@/lib/audit";
 import { loadEvent } from "./guard";
 
 async function plannerUrl(token: string): Promise<string> {
@@ -27,6 +29,11 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
   const timeline = timelineForEvent(event.id);
   const questionnaire = getQuestionnaire(event.id);
   const link = await plannerUrl(event.plan_token);
+
+  // Only read the history for admins. Entries carry the old and new text of
+  // every field including the internal notes, and anything handed to the page
+  // is serialised into the HTML whether it is rendered or not.
+  const history = isAdmin ? groupEntries(eventHistory(event.id)) : [];
 
   const keySlots = SONG_CATEGORIES.filter((c) =>
     ["first_dance", "grand_entrance", "last_dance"].includes(c.key),
@@ -264,6 +271,16 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
           <div className="card-body" style={{ whiteSpace: "pre-wrap" }}>
             {event.internal_notes}
           </div>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="card">
+          <div className="card-head">
+            <h2>History</h2>
+            <span className="small muted">Who changed what on this booking</span>
+          </div>
+          <History groups={history} empty="No changes recorded yet." />
         </div>
       )}
 

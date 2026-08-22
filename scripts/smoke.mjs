@@ -420,6 +420,78 @@ await reportDj.ctx.close();
   await djView.ctx.close();
 }
 
+/* ---------- 16. audit trail ---------- */
+{
+  const owner = await signIn("owner@piper.test");
+
+  // Make a booking, edit two fields, and read its history back.
+  await owner.page.goto(`${BASE}/events/new`);
+  await owner.page.fill('input[name="partner_one_name"]', "Audit Test");
+  await owner.page.fill('input[name="partner_two_name"]', "Second Partner");
+  await owner.page.fill('input[name="event_date"]', "2027-11-13");
+  await owner.page.fill('input[name="ceremony_time"]', "16:00");
+  // Scope to the event form: a bare form button[type=submit] also matches the
+  // sidebar's Sign out, which silently ends the session instead of saving.
+  const eventForm = 'form:has(input[name="partner_one_name"])';
+  await owner.page.click(`${eventForm} button[type="submit"]`);
+  await owner.page.waitForURL(/\/events\/\d+$/);
+  const auditEventId = Number(owner.page.url().split("/").pop());
+
+  let body = await owner.page.textContent("body");
+  check("new booking is recorded", body.includes("Created the booking") && body.includes("Sam Rivera"));
+
+  await owner.page.goto(`${BASE}/events/${auditEventId}/edit`);
+  await owner.page.fill('input[name="ceremony_time"]', "16:30");
+  await owner.page.selectOption('select[name="assigned_dj_id"]', { label: "Jordan Blake" });
+  await owner.page.click(`${eventForm} button[type="submit"]`);
+  await owner.page.waitForURL(/\/events\/\d+$/);
+
+  // Read the history list itself: textContent("body") also pulls in the RSC
+  // payload from <script> tags, where column names legitimately appear.
+  const historyText = await owner.page.locator(".history").innerText();
+  check("edit is recorded", historyText.includes("Edited the booking"));
+  check("history names the fields", historyText.includes("Ceremony time") && historyText.includes("DJ"));
+  check("history shows times the way the app does", historyText.includes("4:00 PM") && historyText.includes("4:30 PM"));
+  check("ids are resolved to names", historyText.includes("Jordan Blake"));
+  check("no raw column names in the history", !/assigned_dj_id|venue_id/.test(historyText));
+  body = historyText;
+
+  // A save that changes nothing must not write an entry.
+  const before = (body.match(/Edited the booking/g) ?? []).length;
+  await owner.page.goto(`${BASE}/events/${auditEventId}/edit`);
+  await owner.page.click(`${eventForm} button[type="submit"]`);
+  await owner.page.waitForURL(/\/events\/\d+$/);
+  const after = ((await owner.page.textContent("body")).match(/Edited the booking/g) ?? []).length;
+  check("a no-op save writes no history", after === before, `${before} -> ${after}`);
+
+  // The activity page collects it all.
+  await owner.page.goto(`${BASE}/activity`);
+  body = await owner.page.textContent("body");
+  check("activity page lists the change", body.includes("Audit Test") && body.includes("Edited the booking"));
+
+  // Deleting keeps the history rather than cascading it away.
+  await owner.page.goto(`${BASE}/events/${auditEventId}`);
+  await owner.page.click('form:has(button:has-text("Delete event")) button[type="submit"]');
+  await owner.page.waitForURL(`${BASE}/events`);
+  await owner.page.goto(`${BASE}/activity`);
+  body = await owner.page.textContent("body");
+  check("deletion is recorded", body.includes("Deleted the booking"));
+  check("deleted booking's history survives", body.includes("Audit Test"));
+  check("deleted booking is marked as gone", body.includes("(deleted)"));
+  await owner.ctx.close();
+
+  // A DJ must not reach any of it.
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/activity`);
+  check("DJ blocked from activity", dj.page.url().endsWith("/dashboard"), dj.page.url());
+
+  await dj.page.goto(`${BASE}/events/1`);
+  const djHtml = await dj.page.content();
+  check("DJ sees no history section", !(await dj.page.textContent("body")).includes("Who changed what"));
+  check("history never reaches the DJ's page source", !djHtml.includes("Edited the booking"));
+  await dj.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 
