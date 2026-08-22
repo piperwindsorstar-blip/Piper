@@ -19,6 +19,12 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
+# Everything below runs as the piper user, and sudo hands that user the
+# directory we are standing in. Run from /root — the obvious place to be after
+# an ssh login — and piper is refused entry to it before a single command
+# starts: "spawn sh EACCES". So move somewhere piper owns first.
+cd "$APP_DIR"
+
 echo "==> Backing up the database first"
 sudo -u piper env PIPER_DATA_DIR="$DATA_DIR" \
   npx --prefix "$APP_DIR" tsx "$APP_DIR/scripts/backup-db.ts" "$BACKUP_DIR"

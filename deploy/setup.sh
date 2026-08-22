@@ -71,6 +71,10 @@ fi
 mkdir -p "$DATA_DIR" "$BACKUP_DIR"
 chown -R piper:piper "$APP_DIR" "$DATA_DIR" "$BACKUP_DIR"
 
+# Same reason as deploy.sh: the piper user inherits this directory from sudo,
+# and cannot enter /root.
+cd "$APP_DIR"
+
 if [[ ! -f /etc/piper.env ]]; then
   echo "==> Writing /etc/piper.env"
   cat > /etc/piper.env <<ENVEOF
