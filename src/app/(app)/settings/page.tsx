@@ -1,14 +1,16 @@
 import { requireAdmin } from "@/lib/auth";
-import { loginBanner, publicBoard } from "@/lib/settings";
+import { loginBanner, publicBoard, shopDetails } from "@/lib/settings";
 import { baseUrl } from "@/lib/urls";
 import BannerForm from "./BannerForm";
 import PublicBoardForm from "./PublicBoardForm";
+import ShopForm from "./ShopForm";
 
 export default async function SettingsPage() {
   await requireAdmin();
   const banner = loginBanner();
   const board = publicBoard();
   const origin = await baseUrl();
+  const shop = shopDetails();
 
   return (
     <>
@@ -39,6 +41,18 @@ export default async function SettingsPage() {
           </div>
           <div className="card-body">
             <PublicBoardForm board={board} origin={origin} />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <h2>Shop details</h2>
+            <span className="small muted">
+              {shop.showOnBoard ? (shop.showCodes ? "Shown, with codes" : "Shown") : "Not shown"}
+            </span>
+          </div>
+          <div className="card-body">
+            <ShopForm shop={shop} />
           </div>
         </div>
 

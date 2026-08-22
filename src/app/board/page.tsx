@@ -6,8 +6,9 @@ import {
   publicDays,
   STATUS_SHORT,
 } from "@/lib/dispatch";
-import { publicBoard, PUBLIC_DAYS } from "@/lib/settings";
+import { publicBoard, publicShopDetails, PUBLIC_DAYS, SHOP_LABELS } from "@/lib/settings";
 import { formatDateShort, todayIso } from "@/lib/dates";
+import InstallHint from "@/components/InstallHint";
 
 /**
  * The crew board, open to anyone with the address.
@@ -48,6 +49,16 @@ export default async function CrewBoardPage() {
 
   const anything = rows.some((r) => days.some((d) => (r.byDay.get(d)?.length ?? 0) > 0));
 
+  // Already stripped of the codes unless they were deliberately published —
+  // decided in publicShopDetails rather than here, so the markup never has to
+  // be trusted with that.
+  const shop = publicShopDetails();
+  const contacts = shop
+    ? (["location", "city", "phone", "emergency", "yard", "gate", "lockBox"] as const)
+        .map((key) => ({ key, label: SHOP_LABELS[key], value: shop[key] }))
+        .filter((f) => f.value.trim())
+    : [];
+
   return (
     <main className="board-public">
       <header className="board-public-head">
@@ -59,6 +70,8 @@ export default async function CrewBoardPage() {
           </div>
         </div>
       </header>
+
+      <InstallHint />
 
       {settings.note.trim() && <div className="login-banner login-banner-info">{settings.note}</div>}
 
@@ -123,6 +136,41 @@ export default async function CrewBoardPage() {
             );
           })}
         </div>
+      )}
+
+      {shop && (contacts.length > 0 || shop.rules.trim()) && (
+        <section className="card board-shop">
+          <div className="card-head">
+            <h2>The shop</h2>
+          </div>
+          <div className="card-body">
+            {contacts.length > 0 && (
+              <dl className="shop-list">
+                {contacts.map((f) => (
+                  <div key={f.key}>
+                    <dt>{f.label}</dt>
+                    <dd>
+                      {/* Phone numbers are tappable: this gets read on a phone,
+                          standing next to a van, usually in a hurry. */}
+                      {f.key === "phone" || f.key === "emergency" ? (
+                        <a href={`tel:${f.value.replace(/[^+\d]/g, "")}`}>{f.value}</a>
+                      ) : (
+                        f.value
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            {shop.rules.trim() && (
+              <div className="shop-rules">
+                <h3>Standing rules</h3>
+                <p className="small">{shop.rules}</p>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       <footer className="board-public-foot small muted">

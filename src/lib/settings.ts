@@ -1,5 +1,8 @@
 import { db, nowIso } from "./db";
 import {
+  NO_SHOP as NO_SHOP_VALUE,
+  RULES_MAX as RULES_MAX_VALUE,
+  type ShopDetails as ShopShape,
   BANNER_MAX,
   BOARD_NOTE_MAX as BOARD_NOTE_MAX_VALUE,
   isTone,
@@ -18,7 +21,7 @@ import {
  * page. What belongs here is the opposite: things that are meant to be seen.
  */
 
-export type SettingKey = "login_banner" | "public_board";
+export type SettingKey = "login_banner" | "public_board" | "shop_details";
 
 export function getSetting(key: SettingKey): string | null {
   const row = db().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
@@ -103,4 +106,58 @@ export function publicBoard(): PublicBoardShape {
 
 export function savePublicBoard(board: PublicBoardShape, userId: number | null): void {
   setSetting("public_board", JSON.stringify(board), userId);
+}
+
+/* ----------------------------------------------------------- shop details */
+
+export type { ShopDetails } from "./settings-types";
+export { NO_SHOP, SHOP_LABELS, SHOP_SENSITIVE, RULES_MAX } from "./settings-types";
+
+/**
+ * Shop details, or nothing.
+ *
+ * Read defensively like the rest: this feeds a page that renders without an
+ * account, and a stored value that will not parse must not be able to take it
+ * down. Anything missing falls back to blank, and both switches default to
+ * off, so a half-written record publishes nothing rather than something
+ * unintended.
+ */
+export function shopDetails(): ShopShape {
+  const raw = getSetting("shop_details");
+  if (!raw) return NO_SHOP_VALUE;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<ShopShape>;
+    const text = (v: unknown, max = 200) => (typeof v === "string" ? v.slice(0, max) : "");
+    return {
+      location: text(parsed.location),
+      city: text(parsed.city),
+      phone: text(parsed.phone, 40),
+      emergency: text(parsed.emergency, 40),
+      gate: text(parsed.gate, 40),
+      lockBox: text(parsed.lockBox, 40),
+      yard: text(parsed.yard),
+      rules: text(parsed.rules, RULES_MAX_VALUE),
+      showOnBoard: parsed.showOnBoard === true,
+      showCodes: parsed.showCodes === true,
+    };
+  } catch {
+    return NO_SHOP_VALUE;
+  }
+}
+
+export function saveShopDetails(details: ShopShape, userId: number | null): void {
+  setSetting("shop_details", JSON.stringify(details), userId);
+}
+
+/**
+ * What the public board is allowed to show — the codes stripped out unless
+ * they were explicitly switched on. Done here rather than in the page so there
+ * is one place that decides, and it is not the markup.
+ */
+export function publicShopDetails(): ShopShape | null {
+  const shop = shopDetails();
+  if (!shop.showOnBoard) return null;
+  if (shop.showCodes) return shop;
+  return { ...shop, gate: "", lockBox: "" };
 }

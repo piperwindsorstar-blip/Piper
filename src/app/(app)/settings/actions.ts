@@ -5,6 +5,10 @@ import { requireAdmin } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordChanges, settingsSubject } from "@/lib/activity";
 import {
+  RULES_MAX,
+  SHOP_LABELS,
+  saveShopDetails,
+  shopDetails,
   BOARD_NOTE_MAX,
   publicBoard,
   savePublicBoard,
@@ -100,4 +104,74 @@ export async function saveBoard(
       ? "The board is live. Anyone with the address can read it."
       : "The board is no longer published.",
   };
+}
+
+
+/**
+ * Saves the shop's details.
+ *
+ * The codes switch cannot be on while the board switch is off — a stored
+ * "publish the gate code" that only waits for somebody to tick a different box
+ * is a trap, so it is cleared rather than remembered.
+ */
+export async function saveShop(
+  _prev: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const admin = await requireAdmin();
+
+  const text = (key: string) => String(formData.get(key) ?? "").trim();
+  const rules = text("rules");
+  if (rules.length > RULES_MAX) {
+    return { error: `Keep the standing rules under ${RULES_MAX} characters.` };
+  }
+
+  const showOnBoard = formData.get("showOnBoard") === "on";
+  const details = {
+    location: text("location"),
+    city: text("city"),
+    phone: text("phone"),
+    emergency: text("emergency"),
+    gate: text("gate"),
+    lockBox: text("lockBox"),
+    yard: text("yard"),
+    rules,
+    showOnBoard,
+    showCodes: showOnBoard && formData.get("showCodes") === "on",
+  };
+
+  const before = shopDetails();
+  saveShopDetails(details, admin.id);
+
+  // The codes themselves are never written to the history — only whether they
+  // are published, which is the part worth being able to answer for.
+  recordChanges(settingsSubject, asActor(admin), [
+    ...(Object.keys(SHOP_LABELS) as (keyof typeof SHOP_LABELS)[])
+      .filter((k) => k !== "gate" && k !== "lockBox")
+      .map((k) => ({ field: SHOP_LABELS[k], from: before[k] || null, to: details[k] || null })),
+    {
+      field: "Gate code set",
+      from: before.gate ? "Yes" : "No",
+      to: details.gate ? "Yes" : "No",
+    },
+    {
+      field: "Lock box set",
+      from: before.lockBox ? "Yes" : "No",
+      to: details.lockBox ? "Yes" : "No",
+    },
+    {
+      field: "Shop details on the crew board",
+      from: before.showOnBoard ? "Shown" : "Hidden",
+      to: details.showOnBoard ? "Shown" : "Hidden",
+    },
+    {
+      field: "Access codes on the crew board",
+      from: before.showCodes ? "Published" : "Withheld",
+      to: details.showCodes ? "Published" : "Withheld",
+    },
+  ]);
+
+  revalidatePath("/settings");
+  revalidatePath("/board");
+  return { ok: "Shop details saved." };
 }

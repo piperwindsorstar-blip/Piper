@@ -46,3 +46,66 @@ export const BOARD_NOTE_MAX = 300;
  * one click at a time.
  */
 export const PUBLIC_DAYS = 10;
+
+/* ----------------------------------------------------------- shop details */
+
+/**
+ * The things a crew standing in the yard at six in the morning needs, and
+ * cannot get by ringing an office that is shut.
+ *
+ * Every field is optional; a blank one simply does not appear. They are split
+ * into contact and access on purpose — see `SHOP_SENSITIVE`.
+ */
+export type ShopDetails = {
+  location: string;
+  city: string;
+  phone: string;
+  emergency: string;
+  gate: string;
+  lockBox: string;
+  yard: string;
+  rules: string;
+  /** Whether any of this appears on the public crew board. */
+  showOnBoard: boolean;
+  /** Whether the access codes appear there too. Separate on purpose. */
+  showCodes: boolean;
+};
+
+export const NO_SHOP: ShopDetails = {
+  location: "",
+  city: "",
+  phone: "",
+  emergency: "",
+  gate: "",
+  lockBox: "",
+  yard: "",
+  rules: "",
+  showOnBoard: false,
+  showCodes: false,
+};
+
+/**
+ * The fields that are codes rather than contact details.
+ *
+ * A phone number on a public page is a phone number. A gate code on a public
+ * page is a key, and it opens a yard full of equipment for anybody who finds
+ * the link. So the two are switched separately, and the codes stay off unless
+ * somebody deliberately turns them on.
+ */
+export const SHOP_SENSITIVE = ["gate", "lockBox"] as const;
+
+export const SHOP_LABELS: Record<
+  Exclude<keyof ShopDetails, "showOnBoard" | "showCodes">,
+  string
+> = {
+  location: "Shop address",
+  city: "Shop city",
+  phone: "PYNX phone",
+  emergency: "Emergency number",
+  gate: "Gate code",
+  lockBox: "Lock box",
+  yard: "Yard",
+  rules: "Standing rules",
+};
+
+export const RULES_MAX = 800;

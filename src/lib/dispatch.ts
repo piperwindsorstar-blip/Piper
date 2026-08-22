@@ -90,13 +90,14 @@ export type Run = {
 /** A run with the names the board needs, rather than the ids it stores. */
 export type RunWithRefs = Run & {
   vehicle_name: string;
+  vehicle_class: VehicleClass;
   vehicle_ownership: Ownership;
   driver_name: string | null;
   event_date: string | null;
 };
 
 const RUN_SELECT = `
-  SELECT r.*, v.name AS vehicle_name, v.ownership AS vehicle_ownership,
+  SELECT r.*, v.name AS vehicle_name, v.class AS vehicle_class, v.ownership AS vehicle_ownership,
          u.name AS driver_name, e.event_date AS event_date
     FROM dispatch_runs r
     JOIN vehicles v ON v.id = r.vehicle_id
@@ -294,6 +295,52 @@ export function clashesFor(
     .all(vehicleId, endsOn, startsOn, exceptId ?? null, exceptId ?? -1) as RunWithRefs[];
 }
 
+/* -------------------------------------------------------------- who drove */
+
+/**
+ * Which vehicle went where on a given day, and who took it.
+ *
+ * The question is asked backwards — something happened on a date and nobody
+ * can remember who was driving — so the date is the input and everything else
+ * is the answer. Idle and shop days are left out: nobody drove those.
+ */
+export function whoDrove(from: string, to: string): RunWithRefs[] {
+  return db()
+    .prepare(
+      `${RUN_SELECT}
+        WHERE r.starts_on <= ? AND r.ends_on >= ?
+          AND r.status IN ('booked', 'own', 'pynx')
+        ORDER BY r.starts_on, v.name`,
+    )
+    .all(to, from) as RunWithRefs[];
+}
+
+/**
+ * Everyone who has driven or crewed, for the name filter. Drawn from what was
+ * actually recorded rather than from the staff list, because the crew field is
+ * free text and half the names in it never had a Piper account.
+ */
+export function peopleWhoDrove(): string[] {
+  const rows = db()
+    .prepare(
+      `SELECT u.name AS driver, r.crew FROM dispatch_runs r
+         LEFT JOIN users u ON u.id = r.driver_id
+        WHERE r.driver_id IS NOT NULL OR (r.crew IS NOT NULL AND TRIM(r.crew) <> '')`,
+    )
+    .all() as { driver: string | null; crew: string | null }[];
+
+  const names = new Set<string>();
+  for (const row of rows) {
+    if (row.driver) names.add(row.driver.trim());
+    // Crews are written as "Jordan, Eric" — one field, several people.
+    for (const part of (row.crew ?? "").split(/[,/]|\band\b/)) {
+      const name = part.trim();
+      if (name) names.add(name);
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
 /* ---------------------------------------------------------- public board */
 
 /**
@@ -428,6 +475,91 @@ export function shiftWeek(iso: string, weeks: number): string {
   const date = parseIso(iso);
   date.setDate(date.getDate() + weeks * 7);
   return toIso(date);
+}
+
+/**
+ * Where a run sits on a board of `days`, as one bar rather than a chip per day.
+ *
+ * A three-day hire is one thing that happened, and drawing it as three
+ * identical boxes says otherwise — you cannot tell it from three separate
+ * day-bookings without reading all three. So a run gets a start column and a
+ * span, clipped to the window, and a flag on each end saying whether it runs
+ * off the edge.
+ *
+ * Lanes come from the fact that a vehicle can have more than one thing on it
+ * over a window — a morning collection and a weekend hire. Overlapping bars
+ * are stacked greedily, first free lane wins, which keeps the common case (one
+ * lane) tight and only grows the row when it has to.
+ */
+export type RunBar = {
+  run: RunWithRefs;
+  /** 1-based, for CSS grid. */
+  column: number;
+  span: number;
+  lane: number;
+  continuesLeft: boolean;
+  continuesRight: boolean;
+};
+
+export function layoutRuns(days: string[], runs: RunWithRefs[]): RunBar[] {
+  const first = days[0];
+  const last = days[days.length - 1];
+  const index = new Map(days.map((d, i) => [d, i]));
+
+  const visible = runs
+    .filter((r) => r.starts_on <= last && r.ends_on >= first)
+    .sort((a, b) => a.starts_on.localeCompare(b.starts_on) || a.id - b.id);
+
+  // The last day occupied in each lane so far, so a bar can take the first
+  // lane it does not collide with.
+  const laneEnds: string[] = [];
+  const bars: RunBar[] = [];
+
+  for (const run of visible) {
+    const from = run.starts_on < first ? first : run.starts_on;
+    const to = run.ends_on > last ? last : run.ends_on;
+    const start = index.get(from);
+    const end = index.get(to);
+    if (start === undefined || end === undefined) continue;
+
+    let lane = laneEnds.findIndex((busyUntil) => busyUntil < from);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(to);
+    } else {
+      laneEnds[lane] = to;
+    }
+
+    bars.push({
+      run,
+      column: start + 1,
+      span: end - start + 1,
+      lane,
+      continuesLeft: run.starts_on < first,
+      continuesRight: run.ends_on > last,
+    });
+  }
+
+  return bars;
+}
+
+/** One vehicle's row on the board, with its runs already laid out. */
+export type VehicleLane = { vehicle: Vehicle; bars: RunBar[]; lanes: number };
+
+export function boardLanes(days: string[], vehicles: Vehicle[]): VehicleLane[] {
+  const runs = runsBetween(days[0], days[days.length - 1]);
+
+  return vehicles.map((vehicle) => {
+    const bars = layoutRuns(
+      days,
+      runs.filter((r) => r.vehicle_id === vehicle.id),
+    );
+    return {
+      vehicle,
+      bars,
+      lanes: bars.reduce((max, b) => Math.max(max, b.lane + 1), 1),
+    };
+  });
 }
 
 /** One vehicle's row on the week board: its runs, indexed by day. */

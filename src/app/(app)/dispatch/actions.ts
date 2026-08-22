@@ -271,3 +271,64 @@ export async function removeRun(formData: FormData): Promise<void> {
   revalidatePath("/board");
   if (run.event_id) revalidatePath(`/events/${run.event_id}`);
 }
+
+
+/**
+ * Moves one end of a run by dragging its edge on the board.
+ *
+ * Deliberately narrow: it changes two dates and nothing else. The full form
+ * exists for everything else, and an action that could rewrite a run from a
+ * drag would be one bad drag away from losing the crew and the meet time.
+ *
+ * The overlap rule is the same one the form enforces — a drag is not a way
+ * around it.
+ */
+export async function resizeRun(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+
+  const id = Number(formData.get("id"));
+  const startsOn = text(formData, "starts_on");
+  const endsOn = text(formData, "ends_on");
+  if (!Number.isInteger(id) || !isDate(startsOn) || !isDate(endsOn)) return;
+  if (startsOn === null || endsOn === null || endsOn < startsOn) return;
+
+  const run = getRun(id);
+  if (!run) return;
+  if (run.starts_on === startsOn && run.ends_on === endsOn) return;
+
+  if (COMMITTED.includes(run.status)) {
+    const clashes = clashesFor(run.vehicle_id, startsOn, endsOn, id).filter((c) =>
+      COMMITTED.includes(c.status),
+    );
+    if (clashes.length > 0) return;
+  }
+
+  updateRun(id, {
+    vehicle_id: run.vehicle_id,
+    event_id: run.event_id,
+    label: run.label,
+    status: run.status,
+    starts_on: startsOn,
+    ends_on: endsOn,
+    meet_time: run.meet_time,
+    crew: run.crew,
+    site: run.site,
+    driver_id: run.driver_id,
+    keys_with: run.keys_with,
+    notes: run.notes,
+  });
+
+  const vehicle = getVehicle(run.vehicle_id);
+  recordChanges(
+    vehicleSubject(run.vehicle_id, vehicle?.name ?? "A vehicle"),
+    asActor(admin),
+    [
+      { field: `${run.label} — out on`, from: run.starts_on, to: startsOn },
+      { field: `${run.label} — back on`, from: run.ends_on, to: endsOn },
+    ],
+  );
+
+  revalidatePath("/dispatch");
+  revalidatePath("/dashboard");
+  revalidatePath("/board");
+}

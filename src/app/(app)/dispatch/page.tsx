@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { listEvents } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import {
-  CLASS_SHORT,
+  boardLanes,
   listVehicles,
   neededCounts,
   monthDays,
@@ -14,12 +14,11 @@ import {
   shiftWeek,
   STATUS_SHORT,
   uncoveredEvents,
-  weekBoard,
   weekDays,
 } from "@/lib/dispatch";
 import { formatDate, formatDateShort, monthLabel, parseIso, todayIso } from "@/lib/dates";
 import RunForm from "./RunForm";
-import { removeRun } from "./actions";
+import BoardGrid from "./BoardGrid";
 import Icon from "@/components/Icon";
 
 /**
@@ -50,7 +49,7 @@ export default async function DispatchPage({
 
   const days = monthly ? monthDays(anchor) : weekDays(anchor);
   const vehicles = listVehicles();
-  const board = weekBoard(days, vehicles);
+  const board = boardLanes(days, vehicles);
 
   const from = days[0];
   const to = days[days.length - 1];
@@ -142,92 +141,36 @@ export default async function DispatchPage({
             calendar fills in.
           </div>
         ) : (
-          <div className="table-wrap">
-            <table className={`table board${monthly ? " board-month" : ""}`}>
-              <thead>
-                <tr>
-                  <th className="board-vehicle">Vehicle</th>
-                  {days.map((day) => (
-                    <th key={day} className={day === today ? "board-today" : undefined}>
-                      {monthly ? parseIso(day).getDate() : formatDateShort(day)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {board.map(({ vehicle, byDay }) => (
-                  <tr key={vehicle.id}>
-                    <th scope="row" className="board-vehicle">
-                      <div>{vehicle.name}</div>
-                      <div className="small faint">
-                        {CLASS_SHORT[vehicle.class]}
-                        {vehicle.ownership === "pencar" ? " · Pencar" : ""}
-                        {vehicle.plate ? ` · ${vehicle.plate}` : ""}
-                      </div>
-                    </th>
-                    {days.map((day) => {
-                      const runs = byDay.get(day) ?? [];
-                      return (
-                        <td key={day} className={day === today ? "board-today" : undefined}>
-                          {runs.map((run) => (
-                            <div
-                              key={run.id}
-                              className={`run-chip run-${run.status}`}
-                              title={`${STATUS_SHORT[run.status]} — ${run.label}`}
-                            >
-                              {monthly ? (
-                                // A month is thirty-one columns wide. There is
-                                // room for a colour and nothing else, so the
-                                // detail lives in the title and the week view.
-                                <span className="sr-only">
-                                  {STATUS_SHORT[run.status]}: {run.label}
-                                </span>
-                              ) : (
-                                <>
-                                  <div className="run-label">
-                                    {run.event_id ? (
-                                      <Link href={`/events/${run.event_id}`}>{run.label}</Link>
-                                    ) : (
-                                      run.label
-                                    )}
-                                  </div>
-                                  {run.meet_time && (
-                                    <div className="small faint">Meet {run.meet_time}</div>
-                                  )}
-                                  {(run.crew || run.driver_name) && (
-                                    <div className="small faint">{run.crew ?? run.driver_name}</div>
-                                  )}
-                                  {run.site && <div className="small faint">{run.site}</div>}
-                                  {run.keys_with && (
-                                    <div className="small faint">Keys: {run.keys_with}</div>
-                                  )}
-                                </>
-                              )}
-                              {/* Only on the first day it covers, or a
-                                  three-day run would offer three identical
-                                  remove buttons. */}
-                              {run.starts_on === day && (
-                                <form action={removeRun}>
-                                  <input type="hidden" name="id" value={run.id} />
-                                  <button
-                                    className="run-remove"
-                                    type="submit"
-                                    aria-label={`Remove ${run.label}`}
-                                  >
-                                    <Icon name="close" size={13} />
-                                  </button>
-                                </form>
-                              )}
-                            </div>
-                          ))}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BoardGrid
+            days={days}
+            today={today}
+            compact={monthly}
+            vehicles={board.map(({ vehicle, bars, lanes }) => ({
+              id: vehicle.id,
+              name: vehicle.name,
+              className: vehicle.class,
+              pencar: vehicle.ownership === "pencar",
+              plate: vehicle.plate,
+              lanes,
+              bars: bars.map((b) => ({
+                id: b.run.id,
+                label: b.run.label,
+                status: b.run.status,
+                column: b.column,
+                span: b.span,
+                lane: b.lane,
+                continuesLeft: b.continuesLeft,
+                continuesRight: b.continuesRight,
+                startsOn: b.run.starts_on,
+                endsOn: b.run.ends_on,
+                eventId: b.run.event_id,
+                meetTime: b.run.meet_time,
+                crew: b.run.crew,
+                site: b.run.site,
+                keysWith: b.run.keys_with,
+              })),
+            }))}
+          />
         )}
 
         <div className="card-body board-key">

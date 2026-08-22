@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import LoginForm from "./LoginForm";
 import LoginBanner from "@/components/LoginBanner";
+import InstallHint from "@/components/InstallHint";
 
 export default async function LoginPage({
   searchParams,
@@ -25,6 +26,7 @@ export default async function LoginPage({
           </p>
         </div>
         <LoginBanner />
+        <InstallHint />
 
         <div className="card">
           <div className="card-body">

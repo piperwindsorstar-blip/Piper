@@ -1248,8 +1248,11 @@ await reportDj.ctx.close();
   await ops.page.click('button:has-text("Send it out")');
   await ops.page.waitForTimeout(1200);
 
-  const chips = await ops.page.locator(`.run-chip:has-text("Smoke run ${stamp}")`).count();
-  check("a multi-day run fills every day it covers", chips >= 2, `${chips} cells`);
+  // One bar, spanning the days it covers, rather than a box per day.
+  const bar = ops.page.locator(`.run-bar:has-text("Smoke run ${stamp}")`);
+  check("a multi-day run is drawn once", (await bar.count()) === 1, `${await bar.count()} bars`);
+  const span = await bar.first().evaluate((el) => getComputedStyle(el).gridColumnEnd);
+  check("and spans more than one day", span.includes("span") && span !== "span 1", span);
   check("the board shows who has the keys", (await ops.page.textContent("body")).includes("Front desk"));
 
   // A van cannot be in two places. A second booking overlapping the first is
@@ -1264,7 +1267,7 @@ await reportDj.ctx.close();
   check("the refusal names the clash", (refusal ?? "").includes(`Smoke run ${stamp}`));
   check(
     "and nothing was saved",
-    (await ops.page.locator(`.run-chip:has-text("Clashing run ${stamp}")`).count()) === 0,
+    (await ops.page.locator(`.run-bar:has-text("Clashing run ${stamp}")`).count()) === 0,
   );
   // A day flagged as needed is not a booking, so it is allowed to sit on top
   // of one — the whole point is to record a want that is not yet arranged.
@@ -1278,7 +1281,7 @@ await reportDj.ctx.close();
   check("a needed day is flagged at the top of the board", body.includes("Needed in view, not booked"));
   check(
     "a needed day is drawn in its own colour",
-    (await ops.page.locator(".run-chip.run-needed").count()) > 0,
+    (await ops.page.locator(".run-bar.run-needed").count()) > 0,
   );
   check(
     "the board counts what is needed today",
@@ -1294,8 +1297,39 @@ await reportDj.ctx.close();
   await ops.page.waitForTimeout(1200);
   check(
     "an idle day saves without a label",
-    (await ops.page.locator(".run-chip.run-idle").count()) > 0,
+    (await ops.page.locator(".run-bar.run-idle").count()) > 0,
   );
+
+  // Dragging a bar's edge moves that end's date, and saves it.
+  {
+    await ops.page.goto(`${BASE}/dispatch?view=week`);
+    const bar = ops.page.locator(`.run-bar:has-text("Smoke run ${stamp}")`).first();
+    await bar.scrollIntoViewIfNeeded();
+    const track = await ops.page.locator(".board-grid-track").first().boundingBox();
+    const colWidth = track.width / 7;
+    const handle = bar.locator(".run-handle-start");
+    const hb = await handle.boundingBox();
+
+    // One column to the right: the run should start a day later.
+    await ops.page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+    await ops.page.mouse.down();
+    for (let i = 1; i <= 8; i++) {
+      await ops.page.mouse.move(hb.x + hb.width / 2 + (colWidth * i) / 8, hb.y + hb.height / 2);
+    }
+    await ops.page.mouse.up();
+    await ops.page.waitForTimeout(1600);
+
+    // Read the dates back off the title rather than the rendered span, which
+    // is clipped to whatever the window happens to show.
+    await ops.page.reload();
+    await ops.page.waitForTimeout(600);
+    const title = await ops.page
+      .locator(`.run-bar:has-text("Smoke run ${stamp}")`)
+      .first()
+      .getAttribute("title");
+    check("dragging an edge moves that date", (title ?? "").includes(day(1)), title ?? "none");
+    check("and leaves the other end alone", (title ?? "").includes(day(2)), title ?? "none");
+  }
 
   // Dates that make no sense are refused.
   await ops.page.selectOption("#vehicle_id", { label: van });
@@ -1338,14 +1372,16 @@ await reportDj.ctx.close();
   let leftOver = 0;
   for (const url of [`${BASE}/dispatch`, `${BASE}/dispatch?week=${day(32)}`]) {
     await ops.page.goto(url);
-    const row = ops.page.locator(`tr:has(th:has-text("${van}"))`);
+    const row = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`);
     for (let i = 0; i < 10; i++) {
       const remove = row.locator('button[aria-label^="Remove "]');
       if ((await remove.count()) === 0) break;
+      // The button only shows on hover, so hover the bar it belongs to first.
+      await row.locator(".run-bar").first().hover();
       await remove.first().click();
       await ops.page.waitForTimeout(700);
     }
-    leftOver += await row.locator(".run-chip").count();
+    leftOver += await row.locator(".run-bar").count();
   }
   check("the suite takes its runs back off the board", leftOver === 0, `${leftOver} left`);
 
@@ -1474,7 +1510,7 @@ await reportDj.ctx.close();
   // Clean up: remove the runs from this test's own vehicle, then retire it.
   for (const url of [`${BASE}/dispatch`, `${BASE}/dispatch?week=${day(20)}`]) {
     await ops2.page.goto(url);
-    const row = ops2.page.locator(`tr:has(th:has-text("${van}"))`);
+    const row = ops2.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`);
     for (let i = 0; i < 6; i++) {
       const remove = row.locator('button[aria-label^="Remove "]');
       if ((await remove.count()) === 0) break;
@@ -1492,6 +1528,145 @@ await reportDj.ctx.close();
     (await ops2.page.textContent("body")).includes("Retired"),
   );
   await ops2.ctx.close();
+}
+
+/* ---------- 25. who drove, shop details, and install ---------- */
+{
+  const stamp = Date.now();
+  const day = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const ops = await signIn("owner@piper.test");
+
+  // Who drove: a date goes in, the trip comes out.
+  const van = `History Van ${stamp}`;
+  const addForm = 'form:has(button:has-text("Add vehicle"))';
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  await ops.page.fill(`${addForm} input[name="name"]`, van);
+  await ops.page.click('button:has-text("Add vehicle")');
+  await ops.page.waitForTimeout(900);
+
+  await ops.page.goto(`${BASE}/dispatch?view=week`);
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.fill("#label", `Trip ${stamp}`);
+  await ops.page.fill("#starts_on", day(0));
+  await ops.page.fill("#crew", `Wilhelmina ${stamp}`);
+  await ops.page.click('button:has-text("Send it out")');
+  await ops.page.waitForTimeout(1100);
+
+  await ops.page.goto(`${BASE}/dispatch/history`);
+  let body = await ops.page.textContent("body");
+  check("who drove defaults to today", body.includes(`Trip ${stamp}`));
+  check("and names the crew", body.includes(`Wilhelmina ${stamp}`));
+
+  await ops.page.goto(`${BASE}/dispatch/history?from=${day(0)}&to=${day(0)}&who=Wilhelmina`);
+  check(
+    "it can be filtered to one person",
+    (await ops.page.textContent("body")).includes(`Trip ${stamp}`),
+  );
+  await ops.page.goto(`${BASE}/dispatch/history?from=${day(0)}&to=${day(0)}&who=nobody-${stamp}`);
+  check(
+    "a person with no trips comes back empty",
+    (await ops.page.textContent("body")).includes("Nothing recorded"),
+  );
+
+  // Shop details: contact goes out, codes stay behind unless asked for.
+  await ops.page.goto(`${BASE}/settings`);
+  const shopForm = ops.page.locator('form:has(#rules)');
+  await ops.page.fill("#phone", `519-555-${String(stamp).slice(-4)}`);
+  await ops.page.fill("#gate", `GATE-${stamp}`);
+  await ops.page.fill("#rules", `Fuel it before you bring it back ${stamp}`);
+  await ops.page.check('input[name="showOnBoard"]');
+  await shopForm.locator('button[type=submit]').click();
+  await ops.page.waitForTimeout(900);
+
+  await ops.page.locator("form:has(#board_on) input#board_on").check();
+  await ops.page.locator("form:has(#board_on) button[type=submit]").click();
+  await ops.page.waitForTimeout(900);
+  await ops.ctx.close();
+
+  const crew = await browser.newContext();
+  const cp = await crew.newPage();
+  await cp.goto(`${BASE}/board`);
+  body = await cp.textContent("body");
+  check("the crew board carries the shop phone", body.includes(`519-555-${String(stamp).slice(-4)}`));
+  check("and the standing rules", body.includes(`Fuel it before you bring it back ${stamp}`));
+  check("but withholds the gate code", !body.includes(`GATE-${stamp}`), "codes withheld");
+  check(
+    "the phone number is tappable",
+    (await cp.locator('a[href^="tel:"]').count()) > 0,
+  );
+
+  // The manifest and icons a phone needs to install it.
+  const manifest = await cp.goto(`${BASE}/manifest.webmanifest`);
+  const parsed = JSON.parse(await manifest.text());
+  check("a web app manifest is served", parsed.name === "PYNX Dispatch", parsed.name);
+  check("it opens on the crew board", parsed.start_url === "/board", parsed.start_url);
+  check("it declares a maskable icon", parsed.icons.some((i) => i.purpose === "maskable"));
+  for (const icon of parsed.icons) {
+    const res = await cp.goto(`${BASE}${icon.src}`);
+    check(`${icon.src} is a real file`, res.status() === 200, `status ${res.status()}`);
+  }
+  const apple = await cp.goto(`${BASE}/apple-touch-icon.png`);
+  check("an apple touch icon is served", apple.status() === 200, `status ${apple.status()}`);
+  await crew.close();
+
+  // Now switch the codes on and confirm they do appear.
+  const ops2 = await signIn("owner@piper.test");
+  await ops2.page.goto(`${BASE}/settings`);
+  await ops2.page.check('input[name="showCodes"]');
+  await ops2.page.locator('form:has(#rules) button[type=submit]').click();
+  await ops2.page.waitForTimeout(900);
+
+  const crew2 = await browser.newContext();
+  const cp2 = await crew2.newPage();
+  await cp2.goto(`${BASE}/board`);
+  check(
+    "codes appear once deliberately published",
+    (await cp2.textContent("body")).includes(`GATE-${stamp}`),
+  );
+  await crew2.close();
+
+  // Put everything back.
+  await ops2.page.goto(`${BASE}/settings`);
+  await ops2.page.uncheck('input[name="showOnBoard"]');
+  await ops2.page.fill("#phone", "");
+  await ops2.page.fill("#gate", "");
+  await ops2.page.fill("#rules", "");
+  await ops2.page.locator('form:has(#rules) button[type=submit]').click();
+  await ops2.page.waitForTimeout(900);
+  await ops2.page.locator("form:has(#board_on) input#board_on").uncheck();
+  await ops2.page.locator("form:has(#board_on) button[type=submit]").click();
+  await ops2.page.waitForTimeout(900);
+
+  await ops2.page.goto(`${BASE}/dispatch`);
+  const row = ops2.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`);
+  for (let i = 0; i < 6; i++) {
+    const remove = row.locator('button[aria-label^="Remove "]');
+    if ((await remove.count()) === 0) break;
+    await row.locator(".run-bar").first().hover();
+    await remove.first().click();
+    await ops2.page.waitForTimeout(700);
+  }
+  await ops2.page.goto(`${BASE}/dispatch/vehicles`);
+  const card = ops2.page.locator(`details.card:has-text("${van}")`).first();
+  await card.locator("summary").click();
+  await card.locator('button:has-text("Retire")').click();
+  await ops2.page.waitForTimeout(900);
+  check(
+    "the suite puts the shop and the fleet back",
+    (await ops2.page.textContent("body")).includes("Retired"),
+  );
+  await ops2.ctx.close();
+
+  // And a DJ still cannot reach any of it.
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/dispatch/history`);
+  check("a DJ cannot see who drove", !dj.page.url().includes("/history"), dj.page.url());
+  await dj.ctx.close();
 }
 
 await admin.ctx.close();

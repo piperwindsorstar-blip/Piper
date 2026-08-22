@@ -799,28 +799,13 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 /* The week board: vehicles down, days across. Cells stay narrow so seven of
    them fit, and the whole table scrolls sideways on a phone rather than
    squeezing the day columns into uselessness. */
-.board { table-layout: fixed; min-width: 56rem; }
-.board th, .board td { vertical-align: top; }
-/* The vehicle column is a row header, so it inherits the uppercase, letter-
-   spaced treatment meant for column headings. A van is a name, not a label —
-   put it back to ordinary text. */
-.board-vehicle { width: 10rem; text-align: left; }
-.board th[scope="row"] {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text);
-  padding: 0.7rem 1.1rem;
-}
-.board th[scope="row"] .small { text-transform: none; letter-spacing: normal; font-weight: 400; }
-.board-today { background: var(--accent-soft); }
+/* ------------------------------------------------------------ day states */
 
-/* Day states, in the colours the shop's own spreadsheet uses: yellow booked,
-   purple needed, green Pynx Cargo, orange own car, blue idle. Not a palette
-   worth improving on — people already read these on a printed sheet, and a
-   board that recolours them is a board that has to be relearned. Shop day is
-   the one addition, so it takes a neutral nobody else is using. */
+/* The colours the shop's own spreadsheet uses: yellow booked, purple needed,
+   green Pynx Cargo, orange own car, blue idle. Not a palette worth improving
+   on — people already read these off a printed sheet, and a board that
+   recolours them is a board that has to be relearned. Shop day is the one
+   addition, so it takes a neutral nobody else is using. */
 :root {
   --run-booked: #ca8a04;
   --run-needed: #7c3aed;
@@ -838,33 +823,6 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
     --run-idle: #60a5fa;
     --run-shop: #94a3b8;
   }
-}
-
-.run-chip {
-  position: relative;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--run-booked);
-  border-radius: var(--radius-sm);
-  padding: 0.35rem 1.3rem 0.35rem 0.5rem;
-  margin-bottom: 0.3rem;
-  font-size: 0.82rem;
-  line-height: 1.35;
-}
-
-.run-booked { border-left-color: var(--run-booked); }
-.run-needed { border-left-color: var(--run-needed); }
-.run-own    { border-left-color: var(--run-own); }
-.run-pynx   { border-left-color: var(--run-pynx); }
-.run-idle   { border-left-color: var(--run-idle); }
-.run-shop   { border-left-color: var(--run-shop); }
-
-/* A day that is needed and not booked is the one thing on this page that should
-   catch the eye without being looked for — a tinted fill on top of its colour,
-   so it stands out from the merely-coloured cells around it. */
-.run-needed {
-  background: color-mix(in srgb, var(--run-needed) 12%, var(--surface));
-  border-color: color-mix(in srgb, var(--run-needed) 35%, var(--border));
 }
 
 .board-key {
@@ -890,37 +848,6 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .run-swatch.run-idle   { background: var(--run-idle); }
 .run-swatch.run-shop   { background: var(--run-shop); }
 
-/* A month is thirty-one columns wide, so cells shrink to colour blocks and the
-   day's detail moves to the tooltip and the week view. */
-.board-month { min-width: 74rem; }
-.board-month th, .board-month td { padding: 0.3rem 0.2rem; text-align: center; }
-.board-month .board-vehicle { padding: 0.6rem 0.8rem; text-align: left; }
-.board-month .run-chip {
-  padding: 0;
-  height: 1.35rem;
-  border-left-width: 0;
-  border-radius: 3px;
-  margin-bottom: 0.15rem;
-}
-.board-month .run-chip.run-booked { background: var(--run-booked); }
-.board-month .run-chip.run-needed { background: var(--run-needed); }
-.board-month .run-chip.run-own    { background: var(--run-own); }
-.board-month .run-chip.run-pynx   { background: var(--run-pynx); }
-.board-month .run-chip.run-idle   { background: var(--run-idle); }
-.board-month .run-chip.run-shop   { background: var(--run-shop); }
-/* At month scale the chip is barely larger than the button on it, so an
-   always-visible × reads as the content rather than as a control. It appears
-   on hover, and on keyboard focus so it stays reachable without a mouse. */
-.board-month .run-remove {
-  top: 0.05rem;
-  right: 0.05rem;
-  color: rgba(255, 255, 255, 0.9);
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-.board-month .run-chip:hover .run-remove,
-.board-month .run-remove:focus-visible { opacity: 1; }
-.run-label { font-weight: 600; }
 .run-remove {
   position: absolute;
   top: 0.15rem;
@@ -1021,3 +948,216 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-muted);
   border-bottom: 1px dashed var(--border);
 }
+
+/* Shop details on the crew board: a definition list, because that is what it
+   is — a label and the thing you came for. */
+.board-shop { margin-top: 1rem; }
+.shop-list { margin: 0; display: grid; gap: 0.6rem; }
+.shop-list > div { display: grid; grid-template-columns: 9rem 1fr; gap: 0.5rem; align-items: baseline; }
+.shop-list dt { font-size: 0.78rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.shop-list dd { margin: 0; font-size: 0.92rem; }
+.shop-rules { margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+.shop-rules h3 { margin-bottom: 0.35rem; }
+.shop-rules p { white-space: pre-wrap; margin: 0; color: var(--text-muted); }
+
+@media (max-width: 420px) {
+  .shop-list > div { grid-template-columns: 1fr; gap: 0.1rem; }
+}
+
+/* The add-to-home-screen offer. Sits inline rather than floating over the
+   page: a bar that covers content is a bar people dismiss without reading. */
+.install-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--accent-soft);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+.install-hint-text { flex: 1; min-width: 12rem; line-height: 1.4; }
+.install-hint .btn-row { margin-left: auto; }
+
+
+/* ------------------------------------------------------------ board grid */
+
+/* Vehicles down, days across, each run one bar across the days it covers.
+   A grid rather than a table: a table cell cannot span a run, and a run drawn
+   as one box per day cannot be told apart from several separate bookings. */
+.board-grid { min-width: 56rem; }
+.board-grid-compact { min-width: 72rem; }
+
+.board-grid-head,
+.board-grid-row {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  align-items: stretch;
+}
+.board-grid-row { border-top: 1px solid var(--border); }
+
+.board-grid-corner,
+.board-grid-name {
+  padding: 0.6rem 0.9rem;
+  border-right: 1px solid var(--border);
+}
+.board-grid-corner {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+  display: flex;
+  align-items: flex-end;
+}
+.board-grid-name { font-size: 0.875rem; font-weight: 600; }
+
+.board-grid-days { display: grid; }
+.board-grid-day {
+  padding: 0.5rem 0.2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  font-weight: 600;
+  border-left: 1px solid var(--border);
+}
+
+.board-grid-track {
+  display: grid;
+  position: relative;
+  padding: 0.35rem 0;
+  gap: 0.25rem 0;
+  min-height: 3rem;
+}
+/* Day columns are drawn as backing cells behind the bars, so a bar can span
+   them freely without the gridlines moving. */
+.board-grid-cell { border-left: 1px solid var(--border); pointer-events: none; }
+.board-today { background: var(--accent-soft); }
+
+.run-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0 2px;
+  padding: 0.3rem 1.2rem 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--run-booked);
+  background: var(--surface-alt);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+.run-bar.run-booked { border-left-color: var(--run-booked); }
+.run-bar.run-needed { border-left-color: var(--run-needed); }
+.run-bar.run-own    { border-left-color: var(--run-own); }
+.run-bar.run-pynx   { border-left-color: var(--run-pynx); }
+.run-bar.run-idle   { border-left-color: var(--run-idle); }
+.run-bar.run-shop   { border-left-color: var(--run-shop); }
+
+.run-bar.run-needed {
+  background: color-mix(in srgb, var(--run-needed) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--run-needed) 35%, var(--border));
+}
+
+/* A bar that runs off the edge of the window loses that end's corner, so it
+   reads as continuing rather than as starting on the first column. */
+.run-bar-open-left {
+  border-left-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: 0;
+}
+.run-bar-open-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-right: 0;
+}
+.run-bar-dragging { opacity: 0.75; }
+
+.run-bar-body { min-width: 0; display: grid; }
+.run-bar-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-bar-meta { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Above the end drag-handle, which spans the bar's full height and would
+   otherwise swallow every click aimed at the ×. The handle still works
+   everywhere the button is not. */
+.run-bar-remove { position: absolute; top: 1px; right: 1px; z-index: 2; }
+.run-bar-remove button {
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 0.15rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.run-bar:hover .run-bar-remove button,
+.run-bar-remove button:focus-visible { opacity: 1; }
+.run-bar-remove button:hover { color: var(--danger); }
+
+/* Drag handles. Wide enough to hit with a thumb, invisible until the bar is
+   hovered so the board stays quiet when nobody is rearranging it. */
+.run-handle {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  border: none;
+  background: none;
+  cursor: ew-resize;
+  padding: 0;
+  touch-action: none;
+}
+.run-handle-start { left: -2px; }
+.run-handle-end { right: -2px; }
+.run-handle::after {
+  content: "";
+  position: absolute;
+  top: 25%;
+  bottom: 25%;
+  left: 3px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--text-faint);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.run-bar:hover .run-handle::after,
+.run-handle:focus-visible::after { opacity: 0.7; }
+
+/* At month width a label truncates to "N.." and helps nobody, so the bar
+   becomes what it is on the shop's spreadsheet: a block of colour. The name
+   lives in the tooltip and in the week view, and the month is for spotting
+   the shape of things rather than reading them. */
+.board-grid-compact .run-bar {
+  padding: 0;
+  min-height: 1.4rem;
+  border-left-width: 0;
+  border-color: transparent;
+  font-size: 0.72rem;
+}
+.board-grid-compact .run-bar-body { display: none; }
+.board-grid-compact .run-bar.run-booked { background: var(--run-booked); }
+.board-grid-compact .run-bar.run-needed { background: var(--run-needed); }
+.board-grid-compact .run-bar.run-own    { background: var(--run-own); }
+.board-grid-compact .run-bar.run-pynx   { background: var(--run-pynx); }
+.board-grid-compact .run-bar.run-idle   { background: var(--run-idle); }
+.board-grid-compact .run-bar.run-shop   { background: var(--run-shop); }
+.board-grid-compact .run-bar-remove button { color: rgba(255, 255, 255, 0.9); }
+.board-grid-compact .run-handle::after { background: #fff; }
+/* The remove button stays available at month width — hiding it would make the
+   month a read-only view of a board that is meant to be worked in. It is
+   small and it only appears on hover, which is enough on a bar this narrow. */
+.board-grid-compact .run-bar-remove { top: 0; right: 0; }
+.board-grid-compact .run-bar-remove button { padding: 0.05rem; }
+.board-grid-compact .run-bar-label a { color: inherit; }
+
+.board-grid-hint { padding: 0.5rem 1.1rem 0; margin: 0; }

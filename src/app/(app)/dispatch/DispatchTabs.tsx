@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/dispatch", label: "Board" },
   { href: "/dispatch/vehicles", label: "Fleet" },
+  { href: "/dispatch/history", label: "Who drove" },
 ];
 
 export default function DispatchTabs() {
