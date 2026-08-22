@@ -17,6 +17,7 @@
     "responsive": "node scripts/responsive.mjs",
     "import:reports": "tsx scripts/import-reports.ts",
     "db:backup": "tsx scripts/backup-db.ts",
+    "db:verify-backup": "tsx scripts/verify-backup.ts",
     "db:recommendations": "tsx scripts/seed-recommendations.ts"
   },
   "dependencies": {

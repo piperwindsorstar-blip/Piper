@@ -93,11 +93,14 @@ echo "==> Installing services"
 cp "$APP_DIR/deploy/piper.service" /etc/systemd/system/
 cp "$APP_DIR/deploy/piper-backup.service" /etc/systemd/system/
 cp "$APP_DIR/deploy/piper-backup.timer" /etc/systemd/system/
+cp "$APP_DIR/deploy/piper-verify.service" /etc/systemd/system/
+cp "$APP_DIR/deploy/piper-verify.timer" /etc/systemd/system/
 sed "s/crm\.example\.com/$DOMAIN/" "$APP_DIR/deploy/Caddyfile" > /etc/caddy/Caddyfile
 
 systemctl daemon-reload
 systemctl enable --now piper >/dev/null
 systemctl enable --now piper-backup.timer >/dev/null
+systemctl enable --now piper-verify.timer >/dev/null
 systemctl reload caddy || systemctl restart caddy
 
 echo "==> Firewall"
@@ -112,6 +115,10 @@ echo ""
 echo "Create your admin account:"
 echo "  cd $APP_DIR && sudo -u piper env PIPER_DATA_DIR=$DATA_DIR \\"
 echo "    npx tsx scripts/create-admin.ts \"you@pynxpro.ca\" \"Your Name\" \"a-real-password\""
+echo ""
+echo "Check a backup restores at any time:"
+echo "  cd $APP_DIR && sudo -u piper env PIPER_DATA_DIR=$DATA_DIR \\"
+echo "    npx tsx scripts/verify-backup.ts $BACKUP_DIR"
 echo ""
 echo "Your crew-report import token:"
 echo "  sudo grep PIPER_IMPORT_TOKEN /etc/piper.env"

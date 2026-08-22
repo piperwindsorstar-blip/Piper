@@ -1,0 +1,11 @@
+# Re-checks the newest backup. Backups are already verified when written, so
+# this is here to catch a file that has rotted on disk since.
+[Unit]
+Description=Piper backup restore test
+
+[Service]
+Type=oneshot
+User=piper
+WorkingDirectory=/srv/piper
+Environment=PIPER_DATA_DIR=/var/lib/piper
+ExecStart=/usr/bin/npx tsx scripts/verify-backup.ts /var/backups/piper
