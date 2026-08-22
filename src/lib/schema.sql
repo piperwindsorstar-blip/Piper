@@ -351,8 +351,14 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS vehicles (
   id                 INTEGER PRIMARY KEY AUTOINCREMENT,
   name               TEXT NOT NULL,
-  -- How the shop thinks about a vehicle is who it belongs to, not what shape
-  -- it is: our own Pencar units, a hire, somebody's own car, or anything else.
+  -- What it is. This is what gets booked: nobody phones for "a vehicle", they
+  -- phone for a cube van.
+  class              TEXT NOT NULL DEFAULT 'other'
+                       CHECK (class IN ('cargo_van', 'cube_van', 'truck_26',
+                                        'passenger', 'mini_van', 'other')),
+  -- Where it comes from, which is who to phone about it. Pencar is the hire
+  -- company Pynx uses; 'rental' covers anyone else; 'personal' is a crew
+  -- member's own vehicle.
   ownership          TEXT NOT NULL DEFAULT 'other'
                        CHECK (ownership IN ('pencar', 'rental', 'personal', 'other')),
   -- Superseded by `ownership`, kept only because dropping it would mean
@@ -372,6 +378,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   created_at         TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_vehicles_active ON vehicles(active, name);
+CREATE INDEX IF NOT EXISTS idx_vehicles_class ON vehicles(class);
 
 -- A vehicle committed to something, for a span of days. Usually a booking, but
 -- not always — a service appointment or a warehouse move occupies a van just as

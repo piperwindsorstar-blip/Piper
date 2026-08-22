@@ -1,12 +1,21 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { OWNERSHIP_LABELS, OWNERSHIPS, type Ownership } from "@/lib/dispatch-types";
+import {
+  CLASS_LABELS,
+  HIRED,
+  OWNERSHIP_LABELS,
+  OWNERSHIPS,
+  VEHICLE_CLASSES,
+  type Ownership,
+  type VehicleClass,
+} from "@/lib/dispatch-types";
 import { saveVehicle, type DispatchState } from "./actions";
 
 export type EditableVehicle = {
   id: number;
   name: string;
+  class: VehicleClass;
   ownership: Ownership;
   plate: string | null;
   home_base: string | null;
@@ -21,17 +30,20 @@ export type EditableVehicle = {
 /**
  * Adds or edits a vehicle.
  *
- * Vehicles are filed by whose they are rather than what shape they are, which
- * is how the shop already talks about them — a Pencar unit, a hire, somebody's
- * own car. Shape never comes up; who has to give it back does.
+ * A vehicle answers two separate questions, so it gets two separate fields.
+ * What it is — a cube van, a 26 ft truck — is what gets booked. Where it comes
+ * from is who to phone about it, and Pencar is a hire company rather than a
+ * yard, so a Pencar unit is a hire like any other.
  *
- * The hire dates appear only for a hire. An owned unit with a "due back" box
- * invites somebody to fill it in, and then the board starts warning that the
- * company's own truck is overdue.
+ * The hire dates follow from that: they appear for anything hired, from Pencar
+ * or elsewhere, and not for a crew member's own car. A vehicle that never goes
+ * back with a "due back" box invites somebody to fill it in, and then the
+ * board starts warning that a crew member's own car is overdue.
  */
 export default function VehicleForm({ vehicle }: { vehicle?: EditableVehicle }) {
   const [state, formAction, pending] = useActionState<DispatchState, FormData>(saveVehicle, {});
   const [ownership, setOwnership] = useState<Ownership>(vehicle?.ownership ?? "pencar");
+  const hired = HIRED.includes(ownership);
 
   return (
     <form action={formAction} className="card-body">
@@ -48,12 +60,23 @@ export default function VehicleForm({ vehicle }: { vehicle?: EditableVehicle }) 
             type="text"
             required
             defaultValue={vehicle?.name ?? ""}
-            placeholder="Cube, Sprinter, Eric's truck…"
+            placeholder="Cube 1, Sprinter, Eric's truck…"
           />
         </div>
 
         <div className="field">
-          <label>Belongs to</label>
+          <label>What it is</label>
+          <select name="class" defaultValue={vehicle?.class ?? "cargo_van"}>
+            {VEHICLE_CLASSES.map((c) => (
+              <option key={c} value={c}>
+                {CLASS_LABELS[c]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field">
+          <label>Comes from</label>
           <select
             name="ownership"
             value={ownership}
@@ -104,7 +127,7 @@ export default function VehicleForm({ vehicle }: { vehicle?: EditableVehicle }) 
           />
         </div>
 
-        {ownership === "rental" && (
+        {hired && (
           <>
             <div className="field">
               <label>Picked up</label>

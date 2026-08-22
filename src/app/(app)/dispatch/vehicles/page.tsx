@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { listVehicles, OWNERSHIP_LABELS } from "@/lib/dispatch";
+import { CLASS_LABELS, HIRED, listVehicles, OWNERSHIP_LABELS } from "@/lib/dispatch";
 import { formatDate, todayIso } from "@/lib/dates";
 import VehicleForm from "../VehicleForm";
 import { toggleVehicle } from "../actions";
@@ -28,6 +28,7 @@ export default async function FleetPage() {
               <h2>{vehicle.name}</h2>
               <div className="faint small">
                 {[
+                  CLASS_LABELS[vehicle.class],
                   OWNERSHIP_LABELS[vehicle.ownership],
                   vehicle.plate,
                   vehicle.home_base,
@@ -45,7 +46,11 @@ export default async function FleetPage() {
               </div>
             </div>
             <div className="venue-badges">
-              {vehicle.ownership === "rental" && <span className="badge badge-accent">Hired</span>}
+              {HIRED.includes(vehicle.ownership) && (
+                <span className="badge badge-accent">
+                  {OWNERSHIP_LABELS[vehicle.ownership]}
+                </span>
+              )}
               {vehicle.rental_due && vehicle.rental_due < today && (
                 <span className="badge badge-cancelled">Overdue</span>
               )}
@@ -57,6 +62,7 @@ export default async function FleetPage() {
             vehicle={{
               id: vehicle.id,
               name: vehicle.name,
+              class: vehicle.class,
               ownership: vehicle.ownership,
               plate: vehicle.plate,
               home_base: vehicle.home_base,
@@ -103,7 +109,9 @@ export default async function FleetPage() {
                 <li key={vehicle.id} className="row-between">
                   <span>
                     {vehicle.name}{" "}
-                    <span className="faint small">{OWNERSHIP_LABELS[vehicle.ownership]}</span>
+                    <span className="faint small">
+                      {CLASS_LABELS[vehicle.class]} · {OWNERSHIP_LABELS[vehicle.ownership]}
+                    </span>
                   </span>
                   <form action={toggleVehicle}>
                     <input type="hidden" name="id" value={vehicle.id} />

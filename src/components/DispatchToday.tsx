@@ -39,7 +39,7 @@ export default function DispatchToday() {
       <div className="card-body">
         {gaps.length > 0 && (
           <div className="alert alert-warn">
-            <strong>Needed, not booked:</strong>{" "}
+            <strong>Needed in the next fortnight, not booked:</strong>{" "}
             {gaps
               .map((g) => `${g.vehicle_name} on ${formatDateShort(g.starts_on)}`)
               .join(", ")}

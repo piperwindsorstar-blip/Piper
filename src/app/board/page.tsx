@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
+  CLASS_SHORT,
   publicBoardRows,
   publicDays,
   STATUS_SHORT,
@@ -99,6 +100,7 @@ export default async function CrewBoardPage() {
                         <li key={`${vehicle.id}-${run.id}`} className={`board-job run-${run.status}`}>
                           <div className="board-job-head">
                             <strong>{vehicle.name}</strong>
+                            <span className="small faint">{CLASS_SHORT[vehicle.class]}</span>
                             <span className="badge badge-plain">{STATUS_SHORT[run.status]}</span>
                           </div>
                           <div className="board-job-label">{run.label}</div>

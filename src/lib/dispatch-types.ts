@@ -13,15 +13,63 @@
 
 /* ---------------------------------------------------------------- vehicles */
 
+/**
+ * What a vehicle is. This is the thing that gets booked — nobody phones a hire
+ * company for "a vehicle", they phone for a cube van — so it is a field in its
+ * own right rather than something buried in a name or a capacity note.
+ */
+export const VEHICLE_CLASSES = [
+  "cargo_van",
+  "cube_van",
+  "truck_26",
+  "passenger",
+  "mini_van",
+  "other",
+] as const;
+export type VehicleClass = (typeof VEHICLE_CLASSES)[number];
+
+export const CLASS_LABELS: Record<VehicleClass, string> = {
+  cargo_van: "Cargo van",
+  cube_van: "Cube van",
+  truck_26: "26 ft truck",
+  passenger: "Passenger vehicle",
+  mini_van: "Mini van",
+  other: "Other",
+};
+
+/** Narrow enough for a board column, where the row already names the unit. */
+export const CLASS_SHORT: Record<VehicleClass, string> = {
+  cargo_van: "Cargo",
+  cube_van: "Cube",
+  truck_26: "26 ft",
+  passenger: "Passenger",
+  mini_van: "Mini van",
+  other: "Other",
+};
+
+/**
+ * Where a vehicle comes from, which is really who to phone about it.
+ *
+ * Pencar is the company Pynx hires from, so 'pencar' means a Pencar hire and
+ * not a Pynx-owned unit. 'rental' is anywhere else, 'personal' is a crew
+ * member's own vehicle.
+ */
 export const OWNERSHIPS = ["pencar", "rental", "personal", "other"] as const;
 export type Ownership = (typeof OWNERSHIPS)[number];
 
 export const OWNERSHIP_LABELS: Record<Ownership, string> = {
-  pencar: "Pencar",
-  rental: "Rental",
-  personal: "Personal",
+  pencar: "Pencar hire",
+  rental: "Other hire",
+  personal: "Crew's own",
   other: "Other",
 };
+
+/** Anything hired has to go back, whoever it came from. */
+export const HIRED: Ownership[] = ["pencar", "rental"];
+
+export function isVehicleClass(value: unknown): value is VehicleClass {
+  return typeof value === "string" && (VEHICLE_CLASSES as readonly string[]).includes(value);
+}
 
 /* -------------------------------------------------------------- day states */
 

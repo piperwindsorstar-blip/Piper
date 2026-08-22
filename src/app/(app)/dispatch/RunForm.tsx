@@ -56,8 +56,7 @@ export default function RunForm({
   return (
     <form action={formAction} className="card-body">
       {state.error && <div className="alert alert-error">{state.error}</div>}
-      {state.ok && !state.warning && <div className="alert alert-ok">{state.ok}</div>}
-      {state.warning && <div className="alert alert-info">{state.warning}</div>}
+      {state.ok && <div className="alert alert-ok">{state.ok}</div>}
 
       <div className="form-grid cols-3">
         <div className="field">

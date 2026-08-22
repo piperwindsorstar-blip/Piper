@@ -3,7 +3,9 @@ import { requireAdmin } from "@/lib/auth";
 import { listEvents } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import {
+  CLASS_SHORT,
   listVehicles,
+  neededCounts,
   monthDays,
   needed,
   OWNERSHIP_LABELS,
@@ -53,6 +55,7 @@ export default async function DispatchPage({
   const from = days[0];
   const to = days[days.length - 1];
   const gaps = needed(from, to);
+  const counts = neededCounts(today);
   const uncovered = uncoveredEvents(from, to);
   const due = rentalsDue(today);
 
@@ -75,9 +78,36 @@ export default async function DispatchPage({
 
   return (
     <>
+      <div className="grid cols-2">
+        <div className="card stat">
+          <div className="stat-label">Vehicles needed today</div>
+          <div
+            className="stat-value"
+            style={{ color: counts.today > 0 ? "var(--run-needed)" : undefined }}
+          >
+            {counts.today}
+          </div>
+          <div className="stat-note">flagged, not booked</div>
+        </div>
+        <div className="card stat">
+          <div className="stat-label">Needed the rest of this week</div>
+          <div
+            className="stat-value"
+            style={{ color: counts.week > 0 ? "var(--run-needed)" : undefined }}
+          >
+            {counts.week}
+          </div>
+          <div className="stat-note">phoning still to do</div>
+        </div>
+      </div>
+
       {gaps.length > 0 && (
         <div className="alert alert-warn">
-          <strong>Needed, not booked:</strong>{" "}
+          {/* "In view" rather than a bare "needed": the counters above are
+              anchored to today whatever you are browsing, and two unqualified
+              "needed" figures next to each other read as a contradiction the
+              moment you page forward to September. */}
+          <strong>Needed in view, not booked:</strong>{" "}
           {gaps.map((g) => `${g.vehicle_name} on ${formatDateShort(g.starts_on)}`).join(", ")}
         </div>
       )}
@@ -130,7 +160,8 @@ export default async function DispatchPage({
                     <th scope="row" className="board-vehicle">
                       <div>{vehicle.name}</div>
                       <div className="small faint">
-                        {OWNERSHIP_LABELS[vehicle.ownership]}
+                        {CLASS_SHORT[vehicle.class]}
+                        {vehicle.ownership === "pencar" ? " · Pencar" : ""}
                         {vehicle.plate ? ` · ${vehicle.plate}` : ""}
                       </div>
                     </th>

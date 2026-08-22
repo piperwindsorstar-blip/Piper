@@ -816,27 +816,27 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .board th[scope="row"] .small { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .board-today { background: var(--accent-soft); }
 
-/* Day states. Five distinct hues rather than shades of one, because the
-   distinction that matters most — booked against needed-but-not-booked — has
-   to survive being glanced at across a month of narrow columns. Each is a
-   tinted background with a saturated left edge, so they stay legible in both
-   themes without a second set of definitions. */
+/* Day states, in the colours the shop's own spreadsheet uses: yellow booked,
+   purple needed, green Pynx Cargo, orange own car, blue idle. Not a palette
+   worth improving on — people already read these on a printed sheet, and a
+   board that recolours them is a board that has to be relearned. Shop day is
+   the one addition, so it takes a neutral nobody else is using. */
 :root {
-  --run-booked: #6d4aff;
-  --run-needed: #c2410c;
-  --run-own: #0f766e;
-  --run-pynx: #a16207;
-  --run-idle: #94a3b8;
+  --run-booked: #ca8a04;
+  --run-needed: #7c3aed;
+  --run-pynx: #16a34a;
+  --run-own: #ea580c;
+  --run-idle: #2563eb;
   --run-shop: #64748b;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --run-booked: #9d84ff;
-    --run-needed: #fb923c;
-    --run-own: #2dd4bf;
-    --run-pynx: #eab308;
-    --run-idle: #64748b;
-    --run-shop: #7c8798;
+    --run-booked: #facc15;
+    --run-needed: #a78bfa;
+    --run-pynx: #4ade80;
+    --run-own: #fb923c;
+    --run-idle: #60a5fa;
+    --run-shop: #94a3b8;
   }
 }
 
@@ -860,7 +860,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .run-shop   { border-left-color: var(--run-shop); }
 
 /* A day that is needed and not booked is the one thing on this page that should
-   catch the eye without being looked for. */
+   catch the eye without being looked for — a tinted fill on top of its colour,
+   so it stands out from the merely-coloured cells around it. */
 .run-needed {
   background: color-mix(in srgb, var(--run-needed) 12%, var(--surface));
   border-color: color-mix(in srgb, var(--run-needed) 35%, var(--border));
@@ -1005,7 +1006,9 @@ input:focus, select:focus, textarea:focus {
 .board-job.run-idle   { border-left-color: var(--run-idle); }
 .board-job.run-shop   { border-left-color: var(--run-shop); }
 
-.board-job-head { display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; }
+.board-job-head { display: flex; align-items: baseline; gap: 0.5rem; }
+/* The status badge sits at the far end, whatever is between it and the name. */
+.board-job-head .badge { margin-left: auto; }
 .board-job-label { font-size: 0.92rem; margin-top: 0.1rem; }
 
 /* A day with nothing on it, as one line rather than an empty card. */

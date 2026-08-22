@@ -19,14 +19,16 @@ import {
   type VehicleInput,
 } from "@/lib/dispatch";
 import {
+  HIRED,
   isOwnership,
   isRunStatus,
+  isVehicleClass,
   STATUS_SHORT,
   type Ownership,
   type RunStatus,
 } from "@/lib/dispatch-types";
 
-export type DispatchState = { error?: string; ok?: string; warning?: string };
+export type DispatchState = { error?: string; ok?: string };
 
 const text = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim() || null;
@@ -41,19 +43,23 @@ function readVehicle(formData: FormData): VehicleInput | null {
 
   const raw = formData.get("ownership");
   const ownership: Ownership = isOwnership(raw) ? raw : "other";
+  const rawClass = formData.get("class");
   const seats = text(formData, "passenger_capacity");
+  const hired = HIRED.includes(ownership);
 
   return {
     name,
+    class: isVehicleClass(rawClass) ? rawClass : "other",
     ownership,
     plate: text(formData, "plate"),
     home_base: text(formData, "home_base"),
     weight_capacity: text(formData, "weight_capacity"),
     passenger_capacity: seats !== null && /^\d+$/.test(seats) ? Number(seats) : null,
-    // Hire dates only mean anything on a hire; keeping them on an owned unit
-    // would put a "due back" date on something that never goes back.
-    rental_from: ownership === "rental" ? text(formData, "rental_from") : null,
-    rental_due: ownership === "rental" ? text(formData, "rental_due") : null,
+    // Hire dates only mean anything on a hire; keeping them on a crew member's
+    // own car would put a "due back" date on something that never goes back.
+    // Pencar counts — it is a hire company, not the yard.
+    rental_from: hired ? text(formData, "rental_from") : null,
+    rental_due: hired ? text(formData, "rental_due") : null,
     capacity_note: text(formData, "capacity_note"),
     notes: text(formData, "notes"),
   };
@@ -88,7 +94,8 @@ export async function saveVehicle(
     updateVehicle(id, input);
     recordChanges(vehicleSubject(id, input.name), asActor(admin), [
       { field: "Name", from: before.name, to: input.name },
-      { field: "Belongs to", from: before.ownership, to: input.ownership },
+      { field: "Class", from: before.class, to: input.class },
+      { field: "Comes from", from: before.ownership, to: input.ownership },
       { field: "Plate", from: before.plate, to: input.plate },
       { field: "Home base", from: before.home_base, to: input.home_base },
       { field: "Weight capacity", from: before.weight_capacity, to: input.weight_capacity },
@@ -166,10 +173,17 @@ function readRun(formData: FormData): RunInput | null {
 /**
  * Books a vehicle out.
  *
- * A clash is reported, not refused. Two runs on one van genuinely happens —
- * a morning delivery and an evening show — and an app that simply says no
- * teaches people to work around it in a spreadsheet. Saying "this is already
- * out, here's what for" leaves the judgement where it belongs.
+ * An overlap between two commitments on one vehicle is refused, not warned
+ * about. That is not what this originally did — the first version reported the
+ * clash and saved anyway, on the reasoning that an app which says no teaches
+ * people to keep the real schedule somewhere else. The shop's own dispatch
+ * board forbids it outright, and asked for it twice while being built, which
+ * settles it: a van cannot be in two places, and a board that lets you say it
+ * can is a board nobody can trust at a glance.
+ *
+ * Only real commitments collide. A day marked 'needed' is the absence of an
+ * arrangement, and idle and shop days are the vehicle sitting still, so those
+ * coexist with anything.
  */
 export async function saveRun(_prev: DispatchState, formData: FormData): Promise<DispatchState> {
   const admin = await requireAdmin();
@@ -193,10 +207,8 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
 
   const idRaw = formData.get("id");
   const id = idRaw ? Number(idRaw) : null;
+  if (id && !getRun(id)) return { error: "That run has already been removed." };
 
-  // Only real commitments clash. A day marked 'needed' is the absence of an
-  // arrangement, and an idle or shop day is the vehicle sitting still — warning
-  // that a booking collides with either would be noise on every second save.
   const clashes = clashesFor(
     input.vehicle_id,
     input.starts_on,
@@ -204,8 +216,22 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
     id ?? undefined,
   ).filter((c) => COMMITTED.includes(c.status) && COMMITTED.includes(input.status));
 
+  if (clashes.length > 0) {
+    const when = clashes
+      .map((c) =>
+        c.starts_on === c.ends_on
+          ? `${c.label} on ${c.starts_on}`
+          : `${c.label} from ${c.starts_on} to ${c.ends_on}`,
+      )
+      .join(", ");
+    return {
+      error:
+        `${vehicle.name} is already out for ${when}. ` +
+        `Pick another vehicle, or change those dates first.`,
+    };
+  }
+
   if (id) {
-    if (!getRun(id)) return { error: "That run has already been removed." };
     updateRun(id, input);
   } else {
     createRun(input);
@@ -219,16 +245,10 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
 
   revalidatePath("/dispatch");
   revalidatePath("/dashboard");
+  revalidatePath("/board");
   if (input.event_id) revalidatePath(`/events/${input.event_id}`);
 
-  const warning =
-    clashes.length > 0
-      ? `Saved — but ${vehicle.name} is also out for ${clashes
-          .map((c) => c.label)
-          .join(", ")} over those dates.`
-      : undefined;
-
-  return warning ? { ok: "Saved.", warning } : { ok: "Saved." };
+  return { ok: "Saved." };
 }
 
 export async function removeRun(formData: FormData): Promise<void> {
@@ -248,5 +268,6 @@ export async function removeRun(formData: FormData): Promise<void> {
 
   revalidatePath("/dispatch");
   revalidatePath("/dashboard");
+  revalidatePath("/board");
   if (run.event_id) revalidatePath(`/events/${run.event_id}`);
 }

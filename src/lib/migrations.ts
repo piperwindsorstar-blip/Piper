@@ -356,6 +356,18 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_runs_status ON dispatch_runs(status, starts_on);
     `,
   },
+  {
+    version: 12,
+    label: "vehicle class, separate from who supplies it",
+    up: `
+      -- What a vehicle *is* is a different question from who it comes from.
+      -- The class is what gets booked -- you phone for a cube van -- and the
+      -- supplier is who you phone. One column cannot answer both.
+      ALTER TABLE vehicles ADD COLUMN class TEXT NOT NULL DEFAULT 'other'
+        CHECK (class IN ('cargo_van', 'cube_van', 'truck_26', 'passenger', 'mini_van', 'other'));
+      CREATE INDEX IF NOT EXISTS idx_vehicles_class ON vehicles(class);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

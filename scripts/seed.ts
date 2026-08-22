@@ -265,23 +265,12 @@ conn.prepare("UPDATE events SET plan_submitted_at = datetime('now') WHERE id = ?
 // rather than an empty grid that gives no sense of what it is for.
 const vehicles = [
   {
-    name: "Big van",
+    name: "Cargo 1",
+    class: "cargo_van",
     ownership: "pencar",
-    plate: "PYNX 01",
+    plate: null,
     home_base: "Shop",
-    weight_capacity: "1 ton",
-    passenger_capacity: 3,
-    capacity_note: "Full rig plus booth",
-    notes: null,
-    rental_from: null,
-    rental_due: null,
-  },
-  {
-    name: "Small van",
-    ownership: "pencar",
-    plate: "PYNX 02",
-    home_base: "Shop",
-    weight_capacity: "1500 lb",
+    weight_capacity: "3500 lb",
     passenger_capacity: 2,
     capacity_note: "Ceremony kit and speakers",
     notes: null,
@@ -289,28 +278,56 @@ const vehicles = [
     rental_due: null,
   },
   {
-    name: "Cube (hire)",
-    ownership: "rental",
+    name: "Cube 1",
+    class: "cube_van",
+    ownership: "pencar",
+    plate: null,
+    home_base: "Shop",
+    weight_capacity: "1 ton",
+    passenger_capacity: 3,
+    capacity_note: "Full rig plus booth",
+    notes: null,
+    rental_from: saturdayIn(2),
+    rental_due: saturdayIn(3),
+  },
+  {
+    name: "26 ft",
+    class: "truck_26",
+    ownership: "pencar",
     plate: null,
     home_base: "Yard",
-    weight_capacity: "3 ton",
+    weight_capacity: "5 ton",
     passenger_capacity: 3,
     capacity_note: "Big loads, busy weekends",
     notes: "Hired when both vans are out.",
     rental_from: saturdayIn(2),
     rental_due: saturdayIn(3),
   },
+  {
+    name: "Crew mini van",
+    class: "mini_van",
+    ownership: "pencar",
+    plate: null,
+    home_base: "Shop",
+    weight_capacity: null,
+    passenger_capacity: 7,
+    capacity_note: "Crew and small kit",
+    notes: null,
+    rental_from: null,
+    rental_due: null,
+  },
 ].map((v) =>
   Number(
     conn
       .prepare(
         `INSERT INTO vehicles
-           (name, ownership, plate, home_base, weight_capacity, passenger_capacity,
+           (name, class, ownership, plate, home_base, weight_capacity, passenger_capacity,
             rental_from, rental_due, capacity_note, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         v.name,
+        v.class,
         v.ownership,
         v.plate,
         v.home_base,
@@ -325,7 +342,6 @@ const vehicles = [
   ),
 );
 
-// The first two weddings get a van each, so the board reads as a week of work.
 const addRun = conn.prepare(
   `INSERT INTO dispatch_runs
      (vehicle_id, event_id, label, status, starts_on, ends_on, meet_time, crew, site,
@@ -345,7 +361,7 @@ addRun.run(vehicles[2], null, "Held for the weekend", "booked", saturdayIn(2), s
 addRun.run(vehicles[1], null, "Second show, no van yet", "needed", saturdayIn(2), saturdayIn(2),
   null, null, "Harbour Hall", null, null);
 
-console.log(`Seeded ${ids.length} events, 3 venues, 3 vehicles and 4 users.`);
+console.log(`Seeded ${ids.length} events, 3 venues, 4 vehicles and 4 users.`);
 console.log("");
 console.log("  Sign in with any of these (password: piper1234)");
 console.log("    owner@piper.test    Sam Rivera    admin");

@@ -1,6 +1,11 @@
 import { db } from "./db";
 import { toIso, parseIso } from "./dates";
-import { COMMITTED, type Ownership, type RunStatus } from "./dispatch-types";
+import {
+  COMMITTED,
+  type Ownership,
+  type RunStatus,
+  type VehicleClass,
+} from "./dispatch-types";
 
 /**
  * Which vehicle is where, and when.
@@ -20,10 +25,14 @@ import { COMMITTED, type Ownership, type RunStatus } from "./dispatch-types";
  * is due before it is late.
  */
 
-export type { Ownership, RunStatus } from "./dispatch-types";
+export type { Ownership, RunStatus, VehicleClass } from "./dispatch-types";
 export {
   OWNERSHIPS,
   OWNERSHIP_LABELS,
+  VEHICLE_CLASSES,
+  CLASS_LABELS,
+  CLASS_SHORT,
+  HIRED,
   RUN_STATUSES,
   STATUS_LABELS,
   STATUS_SHORT,
@@ -33,6 +42,7 @@ export {
 export type Vehicle = {
   id: number;
   name: string;
+  class: VehicleClass;
   ownership: Ownership;
   plate: string | null;
   home_base: string | null;
@@ -48,6 +58,7 @@ export type Vehicle = {
 
 export type VehicleInput = {
   name: string;
+  class: VehicleClass;
   ownership: Ownership;
   plate: string | null;
   home_base: string | null;
@@ -112,12 +123,13 @@ export function createVehicle(input: VehicleInput): number {
   const result = db()
     .prepare(
       `INSERT INTO vehicles
-         (name, ownership, plate, home_base, weight_capacity, passenger_capacity,
+         (name, class, ownership, plate, home_base, weight_capacity, passenger_capacity,
           rental_from, rental_due, capacity_note, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.name,
+      input.class,
       input.ownership,
       input.plate,
       input.home_base,
@@ -134,12 +146,13 @@ export function createVehicle(input: VehicleInput): number {
 export function updateVehicle(id: number, input: VehicleInput): void {
   db()
     .prepare(
-      `UPDATE vehicles SET name = ?, ownership = ?, plate = ?, home_base = ?,
+      `UPDATE vehicles SET name = ?, class = ?, ownership = ?, plate = ?, home_base = ?,
          weight_capacity = ?, passenger_capacity = ?, rental_from = ?, rental_due = ?,
          capacity_note = ?, notes = ? WHERE id = ?`,
     )
     .run(
       input.name,
+      input.class,
       input.ownership,
       input.plate,
       input.home_base,
@@ -311,11 +324,19 @@ export type PublicRun = {
   driver_first_name: string | null;
 };
 
-export type PublicVehicle = { id: number; name: string; ownership: Ownership };
+export type PublicVehicle = {
+  id: number;
+  name: string;
+  class: VehicleClass;
+  ownership: Ownership;
+};
 
 export function publicVehicles(): PublicVehicle[] {
   return db()
-    .prepare("SELECT id, name, ownership FROM vehicles WHERE active = 1 ORDER BY name COLLATE NOCASE")
+    .prepare(
+      `SELECT id, name, class, ownership FROM vehicles
+        WHERE active = 1 ORDER BY name COLLATE NOCASE`,
+    )
     .all() as PublicVehicle[];
 }
 
@@ -443,6 +464,29 @@ export function needed(from: string, to: string): RunWithRefs[] {
     .all(to, from) as RunWithRefs[];
 }
 
+/**
+ * How many vehicles are wanted and unbooked, today and across the week.
+ *
+ * The two numbers the shop's own board leads with. They answer different
+ * questions — "is somebody about to be stuck this morning" and "how much
+ * phoning is there to do" — so they are counted separately rather than one
+ * being derived from the other.
+ */
+export type NeedCounts = { today: number; week: number };
+
+export function neededCounts(today: string): NeedCounts {
+  const week = weekDays(today);
+  // From today rather than from Monday: a vehicle that was needed on Tuesday
+  // and never booked is a thing that already went wrong, not a thing to plan.
+  const rest = week.filter((d) => d >= today);
+  const to = rest.length > 0 ? rest[rest.length - 1] : today;
+
+  return {
+    today: needed(today, today).length,
+    week: needed(today, to).length,
+  };
+}
+
 /** Rentals due back within `days`, soonest first. */
 export function rentalsDue(fromIso: string, days = 14): Vehicle[] {
   const until = parseIso(fromIso);
@@ -451,7 +495,10 @@ export function rentalsDue(fromIso: string, days = 14): Vehicle[] {
   return db()
     .prepare(
       `SELECT * FROM vehicles
-        WHERE active = 1 AND ownership = 'rental' AND rental_due IS NOT NULL
+        -- Every hire has to go back, whoever it came from. Checking only
+        -- 'rental' would have quietly excluded Pencar, which is where most of
+        -- them come from.
+        WHERE active = 1 AND ownership IN ('pencar', 'rental') AND rental_due IS NOT NULL
           AND rental_due <= ?
         ORDER BY rental_due`,
     )

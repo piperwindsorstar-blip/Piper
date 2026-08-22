@@ -1202,6 +1202,7 @@ await reportDj.ctx.close();
   await ops.page.goto(`${BASE}/dispatch/vehicles`);
   const addForm = 'form:has(button:has-text("Add vehicle"))';
   await ops.page.fill(`${addForm} input[name="name"]`, van);
+  await ops.page.selectOption(`${addForm} select[name="class"]`, "cube_van");
   await ops.page.selectOption(`${addForm} select[name="ownership"]`, "pencar");
   await ops.page.fill(`${addForm} input[name="weight_capacity"]`, "1 ton");
   await ops.page.fill(`${addForm} input[name="passenger_capacity"]`, "3");
@@ -1210,20 +1211,24 @@ await reportDj.ctx.close();
   await ops.page.waitForTimeout(900);
   const fleet = await ops.page.textContent("body");
   check("a vehicle can be added", fleet.includes(van));
-  check("the fleet files it by who it belongs to", fleet.includes("Pencar"));
+  check("the fleet records what it is", fleet.includes("Cube van"));
+  check("and who it is hired from", fleet.includes("Pencar hire"));
   check("and records what it carries", fleet.includes("1 ton") && fleet.includes("3 seats"));
 
-  // Hire dates only appear for a hire.
-  check(
-    "an owned vehicle is not asked when it is due back",
-    (await ops.page.locator(`${addForm} input[name="rental_due"]`).count()) === 0,
-  );
-  await ops.page.selectOption(`${addForm} select[name="ownership"]`, "rental");
-  await ops.page.waitForTimeout(300);
-  check(
-    "a hire is",
-    (await ops.page.locator(`${addForm} input[name="rental_due"]`).count()) === 1,
-  );
+  // Anything hired is asked when it goes back — Pencar included, since that is
+  // where most of them come from. A crew member's own car is not.
+  for (const [ownership, expected] of [
+    ["pencar", 1],
+    ["rental", 1],
+    ["personal", 0],
+  ]) {
+    await ops.page.selectOption(`${addForm} select[name="ownership"]`, ownership);
+    await ops.page.waitForTimeout(300);
+    check(
+      `${ownership} ${expected ? "is" : "is not"} asked when it is due back`,
+      (await ops.page.locator(`${addForm} input[name="rental_due"]`).count()) === expected,
+    );
+  }
 
   // Book it out across three days and check every day is drawn, not just the
   // first — a run shown only on its start date is the bug this board exists
@@ -1247,17 +1252,22 @@ await reportDj.ctx.close();
   check("a multi-day run fills every day it covers", chips >= 2, `${chips} cells`);
   check("the board shows who has the keys", (await ops.page.textContent("body")).includes("Front desk"));
 
-  // A second booking on the same van over the same days is allowed but flagged.
+  // A van cannot be in two places. A second booking overlapping the first is
+  // refused outright, naming what is already there.
   await ops.page.selectOption("#vehicle_id", { label: van });
   await ops.page.fill("#label", `Clashing run ${stamp}`);
   await ops.page.fill("#starts_on", day(1));
   await ops.page.click('button:has-text("Send it out")');
   await ops.page.waitForTimeout(1200);
+  const refusal = await ops.page.textContent(".alert-error");
+  check("an overlapping booking is refused", (refusal ?? "").includes("already out for"), refusal ?? "none");
+  check("the refusal names the clash", (refusal ?? "").includes(`Smoke run ${stamp}`));
   check(
-    "a double booking is allowed but called out",
-    (await ops.page.textContent("body")).includes("is also out for"),
+    "and nothing was saved",
+    (await ops.page.locator(`.run-chip:has-text("Clashing run ${stamp}")`).count()) === 0,
   );
-  // A day flagged as needed is not a booking, and must not be reported as one.
+  // A day flagged as needed is not a booking, so it is allowed to sit on top
+  // of one — the whole point is to record a want that is not yet arranged.
   await ops.page.selectOption("#vehicle_id", { label: van });
   await ops.page.selectOption("#status", "needed");
   await ops.page.fill("#label", `Needed ${stamp}`);
@@ -1265,10 +1275,14 @@ await reportDj.ctx.close();
   await ops.page.click('button:has-text("Send it out")');
   await ops.page.waitForTimeout(1200);
   let body = await ops.page.textContent("body");
-  check("a needed day is flagged at the top of the board", body.includes("Needed, not booked"));
+  check("a needed day is flagged at the top of the board", body.includes("Needed in view, not booked"));
   check(
     "a needed day is drawn in its own colour",
     (await ops.page.locator(".run-chip.run-needed").count()) > 0,
+  );
+  check(
+    "the board counts what is needed today",
+    (await ops.page.textContent("body")).includes("Vehicles needed today"),
   );
 
   // An idle day is a statement about the vehicle, so it needs no label.
