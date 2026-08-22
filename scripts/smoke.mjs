@@ -492,6 +492,77 @@ await reportDj.ctx.close();
   await dj.ctx.close();
 }
 
+/* ---------- 17. the crew-report import endpoint ---------- */
+{
+  const url = `${BASE}/api/reports/import`;
+  const post = (body, token) =>
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: typeof body === "string" ? body : JSON.stringify(body),
+    });
+
+  const token = process.env.PIPER_IMPORT_TOKEN;
+
+  // Fails closed however the server is configured: 401 when a token is set,
+  // 503 when one isn't. Never 200. The runner's env says nothing about the
+  // server's, so assert the property rather than a specific status.
+  const anonymous = await post({ reports: [] });
+  check(
+    "import refuses an unauthenticated post",
+    anonymous.status === 401 || anonymous.status === 503,
+    `${anonymous.status}`,
+  );
+  const wrong = await post({ reports: [] }, "definitely-not-the-token");
+  check(
+    "import refuses a wrong token",
+    wrong.status === 401 || wrong.status === 503,
+    `${wrong.status}`,
+  );
+
+  if (!token) {
+    console.log("      (set PIPER_IMPORT_TOKEN to also run the round trip)");
+  } else {
+    const stamp = Date.now();
+    const reports = [
+      { kind: "dj", job: "26999", crew: "Smoke Crew", sentAt: "2026-08-21T18:14:00Z",
+        client: "5 - Amazing", crowd: 4, staff: "5", notes: "Endpoint test",
+        sourceId: `smoke-${stamp}-1` },
+      { kind: "warehouse", job: "26-0999", crew: "Smoke Crew", sentAt: "2026-08-22T09:02:00Z",
+        quality: "4 - Good", manifest: "Yes", sourceId: `smoke-${stamp}-2` },
+      { kind: "dj", job: "00-0001", crew: "martin", sentAt: "2026-08-21T18:20:00Z",
+        notes: "test", sourceId: `smoke-${stamp}-3` },
+      { kind: "dj", job: "26-0998", crew: "X", sentAt: "yesterday", sourceId: `smoke-${stamp}-4` },
+    ];
+
+    check("import rejects a body that isn't JSON", (await post("not json", token)).status === 400);
+    check(
+      "import rejects an unknown report kind",
+      (await post({ reports: [{ kind: "nope" }] }, token)).status === 422,
+    );
+
+    const first = await (await post({ reports }, token)).json();
+    check("import accepts a batch", first.inserted === 3, JSON.stringify(first));
+    check("a placeholder job number is quarantined", first.tests === 1);
+    check("an unparseable timestamp is named, not fatal",
+      first.rejected.length === 1 && first.rejected[0].index === 3);
+
+    const again = await (await post({ reports }, token)).json();
+    check("re-posting the same batch changes nothing", again.inserted === 0 && again.duplicates === 3);
+
+    // The reason normalisation exists: a dash-less number missing its leading
+    // zero still has to pair with the dashed one.
+    const owner2 = await signIn("owner@piper.test");
+    await owner2.page.goto(`${BASE}/reports`);
+    const matched = await owner2.page.textContent("body");
+    check("dash-less and dashed job numbers matched into one job", matched.includes("Smoke Crew"));
+    await owner2.ctx.close();
+  }
+}
+
 await admin.ctx.close();
 await browser.close();
 
