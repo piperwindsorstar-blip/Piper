@@ -1,10 +1,14 @@
 import { requireAdmin } from "@/lib/auth";
-import { loginBanner } from "@/lib/settings";
+import { loginBanner, publicBoard } from "@/lib/settings";
+import { baseUrl } from "@/lib/urls";
 import BannerForm from "./BannerForm";
+import PublicBoardForm from "./PublicBoardForm";
 
 export default async function SettingsPage() {
   await requireAdmin();
   const banner = loginBanner();
+  const board = publicBoard();
+  const origin = await baseUrl();
 
   return (
     <>
@@ -25,6 +29,16 @@ export default async function SettingsPage() {
           </div>
           <div className="card-body">
             <BannerForm banner={banner} />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <h2>Public crew board</h2>
+            <span className="small muted">{board.on ? "Published" : "Not published"}</span>
+          </div>
+          <div className="card-body">
+            <PublicBoardForm board={board} origin={origin} />
           </div>
         </div>
 

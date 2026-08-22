@@ -281,6 +281,95 @@ export function clashesFor(
     .all(vehicleId, endsOn, startsOn, exceptId ?? null, exceptId ?? -1) as RunWithRefs[];
 }
 
+/* ---------------------------------------------------------- public board */
+
+/**
+ * What the world is allowed to see.
+ *
+ * Deliberately its own type and its own query, with every column named. The
+ * tempting version reuses `RunWithRefs` and drops a field or two in the markup
+ * — and then the next column added to the table is public the day it ships,
+ * because nobody remembered there was a page that renders whatever it is
+ * handed. Naming the columns means a new one is private until somebody decides
+ * otherwise, which is the right way round.
+ *
+ * Left out on purpose: internal notes, the booking link, the plate, and where
+ * a vehicle is kept. Kept: what a person standing in the yard needs.
+ */
+export type PublicRun = {
+  id: number;
+  vehicle_id: number;
+  vehicle_name: string;
+  label: string;
+  status: RunStatus;
+  starts_on: string;
+  ends_on: string;
+  meet_time: string | null;
+  crew: string | null;
+  site: string | null;
+  keys_with: string | null;
+  driver_first_name: string | null;
+};
+
+export type PublicVehicle = { id: number; name: string; ownership: Ownership };
+
+export function publicVehicles(): PublicVehicle[] {
+  return db()
+    .prepare("SELECT id, name, ownership FROM vehicles WHERE active = 1 ORDER BY name COLLATE NOCASE")
+    .all() as PublicVehicle[];
+}
+
+export function publicRuns(from: string, to: string): PublicRun[] {
+  const rows = db()
+    .prepare(
+      `SELECT r.id, r.vehicle_id, v.name AS vehicle_name, r.label, r.status,
+              r.starts_on, r.ends_on, r.meet_time, r.crew, r.site, r.keys_with,
+              u.name AS driver_name
+         FROM dispatch_runs r
+         JOIN vehicles v ON v.id = r.vehicle_id
+         LEFT JOIN users u ON u.id = r.driver_id
+        WHERE v.active = 1 AND r.starts_on <= ? AND r.ends_on >= ?
+        ORDER BY r.starts_on, v.name`,
+    )
+    .all(to, from) as (Omit<PublicRun, "driver_first_name"> & { driver_name: string | null })[];
+
+  return rows.map(({ driver_name, ...run }) => ({
+    ...run,
+    // A first name is what a crew board needs — "Jordan has the big van". The
+    // full staff roster is not a thing this page has any business publishing.
+    driver_first_name: driver_name ? driver_name.trim().split(/\s+/)[0] : null,
+  }));
+}
+
+/** The ten dates the public board covers: today, and the nine after it. */
+export function publicDays(today: string, count: number): string[] {
+  const start = parseIso(today);
+  return Array.from({ length: count }, (_, i) => {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    return toIso(day);
+  });
+}
+
+/** Public runs arranged by vehicle and day, the same shape the board uses. */
+export type PublicRow = { vehicle: PublicVehicle; byDay: Map<string, PublicRun[]> };
+
+export function publicBoardRows(days: string[]): PublicRow[] {
+  const runs = publicRuns(days[0], days[days.length - 1]);
+  const vehicles = publicVehicles();
+
+  return vehicles.map((vehicle) => {
+    const byDay = new Map<string, PublicRun[]>(days.map((d) => [d, []]));
+    for (const run of runs) {
+      if (run.vehicle_id !== vehicle.id) continue;
+      for (const day of days) {
+        if (run.starts_on <= day && run.ends_on >= day) byDay.get(day)?.push(run);
+      }
+    }
+    return { vehicle, byDay };
+  });
+}
+
 /* ------------------------------------------------------------------ boards */
 
 /** The seven dates of the week containing `iso`, Monday first. */

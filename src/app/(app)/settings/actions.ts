@@ -5,6 +5,9 @@ import { requireAdmin } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordChanges, settingsSubject } from "@/lib/activity";
 import {
+  BOARD_NOTE_MAX,
+  publicBoard,
+  savePublicBoard,
   BANNER_MAX,
   BANNER_TONES,
   loginBanner,
@@ -54,4 +57,47 @@ export async function saveBanner(
   revalidatePath("/settings");
   revalidatePath("/login");
   return { ok: on ? "Banner is showing on the sign-in page." : "Banner saved and switched off." };
+}
+
+
+/**
+ * Publishes or unpublishes the crew board.
+ *
+ * Audited like the banner, and for a stronger version of the same reason: this
+ * is the switch that decides whether a page of the company's movements is
+ * readable by anybody with a link. Who flipped it, and when, is worth being
+ * able to answer.
+ */
+export async function saveBoard(
+  _prev: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const admin = await requireAdmin();
+
+  const note = String(formData.get("note") ?? "").trim();
+  const on = formData.get("on") === "on";
+
+  if (note.length > BOARD_NOTE_MAX) {
+    return { error: `Keep the note under ${BOARD_NOTE_MAX} characters.` };
+  }
+
+  const before = publicBoard();
+  savePublicBoard({ on, note }, admin.id);
+
+  recordChanges(settingsSubject, asActor(admin), [
+    {
+      field: "Public crew board",
+      from: before.on ? "Published" : "Not published",
+      to: on ? "Published" : "Not published",
+    },
+    { field: "Board note", from: before.note || null, to: note || null },
+  ]);
+
+  revalidatePath("/settings");
+  revalidatePath("/board");
+  return {
+    ok: on
+      ? "The board is live. Anyone with the address can read it."
+      : "The board is no longer published.",
+  };
 }

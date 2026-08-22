@@ -1,9 +1,12 @@
 import { db, nowIso } from "./db";
 import {
   BANNER_MAX,
+  BOARD_NOTE_MAX as BOARD_NOTE_MAX_VALUE,
   isTone,
   NO_BANNER,
+  NO_PUBLIC_BOARD as NO_PUBLIC_BOARD_VALUE,
   type LoginBanner,
+  type PublicBoard as PublicBoardShape,
 } from "./settings-types";
 
 /**
@@ -15,7 +18,7 @@ import {
  * page. What belongs here is the opposite: things that are meant to be seen.
  */
 
-export type SettingKey = "login_banner";
+export type SettingKey = "login_banner" | "public_board";
 
 export function getSetting(key: SettingKey): string | null {
   const row = db().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
@@ -68,4 +71,36 @@ export function loginBanner(): LoginBanner {
 
 export function saveLoginBanner(banner: LoginBanner, userId: number | null): void {
   setSetting("login_banner", JSON.stringify(banner), userId);
+}
+
+/* --------------------------------------------------------- public board */
+
+export type { PublicBoard } from "./settings-types";
+export { NO_PUBLIC_BOARD, BOARD_NOTE_MAX, PUBLIC_DAYS } from "./settings-types";
+
+/**
+ * Whether the crew board is published, and the note that sits on top of it.
+ *
+ * Off unless somebody has turned it on. This is the one page in Piper that
+ * anybody can read without an account, so it should exist because a person
+ * decided it should, not because a deploy happened while they were asleep.
+ * A stored value that will not parse is read as off, for the same reason.
+ */
+export function publicBoard(): PublicBoardShape {
+  const raw = getSetting("public_board");
+  if (!raw) return NO_PUBLIC_BOARD_VALUE;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PublicBoardShape>;
+    return {
+      on: parsed.on === true,
+      note: typeof parsed.note === "string" ? parsed.note.slice(0, BOARD_NOTE_MAX_VALUE) : "",
+    };
+  } catch {
+    return NO_PUBLIC_BOARD_VALUE;
+  }
+}
+
+export function savePublicBoard(board: PublicBoardShape, userId: number | null): void {
+  setSetting("public_board", JSON.stringify(board), userId);
 }

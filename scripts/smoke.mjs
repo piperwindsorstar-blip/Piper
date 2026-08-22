@@ -1352,6 +1352,134 @@ await reportDj.ctx.close();
   await dj.ctx.close();
 }
 
+/* ---------- 24. public crew board ---------- */
+{
+  const stamp = Date.now();
+  const day = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  // Off until somebody turns it on, and a 404 rather than a notice — a page
+  // that says "switched off" has still confirmed the address is real.
+  const anon = await browser.newContext();
+  const ap = await anon.newPage();
+  let res = await ap.goto(`${BASE}/board`);
+  check("the board is not published by default", res.status() === 404, `status ${res.status()}`);
+  await anon.close();
+
+  const ops = await signIn("owner@piper.test");
+
+  // A vehicle with a run inside the window and one well outside it.
+  const van = `Public Van ${stamp}`;
+  const addForm = 'form:has(button:has-text("Add vehicle"))';
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  await ops.page.fill(`${addForm} input[name="name"]`, van);
+  await ops.page.click('button:has-text("Add vehicle")');
+  await ops.page.waitForTimeout(900);
+
+  const inside = `Inside window ${stamp}`;
+  const outside = `Outside window ${stamp}`;
+  for (const [label, when] of [[inside, day(2)], [outside, day(20)]]) {
+    await ops.page.goto(`${BASE}/dispatch?view=week`);
+    await ops.page.selectOption("#vehicle_id", { label: van });
+    await ops.page.fill("#label", label);
+    await ops.page.fill("#starts_on", when);
+    await ops.page.fill("#site", "Port Colborne");
+    await ops.page.fill("#crew", "Eric");
+    await ops.page.fill("#notes", `SECRET-${stamp}`);
+    await ops.page.click('button:has-text("Send it out")');
+    await ops.page.waitForTimeout(1100);
+  }
+
+  // Publish it.
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.check("#board_on");
+  await ops.page.fill("#note", `Lock box ${stamp}`);
+  await ops.page.locator("form:has(#board_on) button[type=submit]").click();
+  await ops.page.waitForTimeout(900);
+  check("publishing reports back", (await ops.page.textContent("body")).includes("board is live"));
+  await ops.ctx.close();
+
+  // Now read it as a stranger.
+  const crew = await browser.newContext();
+  const cp = await crew.newPage();
+  res = await cp.goto(`${BASE}/board`);
+  check("a stranger can read the published board", res.status() === 200, `status ${res.status()}`);
+  const body = await cp.textContent("body");
+
+  check("it shows a run inside the window", body.includes(inside));
+  check("it does NOT show one beyond ten days", !body.includes(outside));
+  check("it carries the note", body.includes(`Lock box ${stamp}`));
+  check("it shows the detail a crew needs", body.includes("Port Colborne") && body.includes("Eric"));
+  check("internal notes never reach it", !body.includes(`SECRET-${stamp}`), "notes withheld");
+
+  // Nothing on it leads back into Piper, and no date can be asked for.
+  const hrefs = await cp.$$eval("a", (as) => as.map((a) => a.getAttribute("href") ?? ""));
+  check(
+    "nothing on it links into the app",
+    hrefs.every((h) => !/^\/(events|dispatch|team|dashboard|outbox|activity|settings)/.test(h)),
+    hrefs.join(",") || "no links",
+  );
+
+  // The window is fixed server-side: a date parameter must not move it.
+  await cp.goto(`${BASE}/board?week=${day(20)}&view=week&days=60`);
+  const forced = await cp.textContent("body");
+  check("a date in the URL cannot widen the window", !forced.includes(outside));
+
+  // It is noindex, and the whole site is disallowed to crawlers.
+  const robotsRes = await cp.goto(`${BASE}/robots.txt`);
+  check("robots.txt disallows crawling", (await robotsRes.text()).includes("Disallow: /"));
+  await cp.goto(`${BASE}/board`);
+  const meta = await cp.locator('meta[name="robots"]').getAttribute("content");
+  check("the board is noindex", (meta ?? "").includes("noindex"), meta ?? "none");
+  await crew.close();
+
+  // Unpublishing takes it away again.
+  const ops2 = await signIn("owner@piper.test");
+  await ops2.page.goto(`${BASE}/settings`);
+  // Scoped to the board's own form: the banner form on the same page has a
+  // "Save banner" button, and a substring match happily clicks that instead.
+  const boardForm = ops2.page.locator("form:has(#board_on)");
+  await ops2.page.uncheck("#board_on");
+  await ops2.page.fill("#note", "");
+  await boardForm.locator('button[type=submit]').click();
+  await ops2.page.waitForTimeout(900);
+  check(
+    "unpublishing reports back",
+    (await ops2.page.textContent("body")).includes("no longer published"),
+  );
+
+  const gone = await browser.newContext();
+  const gp = await gone.newPage();
+  res = await gp.goto(`${BASE}/board`);
+  check("unpublishing takes it down", res.status() === 404, `status ${res.status()}`);
+  await gone.close();
+
+  // Clean up: remove the runs from this test's own vehicle, then retire it.
+  for (const url of [`${BASE}/dispatch`, `${BASE}/dispatch?week=${day(20)}`]) {
+    await ops2.page.goto(url);
+    const row = ops2.page.locator(`tr:has(th:has-text("${van}"))`);
+    for (let i = 0; i < 6; i++) {
+      const remove = row.locator('button[aria-label^="Remove "]');
+      if ((await remove.count()) === 0) break;
+      await remove.first().click();
+      await ops2.page.waitForTimeout(700);
+    }
+  }
+  await ops2.page.goto(`${BASE}/dispatch/vehicles`);
+  const card = ops2.page.locator(`details.card:has-text("${van}")`).first();
+  await card.locator("summary").click();
+  await card.locator('button:has-text("Retire")').click();
+  await ops2.page.waitForTimeout(900);
+  check(
+    "the suite retires the vehicle it made",
+    (await ops2.page.textContent("body")).includes("Retired"),
+  );
+  await ops2.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

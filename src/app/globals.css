@@ -968,3 +968,53 @@ input:focus, select:focus, textarea:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* ------------------------------------------------- public crew board */
+
+/* Phone first, deliberately. This is read standing next to a van, one-handed,
+   so it is a stack of days rather than a grid — a seven-column table on a
+   phone is a pinch-and-scroll puzzle, and the answer to "what am I doing
+   today" should be the first thing on the screen. */
+.board-public {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+}
+.board-public-head { margin-bottom: 1rem; }
+.board-public-head .brand { padding: 0; gap: 0.7rem; }
+.board-public-foot {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.board-days { display: grid; gap: 0.85rem; }
+.board-day .card-head { padding: 0.7rem 1rem; }
+.board-day .card-head h2 { font-size: 1rem; }
+.board-day-today { border-color: var(--accent); }
+
+.board-job {
+  border-left: 3px solid var(--run-booked);
+  padding: 0.5rem 0 0.5rem 0.7rem;
+}
+.board-job.run-booked { border-left-color: var(--run-booked); }
+.board-job.run-needed { border-left-color: var(--run-needed); }
+.board-job.run-own    { border-left-color: var(--run-own); }
+.board-job.run-pynx   { border-left-color: var(--run-pynx); }
+.board-job.run-idle   { border-left-color: var(--run-idle); }
+.board-job.run-shop   { border-left-color: var(--run-shop); }
+
+.board-job-head { display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; }
+.board-job-label { font-size: 0.92rem; margin-top: 0.1rem; }
+
+/* A day with nothing on it, as one line rather than an empty card. */
+.board-day-quiet {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  border-bottom: 1px dashed var(--border);
+}
