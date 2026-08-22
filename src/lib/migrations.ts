@@ -172,6 +172,43 @@ export const MIGRATIONS: Migration[] = [
       FROM events;
     `,
   },
+  {
+    version: 5,
+    label: "outbox and availability requests",
+    up: `
+      CREATE TABLE IF NOT EXISTS outbox (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id    INTEGER REFERENCES events(id) ON DELETE SET NULL,
+        kind        TEXT NOT NULL,
+        to_addr     TEXT NOT NULL,
+        cc_addr     TEXT,
+        subject     TEXT NOT NULL,
+        body        TEXT NOT NULL,
+        status      TEXT NOT NULL DEFAULT 'queued'
+                      CHECK (status IN ('queued', 'sent', 'failed', 'cancelled')),
+        queued_at   TEXT NOT NULL,
+        sent_at     TEXT,
+        error       TEXT,
+        approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status, queued_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_outbox_event ON outbox(event_id);
+
+      CREATE TABLE IF NOT EXISTS availability_requests (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id     INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        dj_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token        TEXT NOT NULL UNIQUE,
+        status       TEXT NOT NULL DEFAULT 'asked'
+                       CHECK (status IN ('asked', 'available', 'unavailable')),
+        note         TEXT,
+        asked_at     TEXT NOT NULL,
+        responded_at TEXT
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_avail_once ON availability_requests(event_id, dj_id);
+      CREATE INDEX IF NOT EXISTS idx_avail_event ON availability_requests(event_id);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

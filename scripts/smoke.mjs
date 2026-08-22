@@ -579,6 +579,136 @@ await reportDj.ctx.close();
   }
 }
 
+/* ---------- 18. email drafts, the outbox, and availability ---------- */
+{
+  const owner = await signIn("owner@piper.test");
+  const eventForm2 = 'form:has(input[name="partner_one_name"])';
+
+  // A new booking with a contact email should draft a planner invitation.
+  await owner.page.goto(`${BASE}/events/new`);
+  await owner.page.fill('input[name="partner_one_name"]', "Mail Test");
+  await owner.page.fill('input[name="partner_two_name"]', "Second Partner");
+  await owner.page.fill('input[name="contact_email"]', "couple@example.test");
+  await owner.page.fill('input[name="event_date"]', "2027-12-04");
+  await owner.page.click(`${eventForm2} button[type="submit"]`);
+  await owner.page.waitForURL(/\/events\/\d+$/);
+  const mailEventId = Number(owner.page.url().split("/").pop());
+
+  await owner.page.goto(`${BASE}/outbox`);
+  let outbox = await owner.page.locator(".mail-list").first().innerText();
+  check("a new booking drafts a planner invitation", outbox.includes("Planner invitation"));
+  check("the invitation goes to the couple", outbox.includes("couple@example.test"));
+  check("the invitation carries their planner link", /\/plan\/[0-9a-f]{32}/.test(outbox));
+
+  // Nothing is sent without a mail server, and it says so rather than pretending.
+  const queuedBefore = await owner.page.locator(".mail-queued").count();
+  check("drafts wait rather than sending themselves", queuedBefore > 0, `${queuedBefore} waiting`);
+  check("it explains that sending isn't set up", (await owner.page.textContent("body")).includes("No mail server is set up yet"));
+
+  // Saving the same event again must not stack duplicates.
+  await owner.page.goto(`${BASE}/events/${mailEventId}/edit`);
+  await owner.page.click(`${eventForm2} button[type="submit"]`);
+  await owner.page.waitForURL(/\/events\/\d+$/);
+  await owner.page.goto(`${BASE}/outbox`);
+  // Count only this booking's invitations — other sections of this suite create
+  // events with contact emails, which legitimately draft invitations of their own.
+  const invites = await owner.page.locator('.mail:has-text("couple@example.test"):has-text("Planner invitation")').count();
+  check("saving twice doesn't duplicate the invitation", invites === 1, `${invites} found`);
+
+  // Assigning a DJ drafts an introduction with the DJ copied in.
+  await owner.page.goto(`${BASE}/events/${mailEventId}/edit`);
+  await owner.page.selectOption('select[name="assigned_dj_id"]', { label: "Jordan Blake" });
+  await owner.page.click(`${eventForm2} button[type="submit"]`);
+  await owner.page.waitForURL(/\/events\/\d+$/);
+  await owner.page.goto(`${BASE}/outbox`);
+  outbox = await owner.page.locator(".mail-list").first().innerText();
+  check("assigning a DJ drafts an introduction", outbox.includes("DJ introduction"));
+  check("the DJ is copied in", outbox.includes("jordan@piper.test"));
+
+  // A draft can be edited before it goes anywhere.
+  const intro = owner.page.locator('.mail:has-text("DJ introduction")').first();
+  await intro.locator('button:has-text("Edit")').click();
+  await intro.locator('textarea[name="body"]').fill("Rewritten before sending.");
+  await intro.locator('button:has-text("Save changes")').click();
+  await owner.page.waitForTimeout(1200);
+  check("a draft can be reworded first", (await owner.page.textContent("body")).includes("Rewritten before sending."));
+
+  /* ---- availability ---- */
+  await owner.page.goto(`${BASE}/events/${mailEventId}`);
+  await owner.page.selectOption('select[name="dj_id"]', { label: "Mina Osei" });
+  await owner.page.click('button:has-text("Ask if they\'re free")');
+  await owner.page.waitForTimeout(1200);
+  let eventBody = await owner.page.textContent("body");
+  check("asking a DJ is recorded on the event", eventBody.includes("Mina Osei") && eventBody.includes("Waiting"));
+
+  await owner.page.goto(`${BASE}/outbox`);
+  outbox = await owner.page.locator(".mail-list").first().innerText();
+  check("the availability question is drafted", outbox.includes("Availability request"));
+  check("it goes to the DJ, not the couple", outbox.includes("mina@piper.test"));
+
+  const link = outbox.match(/\/available\/[0-9a-f]{32}/);
+  check("the email carries an answer link", link !== null);
+  await owner.ctx.close();
+
+  /* ---- the DJ answers without logging in ---- */
+  if (link) {
+    const guestCtx = await browser.newContext();
+    const guest = await guestCtx.newPage();
+    await guest.goto(`${BASE}${link[0]}?answer=yes`);
+    let page = await guest.textContent("body");
+    check("the answer page opens with no login", page.includes("can you work this one?"));
+    check("it doesn't leak the couple's contact details", !page.includes("couple@example.test"));
+
+    // Merely opening the link must not answer — mail scanners fetch URLs.
+    check("opening the link alone doesn't answer", !page.includes("You said you can do it"));
+
+    await guest.fill("#note", "free after 3pm");
+    await guest.click('button:has-text("Yes, I can do it")');
+    await guest.waitForTimeout(1200);
+    page = await guest.textContent("body");
+    check("the DJ can answer in one tap", page.includes("You said you can do it"));
+    check("their note is kept", page.includes("free after 3pm"));
+    await guestCtx.close();
+
+    const owner2 = await signIn("owner@piper.test");
+    await owner2.page.goto(`${BASE}/events/${mailEventId}`);
+    eventBody = await owner2.page.textContent("body");
+    check("the answer reaches the event", eventBody.includes("Can do it") && eventBody.includes("free after 3pm"));
+    await owner2.ctx.close();
+  }
+
+  /* ---- a DJ answers from inside the app ---- */
+  {
+    const owner3 = await signIn("owner@piper.test");
+    await owner3.page.goto(`${BASE}/events/${mailEventId}`);
+    await owner3.page.selectOption('select[name="dj_id"]', { label: "Jordan Blake" });
+    await owner3.page.click('button:has-text("Ask if they\'re free")');
+    await owner3.page.waitForTimeout(1000);
+    await owner3.ctx.close();
+
+    const dj = await signIn("jordan@piper.test");
+    let djBody = await dj.page.textContent("body");
+    check("a DJ sees the question on their dashboard", djBody.includes("Can you work these?"));
+    await dj.page.click('button:has-text("I can do it")');
+    await dj.page.waitForTimeout(1200);
+    djBody = await dj.page.textContent("body");
+    check("answering clears it from their dashboard", !djBody.includes("Can you work these?"));
+    await dj.ctx.close();
+  }
+
+  // Deleting the booking should take its unsent mail with it.
+  const cleanup = await signIn("owner@piper.test");
+  await cleanup.page.goto(`${BASE}/events/${mailEventId}`);
+  await cleanup.page.click('form:has(button:has-text("Delete event")) button[type="submit"]');
+  await cleanup.page.waitForURL(`${BASE}/events`);
+  await cleanup.page.goto(`${BASE}/outbox`);
+  const stillWaiting = await cleanup.page
+    .locator('.mail-queued:has-text("couple@example.test")')
+    .count();
+  check("deleting a booking discards its unsent mail", stillWaiting === 0, `${stillWaiting} left waiting`);
+  await cleanup.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

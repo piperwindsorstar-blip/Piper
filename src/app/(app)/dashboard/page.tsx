@@ -4,6 +4,8 @@ import { listEvents, overbookedDates } from "@/lib/events";
 import { countdownLabel, formatDateLong, formatTime, monthBounds, todayIso } from "@/lib/dates";
 import StatusBadge from "@/components/StatusBadge";
 import Cell from "@/components/Cell";
+import AvailabilityAsks from "@/components/AvailabilityAsks";
+import { openRequestsFor } from "@/lib/availability";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -20,6 +22,9 @@ export default async function DashboardPage() {
   const awaitingPlans = upcoming.filter((e) => e.plan_submitted_at == null);
   const clashes = isAdmin ? overbookedDates(today, "9999-12-31") : new Set<string>();
   const clashingSoon = upcoming.filter((e) => clashes.has(e.event_date));
+
+  // Dates this DJ has been asked about and not yet answered.
+  const asks = isAdmin ? [] : openRequestsFor(user.id);
 
   return (
     <>
@@ -38,6 +43,7 @@ export default async function DashboardPage() {
       </header>
 
       <div className="content">
+        {asks.length > 0 && <AvailabilityAsks asks={asks} />}
         {clashingSoon.length > 0 && (
           <div className="alert alert-warn">
             <strong>Heads up:</strong> {clashes.size} upcoming date

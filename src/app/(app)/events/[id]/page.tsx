@@ -7,7 +7,10 @@ import { SONG_CATEGORIES } from "@/lib/types";
 import { removeEvent, rotatePlanLink } from "../actions";
 import CopyLink from "@/components/CopyLink";
 import History from "@/components/History";
+import AskAvailability from "./AskAvailability";
 import { eventHistory, groupEntries } from "@/lib/audit";
+import { requestsForEvent } from "@/lib/availability";
+import { listDjs } from "@/lib/team";
 import { loadEvent } from "./guard";
 
 async function plannerUrl(token: string): Promise<string> {
@@ -34,6 +37,11 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
   // every field including the internal notes, and anything handed to the page
   // is serialised into the HTML whether it is rendered or not.
   const history = isAdmin ? groupEntries(eventHistory(event.id)) : [];
+
+  // Availability is an admin concern: it shows every DJ's name and answer, and
+  // one DJ has no business seeing who else was asked about a date.
+  const availability = isAdmin ? requestsForEvent(event.id) : [];
+  const djs = isAdmin ? listDjs().map((d) => ({ id: d.id, name: d.name })) : [];
 
   const keySlots = SONG_CATEGORIES.filter((c) =>
     ["first_dance", "grand_entrance", "last_dance"].includes(c.key),
@@ -272,6 +280,10 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
             {event.internal_notes}
           </div>
         </div>
+      )}
+
+      {isAdmin && (
+        <AskAvailability eventId={event.id} djs={djs} requests={availability} />
       )}
 
       {isAdmin && (

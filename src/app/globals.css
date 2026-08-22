@@ -559,3 +559,80 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .history-when { margin-left: 0; width: 100%; }
   .history-field { min-width: 0; width: 100%; }
 }
+
+/* --------------------------------------------------------------- outbox */
+
+.mail-status .card-body { padding-top: 1rem; padding-bottom: 1rem; }
+.mail-config {
+  margin: 0.6rem 0; padding: 0.8rem 0.95rem; border-radius: var(--radius-sm);
+  background: var(--surface-alt); border: 1px solid var(--border);
+  font-size: 0.8rem; line-height: 1.6; overflow-x: auto;
+}
+
+.mail-list { display: flex; flex-direction: column; }
+.mail {
+  padding: 1.1rem 1.1rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+.mail:last-child { border-bottom: 0; }
+.mail-sent, .mail-cancelled { opacity: 0.62; }
+
+.mail-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 0.5rem; margin-bottom: 0.6rem;
+}
+.mail-head > div { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+.mail-addr {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.1rem 0.7rem;
+  margin: 0 0 0.7rem; font-size: 0.86rem;
+}
+.mail-addr dt { color: var(--text-faint); }
+.mail-addr dd { margin: 0; overflow-wrap: anywhere; }
+
+.mail-subject { font-size: 0.98rem; margin: 0 0 0.5rem; }
+.mail-body {
+  margin: 0; padding: 0.85rem 1rem; border-radius: var(--radius-sm);
+  background: var(--surface-alt); border: 1px solid var(--border);
+  font-family: inherit; font-size: 0.88rem; line-height: 1.6;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.mail-error { margin: 0.7rem 0 0; }
+.mail-foot { margin-top: 0.85rem; }
+.mail-edit .field { margin-bottom: 0.7rem; }
+.mail-edit textarea { font-family: inherit; line-height: 1.6; }
+
+/* -------------------------------------------------------- availability */
+
+.avail-list { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 0.5rem; }
+.avail-list li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.avail-name { font-weight: 600; }
+.avail-note { font-style: italic; }
+.avail-when { margin-left: auto; }
+
+.avail-ask { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
+.avail-ask .field { margin: 0; flex: 1 1 14rem; }
+
+.avail-form { margin-top: 1rem; }
+.avail-buttons { margin-top: 0.9rem; }
+.avail-buttons .btn { flex: 1 1 12rem; justify-content: center; }
+
+.ask-list { list-style: none; margin: 0; padding: 0; }
+.ask-list li {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 0.75rem; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border);
+}
+.ask-list li:last-child { border-bottom: 0; }
+
+.alert-ok {
+  margin: 0.6rem 0 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm);
+  background: var(--success-soft); color: var(--success); font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+  .avail-when { margin-left: 0; width: 100%; }
+  .avail-buttons .btn { flex: 1 1 100%; }
+}

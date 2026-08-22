@@ -221,3 +221,40 @@ CREATE TABLE IF NOT EXISTS event_audit (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_event ON event_audit(event_id, at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_at ON event_audit(at DESC);
+
+-- Mail Piper has written but not necessarily sent. Nothing leaves the server
+-- until an admin approves it, so a typo'd address or a test booking cannot
+-- reach a real client before anyone notices.
+CREATE TABLE IF NOT EXISTS outbox (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id    INTEGER REFERENCES events(id) ON DELETE SET NULL,
+  kind        TEXT NOT NULL,          -- planner_invite | dj_intro | availability_request
+  to_addr     TEXT NOT NULL,
+  cc_addr     TEXT,
+  subject     TEXT NOT NULL,
+  body        TEXT NOT NULL,          -- plain text; wrapped in simple HTML on send
+  status      TEXT NOT NULL DEFAULT 'queued'
+                CHECK (status IN ('queued', 'sent', 'failed', 'cancelled')),
+  queued_at   TEXT NOT NULL,
+  sent_at     TEXT,
+  error       TEXT,                   -- why the last send attempt failed
+  approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status, queued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_outbox_event ON outbox(event_id);
+
+-- Asking a DJ whether they can work a date. They answer from a link in the
+-- email or from inside the app; the token lets them answer without logging in.
+CREATE TABLE IF NOT EXISTS availability_requests (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id     INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  dj_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token        TEXT NOT NULL UNIQUE,
+  status       TEXT NOT NULL DEFAULT 'asked'
+                 CHECK (status IN ('asked', 'available', 'unavailable')),
+  note         TEXT,                  -- what the DJ said when answering
+  asked_at     TEXT NOT NULL,
+  responded_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_avail_once ON availability_requests(event_id, dj_id);
+CREATE INDEX IF NOT EXISTS idx_avail_event ON availability_requests(event_id);

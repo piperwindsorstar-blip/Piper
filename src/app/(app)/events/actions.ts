@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, type User } from "@/lib/auth";
 import {
   asActor,
   eventLabel,
@@ -13,11 +13,16 @@ import {
 import {
   createEvent,
   deleteEvent,
+  getEvent,
   getEventRaw,
   regeneratePlanToken,
   updateEvent,
   type EventInput,
 } from "@/lib/events";
+import { djIntroduction, plannerInvite } from "@/lib/mail-templates";
+import { cancelQueuedForEvent, queueOnce } from "@/lib/mail";
+import { getUser } from "@/lib/team";
+import { plannerUrl } from "@/lib/urls";
 import { EVENT_STATUSES } from "@/lib/types";
 
 /**
@@ -119,6 +124,7 @@ export async function saveEvent(_prev: FormState, formData: FormData): Promise<F
   const input = parsed.data as EventInput;
 
   let eventId: number;
+  let djJustAssigned = false;
   if (idRaw) {
     eventId = Number(idRaw);
     // Read before writing: the history needs what each field used to say.
@@ -126,11 +132,16 @@ export async function saveEvent(_prev: FormState, formData: FormData): Promise<F
     updateEvent(eventId, input);
     if (before) {
       recordEventUpdate(eventId, eventLabel(input), asActor(admin), before, input);
+      djJustAssigned =
+        input.assigned_dj_id !== null && input.assigned_dj_id !== before.assigned_dj_id;
     }
   } else {
     eventId = createEvent(input);
     recordEventAction(eventId, eventLabel(input), asActor(admin), "created");
+    djJustAssigned = input.assigned_dj_id !== null;
   }
+
+  await draftEmailsFor(eventId, admin, { newBooking: !idRaw, djJustAssigned });
 
   revalidatePath("/events");
   revalidatePath("/activity");
@@ -143,8 +154,10 @@ export async function removeEvent(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = Number(formData.get("id"));
 
-  // Label it before it's gone — the audit row has to stand on its own.
+  // Label it before it's gone — the audit row has to stand on its own. Unsent
+  // mail is discarded first, while the rows can still be found by event id.
   const doomed = getEventRaw(id);
+  cancelQueuedForEvent(id);
   deleteEvent(id);
   if (doomed) {
     recordEventAction(id, eventLabel(doomed), asActor(admin), "deleted");
@@ -153,6 +166,7 @@ export async function removeEvent(formData: FormData): Promise<void> {
   revalidatePath("/events");
   revalidatePath("/calendar");
   revalidatePath("/activity");
+  revalidatePath("/outbox");
   redirect("/events");
 }
 
@@ -168,4 +182,47 @@ export async function rotatePlanLink(formData: FormData): Promise<void> {
 
   revalidatePath(`/events/${id}`);
   revalidatePath("/activity");
+}
+
+/**
+ * Writes the emails a save has made appropriate, into the outbox. Nothing is
+ * sent here — an admin approves each one on the Outbox page.
+ *
+ * `queueOnce` means saving an event repeatedly cannot stack up duplicate
+ * invitations: one of each kind per event, ever.
+ */
+async function draftEmailsFor(
+  eventId: number,
+  admin: User,
+  what: { newBooking: boolean; djJustAssigned: boolean },
+): Promise<void> {
+  const event = getEvent(admin, eventId);
+  if (!event || !event.contact_email) return;
+
+  if (what.newBooking) {
+    const link = await plannerUrl(event.plan_token);
+    const draft = plannerInvite(event, link);
+    queueOnce({
+      eventId,
+      kind: "planner_invite",
+      to: event.contact_email,
+      subject: draft.subject,
+      body: draft.body,
+    });
+  }
+
+  if (what.djJustAssigned && event.assigned_dj_id) {
+    const dj = getUser(event.assigned_dj_id);
+    if (dj) {
+      const draft = djIntroduction(event, dj.name);
+      queueOnce({
+        eventId,
+        kind: "dj_intro",
+        to: event.contact_email,
+        cc: dj.email,
+        subject: draft.subject,
+        body: draft.body,
+      });
+    }
+  }
 }
