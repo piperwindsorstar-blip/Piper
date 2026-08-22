@@ -1,14 +1,17 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { KIND_LABELS, VEHICLE_KINDS, type VehicleKind } from "@/lib/dispatch-types";
+import { OWNERSHIP_LABELS, OWNERSHIPS, type Ownership } from "@/lib/dispatch-types";
 import { saveVehicle, type DispatchState } from "./actions";
 
 export type EditableVehicle = {
   id: number;
   name: string;
-  kind: VehicleKind;
+  ownership: Ownership;
   plate: string | null;
+  home_base: string | null;
+  weight_capacity: string | null;
+  passenger_capacity: number | null;
   rental_from: string | null;
   rental_due: string | null;
   capacity_note: string | null;
@@ -18,13 +21,17 @@ export type EditableVehicle = {
 /**
  * Adds or edits a vehicle.
  *
- * The hire dates only appear for a rental. An owned van with a "due back" box
+ * Vehicles are filed by whose they are rather than what shape they are, which
+ * is how the shop already talks about them — a Pencar unit, a hire, somebody's
+ * own car. Shape never comes up; who has to give it back does.
+ *
+ * The hire dates appear only for a hire. An owned unit with a "due back" box
  * invites somebody to fill it in, and then the board starts warning that the
  * company's own truck is overdue.
  */
 export default function VehicleForm({ vehicle }: { vehicle?: EditableVehicle }) {
   const [state, formAction, pending] = useActionState<DispatchState, FormData>(saveVehicle, {});
-  const [kind, setKind] = useState<VehicleKind>(vehicle?.kind ?? "van");
+  const [ownership, setOwnership] = useState<Ownership>(vehicle?.ownership ?? "pencar");
 
   return (
     <form action={formAction} className="card-body">
@@ -41,16 +48,20 @@ export default function VehicleForm({ vehicle }: { vehicle?: EditableVehicle }) 
             type="text"
             required
             defaultValue={vehicle?.name ?? ""}
-            placeholder="Big van, Sprinter, Eric's truck…"
+            placeholder="Cube, Sprinter, Eric's truck…"
           />
         </div>
 
         <div className="field">
-          <label>Type</label>
-          <select name="kind" value={kind} onChange={(e) => setKind(e.target.value as VehicleKind)}>
-            {VEHICLE_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {KIND_LABELS[k]}
+          <label>Belongs to</label>
+          <select
+            name="ownership"
+            value={ownership}
+            onChange={(e) => setOwnership(e.target.value as Ownership)}
+          >
+            {OWNERSHIPS.map((o) => (
+              <option key={o} value={o}>
+                {OWNERSHIP_LABELS[o]}
               </option>
             ))}
           </select>
@@ -61,7 +72,39 @@ export default function VehicleForm({ vehicle }: { vehicle?: EditableVehicle }) 
           <input name="plate" type="text" defaultValue={vehicle?.plate ?? ""} />
         </div>
 
-        {kind === "rental" && (
+        <div className="field">
+          <label>Home base</label>
+          <input
+            name="home_base"
+            type="text"
+            defaultValue={vehicle?.home_base ?? ""}
+            placeholder="Where it sits when it's not out"
+          />
+        </div>
+
+        <div className="field">
+          <label>Weight capacity</label>
+          {/* Free text on purpose: crews say "1 ton", not 907 kilograms. */}
+          <input
+            name="weight_capacity"
+            type="text"
+            defaultValue={vehicle?.weight_capacity ?? ""}
+            placeholder="1 ton, 3500 lb…"
+          />
+        </div>
+
+        <div className="field">
+          <label>Seats</label>
+          <input
+            name="passenger_capacity"
+            type="number"
+            min={0}
+            max={99}
+            defaultValue={vehicle?.passenger_capacity ?? ""}
+          />
+        </div>
+
+        {ownership === "rental" && (
           <>
             <div className="field">
               <label>Picked up</label>

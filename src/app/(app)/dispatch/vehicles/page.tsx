@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { KIND_LABELS, listVehicles } from "@/lib/dispatch";
+import { listVehicles, OWNERSHIP_LABELS } from "@/lib/dispatch";
 import { formatDate, todayIso } from "@/lib/dates";
 import VehicleForm from "../VehicleForm";
 import { toggleVehicle } from "../actions";
@@ -28,8 +28,15 @@ export default async function FleetPage() {
               <h2>{vehicle.name}</h2>
               <div className="faint small">
                 {[
-                  KIND_LABELS[vehicle.kind],
+                  OWNERSHIP_LABELS[vehicle.ownership],
                   vehicle.plate,
+                  vehicle.home_base,
+                  [
+                    vehicle.weight_capacity,
+                    vehicle.passenger_capacity ? `${vehicle.passenger_capacity} seats` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || null,
                   vehicle.capacity_note,
                   vehicle.rental_due ? `back by ${formatDate(vehicle.rental_due)}` : null,
                 ]
@@ -38,7 +45,7 @@ export default async function FleetPage() {
               </div>
             </div>
             <div className="venue-badges">
-              {vehicle.kind === "rental" && <span className="badge badge-accent">Hired</span>}
+              {vehicle.ownership === "rental" && <span className="badge badge-accent">Hired</span>}
               {vehicle.rental_due && vehicle.rental_due < today && (
                 <span className="badge badge-cancelled">Overdue</span>
               )}
@@ -50,8 +57,11 @@ export default async function FleetPage() {
             vehicle={{
               id: vehicle.id,
               name: vehicle.name,
-              kind: vehicle.kind,
+              ownership: vehicle.ownership,
               plate: vehicle.plate,
+              home_base: vehicle.home_base,
+              weight_capacity: vehicle.weight_capacity,
+              passenger_capacity: vehicle.passenger_capacity,
               rental_from: vehicle.rental_from,
               rental_due: vehicle.rental_due,
               capacity_note: vehicle.capacity_note,
@@ -93,7 +103,7 @@ export default async function FleetPage() {
                 <li key={vehicle.id} className="row-between">
                   <span>
                     {vehicle.name}{" "}
-                    <span className="faint small">{KIND_LABELS[vehicle.kind]}</span>
+                    <span className="faint small">{OWNERSHIP_LABELS[vehicle.ownership]}</span>
                   </span>
                   <form action={toggleVehicle}>
                     <input type="hidden" name="id" value={vehicle.id} />

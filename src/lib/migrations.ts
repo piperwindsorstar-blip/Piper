@@ -327,6 +327,35 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_runs_event ON dispatch_runs(event_id);
     `,
   },
+  {
+    version: 11,
+    label: "dispatch reshaped to match how the shop actually works",
+    up: `
+      -- 'ownership' supersedes 'kind'. The old column stays because changing a
+      -- CHECK constraint means rebuilding the table, and a rebuild here would
+      -- silently take the runs with it: DROP TABLE fires ON DELETE CASCADE on
+      -- the children even inside a transaction with defer_foreign_keys on.
+      -- Tested, watched two runs vanish, and backed away. Nothing writes 'kind'
+      -- any more; its NOT NULL default keeps old inserts legal.
+      ALTER TABLE vehicles ADD COLUMN ownership TEXT NOT NULL DEFAULT 'other'
+        CHECK (ownership IN ('pencar', 'rental', 'personal', 'other'));
+      UPDATE vehicles SET ownership = CASE kind WHEN 'rental' THEN 'rental' ELSE 'other' END;
+
+      ALTER TABLE vehicles ADD COLUMN home_base TEXT;
+      ALTER TABLE vehicles ADD COLUMN weight_capacity TEXT;
+      ALTER TABLE vehicles ADD COLUMN passenger_capacity INTEGER;
+
+      -- A day on the board is a state, not merely occupied-or-not. 'needed' is
+      -- the one that earns the column: a van the shop needs and has not booked
+      -- is the thing worth seeing a month out.
+      ALTER TABLE dispatch_runs ADD COLUMN status TEXT NOT NULL DEFAULT 'booked'
+        CHECK (status IN ('booked', 'needed', 'idle', 'own', 'pynx', 'shop'));
+      ALTER TABLE dispatch_runs ADD COLUMN meet_time TEXT;
+      ALTER TABLE dispatch_runs ADD COLUMN crew TEXT;
+      ALTER TABLE dispatch_runs ADD COLUMN site TEXT;
+      CREATE INDEX IF NOT EXISTS idx_runs_status ON dispatch_runs(status, starts_on);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

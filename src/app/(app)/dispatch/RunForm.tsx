@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { RUN_STATUSES, STATUS_LABELS, type RunStatus } from "@/lib/dispatch-types";
 import { saveRun, type DispatchState } from "./actions";
 
 export type RunFormVehicle = { id: number; name: string };
@@ -30,6 +31,12 @@ export default function RunForm({
   const [state, formAction, pending] = useActionState<DispatchState, FormData>(saveRun, {});
   const [label, setLabel] = useState("");
   const [startsOn, setStartsOn] = useState(defaultDate);
+  const [status, setStatus] = useState<RunStatus>("booked");
+
+  // An idle or shop day is a statement about the vehicle, not a job. Asking who
+  // is driving it and where it is going would be asking about a trip nobody is
+  // taking.
+  const isJob = status !== "idle" && status !== "shop";
 
   function pickEvent(id: string) {
     const chosen = events.find((e) => String(e.id) === id);
@@ -65,6 +72,22 @@ export default function RunForm({
         </div>
 
         <div className="field">
+          <label htmlFor="status">The day is</label>
+          <select
+            id="status"
+            name="status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as RunStatus)}
+          >
+            {RUN_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field">
           <label htmlFor="event_id">For a booking</label>
           <select id="event_id" name="event_id" onChange={(e) => pickEvent(e.target.value)}>
             <option value="">Something else</option>
@@ -77,15 +100,15 @@ export default function RunForm({
         </div>
 
         <div className="field">
-          <label htmlFor="label">What for *</label>
+          <label htmlFor="label">What for {isJob ? "*" : ""}</label>
           <input
             id="label"
             name="label"
             type="text"
-            required
+            required={isJob}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Service, warehouse move, a wedding…"
+            placeholder={isJob ? "Service, warehouse move, a wedding…" : "Optional"}
           />
         </div>
 
@@ -106,6 +129,27 @@ export default function RunForm({
           <input id="ends_on" name="ends_on" type="date" />
           <div className="small faint">Leave blank for a single day</div>
         </div>
+
+        {isJob && (
+          <div className="field">
+            <label htmlFor="meet_time">Crew meets at</label>
+            <input id="meet_time" name="meet_time" type="time" />
+          </div>
+        )}
+
+        {isJob && (
+          <div className="field">
+            <label htmlFor="site">City or site</label>
+            <input id="site" name="site" type="text" placeholder="Port Colborne" />
+          </div>
+        )}
+
+        {isJob && (
+          <div className="field">
+            <label htmlFor="crew">Crew</label>
+            <input id="crew" name="crew" type="text" placeholder="Whoever is on it" />
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="driver_id">Driver</label>
@@ -131,7 +175,7 @@ export default function RunForm({
       </div>
 
       <button className="btn btn-primary" type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Send it out"}
+        {pending ? "Saving…" : isJob ? "Send it out" : "Mark the day"}
       </button>
     </form>
   );

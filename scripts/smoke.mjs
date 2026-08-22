@@ -1200,10 +1200,30 @@ await reportDj.ctx.close();
   const ops = await signIn("owner@piper.test");
 
   await ops.page.goto(`${BASE}/dispatch/vehicles`);
-  await ops.page.fill('form:has(button:has-text("Add vehicle")) input[name="name"]', van);
+  const addForm = 'form:has(button:has-text("Add vehicle"))';
+  await ops.page.fill(`${addForm} input[name="name"]`, van);
+  await ops.page.selectOption(`${addForm} select[name="ownership"]`, "pencar");
+  await ops.page.fill(`${addForm} input[name="weight_capacity"]`, "1 ton");
+  await ops.page.fill(`${addForm} input[name="passenger_capacity"]`, "3");
+  await ops.page.fill(`${addForm} input[name="home_base"]`, "Shop");
   await ops.page.click('button:has-text("Add vehicle")');
   await ops.page.waitForTimeout(900);
-  check("a vehicle can be added", (await ops.page.textContent("body")).includes(van));
+  const fleet = await ops.page.textContent("body");
+  check("a vehicle can be added", fleet.includes(van));
+  check("the fleet files it by who it belongs to", fleet.includes("Pencar"));
+  check("and records what it carries", fleet.includes("1 ton") && fleet.includes("3 seats"));
+
+  // Hire dates only appear for a hire.
+  check(
+    "an owned vehicle is not asked when it is due back",
+    (await ops.page.locator(`${addForm} input[name="rental_due"]`).count()) === 0,
+  );
+  await ops.page.selectOption(`${addForm} select[name="ownership"]`, "rental");
+  await ops.page.waitForTimeout(300);
+  check(
+    "a hire is",
+    (await ops.page.locator(`${addForm} input[name="rental_due"]`).count()) === 1,
+  );
 
   // Book it out across three days and check every day is drawn, not just the
   // first — a run shown only on its start date is the bug this board exists
@@ -1214,7 +1234,7 @@ await reportDj.ctx.close();
     return d.toISOString().slice(0, 10);
   };
 
-  await ops.page.goto(`${BASE}/dispatch`);
+  await ops.page.goto(`${BASE}/dispatch?view=week`);
   await ops.page.selectOption("#vehicle_id", { label: van });
   await ops.page.fill("#label", `Smoke run ${stamp}`);
   await ops.page.fill("#starts_on", day(0));
@@ -1227,7 +1247,7 @@ await reportDj.ctx.close();
   check("a multi-day run fills every day it covers", chips >= 2, `${chips} cells`);
   check("the board shows who has the keys", (await ops.page.textContent("body")).includes("Front desk"));
 
-  // A second run on the same van over the same days is allowed but flagged.
+  // A second booking on the same van over the same days is allowed but flagged.
   await ops.page.selectOption("#vehicle_id", { label: van });
   await ops.page.fill("#label", `Clashing run ${stamp}`);
   await ops.page.fill("#starts_on", day(1));
@@ -1237,13 +1257,35 @@ await reportDj.ctx.close();
     "a double booking is allowed but called out",
     (await ops.page.textContent("body")).includes("is also out for"),
   );
+  // A day flagged as needed is not a booking, and must not be reported as one.
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.selectOption("#status", "needed");
+  await ops.page.fill("#label", `Needed ${stamp}`);
+  await ops.page.fill("#starts_on", day(0));
+  await ops.page.click('button:has-text("Send it out")');
+  await ops.page.waitForTimeout(1200);
+  let body = await ops.page.textContent("body");
+  check("a needed day is flagged at the top of the board", body.includes("Needed, not booked"));
   check(
-    "the clash is visible on the board",
-    (await ops.page.locator(".run-chip-clash").count()) > 0,
+    "a needed day is drawn in its own colour",
+    (await ops.page.locator(".run-chip.run-needed").count()) > 0,
+  );
+
+  // An idle day is a statement about the vehicle, so it needs no label.
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.selectOption("#status", "idle");
+  await ops.page.fill("#label", "");
+  await ops.page.fill("#starts_on", day(1));
+  await ops.page.click('button:has-text("Mark the day")');
+  await ops.page.waitForTimeout(1200);
+  check(
+    "an idle day saves without a label",
+    (await ops.page.locator(".run-chip.run-idle").count()) > 0,
   );
 
   // Dates that make no sense are refused.
   await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.selectOption("#status", "booked");
   await ops.page.fill("#label", "Backwards");
   await ops.page.fill("#starts_on", day(5));
   await ops.page.fill("#ends_on", day(3));
@@ -1254,12 +1296,19 @@ await reportDj.ctx.close();
     (await ops.page.textContent(".alert-error")) !== null,
   );
 
-  // Week navigation moves a week at a time.
+  // The board defaults to a month and can step through them.
   await ops.page.goto(`${BASE}/dispatch`);
-  const thisWeek = await ops.page.textContent("h2");
-  await ops.page.click('a:has-text("Next")');
-  await ops.page.waitForTimeout(800);
-  check("the board moves a week at a time", (await ops.page.textContent("h2")) !== thisWeek);
+  const thisMonth = await ops.page.textContent("h2");
+  check("the board opens on a month", /\d{4}/.test(thisMonth) && !thisMonth.includes("–"), thisMonth);
+  await ops.page.getByRole("link", { name: "Next", exact: true }).click();
+  await ops.page.waitForTimeout(900);
+  check("the board steps a month at a time", (await ops.page.textContent("h2")) !== thisMonth);
+
+  // And a week view is one click away.
+  await ops.page.goto(`${BASE}/dispatch`);
+  await ops.page.click('a:has-text("Week view")');
+  await ops.page.waitForTimeout(900);
+  check("a week view is available", (await ops.page.textContent("h2")).includes("–"));
 
   // And it reaches the dashboard.
   await ops.page.goto(`${BASE}/dashboard`);
@@ -1269,17 +1318,22 @@ await reportDj.ctx.close();
   );
 
   // Clean up: remove the runs, then retire the vehicle.
-  await ops.page.goto(`${BASE}/dispatch`);
-  for (let i = 0; i < 6; i++) {
-    const remove = ops.page.locator('button[aria-label="Remove run"]');
-    if ((await remove.count()) === 0) break;
-    await remove.first().click();
-    await ops.page.waitForTimeout(700);
+  // Scoped to this test's own vehicle row. A blanket "remove every chip on the
+  // board" would take the seeded runs with it and quietly hollow out the demo
+  // data for every later run of the suite.
+  let leftOver = 0;
+  for (const url of [`${BASE}/dispatch`, `${BASE}/dispatch?week=${day(32)}`]) {
+    await ops.page.goto(url);
+    const row = ops.page.locator(`tr:has(th:has-text("${van}"))`);
+    for (let i = 0; i < 10; i++) {
+      const remove = row.locator('button[aria-label^="Remove "]');
+      if ((await remove.count()) === 0) break;
+      await remove.first().click();
+      await ops.page.waitForTimeout(700);
+    }
+    leftOver += await row.locator(".run-chip").count();
   }
-  check(
-    "the suite takes its runs back off the board",
-    (await ops.page.locator(`.run-chip:has-text("${stamp}")`).count()) === 0,
-  );
+  check("the suite takes its runs back off the board", leftOver === 0, `${leftOver} left`);
 
   await ops.page.goto(`${BASE}/dispatch/vehicles`);
   const card = ops.page.locator(`details.card:has-text("${van}")`).first();

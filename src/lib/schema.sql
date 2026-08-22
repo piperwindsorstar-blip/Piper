@@ -349,17 +349,27 @@ CREATE TABLE IF NOT EXISTS settings (
 -- different is that it has to go back, so it carries the dates it is held for
 -- and the board can warn before one is due.
 CREATE TABLE IF NOT EXISTS vehicles (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  name          TEXT NOT NULL,
-  kind          TEXT NOT NULL DEFAULT 'van'
-                  CHECK (kind IN ('van', 'truck', 'car', 'trailer', 'rental')),
-  plate         TEXT,
-  rental_from   TEXT,                    -- rentals only
-  rental_due    TEXT,                    -- rentals only: back by this date
-  capacity_note TEXT,
-  notes         TEXT,
-  active        INTEGER NOT NULL DEFAULT 1,
-  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  name               TEXT NOT NULL,
+  -- How the shop thinks about a vehicle is who it belongs to, not what shape
+  -- it is: our own Pencar units, a hire, somebody's own car, or anything else.
+  ownership          TEXT NOT NULL DEFAULT 'other'
+                       CHECK (ownership IN ('pencar', 'rental', 'personal', 'other')),
+  -- Superseded by `ownership`, kept only because dropping it would mean
+  -- rebuilding this table, and a rebuild takes dispatch_runs with it. Nothing
+  -- reads or writes it; the default exists so old inserts stay legal.
+  kind               TEXT NOT NULL DEFAULT 'van'
+                       CHECK (kind IN ('van', 'truck', 'car', 'trailer', 'rental')),
+  plate              TEXT,
+  home_base          TEXT,                    -- where it lives when it is not out
+  weight_capacity    TEXT,                    -- free text: crews say "1 ton", not 907kg
+  passenger_capacity INTEGER,
+  rental_from        TEXT,                    -- hires only
+  rental_due         TEXT,                    -- hires only: back by this date
+  capacity_note      TEXT,
+  notes              TEXT,
+  active             INTEGER NOT NULL DEFAULT 1,
+  created_at         TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_vehicles_active ON vehicles(active, name);
 
@@ -371,13 +381,21 @@ CREATE TABLE IF NOT EXISTS dispatch_runs (
   vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   event_id   INTEGER REFERENCES events(id) ON DELETE SET NULL,
   label      TEXT NOT NULL,
+  -- What this day *is*, not merely that it is spoken for. 'needed' is the one
+  -- that earns its keep: a vehicle the shop needs and has not booked.
+  status     TEXT NOT NULL DEFAULT 'booked'
+               CHECK (status IN ('booked', 'needed', 'idle', 'own', 'pynx', 'shop')),
   starts_on  TEXT NOT NULL,
   ends_on    TEXT NOT NULL,              -- same as starts_on for a single day
+  meet_time  TEXT,                       -- when the crew meets, 'HH:MM'
+  crew       TEXT,                       -- who is on it, as the shop writes it
+  site       TEXT,                       -- city or site, when it isn't a booking
   driver_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
   keys_with  TEXT,
   notes      TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_runs_status ON dispatch_runs(status, starts_on);
 CREATE INDEX IF NOT EXISTS idx_runs_vehicle ON dispatch_runs(vehicle_id, starts_on);
 CREATE INDEX IF NOT EXISTS idx_runs_dates ON dispatch_runs(starts_on, ends_on);
 CREATE INDEX IF NOT EXISTS idx_runs_event ON dispatch_runs(event_id);

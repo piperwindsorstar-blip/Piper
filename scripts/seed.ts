@@ -266,8 +266,11 @@ conn.prepare("UPDATE events SET plan_submitted_at = datetime('now') WHERE id = ?
 const vehicles = [
   {
     name: "Big van",
-    kind: "van",
+    ownership: "pencar",
     plate: "PYNX 01",
+    home_base: "Shop",
+    weight_capacity: "1 ton",
+    passenger_capacity: 3,
     capacity_note: "Full rig plus booth",
     notes: null,
     rental_from: null,
@@ -275,17 +278,23 @@ const vehicles = [
   },
   {
     name: "Small van",
-    kind: "van",
+    ownership: "pencar",
     plate: "PYNX 02",
+    home_base: "Shop",
+    weight_capacity: "1500 lb",
+    passenger_capacity: 2,
     capacity_note: "Ceremony kit and speakers",
     notes: null,
     rental_from: null,
     rental_due: null,
   },
   {
-    name: "Pencar cube",
-    kind: "rental",
+    name: "Cube (hire)",
+    ownership: "rental",
     plate: null,
+    home_base: "Yard",
+    weight_capacity: "3 ton",
+    passenger_capacity: 3,
     capacity_note: "Big loads, busy weekends",
     notes: "Hired when both vans are out.",
     rental_from: saturdayIn(2),
@@ -295,28 +304,46 @@ const vehicles = [
   Number(
     conn
       .prepare(
-        `INSERT INTO vehicles (name, kind, plate, rental_from, rental_due, capacity_note, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO vehicles
+           (name, ownership, plate, home_base, weight_capacity, passenger_capacity,
+            rental_from, rental_due, capacity_note, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(v.name, v.kind, v.plate, v.rental_from, v.rental_due, v.capacity_note, v.notes)
+      .run(
+        v.name,
+        v.ownership,
+        v.plate,
+        v.home_base,
+        v.weight_capacity,
+        v.passenger_capacity,
+        v.rental_from,
+        v.rental_due,
+        v.capacity_note,
+        v.notes,
+      )
       .lastInsertRowid,
   ),
 );
 
 // The first two weddings get a van each, so the board reads as a week of work.
-conn
-  .prepare(
-    `INSERT INTO dispatch_runs (vehicle_id, event_id, label, starts_on, ends_on, driver_id, keys_with)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  )
-  .run(vehicles[0], ids[0], "Nakamura & Delgado", saturdayIn(2), saturdayIn(2), djJordan, "Jordan");
+const addRun = conn.prepare(
+  `INSERT INTO dispatch_runs
+     (vehicle_id, event_id, label, status, starts_on, ends_on, meet_time, crew, site,
+      driver_id, keys_with)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+);
 
-conn
-  .prepare(
-    `INSERT INTO dispatch_runs (vehicle_id, event_id, label, starts_on, ends_on, driver_id, keys_with)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  )
-  .run(vehicles[1], ids[1], "Brennan & Brennan-Ross", saturdayIn(4), saturdayIn(4), djMina, "Mina");
+// Two weddings covered, one hire held over the weekend, and one Saturday
+// flagged as needing a vehicle nobody has booked — so a fresh install shows
+// what the board is actually for.
+addRun.run(vehicles[0], ids[0], "Nakamura & Delgado", "booked", saturdayIn(2), saturdayIn(2),
+  "13:00", "Jordan, Eric", "Lakeside", djJordan, "Jordan");
+addRun.run(vehicles[1], ids[1], "Brennan & Brennan-Ross", "booked", saturdayIn(4), saturdayIn(4),
+  "12:30", "Mina", "Grand Oak", djMina, "Mina");
+addRun.run(vehicles[2], null, "Held for the weekend", "booked", saturdayIn(2), saturdayIn(3),
+  null, null, null, null, "Shop");
+addRun.run(vehicles[1], null, "Second show, no van yet", "needed", saturdayIn(2), saturdayIn(2),
+  null, null, "Harbour Hall", null, null);
 
 console.log(`Seeded ${ids.length} events, 3 venues, 3 vehicles and 4 users.`);
 console.log("");

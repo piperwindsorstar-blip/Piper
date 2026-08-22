@@ -816,19 +816,109 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .board th[scope="row"] .small { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .board-today { background: var(--accent-soft); }
 
+/* Day states. Five distinct hues rather than shades of one, because the
+   distinction that matters most — booked against needed-but-not-booked — has
+   to survive being glanced at across a month of narrow columns. Each is a
+   tinted background with a saturated left edge, so they stay legible in both
+   themes without a second set of definitions. */
+:root {
+  --run-booked: #6d4aff;
+  --run-needed: #c2410c;
+  --run-own: #0f766e;
+  --run-pynx: #a16207;
+  --run-idle: #94a3b8;
+  --run-shop: #64748b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --run-booked: #9d84ff;
+    --run-needed: #fb923c;
+    --run-own: #2dd4bf;
+    --run-pynx: #eab308;
+    --run-idle: #64748b;
+    --run-shop: #7c8798;
+  }
+}
+
 .run-chip {
   position: relative;
   background: var(--surface-alt);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--run-booked);
   border-radius: var(--radius-sm);
   padding: 0.35rem 1.3rem 0.35rem 0.5rem;
   margin-bottom: 0.3rem;
   font-size: 0.82rem;
   line-height: 1.35;
 }
-/* Two runs in one cell is legal but worth seeing at a glance. */
-.run-chip-clash { border-left-color: var(--danger); }
+
+.run-booked { border-left-color: var(--run-booked); }
+.run-needed { border-left-color: var(--run-needed); }
+.run-own    { border-left-color: var(--run-own); }
+.run-pynx   { border-left-color: var(--run-pynx); }
+.run-idle   { border-left-color: var(--run-idle); }
+.run-shop   { border-left-color: var(--run-shop); }
+
+/* A day that is needed and not booked is the one thing on this page that should
+   catch the eye without being looked for. */
+.run-needed {
+  background: color-mix(in srgb, var(--run-needed) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--run-needed) 35%, var(--border));
+}
+
+.board-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+.board-key-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.run-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  display: inline-block;
+  background: currentColor;
+}
+.run-swatch.run-booked { background: var(--run-booked); }
+.run-swatch.run-needed { background: var(--run-needed); }
+.run-swatch.run-own    { background: var(--run-own); }
+.run-swatch.run-pynx   { background: var(--run-pynx); }
+.run-swatch.run-idle   { background: var(--run-idle); }
+.run-swatch.run-shop   { background: var(--run-shop); }
+
+/* A month is thirty-one columns wide, so cells shrink to colour blocks and the
+   day's detail moves to the tooltip and the week view. */
+.board-month { min-width: 74rem; }
+.board-month th, .board-month td { padding: 0.3rem 0.2rem; text-align: center; }
+.board-month .board-vehicle { padding: 0.6rem 0.8rem; text-align: left; }
+.board-month .run-chip {
+  padding: 0;
+  height: 1.35rem;
+  border-left-width: 0;
+  border-radius: 3px;
+  margin-bottom: 0.15rem;
+}
+.board-month .run-chip.run-booked { background: var(--run-booked); }
+.board-month .run-chip.run-needed { background: var(--run-needed); }
+.board-month .run-chip.run-own    { background: var(--run-own); }
+.board-month .run-chip.run-pynx   { background: var(--run-pynx); }
+.board-month .run-chip.run-idle   { background: var(--run-idle); }
+.board-month .run-chip.run-shop   { background: var(--run-shop); }
+/* At month scale the chip is barely larger than the button on it, so an
+   always-visible × reads as the content rather than as a control. It appears
+   on hover, and on keyboard focus so it stays reachable without a mouse. */
+.board-month .run-remove {
+  top: 0.05rem;
+  right: 0.05rem;
+  color: rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.board-month .run-chip:hover .run-remove,
+.board-month .run-remove:focus-visible { opacity: 1; }
 .run-label { font-weight: 600; }
 .run-remove {
   position: absolute;

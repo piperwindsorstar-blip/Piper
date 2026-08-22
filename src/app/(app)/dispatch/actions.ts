@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordAction, recordChanges, vehicleSubject } from "@/lib/activity";
+import { COMMITTED } from "@/lib/dispatch-types";
 import {
   clashesFor,
   createRun,
@@ -14,11 +15,16 @@ import {
   setVehicleActive,
   updateRun,
   updateVehicle,
-  VEHICLE_KINDS,
   type RunInput,
   type VehicleInput,
-  type VehicleKind,
 } from "@/lib/dispatch";
+import {
+  isOwnership,
+  isRunStatus,
+  STATUS_SHORT,
+  type Ownership,
+  type RunStatus,
+} from "@/lib/dispatch-types";
 
 export type DispatchState = { error?: string; ok?: string; warning?: string };
 
@@ -31,21 +37,23 @@ const isDate = (value: string | null) => value !== null && /^\d{4}-\d{2}-\d{2}$/
 
 function readVehicle(formData: FormData): VehicleInput | null {
   const name = String(formData.get("name") ?? "").trim();
-  const kindRaw = String(formData.get("kind") ?? "van");
   if (!name) return null;
 
-  const kind: VehicleKind = (VEHICLE_KINDS as readonly string[]).includes(kindRaw)
-    ? (kindRaw as VehicleKind)
-    : "van";
+  const raw = formData.get("ownership");
+  const ownership: Ownership = isOwnership(raw) ? raw : "other";
+  const seats = text(formData, "passenger_capacity");
 
   return {
     name,
-    kind,
+    ownership,
     plate: text(formData, "plate"),
-    // Hire dates only mean anything on a hire; keeping them on an owned van
+    home_base: text(formData, "home_base"),
+    weight_capacity: text(formData, "weight_capacity"),
+    passenger_capacity: seats !== null && /^\d+$/.test(seats) ? Number(seats) : null,
+    // Hire dates only mean anything on a hire; keeping them on an owned unit
     // would put a "due back" date on something that never goes back.
-    rental_from: kind === "rental" ? text(formData, "rental_from") : null,
-    rental_due: kind === "rental" ? text(formData, "rental_due") : null,
+    rental_from: ownership === "rental" ? text(formData, "rental_from") : null,
+    rental_due: ownership === "rental" ? text(formData, "rental_due") : null,
     capacity_note: text(formData, "capacity_note"),
     notes: text(formData, "notes"),
   };
@@ -80,8 +88,15 @@ export async function saveVehicle(
     updateVehicle(id, input);
     recordChanges(vehicleSubject(id, input.name), asActor(admin), [
       { field: "Name", from: before.name, to: input.name },
-      { field: "Type", from: before.kind, to: input.kind },
+      { field: "Belongs to", from: before.ownership, to: input.ownership },
       { field: "Plate", from: before.plate, to: input.plate },
+      { field: "Home base", from: before.home_base, to: input.home_base },
+      { field: "Weight capacity", from: before.weight_capacity, to: input.weight_capacity },
+      {
+        field: "Seats",
+        from: before.passenger_capacity === null ? null : String(before.passenger_capacity),
+        to: input.passenger_capacity === null ? null : String(input.passenger_capacity),
+      },
       { field: "Due back", from: before.rental_due, to: input.rental_due },
       { field: "Notes", from: before.notes, to: input.notes },
     ]);
@@ -129,12 +144,19 @@ function readRun(formData: FormData): RunInput | null {
   const driverRaw = formData.get("driver_id");
   const driverId = driverRaw && String(driverRaw) !== "" ? Number(driverRaw) : null;
 
+  const statusRaw = formData.get("status");
+  const status: RunStatus = isRunStatus(statusRaw) ? statusRaw : "booked";
+
   return {
     vehicle_id: vehicleId,
     event_id: eventId,
     label: String(formData.get("label") ?? "").trim(),
+    status,
     starts_on: startsOn,
     ends_on: endsOn,
+    meet_time: text(formData, "meet_time"),
+    crew: text(formData, "crew"),
+    site: text(formData, "site"),
     driver_id: driverId,
     keys_with: text(formData, "keys_with"),
     notes: text(formData, "notes"),
@@ -156,7 +178,15 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
   if (!input) return { error: "Pick a vehicle and a date." };
   if (!isDate(input.ends_on)) return { error: "The end date isn't a real date." };
   if (input.ends_on < input.starts_on) return { error: "It can't come back before it goes out." };
-  if (!input.label) return { error: "Say what it's going out for." };
+  // An idle or shop day is a statement about the vehicle, not a job, so it
+  // needs no label — the status already says everything there is to say.
+  if (!input.label) {
+    if (input.status === "idle" || input.status === "shop") {
+      input.label = STATUS_SHORT[input.status];
+    } else {
+      return { error: "Say what it's going out for." };
+    }
+  }
 
   const vehicle = getVehicle(input.vehicle_id);
   if (!vehicle) return { error: "That vehicle no longer exists." };
@@ -164,7 +194,15 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
   const idRaw = formData.get("id");
   const id = idRaw ? Number(idRaw) : null;
 
-  const clashes = clashesFor(input.vehicle_id, input.starts_on, input.ends_on, id ?? undefined);
+  // Only real commitments clash. A day marked 'needed' is the absence of an
+  // arrangement, and an idle or shop day is the vehicle sitting still — warning
+  // that a booking collides with either would be noise on every second save.
+  const clashes = clashesFor(
+    input.vehicle_id,
+    input.starts_on,
+    input.ends_on,
+    id ?? undefined,
+  ).filter((c) => COMMITTED.includes(c.status) && COMMITTED.includes(input.status));
 
   if (id) {
     if (!getRun(id)) return { error: "That run has already been removed." };
