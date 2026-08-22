@@ -291,6 +291,42 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 10,
+    label: "vehicles and dispatch",
+    up: `
+      CREATE TABLE IF NOT EXISTS vehicles (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        name          TEXT NOT NULL,
+        kind          TEXT NOT NULL DEFAULT 'van'
+                        CHECK (kind IN ('van', 'truck', 'car', 'trailer', 'rental')),
+        plate         TEXT,
+        rental_from   TEXT,
+        rental_due    TEXT,
+        capacity_note TEXT,
+        notes         TEXT,
+        active        INTEGER NOT NULL DEFAULT 1,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_vehicles_active ON vehicles(active, name);
+
+      CREATE TABLE IF NOT EXISTS dispatch_runs (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+        event_id   INTEGER REFERENCES events(id) ON DELETE SET NULL,
+        label      TEXT NOT NULL,
+        starts_on  TEXT NOT NULL,
+        ends_on    TEXT NOT NULL,
+        driver_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        keys_with  TEXT,
+        notes      TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_runs_vehicle ON dispatch_runs(vehicle_id, starts_on);
+      CREATE INDEX IF NOT EXISTS idx_runs_dates ON dispatch_runs(starts_on, ends_on);
+      CREATE INDEX IF NOT EXISTS idx_runs_event ON dispatch_runs(event_id);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

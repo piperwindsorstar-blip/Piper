@@ -121,7 +121,7 @@ export const REASON_LABELS: Record<string, string> = {
 /* ------------------------------------------------------------ record audit */
 
 /** What a `record_audit` row is about. Bookings have their own table. */
-export type SubjectType = "staff" | "venue" | "settings";
+export type SubjectType = "staff" | "venue" | "settings" | "vehicle";
 
 export type Subject = { type: SubjectType; id: number | null; label: string };
 
@@ -138,6 +138,12 @@ export const venueSubject = (id: number | null, name: string): Subject => ({
 });
 
 export const settingsSubject: Subject = { type: "settings", id: null, label: "Settings" };
+
+export const vehicleSubject = (id: number | null, name: string): Subject => ({
+  type: "vehicle",
+  id,
+  label: name,
+});
 
 export type FieldChange = { field: string; from: string | null; to: string | null };
 
@@ -349,7 +355,9 @@ export function describeAction(group: Pick<ChangeGroup, "action" | "subject_type
         ? "a staff record"
         : group.subject_type === "venue"
           ? "a venue"
-          : "settings";
+          : group.subject_type === "vehicle"
+            ? "a vehicle"
+            : "settings";
 
   switch (group.action) {
     case "created":

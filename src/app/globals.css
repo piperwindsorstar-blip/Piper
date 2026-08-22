@@ -736,3 +736,41 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .banner-preview { margin-bottom: 1rem; display: grid; gap: 0.4rem; }
 .check-row { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; }
 .check-row input { width: auto; margin: 0; }
+
+/* ------------------------------------------------------------- dispatch */
+
+/* The week board: vehicles down, days across. Cells stay narrow so seven of
+   them fit, and the whole table scrolls sideways on a phone rather than
+   squeezing the day columns into uselessness. */
+.board { table-layout: fixed; min-width: 56rem; }
+.board th, .board td { vertical-align: top; }
+.board-vehicle { width: 10rem; text-align: left; }
+.board-today { background: var(--accent-soft); }
+
+.run-chip {
+  position: relative;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 1.3rem 0.35rem 0.5rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+/* Two runs in one cell is legal but worth seeing at a glance. */
+.run-chip-clash { border-left-color: var(--danger); }
+.run-label { font-weight: 600; }
+.run-remove {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.2rem;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.1rem 0.2rem;
+}
+.run-remove:hover { color: var(--danger); }

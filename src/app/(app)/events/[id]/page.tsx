@@ -9,6 +9,7 @@ import CopyLink from "@/components/CopyLink";
 import History from "@/components/History";
 import AskAvailability from "./AskAvailability";
 import PlannerSheet from "./PlannerSheet";
+import { runsForEvent } from "@/lib/dispatch";
 import { eventHistory, groupEntries } from "@/lib/audit";
 import { requestsForEvent } from "@/lib/availability";
 import { listDjs } from "@/lib/team";
@@ -43,6 +44,10 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
   // one DJ has no business seeing who else was asked about a date.
   const availability = isAdmin ? requestsForEvent(event.id) : [];
   const djs = isAdmin ? listDjs().map((d) => ({ id: d.id, name: d.name })) : [];
+  // The DJ driving needs to know which van it is as much as the office does,
+  // so this is not admin-only — but it is only ever shown on an event they can
+  // already see, which getEvent has decided by the time we are here.
+  const runs = runsForEvent(event.id);
 
   const keySlots = SONG_CATEGORIES.filter((c) =>
     ["first_dance", "grand_entrance", "last_dance"].includes(c.key),
@@ -279,6 +284,37 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
           </div>
           <div className="card-body" style={{ whiteSpace: "pre-wrap" }}>
             {event.internal_notes}
+          </div>
+        </div>
+      )}
+
+      {runs.length > 0 && (
+        <div className="card">
+          <div className="card-head">
+            <h2>Vehicles</h2>
+            {isAdmin && (
+              <Link className="btn btn-sm" href="/dispatch">
+                Dispatch
+              </Link>
+            )}
+          </div>
+          <div className="card-body">
+            <ul className="stack-list">
+              {runs.map((run) => (
+                <li key={run.id}>
+                  <strong>{run.vehicle_name}</strong>
+                  <span className="muted small">
+                    {" · "}
+                    {run.starts_on === run.ends_on
+                      ? formatDate(run.starts_on)
+                      : `${formatDate(run.starts_on)} – ${formatDate(run.ends_on)}`}
+                    {run.driver_name ? ` · ${run.driver_name}` : ""}
+                    {run.keys_with ? ` · keys with ${run.keys_with}` : ""}
+                  </span>
+                  {run.notes && <div className="small faint">{run.notes}</div>}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

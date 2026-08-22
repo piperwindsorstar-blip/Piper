@@ -6,6 +6,7 @@ import StatusBadge from "@/components/StatusBadge";
 import Cell from "@/components/Cell";
 import AvailabilityAsks from "@/components/AvailabilityAsks";
 import { openRequestsFor } from "@/lib/availability";
+import DispatchToday from "@/components/DispatchToday";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -76,6 +77,12 @@ export default async function DashboardPage() {
             <div className="stat-note">couples haven&rsquo;t submitted</div>
           </div>
         </div>
+
+        {isAdmin && (
+          <div style={{ marginTop: "1.1rem" }}>
+            <DispatchToday />
+          </div>
+        )}
 
         {next && (
           <div className="card" style={{ marginTop: "1.1rem" }}>

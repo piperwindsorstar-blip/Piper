@@ -344,3 +344,40 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TEXT NOT NULL,
   updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- The fleet, own and hired. A rental is a vehicle like any other; what makes it
+-- different is that it has to go back, so it carries the dates it is held for
+-- and the board can warn before one is due.
+CREATE TABLE IF NOT EXISTS vehicles (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  name          TEXT NOT NULL,
+  kind          TEXT NOT NULL DEFAULT 'van'
+                  CHECK (kind IN ('van', 'truck', 'car', 'trailer', 'rental')),
+  plate         TEXT,
+  rental_from   TEXT,                    -- rentals only
+  rental_due    TEXT,                    -- rentals only: back by this date
+  capacity_note TEXT,
+  notes         TEXT,
+  active        INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_vehicles_active ON vehicles(active, name);
+
+-- A vehicle committed to something, for a span of days. Usually a booking, but
+-- not always — a service appointment or a warehouse move occupies a van just as
+-- surely, so event_id is optional and `label` is what the board shows.
+CREATE TABLE IF NOT EXISTS dispatch_runs (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  event_id   INTEGER REFERENCES events(id) ON DELETE SET NULL,
+  label      TEXT NOT NULL,
+  starts_on  TEXT NOT NULL,
+  ends_on    TEXT NOT NULL,              -- same as starts_on for a single day
+  driver_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  keys_with  TEXT,
+  notes      TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_runs_vehicle ON dispatch_runs(vehicle_id, starts_on);
+CREATE INDEX IF NOT EXISTS idx_runs_dates ON dispatch_runs(starts_on, ends_on);
+CREATE INDEX IF NOT EXISTS idx_runs_event ON dispatch_runs(event_id);

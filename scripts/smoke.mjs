@@ -1193,6 +1193,111 @@ await reportDj.ctx.close();
   await dj.ctx.close();
 }
 
+/* ---------- 23. dispatch ---------- */
+{
+  const stamp = Date.now();
+  const van = `Smoke Van ${stamp}`;
+  const ops = await signIn("owner@piper.test");
+
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  await ops.page.fill('form:has(button:has-text("Add vehicle")) input[name="name"]', van);
+  await ops.page.click('button:has-text("Add vehicle")');
+  await ops.page.waitForTimeout(900);
+  check("a vehicle can be added", (await ops.page.textContent("body")).includes(van));
+
+  // Book it out across three days and check every day is drawn, not just the
+  // first — a run shown only on its start date is the bug this board exists
+  // to avoid.
+  const day = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  await ops.page.goto(`${BASE}/dispatch`);
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.fill("#label", `Smoke run ${stamp}`);
+  await ops.page.fill("#starts_on", day(0));
+  await ops.page.fill("#ends_on", day(2));
+  await ops.page.fill("#keys_with", "Front desk");
+  await ops.page.click('button:has-text("Send it out")');
+  await ops.page.waitForTimeout(1200);
+
+  const chips = await ops.page.locator(`.run-chip:has-text("Smoke run ${stamp}")`).count();
+  check("a multi-day run fills every day it covers", chips >= 2, `${chips} cells`);
+  check("the board shows who has the keys", (await ops.page.textContent("body")).includes("Front desk"));
+
+  // A second run on the same van over the same days is allowed but flagged.
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.fill("#label", `Clashing run ${stamp}`);
+  await ops.page.fill("#starts_on", day(1));
+  await ops.page.click('button:has-text("Send it out")');
+  await ops.page.waitForTimeout(1200);
+  check(
+    "a double booking is allowed but called out",
+    (await ops.page.textContent("body")).includes("is also out for"),
+  );
+  check(
+    "the clash is visible on the board",
+    (await ops.page.locator(".run-chip-clash").count()) > 0,
+  );
+
+  // Dates that make no sense are refused.
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.fill("#label", "Backwards");
+  await ops.page.fill("#starts_on", day(5));
+  await ops.page.fill("#ends_on", day(3));
+  await ops.page.click('button:has-text("Send it out")');
+  await ops.page.waitForTimeout(1000);
+  check(
+    "coming back before going out is refused",
+    (await ops.page.textContent(".alert-error")) !== null,
+  );
+
+  // Week navigation moves a week at a time.
+  await ops.page.goto(`${BASE}/dispatch`);
+  const thisWeek = await ops.page.textContent("h2");
+  await ops.page.click('a:has-text("Next")');
+  await ops.page.waitForTimeout(800);
+  check("the board moves a week at a time", (await ops.page.textContent("h2")) !== thisWeek);
+
+  // And it reaches the dashboard.
+  await ops.page.goto(`${BASE}/dashboard`);
+  check(
+    "today's runs reach the dashboard",
+    (await ops.page.textContent("body")).includes("On the road today"),
+  );
+
+  // Clean up: remove the runs, then retire the vehicle.
+  await ops.page.goto(`${BASE}/dispatch`);
+  for (let i = 0; i < 6; i++) {
+    const remove = ops.page.locator('button[aria-label="Remove run"]');
+    if ((await remove.count()) === 0) break;
+    await remove.first().click();
+    await ops.page.waitForTimeout(700);
+  }
+  check(
+    "the suite takes its runs back off the board",
+    (await ops.page.locator(`.run-chip:has-text("${stamp}")`).count()) === 0,
+  );
+
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  const card = ops.page.locator(`details.card:has-text("${van}")`).first();
+  await card.locator("summary").click();
+  await card.locator('button:has-text("Retire")').click();
+  await ops.page.waitForTimeout(900);
+  check(
+    "the suite retires the vehicle it made",
+    (await ops.page.textContent("body")).includes("Retired"),
+  );
+  await ops.ctx.close();
+
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/dispatch`);
+  check("a DJ cannot reach dispatch", !dj.page.url().includes("/dispatch"), dj.page.url());
+  await dj.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

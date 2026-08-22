@@ -20,6 +20,8 @@ function subjectHref(group: ChangeGroup): string | null {
       return `/team/${group.subject_id}`;
     case "venue":
       return "/venues";
+    case "vehicle":
+      return "/dispatch/vehicles";
     default:
       return null;
   }
