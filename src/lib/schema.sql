@@ -334,3 +334,13 @@ CREATE TABLE IF NOT EXISTS password_resets (
 );
 CREATE INDEX IF NOT EXISTS idx_resets_user ON password_resets(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_resets_created ON password_resets(created_at DESC);
+
+-- Small pieces of configuration an admin can change from inside the app, as
+-- opposed to the ones that live in /etc/piper.env because they are secrets.
+-- Values are stored as text and parsed by whoever reads them.
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);

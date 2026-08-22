@@ -18,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: "/team", label: "Staff" },
           { href: "/outbox", label: "Outbox" },
           { href: "/activity", label: "Activity" },
+          { href: "/settings", label: "Settings" },
         ]
       : [];
 

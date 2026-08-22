@@ -279,6 +279,18 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_resets_created ON password_resets(created_at DESC);
     `,
   },
+  {
+    version: 9,
+    label: "settings",
+    up: `
+      CREATE TABLE IF NOT EXISTS settings (
+        key        TEXT PRIMARY KEY,
+        value      TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+      );
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

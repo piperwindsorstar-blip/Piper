@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { resetTarget } from "@/lib/password-reset";
 import ResetForm from "./ResetForm";
+import LoginBanner from "@/components/LoginBanner";
 
 /**
  * The page a reset link opens.
@@ -26,6 +27,8 @@ export default async function ResetPage({ params }: { params: Promise<{ token: s
             {target ? "Choose a new password" : "That link has expired"}
           </p>
         </div>
+
+        <LoginBanner />
 
         <div className="card">
           <div className="card-body">

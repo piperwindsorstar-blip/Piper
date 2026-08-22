@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import LoginForm from "./LoginForm";
+import LoginBanner from "@/components/LoginBanner";
 
 export default async function LoginPage({
   searchParams,
@@ -23,6 +24,8 @@ export default async function LoginPage({
             Sign in to your wedding DJ workspace
           </p>
         </div>
+        <LoginBanner />
+
         <div className="card">
           <div className="card-body">
             <LoginForm justReset={reset === "1"} />

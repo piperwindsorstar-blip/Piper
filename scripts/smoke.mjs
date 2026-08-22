@@ -1119,6 +1119,80 @@ await reportDj.ctx.close();
   await cleanup.ctx.close();
 }
 
+/* ---------- 22. login banner ---------- */
+{
+  const stamp = Date.now();
+  const message = `Smoke notice ${stamp}`;
+  const ops = await signIn("owner@piper.test");
+
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.fill("#message", message);
+  await ops.page.selectOption("#tone", "warning");
+  await ops.page.check("#on");
+  await ops.page.click('button:has-text("Save banner")');
+  await ops.page.waitForTimeout(900);
+  check("banner saves", (await ops.page.textContent("body")).includes("showing on the sign-in"));
+
+  // The point of the feature: visible to someone with no account at all.
+  const stranger = await browser.newContext();
+  const sp = await stranger.newPage();
+  await sp.goto(`${BASE}/login`);
+  let shown = await sp.textContent("body");
+  check("a signed-out visitor sees the banner", shown.includes(message));
+  check("the banner carries its tone", (await sp.locator(".login-banner-warning").count()) === 1);
+  await sp.goto(`${BASE}/forgot`);
+  check("it shows on the forgotten-password page too", (await sp.textContent("body")).includes(message));
+  await stranger.close();
+
+  // Stored text is rendered as text. An admin typing a tag must not get markup
+  // on the one page everybody reaches without signing in.
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.fill("#message", `<img src=x onerror=alert(1)>${stamp}`);
+  await ops.page.click('button:has-text("Save banner")');
+  await ops.page.waitForTimeout(900);
+
+  const probe = await browser.newContext();
+  const pp = await probe.newPage();
+  await pp.goto(`${BASE}/login`);
+  check("markup in the banner is not rendered", (await pp.locator("img").count()) === 0);
+  check(
+    "it is shown as the text it is",
+    (await pp.textContent(".login-banner")).includes("<img"),
+  );
+  await probe.close();
+
+  // Switching it off takes it away.
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.uncheck("#on");
+  await ops.page.click('button:has-text("Save banner")');
+  await ops.page.waitForTimeout(900);
+
+  const after = await browser.newContext();
+  const ap = await after.newPage();
+  await ap.goto(`${BASE}/login`);
+  check("switching it off hides it", (await ap.locator(".login-banner").count()) === 0);
+  await after.close();
+
+  // And the change is attributed like any other.
+  await ops.page.goto(`${BASE}/activity`);
+  check(
+    "banner changes land in the activity feed",
+    (await ops.page.textContent("body")).includes("Login banner"),
+  );
+
+  // Leave it blank and off, as found.
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.fill("#message", "");
+  await ops.page.click('button:has-text("Save banner")');
+  await ops.page.waitForTimeout(800);
+  await ops.ctx.close();
+
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/settings`);
+  check("a DJ cannot reach settings", !dj.page.url().includes("/settings"), dj.page.url());
+  await dj.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

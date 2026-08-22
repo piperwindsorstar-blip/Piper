@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import ForgotForm from "./ForgotForm";
+import LoginBanner from "@/components/LoginBanner";
 
 export default async function ForgotPage() {
   // Somebody already signed in doesn't need this, and landing here from a stale
@@ -19,6 +20,8 @@ export default async function ForgotPage() {
             Forgotten your password
           </p>
         </div>
+        <LoginBanner />
+
         <div className="card">
           <div className="card-body">
             <ForgotForm />

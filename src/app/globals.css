@@ -705,3 +705,34 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .signin-list li:first-child { border-top: none; }
 .signin-list time { min-width: 11rem; color: var(--text-muted); font-size: 0.85rem; }
 .signin-list .faint { margin-left: auto; }
+
+/* The notice an admin posts above the sign-in form. Sits between the brand and
+   the card so it reads as a message about the service, not about the form. */
+.login-banner {
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.login-banner-info {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--accent-text);
+}
+.login-banner-warning {
+  background: var(--warning-soft);
+  border-color: var(--warning-soft);
+  color: var(--warning);
+}
+.login-banner-success {
+  background: var(--success-soft);
+  border-color: var(--success-soft);
+  color: var(--success);
+}
+
+.banner-preview { margin-bottom: 1rem; display: grid; gap: 0.4rem; }
+.check-row { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; }
+.check-row input { width: auto; margin: 0; }
