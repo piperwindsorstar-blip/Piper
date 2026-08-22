@@ -209,6 +209,22 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_avail_event ON availability_requests(event_id);
     `,
   },
+  {
+    version: 6,
+    label: "venues on crew reports",
+    up: `
+      ALTER TABLE crew_reports ADD COLUMN venue_raw TEXT;
+      ALTER TABLE crew_reports ADD COLUMN venue_id INTEGER REFERENCES venues(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_reports_venue ON crew_reports(venue_id);
+
+      CREATE TABLE IF NOT EXISTS venue_aliases (
+        alias      TEXT PRIMARY KEY COLLATE NOCASE,
+        venue_id   INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_venue_alias_venue ON venue_aliases(venue_id);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

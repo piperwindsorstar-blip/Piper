@@ -186,8 +186,11 @@ CREATE TABLE IF NOT EXISTS crew_reports (
   notes         TEXT,
   is_test       INTEGER NOT NULL DEFAULT 0,
   source_id     TEXT,                        -- Gmail message id, when known
+  venue_raw     TEXT,                        -- venue as the crew typed it
+  venue_id      INTEGER REFERENCES venues(id) ON DELETE SET NULL,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_reports_venue ON crew_reports(venue_id);
 
 -- One report per kind per job per send time: re-importing the same email is a no-op.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_dedupe ON crew_reports(kind, job_norm, sent_at);
@@ -258,3 +261,18 @@ CREATE TABLE IF NOT EXISTS availability_requests (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_avail_once ON availability_requests(event_id, dj_id);
 CREATE INDEX IF NOT EXISTS idx_avail_event ON availability_requests(event_id);
+
+-- Crews type a venue name freely into the report form, so it arrives as text
+-- and gets matched to a venue record. venue_id is the match; venue_raw is what
+-- they actually typed, kept so an unmatched name is still visible and fixable.
+-- (crew_reports.venue_raw / venue_id are declared in the table above.)
+
+-- Where you tell Piper that a name crews use is a venue you already have.
+-- Same idea as crew_aliases: matching is case-insensitive by default, so this
+-- is only for the harder cases — "the barn", "Grand Oak", "Tanaka's place".
+CREATE TABLE IF NOT EXISTS venue_aliases (
+  alias      TEXT PRIMARY KEY COLLATE NOCASE,
+  venue_id   INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_venue_alias_venue ON venue_aliases(venue_id);

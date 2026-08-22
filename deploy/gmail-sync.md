@@ -10,17 +10,17 @@ unreviewable, and gone for good if the Routine were ever deleted. The Routine
 now carries a copy for the sake of running standalone; **this file is the one
 to change first**, and the rules below have been paid for in production bugs.
 
-## Configure it once, after the droplet is up
+## Where it posts
 
-The Routine needs two values that only exist after `deploy/setup.sh` has run:
+Live at `https://crm.djpynxpro.com/api/reports/import`, authenticated with the
+token from `/etc/piper.env` on the droplet:
 
-| Value | Where it comes from |
-| --- | --- |
-| `PIPER_URL` | Your domain, e.g. `https://crm.pynxpro.ca` |
-| `PIPER_IMPORT_TOKEN` | `sudo grep PIPER_IMPORT_TOKEN /etc/piper.env` on the droplet |
+```bash
+sudo grep PIPER_IMPORT_TOKEN /etc/piper.env
+```
 
-Until `PIPER_URL` is filled in, the Routine keeps rebuilding the old standalone
-dashboard artifact instead, so nothing stops working in the meantime.
+Rotate it by changing that line and running `sudo systemctl restart piper`; the
+Routine's prompt then needs the new value too.
 
 The token authenticates the import and nothing else. If the endpoint's env var
 is unset the route refuses every request rather than defaulting to open, so a
@@ -48,7 +48,8 @@ without asking again.
 
 Extract per message:
 
-- **Both kinds:** job number, crew name(s) as free text, sent timestamp.
+- **Both kinds:** job number, crew name(s) as free text, sent timestamp, and the
+  venue if the form asks for it.
 - **DJ/Photobooth:** video dance party yes/no, client / crowd / staff ratings, notes.
 - **Warehouse:** return quality 1–5, manifest signed yes/no/not-asked, notes.
 
@@ -115,6 +116,7 @@ Content-Type: application/json
       "quality": null,               // warehouse only
       "manifest": "Yes",             // "Yes"|"No"|null -> yes/no/na
       "notes": "...",
+      "venue": "The Grand Oak Barn",   // as the crew typed it, optional
       "sourceId": "<gmail message id>"
     }
   ]
@@ -145,8 +147,20 @@ worth mentioning in the run's summary — the rest still imported.
 ### Dedupe
 
 Reports are unique on `(kind, normalised job, sentAt)`. Re-posting the same
-email is a no-op that lands in `skipped`. This is deliberate: it means the
+email is a no-op that lands in `duplicates`. This is deliberate: it means the
 `after:` window can overlap freely, and a failed run can simply be re-run.
+
+## Venues
+
+Send `venue` exactly as the crew typed it. Piper matches it to a venue record
+itself — case, punctuation and a leading "the" are all ignored — and keeps the
+raw text either way, so a name it cannot place stays visible under
+**Venues → Venue names from reports** where it can be pointed at the right one.
+Mapping a name back-fills every past report that used it.
+
+This only works once the report form asks the question. Add a **Venue** field
+to the DJ/Photobooth and Warehouse forms; until then `venue` is simply absent
+and nothing breaks.
 
 ## 6. Report back
 

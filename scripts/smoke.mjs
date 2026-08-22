@@ -709,6 +709,69 @@ await reportDj.ctx.close();
   await cleanup.ctx.close();
 }
 
+/* ---------- 19. venue notes gathered from crew reports ---------- */
+{
+  const token = process.env.PIPER_IMPORT_TOKEN;
+  const owner = await signIn("owner@piper.test");
+
+  if (!token) {
+    // Without a token we can still prove the page copes with no data.
+    await owner.page.goto(`${BASE}/venues`);
+    check(
+      "venues explain where crew notes come from",
+      (await owner.page.textContent("body")).includes("once your report form asks which"),
+    );
+  } else {
+    const stamp = Date.now();
+    const post = (reports) =>
+      fetch(`${BASE}/api/reports/import`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reports }),
+      }).then((r) => r.json());
+
+    // "the grand oak barn" must match the venue named "The Grand Oak Barn":
+    // crews type it however they type it.
+    await post([
+      { kind: "dj", job: `26-91${stamp % 100}`, crew: "Juice", sentAt: "2026-08-20T16:14:00Z",
+        venue: "the grand oak barn ", notes: "Generator only until 4pm, bring the long runs.",
+        sourceId: `venue-${stamp}-1` },
+      { kind: "warehouse", job: `26-92${stamp % 100}`, crew: "Addison", sentAt: "2026-08-20T18:00:00Z",
+        venue: "Tanaka's place", quality: 4, notes: "Loading door is round the back, not the front.",
+        sourceId: `venue-${stamp}-2` },
+    ]);
+
+    await owner.page.goto(`${BASE}/venues`);
+    let body = await owner.page.textContent("body");
+    check("a differently-typed venue name still matches", body.includes("Generator only until 4pm"));
+    check("the venue shows a crew-note count", /crew note/.test(body));
+
+    // The one it couldn't place is offered for mapping rather than dropped.
+    check("an unrecognised venue name is surfaced", body.includes("Tanaka's place"));
+    check("its note is not yet on any venue", !body.includes("Loading door is round the back"));
+
+    // Map it, and the past report should catch up.
+    const mapForm = owner.page.locator('form.venue-map:has-text("Tanaka")');
+    await mapForm.locator("select").selectOption({ label: "The Grand Oak Barn" });
+    await mapForm.locator('button:has-text("Match")').click();
+    await owner.page.waitForTimeout(1200);
+    body = await owner.page.textContent("body");
+    check("mapping a name back-fills old reports", body.includes("Loading door is round the back"));
+    check("the mapping is listed so it can be undone", body.includes("is The Grand Oak Barn"));
+
+    // Undo, so re-running the suite starts from the same place.
+    await owner.page.locator('.venue-alias-list li:has-text("Tanaka") button').click();
+    await owner.page.waitForTimeout(1000);
+  }
+  await owner.ctx.close();
+
+  // A DJ has no business in venue records.
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/venues`);
+  check("DJ blocked from venues", dj.page.url().endsWith("/dashboard"), dj.page.url());
+  await dj.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

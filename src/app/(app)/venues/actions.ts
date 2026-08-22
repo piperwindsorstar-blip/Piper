@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createVenue, deleteVenue, updateVenue, type VenueInput } from "@/lib/events";
+import { addVenueAlias, relinkVenues, removeVenueAlias } from "@/lib/venue-reports";
 
 function readVenue(formData: FormData): VenueInput | null {
   const name = String(formData.get("name") ?? "").trim();
@@ -39,4 +40,28 @@ export async function removeVenue(formData: FormData): Promise<void> {
   deleteVenue(Number(formData.get("id")));
   revalidatePath("/venues");
   revalidatePath("/events");
+}
+
+/**
+ * Tells Piper that a name crews type is a venue you already have, then
+ * back-fills every past report that used it. Without the relink, mapping a
+ * name would only help future reports — the history that prompted you to map
+ * it would stay unmatched.
+ */
+export async function mapVenueName(formData: FormData): Promise<void> {
+  await requireAdmin();
+
+  const alias = String(formData.get("alias") ?? "").trim();
+  const venueId = Number(formData.get("venue_id"));
+  if (!alias || !Number.isInteger(venueId)) return;
+
+  addVenueAlias(alias, venueId);
+  relinkVenues();
+  revalidatePath("/venues");
+}
+
+export async function unmapVenueName(formData: FormData): Promise<void> {
+  await requireAdmin();
+  removeVenueAlias(String(formData.get("alias") ?? ""));
+  revalidatePath("/venues");
 }

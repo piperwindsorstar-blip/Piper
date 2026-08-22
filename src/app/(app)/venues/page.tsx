@@ -1,7 +1,14 @@
 import { requireAdmin } from "@/lib/auth";
 import { listVenues } from "@/lib/events";
 import { db } from "@/lib/db";
-import { removeVenue, saveVenue } from "./actions";
+import { mapVenueName, removeVenue, saveVenue, unmapVenueName } from "./actions";
+import VenueNotes from "@/components/VenueNotes";
+import {
+  listVenueAliases,
+  notesForVenue,
+  reportCountsByVenue,
+  unmatchedVenues,
+} from "@/lib/venue-reports";
 
 function eventCounts(): Map<number, number> {
   const rows = db()
@@ -14,6 +21,9 @@ export default async function VenuesPage() {
   await requireAdmin();
   const venues = listVenues();
   const counts = eventCounts();
+  const reportCounts = reportCountsByVenue();
+  const unmatched = unmatchedVenues();
+  const aliases = listVenueAliases();
 
   return (
     <>
@@ -93,9 +103,17 @@ export default async function VenuesPage() {
                       "No details yet"}
                   </div>
                 </div>
-                <span className="badge badge-plain">
-                  {counts.get(venue.id) ?? 0} event{(counts.get(venue.id) ?? 0) === 1 ? "" : "s"}
-                </span>
+                <div className="venue-badges">
+                  <span className="badge badge-plain">
+                    {counts.get(venue.id) ?? 0} event{(counts.get(venue.id) ?? 0) === 1 ? "" : "s"}
+                  </span>
+                  {(reportCounts.get(venue.id) ?? 0) > 0 && (
+                    <span className="badge badge-accent">
+                      {reportCounts.get(venue.id)} crew note
+                      {reportCounts.get(venue.id) === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
               </summary>
 
               <div className="card-body">
@@ -145,9 +163,78 @@ export default async function VenuesPage() {
                     </button>
                   </div>
                 </form>
+
+                <div className="venue-crew">
+                  <h3>What crews have said</h3>
+                  <p className="small muted">
+                    Straight from the show and warehouse reports for jobs at this venue.
+                  </p>
+                  <VenueNotes notes={notesForVenue(venue.id)} />
+                </div>
               </div>
             </details>
           ))
+        )}
+
+        {(unmatched.length > 0 || aliases.length > 0) && (
+          <div className="card">
+            <div className="card-head">
+              <h2>Venue names from reports</h2>
+              <span className="small muted">
+                {unmatched.length > 0
+                  ? `${unmatched.length} name${unmatched.length === 1 ? "" : "s"} Piper couldn't place`
+                  : "All matched"}
+              </span>
+            </div>
+            <div className="card-body">
+              <p className="small muted">
+                Crews type the venue in themselves, so spellings vary. Piper matches
+                what it can and lists the rest here — point each one at the right venue
+                and every past report using that name catches up too.
+              </p>
+
+              {unmatched.map((row) => (
+                <form action={mapVenueName} className="venue-map" key={row.venue_raw}>
+                  <input type="hidden" name="alias" value={row.venue_raw} />
+                  <span className="venue-map-name">
+                    {row.venue_raw}
+                    <span className="small faint"> · {row.n} report{row.n === 1 ? "" : "s"}</span>
+                  </span>
+                  <select name="venue_id" required defaultValue="">
+                    <option value="" disabled>
+                      This is…
+                    </option>
+                    {venues.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button className="btn btn-sm" type="submit">
+                    Match
+                  </button>
+                </form>
+              ))}
+
+              {aliases.length > 0 && (
+                <ul className="venue-alias-list">
+                  {aliases.map((a) => (
+                    <li key={a.alias}>
+                      <span>
+                        &ldquo;{a.alias}&rdquo; is <strong>{a.venue_name}</strong>
+                      </span>
+                      <form action={unmapVenueName}>
+                        <input type="hidden" name="alias" value={a.alias} />
+                        <button className="btn btn-sm" type="submit">
+                          Undo
+                        </button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </>

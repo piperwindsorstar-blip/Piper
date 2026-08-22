@@ -18,7 +18,8 @@
     "import:reports": "tsx scripts/import-reports.ts",
     "db:backup": "tsx scripts/backup-db.ts",
     "db:verify-backup": "tsx scripts/verify-backup.ts",
-    "db:recommendations": "tsx scripts/seed-recommendations.ts"
+    "db:recommendations": "tsx scripts/seed-recommendations.ts",
+    "db:check-schema": "tsx scripts/check-schema.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

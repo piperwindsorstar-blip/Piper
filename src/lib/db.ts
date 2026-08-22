@@ -28,9 +28,13 @@ function migrate(conn: Database.Database): void {
     return;
   }
 
-  // Older installs still need any tables added since they were created.
-  conn.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
-
+  // Migrations run BEFORE the schema file, and the order is load-bearing.
+  //
+  // schema.sql describes the database as it looks today, so it contains
+  // indexes on columns that migrations add. Running it first against an older
+  // database means CREATE INDEX hits a column that does not exist yet, throws,
+  // and takes the whole connection down before a single migration has run —
+  // leaving the install permanently stuck at its old version. That happened.
   const current = Number((conn.pragma("user_version", { simple: true }) as number) ?? 0);
   const pending = MIGRATIONS.filter((m) => m.version > current).sort((a, b) => a.version - b.version);
 
@@ -42,6 +46,10 @@ function migrate(conn: Database.Database): void {
     apply();
     console.log(`[piper] applied migration ${migration.version}: ${migration.label}`);
   }
+
+  // Now safe: every column the schema references exists. This is belt and
+  // braces for anything added to schema.sql without its own migration.
+  conn.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 }
 
 export function db(): Database.Database {

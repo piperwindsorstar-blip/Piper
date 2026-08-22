@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "./db";
 import { looksLikeTest, normalizeJob } from "./reports";
+import { resolveVenue } from "./venue-reports";
 
 /**
  * Import contract for crew reports.
@@ -52,6 +53,8 @@ export const reportSchema = z.object({
   quality: rating,
   manifest: manifest,
   notes: text,
+  /** Venue as the crew typed it. Matched to a venue record on the way in. */
+  venue: text,
   sourceId: text,
   /** Force a row's test flag; otherwise it's detected from the job number. */
   isTest: z.boolean().optional(),
@@ -93,8 +96,9 @@ export function importReports(inputs: ReportInput[]): ImportResult {
   const insert = db().prepare(
     `INSERT OR IGNORE INTO crew_reports
        (kind, report_type, job_raw, job_norm, crew_raw, sent_at, vdp,
-        rating_client, rating_crowd, rating_staff, quality, manifest, notes, is_test, source_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        rating_client, rating_crowd, rating_staff, quality, manifest, notes, is_test, source_id,
+        venue_raw, venue_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   const run = db().transaction(() => {
@@ -129,6 +133,8 @@ export function importReports(inputs: ReportInput[]): ImportResult {
         input.notes,
         isTest ? 1 : 0,
         input.sourceId,
+        input.venue,
+        resolveVenue(input.venue),
       );
 
       if (info.changes === 0) result.duplicates += 1;
