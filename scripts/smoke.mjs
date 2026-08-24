@@ -1767,7 +1767,26 @@ await reportDj.ctx.close();
   await ops.page.waitForTimeout(500);
   check("right-click opens the editor", (await ops.page.locator(".gantt-dialog").count()) === 1);
 
+  check(
+    "the dialog asks for the show and the note separately",
+    (await ops.page.locator(".gantt-dialog #show_name").count()) === 1 &&
+      (await ops.page.locator(".gantt-dialog #note").count()) === 1,
+  );
+  // The show is asked first and has the cursor, because it is the thing the
+  // person already has in their head when they open this.
+  check(
+    "the show is asked first",
+    (await ops.page.locator(".gantt-dialog label").allTextContents()).join("|") ===
+      ["Show", "The day is", "From", "To", "Note"].join("|"),
+    (await ops.page.locator(".gantt-dialog label").allTextContents()).join(", "),
+  );
+  check(
+    "and it has the cursor",
+    (await ops.page.evaluate(() => document.activeElement?.id)) === "show_name",
+  );
+
   await ops.page.selectOption("#state", "pynx");
+  await ops.page.fill("#show_name", `Okonkwo ${stamp}`);
   await ops.page.fill("#note", `Plan ${stamp}`);
   await ops.page.click('.gantt-dialog button:has-text("Save")');
   await ops.page.waitForTimeout(1400);
@@ -1775,7 +1794,48 @@ await reportDj.ctx.close();
     "the dialog can set a state a click cannot",
     (await ops.page.locator(".gantt-cell.run-pynx").count()) > 0,
   );
-  check("and its note shows on the chart", (await ops.page.textContent("body")).includes(`Plan ${stamp}`));
+
+  // The show is what goes on the bar. The note qualifies it and belongs in the
+  // tooltip, not competing for the same few pixels.
+  const planned = ops.page
+    .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
+    .locator(".gantt-cell")
+    .nth(10);
+  check(
+    "the show is what the bar says",
+    (await ops.page.textContent("body")).includes(`Okonkwo ${stamp}`),
+  );
+  const tip = (await planned.getAttribute("title")) ?? "";
+  check("and the tooltip carries both", tip.includes(`Okonkwo ${stamp}`) && tip.includes(`Plan ${stamp}`), tip);
+
+  // A one-day block has room for about two characters, so hovering has to give
+  // the whole name back rather than a wider ellipsis.
+  {
+    const label = ops.page
+      .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
+      .locator(".gantt-note")
+      .first();
+    const shut = (await label.boundingBox())?.width ?? 0;
+    await planned.hover();
+    await ops.page.waitForTimeout(500);
+    const open = (await label.boundingBox())?.width ?? 0;
+    check("hovering widens the label", open > shut, `${Math.round(shut)}px → ${Math.round(open)}px`);
+    check(
+      "and shows the whole show name",
+      await label.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    );
+  }
+
+  // Reopening hands each value back to its own box rather than merging them.
+  await planned.click({ button: "right" });
+  await ops.page.waitForTimeout(700);
+  check(
+    "reopening keeps the show and the note apart",
+    (await ops.page.inputValue(".gantt-dialog #show_name")) === `Okonkwo ${stamp}` &&
+      (await ops.page.inputValue(".gantt-dialog #note")) === `Plan ${stamp}`,
+  );
+  await ops.page.locator('.gantt-dialog button[aria-label="Close"]').click();
+  await ops.page.waitForTimeout(400);
 
   // Slots: a hired class gets three rows, an owned vehicle one, and they are
   // independent of each other.
@@ -2042,13 +2102,15 @@ await reportDj.ctx.close();
   // The vehicle column is the fleet, in the shop's own order — hires by size,
   // then the van Pynx owns. Not alphabetical, which opens the sheet with the
   // 26 ft truck, and not a list of whatever happens to have been booked.
+  // Pynx Cargo leads: it is the one that is always there and costs nothing, so
+  // it is the row to fill before phoning Pencar about any of the others.
   const STANDING = [
+    "Pynx Cargo",
     "Cargo van",
     "Cube van",
     "26 ft truck",
     "Passenger vehicle",
     "Mini van",
-    "Pynx Cargo",
   ];
 
   for (const [page_, where] of [

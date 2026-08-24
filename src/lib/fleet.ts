@@ -137,13 +137,16 @@ export function ensureStandingFleet(conn: Database.Database): void {
  * A SQL fragment rather than a sort in JavaScript because the board, the
  * Gantt, the fleet page and every vehicle dropdown each run their own query,
  * and a permanent list that comes out in a different order on one of them is
- * not a permanent list. Hires first, in the order the shop says the classes,
- * then the vehicle Pynx owns — it reads as the list of things to phone Pencar
- * about, with the one that needs no phone call at the bottom. Name breaks
- * ties, so anything added by hand lands predictably among its own kind.
+ * not a permanent list.
+ *
+ * The van Pynx owns goes first. It is the one that is always there and costs
+ * nothing to use, so it is the row to fill before phoning anybody — top of the
+ * sheet is where that decision gets made. The hires follow in the order the
+ * shop says the classes, roughly by size. Name breaks ties, so anything added
+ * by hand lands predictably among its own kind.
  */
 export const FLEET_ORDER = `
-  CASE ownership WHEN 'other' THEN 1 ELSE 0 END,
+  CASE ownership WHEN 'other' THEN 0 ELSE 1 END,
   CASE class
     WHEN 'cargo_van' THEN 1
     WHEN 'cube_van'  THEN 2

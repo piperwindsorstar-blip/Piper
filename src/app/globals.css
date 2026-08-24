@@ -1195,17 +1195,51 @@ input:focus, select:focus, textarea:focus {
 
 /* A note sits on the first day of its span and is allowed to overflow, since
    the days after it are the same block and have nothing of their own to say. */
+/* The label sits in the block's first day but is allowed to run to the end of
+   the block — and no further. Bounding it to `--span` days matters: a name
+   spilling across the days after a one-day block reads as if those days were
+   part of it. Hovering the block lifts the clip; see below. */
 .gantt-note {
   position: absolute;
   left: 0.3rem;
   top: 50%;
   transform: translateY(-50%);
+  width: calc(var(--span, 1) * 100% - 0.6rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.7rem;
   color: #fff;
   pointer-events: none;
   z-index: 1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Hover a block and the whole show name comes out.
+   A one-day block has room for about two characters, so a chart of them is a
+   chart of ellipses. Rather than a native tooltip — which waits a second and
+   arrives somewhere near the pointer — the label itself unclips in place and
+   takes a background, so the name appears exactly where the eye already is.
+   Above its neighbours, and only while pointed at. */
+.gantt-cell:hover .gantt-note,
+.gantt-cell:focus-visible .gantt-note {
+  width: max-content;
+  max-width: 18rem;
+  overflow: visible;
+  z-index: 6;
+  padding: 0.15rem 0.4rem;
+  margin-left: -0.4rem;
+  border-radius: 5px;
+  background: rgba(24, 24, 27, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  text-shadow: none;
+}
+
+/* The block itself has to stack above the days after it, or the unclipped
+   label slides underneath them. */
+.gantt-cell:hover,
+.gantt-cell:focus-visible {
+  z-index: 6;
 }
 
 .gantt-grid .board-grid-row:last-child .gantt-cell:first-child { border-bottom-left-radius: 0; }

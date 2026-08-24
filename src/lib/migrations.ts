@@ -423,6 +423,16 @@ export const MIGRATIONS: Migration[] = [
       UPDATE vehicles SET slots = 1 WHERE ownership = 'personal' AND slots > 1;
     `,
   },
+  {
+    version: 16,
+    label: "the show a planned day is for",
+    up: `
+      -- A plan is usually for a named show, and the note is not the place for
+      -- it: "Nakamura & Delgado" and "needs the big speakers" answer different
+      -- questions and only one of them belongs on the bar.
+      ALTER TABLE gantt_cells ADD COLUMN show_name TEXT;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

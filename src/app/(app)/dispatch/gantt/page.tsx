@@ -108,7 +108,8 @@ export default async function GanttPage({
                   continuesRight: b.continuesRight,
                   startsOn: b.run.starts_on,
                   endsOn: b.run.ends_on,
-                  note: b.run.label || null,
+                  show: b.cell.show_name,
+                  note: b.cell.note,
                 })),
               })),
             }))}

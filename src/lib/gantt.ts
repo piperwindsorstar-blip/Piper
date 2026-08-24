@@ -30,6 +30,8 @@ export type GanttCell = {
   state: CellState;
   starts_on: string;
   ends_on: string;
+  /** The show it is for, when it has a name. This is what the bar says. */
+  show_name: string | null;
   note: string | null;
   /** Which of the vehicle's rows this sits in. Fixed, not re-packed. */
   slot: number;
@@ -77,6 +79,7 @@ export type CellInput = {
   state: CellState;
   starts_on: string;
   ends_on: string;
+  show_name: string | null;
   note: string | null;
   slot: number;
 };
@@ -84,10 +87,18 @@ export type CellInput = {
 export function createCell(input: CellInput): number {
   const result = db()
     .prepare(
-      `INSERT INTO gantt_cells (vehicle_id, state, starts_on, ends_on, note, slot)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO gantt_cells (vehicle_id, state, starts_on, ends_on, show_name, note, slot)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(input.vehicle_id, input.state, input.starts_on, input.ends_on, input.note, input.slot);
+    .run(
+      input.vehicle_id,
+      input.state,
+      input.starts_on,
+      input.ends_on,
+      input.show_name,
+      input.note,
+      input.slot,
+    );
   return Number(result.lastInsertRowid);
 }
 
@@ -95,13 +106,14 @@ export function updateCell(id: number, input: CellInput): void {
   db()
     .prepare(
       `UPDATE gantt_cells SET vehicle_id = ?, state = ?, starts_on = ?, ends_on = ?,
-         note = ?, slot = ? WHERE id = ?`,
+         show_name = ?, note = ?, slot = ? WHERE id = ?`,
     )
     .run(
       input.vehicle_id,
       input.state,
       input.starts_on,
       input.ends_on,
+      input.show_name,
       input.note,
       input.slot,
       id,
@@ -133,6 +145,7 @@ export function cycleDay(vehicleId: number, slot: number, date: string): CellSta
       state: "needed",
       starts_on: date,
       ends_on: date,
+      show_name: null,
       note: null,
       slot,
     });
@@ -194,7 +207,16 @@ export function pruneCleared(): void {
  * Slots come from the vehicle, not from the data: three for a hired class,
  * because three cube vans can be out at once, and one for a vehicle Pynx owns.
  */
-export type GanttSlot = { slot: number; bars: RunBar[] };
+/**
+ * A laid-out bar, still carrying the cell it came from.
+ *
+ * `layoutRuns` is shared with the board and speaks in runs, so a cell has to
+ * be dressed up as one to get its column and span worked out. The cell rides
+ * along rather than being looked up again afterwards: the chart needs the show
+ * and the note as separate things, and a run has only the one label.
+ */
+export type GanttBar = RunBar & { cell: GanttCell };
+export type GanttSlot = { slot: number; bars: GanttBar[] };
 export type GanttRow = { vehicle: Vehicle; slots: GanttSlot[] };
 
 export function ganttRows(days: string[], vehicles: Vehicle[]): GanttRow[] {
@@ -205,14 +227,19 @@ export function ganttRows(days: string[], vehicles: Vehicle[]): GanttRow[] {
     const slots: GanttSlot[] = [];
 
     for (let slot = 0; slot < count; slot++) {
+      const mine = cells.filter((c) => c.vehicle_id === vehicle.id && c.slot === slot);
+      const byId = new Map(mine.map((c) => [c.id, c]));
+
       // layoutRuns wants run-shaped records; a cell is the same shape for the
       // purpose of working out where a bar goes.
-      const asRuns = cells
-        .filter((c) => c.vehicle_id === vehicle.id && c.slot === slot)
+      const asRuns = mine
         .map((c) => ({
           ...c,
           event_id: null,
-          label: c.note ?? "",
+          // The bar says the show when there is one. A note is for the thing
+          // that is not the show — "needs the big speakers" — and it would
+          // crowd out the name it is qualifying.
+          label: c.show_name ?? c.note ?? "",
           status: c.state as RunStatus,
           meet_time: null,
           crew: null,
@@ -227,7 +254,11 @@ export function ganttRows(days: string[], vehicles: Vehicle[]): GanttRow[] {
           event_date: null,
         }));
 
-      slots.push({ slot, bars: layoutRuns(days, asRuns) });
+      const bars = layoutRuns(days, asRuns).flatMap((bar) => {
+        const cell = byId.get(bar.run.id);
+        return cell ? [{ ...bar, cell }] : [];
+      });
+      slots.push({ slot, bars });
     }
 
     return { vehicle, slots };
@@ -272,10 +303,15 @@ export function suggestVehicles(
 
   const cells = db()
     .prepare(
-      `SELECT vehicle_id, state, note FROM gantt_cells
+      `SELECT vehicle_id, state, show_name, note FROM gantt_cells
         WHERE cleared_at IS NULL AND starts_on <= ? AND ends_on >= ?`,
     )
-    .all(to, from) as { vehicle_id: number; state: CellState; note: string | null }[];
+    .all(to, from) as {
+      vehicle_id: number;
+      state: CellState;
+      show_name: string | null;
+      note: string | null;
+    }[];
 
   const suggestions = vehicles.map((vehicle) => {
     const conflicts: string[] = [];
@@ -287,7 +323,8 @@ export function suggestVehicles(
     for (const cell of cells) {
       if (cell.vehicle_id !== vehicle.id) continue;
       if (COMMITTED.includes(cell.state as RunStatus)) {
-        conflicts.push(`pencilled in${cell.note ? `: ${cell.note}` : ""}`);
+        const what = cell.show_name ?? cell.note;
+        conflicts.push(`pencilled in${what ? `: ${what}` : ""}`);
       }
     }
 

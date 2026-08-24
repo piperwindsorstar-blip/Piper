@@ -48,7 +48,7 @@ export async function cycleCell(formData: FormData): Promise<void> {
   revalidatePath("/dispatch/gantt");
 }
 
-/** The full dialog: any state, a span of days, and a note. */
+/** The full dialog: any state, a span of days, the show, and a note. */
 export async function saveCell(_prev: GanttState, formData: FormData): Promise<GanttState> {
   const admin = await requireAdmin();
 
@@ -66,6 +66,7 @@ export async function saveCell(_prev: GanttState, formData: FormData): Promise<G
   const vehicle = getVehicle(vehicleId);
   if (!vehicle) return { error: "That vehicle no longer exists." };
 
+  const showName = String(formData.get("show_name") ?? "").trim() || null;
   const note = String(formData.get("note") ?? "").trim() || null;
   const slotRaw = Number(formData.get("slot") ?? 0);
   const slot =
@@ -79,6 +80,7 @@ export async function saveCell(_prev: GanttState, formData: FormData): Promise<G
     state,
     starts_on: startsOn,
     ends_on: endsOn,
+    show_name: showName,
     note,
     slot,
   };
@@ -92,6 +94,7 @@ export async function saveCell(_prev: GanttState, formData: FormData): Promise<G
       { field: "Plan — state", from: before.state, to: state },
       { field: "Plan — from", from: before.starts_on, to: startsOn },
       { field: "Plan — to", from: before.ends_on, to: endsOn },
+      { field: "Plan — show", from: before.show_name, to: showName },
       { field: "Plan — note", from: before.note, to: note },
     ]);
   } else {

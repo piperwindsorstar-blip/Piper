@@ -420,6 +420,7 @@ CREATE TABLE IF NOT EXISTS gantt_cells (
                CHECK (state IN ('booked', 'needed', 'idle', 'own', 'pynx')),
   starts_on  TEXT NOT NULL,
   ends_on    TEXT NOT NULL,
+  show_name  TEXT,                    -- the show it is for, when it has a name
   note       TEXT,
   slot       INTEGER NOT NULL DEFAULT 0,  -- which row of the vehicle it sits in
   cleared_at TEXT,                     -- soft delete, so a clear-all is undoable

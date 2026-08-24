@@ -295,11 +295,12 @@ addRun.run(vehicles[1], null, "Second show, no van yet", "needed", saturdayIn(2)
 // empty grid. Deliberately not the same days as the runs above: the point of
 // the Gantt is that it is a separate surface.
 const addCell = conn.prepare(
-  `INSERT INTO gantt_cells (vehicle_id, state, starts_on, ends_on, note) VALUES (?, ?, ?, ?, ?)`,
+  `INSERT INTO gantt_cells (vehicle_id, state, starts_on, ends_on, show_name, note)
+   VALUES (?, ?, ?, ?, ?, ?)`,
 );
-addCell.run(vehicles[1], "booked", saturdayIn(6), saturdayIn(6), "Festival weekend");
-addCell.run(vehicles[2], "needed", saturdayIn(6), saturdayIn(6), "Three shows");
-addCell.run(vehicles[0], "idle", saturdayIn(8), saturdayIn(8), null);
+addCell.run(vehicles[1], "booked", saturdayIn(6), saturdayIn(6), "Okonkwo & Reyes", null);
+addCell.run(vehicles[2], "needed", saturdayIn(6), saturdayIn(6), null, "Three shows that weekend");
+addCell.run(vehicles[0], "idle", saturdayIn(8), saturdayIn(8), null, null);
 
 console.log(`Seeded ${ids.length} events, 3 venues, 6 vehicles and 4 users.`);
 console.log("");

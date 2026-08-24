@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, type CSSProperties } from "react";
 import { STATUS_LABELS, STATUS_SHORT, type RunStatus } from "@/lib/dispatch-types";
 import Icon from "@/components/Icon";
 import { cycleCell, removeCell, saveCell, type GanttState } from "./actions";
@@ -32,6 +32,7 @@ export type GanttBar = {
   continuesRight: boolean;
   startsOn: string;
   endsOn: string;
+  show: string | null;
   note: string | null;
 };
 
@@ -175,7 +176,14 @@ export default function GanttGrid({
                             .join(" ")}
                           title={
                             state
-                              ? `${STATUS_SHORT[state as RunStatus]}${bar?.note ? ` — ${bar.note}` : ""} · right-click to edit`
+                              ? [
+                                  STATUS_SHORT[state as RunStatus],
+                                  bar?.show ? `— ${bar.show}` : "",
+                                  bar?.note ? `(${bar.note})` : "",
+                                  "· right-click to edit",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")
                               : `${day} · click to plan, right-click for options`
                           }
                           aria-label={`${vehicle.name}${
@@ -202,8 +210,13 @@ export default function GanttGrid({
                             if (pressTimer.current) clearTimeout(pressTimer.current);
                           }}
                         >
-                          {bar?.note && !compact && bar.startsOn === day && (
-                            <span className="gantt-note">{bar.note}</span>
+                          {!compact && bar?.startsOn === day && (bar.show || bar.note) && (
+                            <span
+                              className="gantt-note"
+                              style={{ "--span": bar.span } as CSSProperties}
+                            >
+                              {bar.show ?? bar.note}
+                            </span>
                           )}
                         </button>
                       );
@@ -275,6 +288,26 @@ function CellDialog({
           <input type="hidden" name="vehicle_id" value={dialog.vehicleId} />
           <input type="hidden" name="slot" value={dialog.slot} />
           {bar && <input type="hidden" name="id" value={bar.id} />}
+
+          {/* The show comes first because it is the thing being typed. Everybody
+              opening this dialog knows which day they right-clicked; what they
+              have in their head is the name of the show, and asking for it
+              after three other questions makes them hold it. It is also what
+              the bar ends up saying, and what the recommender quotes back when
+              the vehicle turns out to be spoken for — so it has to be its own
+              box, separable from "needs the big speakers". */}
+          <div className="field">
+            <label htmlFor="show_name">Show</label>
+            <input
+              id="show_name"
+              name="show_name"
+              type="text"
+              defaultValue={bar?.show ?? ""}
+              placeholder="Nakamura & Delgado"
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
 
           <div className="field">
             <label htmlFor="state">The day is</label>
