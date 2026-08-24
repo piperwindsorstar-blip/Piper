@@ -23,7 +23,7 @@ import { categoryFor } from "@/lib/types";
  */
 async function assertAccess(eventId: number): Promise<void> {
   const user = await requireUser();
-  if (!getEvent(user, eventId)) throw new Error("Event not found");
+  if (!getEvent(user, eventId)) throw new Error("Wedding not found");
 }
 
 function refresh(eventId: number): void {

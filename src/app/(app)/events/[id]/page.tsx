@@ -58,7 +58,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
       {conflicts.length > 0 && (
         <div className={`alert ${conflicts.some((c) => c.kind === "dj") ? "alert-error" : "alert-warn"}`}>
           <strong>
-            {conflicts.some((c) => c.kind === "dj") ? "DJ double-booked:" : "Another event that day:"}
+            {conflicts.some((c) => c.kind === "dj") ? "DJ double-booked:" : "Another wedding that day:"}
           </strong>{" "}
           {conflicts.map((c, i) => (
             <span key={c.event.id}>
@@ -339,15 +339,15 @@ export default async function EventOverviewPage({ params }: { params: Promise<{ 
         <div className="card">
           <div className="card-body row-between">
             <div>
-              <strong>Delete this event</strong>
+              <strong>Delete this wedding</strong>
               <div className="small muted">
-                Removes the event with its songs, timeline and planner link. Cannot be undone.
+                Removes the wedding with its songs, timeline and planner link. Cannot be undone.
               </div>
             </div>
             <form action={removeEvent}>
               <input type="hidden" name="id" value={event.id} />
               <button className="btn btn-danger" type="submit">
-                Delete event
+                Delete wedding
               </button>
             </form>
           </div>

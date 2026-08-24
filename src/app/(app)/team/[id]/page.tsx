@@ -77,7 +77,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
 
         <div className="card">
           <div className="card-head">
-            <h2>Upcoming events</h2>
+            <h2>Upcoming weddings</h2>
             <span className="badge badge-plain">{upcoming.length}</span>
           </div>
           <StaffEventList events={upcoming} empty="Nothing booked for them yet." />
@@ -88,7 +88,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
             <h2>History</h2>
             <span className="badge badge-plain">{past.length}</span>
           </div>
-          <StaffEventList events={past} empty="No past events on record." />
+          <StaffEventList events={past} empty="No past weddings on record." />
         </div>
 
         <div className="card">
@@ -125,7 +125,7 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
             <div className="card-body row-between">
               <div className="small muted">
                 {member.active
-                  ? "Deactivating signs them out and blocks access, but keeps their name on past events."
+                  ? "Deactivating signs them out and blocks access, but keeps their name on past weddings."
                   : "Reactivating restores their sign-in."}
               </div>
               <form action={toggleMember}>

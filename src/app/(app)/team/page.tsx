@@ -23,7 +23,7 @@ export default async function StaffPage() {
         <div>
           <h1>Staff</h1>
           <div className="topbar-sub">
-            {active.length} active · admins see everything, DJs see only their own events
+            {active.length} active · admins see everything, DJs see only their own weddings
           </div>
         </div>
       </header>
@@ -32,7 +32,7 @@ export default async function StaffPage() {
         {unassignedWarning.length > 0 && (
           <div className="alert alert-info">
             <strong>Free right now:</strong>{" "}
-            {unassignedWarning.map((m) => m.name).join(", ")} — no upcoming events booked.
+            {unassignedWarning.map((m) => m.name).join(", ")} — no upcoming weddings booked.
           </div>
         )}
 
@@ -106,7 +106,7 @@ export default async function StaffPage() {
                   <div className="staff-main">
                     <div className="staff-name">{member.name}</div>
                     <div className="staff-meta">
-                      {member.email} · kept on past events, cannot sign in
+                      {member.email} · kept on past weddings, cannot sign in
                     </div>
                   </div>
                   <span className="badge badge-cancelled">Deactivated</span>

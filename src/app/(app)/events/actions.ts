@@ -66,7 +66,7 @@ const eventSchema = z.object({
     { message: "Enter a valid contact email" },
   ),
   contact_phone: optionalText,
-  event_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick an event date"),
+  event_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a wedding date"),
   load_in_time: optionalText,
   ceremony_time: optionalText,
   cocktail_time: optionalText,

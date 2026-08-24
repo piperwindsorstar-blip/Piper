@@ -34,13 +34,13 @@ export default async function DashboardPage() {
         <div>
           <h1>Dashboard</h1>
           <div className="topbar-sub">
-            {isAdmin ? "Everything on the books" : "Your assigned events"}
+            {isAdmin ? "Everything on the books" : "Your assigned weddings"}
           </div>
         </div>
         {isAdmin && (
           <Link className="btn btn-primary" href="/events/new">
             <Icon name="plus" size={16} />
-            New event
+            New wedding
           </Link>
         )}
       </header>
@@ -50,7 +50,7 @@ export default async function DashboardPage() {
         {clashingSoon.length > 0 && (
           <div className="alert alert-warn">
             <strong>Heads up:</strong> {clashes.size} upcoming date
-            {clashes.size === 1 ? " has" : "s have"} more than one event booked. Check the{" "}
+            {clashes.size === 1 ? " has" : "s have"} more than one wedding booked. Check the{" "}
             <Link href="/calendar">calendar</Link> to confirm you have the staff.
           </div>
         )}
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
           <div className="card stat">
             <div className="stat-label">Upcoming</div>
             <div className="stat-value">{upcoming.length}</div>
-            <div className="stat-note">events on the books</div>
+            <div className="stat-note">weddings on the books</div>
           </div>
           <div className="card stat">
             <div className="stat-label">This month</div>
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
         {next && (
           <div className="card" style={{ marginTop: "1.1rem" }}>
             <div className="card-head">
-              <h2>Next event — {countdownLabel(next.event_date)}</h2>
+              <h2>Next wedding — {countdownLabel(next.event_date)}</h2>
               <StatusBadge status={next.status} />
             </div>
             <div className="card-body">
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
           <div className="card-head">
             <h2>Coming up</h2>
             <Link className="small" href="/events">
-              All events →
+              All weddings →
             </Link>
           </div>
           {upcoming.length === 0 ? (
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
               {isAdmin && (
                 <>
                   {" "}
-                  <Link href="/events/new">Add your first event</Link>.
+                  <Link href="/events/new">Add your first wedding</Link>.
                 </>
               )}
             </div>

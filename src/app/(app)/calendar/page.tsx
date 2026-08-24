@@ -59,7 +59,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         <div>
           <h1>{monthLabel(year, month)}</h1>
           <div className="topbar-sub">
-            {monthCount} event{monthCount === 1 ? "" : "s"} this month
+            {monthCount} wedding{monthCount === 1 ? "" : "s"} this month
           </div>
         </div>
         <div className="btn-row">
@@ -74,7 +74,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           </Link>
           {user.role === "admin" && (
             <Link className="btn btn-primary btn-sm" href="/events/new">
-              New event
+              New wedding
             </Link>
           )}
         </div>
@@ -83,7 +83,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       <div className="content">
         {clashes.size > 0 && (
           <div className="alert alert-warn">
-            <strong>Double-booked dates</strong> are outlined in amber — more than one live event
+            <strong>Double-booked dates</strong> are outlined in amber — more than one live wedding
             that day. Make sure each has its own DJ.
           </div>
         )}

@@ -54,7 +54,7 @@ const FIELD_LABELS: Record<keyof EventInput, string> = {
   partner_two_name: "Second name on the booking",
   contact_email: "Contact email",
   contact_phone: "Contact phone",
-  event_date: "Event date",
+  event_date: "Wedding date",
   load_in_time: "Load-in time",
   ceremony_time: "Ceremony time",
   cocktail_time: "Cocktail time",

@@ -24,15 +24,15 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     <>
       <header className="topbar">
         <div>
-          <h1>Events</h1>
+          <h1>Weddings</h1>
           <div className="topbar-sub">
-            {events.length} event{events.length === 1 ? "" : "s"}
+            {events.length} wedding{events.length === 1 ? "" : "s"}
             {status === "upcoming" ? " coming up" : ""}
           </div>
         </div>
         {user.role === "admin" && (
           <Link className="btn btn-primary" href="/events/new">
-            New event
+            New wedding
           </Link>
         )}
       </header>
@@ -79,7 +79,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
 
         <div className="card">
           {events.length === 0 ? (
-            <div className="empty">No events match those filters.</div>
+            <div className="empty">No weddings match those filters.</div>
           ) : (
             <div className="table-wrap">
               <table className="stacking">

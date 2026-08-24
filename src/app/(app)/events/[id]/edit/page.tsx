@@ -17,7 +17,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
             Edit — {event.partner_one_name}
             {event.partner_two_name ? ` & ${event.partner_two_name}` : ""}
           </h1>
-          <div className="topbar-sub">Event details and staffing</div>
+          <div className="topbar-sub">Wedding details and staffing</div>
         </div>
       </header>
       <div className="content">

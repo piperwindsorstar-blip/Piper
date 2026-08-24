@@ -53,7 +53,7 @@ export default function StaffRecordForm({ member }: { member: User }) {
           id="staff_notes"
           name="staff_notes"
           rows={4}
-          placeholder="Strengths, preferred kinds of event, anything you want on file. Only admins see this."
+          placeholder="Strengths, preferred kinds of wedding, anything you want on file. Only admins see this."
           defaultValue={kept.staff_notes ?? member.staff_notes ?? ""}
         />
         <span className="help">Private to admins — never shown to the person themselves.</span>

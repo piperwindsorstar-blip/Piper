@@ -37,7 +37,7 @@ export default async function MyPage() {
             <div className="card-head">
               <h2>Next gig — {countdownLabel(next.event_date)}</h2>
               <Link className="btn btn-sm" href={`/events/${next.id}`}>
-                Open event
+                Open wedding
               </Link>
             </div>
             <div className="card-body">
@@ -82,21 +82,21 @@ export default async function MyPage() {
 
         <div className="card">
           <div className="card-head">
-            <h2>Your upcoming events</h2>
+            <h2>Your upcoming weddings</h2>
             <span className="badge badge-plain">{upcoming.length}</span>
           </div>
           <StaffEventList
             events={upcoming}
-            empty="Nothing assigned to you yet. Your admin books the events."
+            empty="Nothing assigned to you yet. Your admin books the weddings."
           />
         </div>
 
         <div className="card">
           <div className="card-head">
-            <h2>Events you've played</h2>
+            <h2>Weddings you've played</h2>
             <span className="badge badge-plain">{past.length}</span>
           </div>
-          <StaffEventList events={past} empty="No past events on record yet." />
+          <StaffEventList events={past} empty="No past weddings on record yet." />
         </div>
 
         <div className="card">

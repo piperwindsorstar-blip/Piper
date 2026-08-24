@@ -10,7 +10,7 @@ export default async function NewEventPage() {
     <>
       <header className="topbar">
         <div>
-          <h1>New event</h1>
+          <h1>New wedding</h1>
           <div className="topbar-sub">Put a wedding on the books</div>
         </div>
       </header>

@@ -92,7 +92,7 @@ export default function EventForm({ event, venues, djs }: Props) {
       <div className="fieldset-title">Date &amp; run of day</div>
       <div className="form-grid cols-3">
         <div className="field">
-          <label htmlFor="event_date">Event date *</label>
+          <label htmlFor="event_date">Wedding date *</label>
           <input
             id="event_date"
             name="event_date"
@@ -209,7 +209,7 @@ export default function EventForm({ event, venues, djs }: Props) {
 
       <div className="btn-row">
         <button className="btn btn-primary" type="submit" disabled={pending}>
-          {pending ? "Saving…" : event ? "Save changes" : "Create event"}
+          {pending ? "Saving…" : event ? "Save changes" : "Create wedding"}
         </button>
         <Link className="btn" href={event ? `/events/${event.id}` : "/events"}>
           Cancel

@@ -28,7 +28,7 @@ export default function AddMemberForm() {
         <div className="field">
           <label htmlFor="role">Role *</label>
           <select id="role" name="role" defaultValue={kept.role ?? "dj"}>
-            <option value="dj">DJ — sees only their own events</option>
+            <option value="dj">DJ — sees only their own weddings</option>
             <option value="admin">Admin — full access</option>
           </select>
         </div>

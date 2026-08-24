@@ -105,7 +105,7 @@ export default async function VenuesPage() {
                 </div>
                 <div className="venue-badges">
                   <span className="badge badge-plain">
-                    {counts.get(venue.id) ?? 0} event{(counts.get(venue.id) ?? 0) === 1 ? "" : "s"}
+                    {counts.get(venue.id) ?? 0} wedding{(counts.get(venue.id) ?? 0) === 1 ? "" : "s"}
                   </span>
                   {(reportCounts.get(venue.id) ?? 0) > 0 && (
                     <span className="badge badge-accent">

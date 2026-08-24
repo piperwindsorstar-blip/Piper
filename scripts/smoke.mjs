@@ -63,7 +63,40 @@ const admin = await signIn("owner@piper.test");
   const body = await admin.page.textContent("body");
   check("admin dashboard loads", body.includes("Dashboard"));
   check("admin sees seeded couple", body.includes("Ava Nakamura"));
-  check("double-booking warning shown", body.includes("more than one event booked"), "seeded clash on day 26");
+  check("double-booking warning shown", body.includes("more than one wedding booked"), "seeded clash on day 26");
+}
+
+/* ---------- 2b. the section is called Weddings ---------- */
+{
+  // Every row in this app is a wedding — the table has partner names, a
+  // ceremony time and a reception time — so "event" was only ever a euphemism.
+  // Checked on the rendered text rather than the HTML, because the framework
+  // ships route names like /events inside inline flight data and those are not
+  // words anybody reads.
+  const reads = async (path) => {
+    await admin.page.goto(`${BASE}${path}`);
+    await admin.page.waitForTimeout(900);
+    const text = await admin.page.evaluate(() => document.body.innerText);
+    return text.split("\n").filter((l) => /\bevents?\b/i.test(l));
+  };
+
+  await admin.page.goto(`${BASE}/dashboard`);
+  await admin.page.waitForTimeout(600);
+  const nav = (await admin.page.locator("nav a").allTextContents()).map((t) => t.trim());
+  check("the section is labelled Weddings", nav.includes("Weddings"), nav.join(", "));
+  check("and no longer Events", !nav.includes("Events"), nav.join(", "));
+
+  await admin.page.goto(`${BASE}/events`);
+  await admin.page.waitForTimeout(900);
+  check(
+    "the section's own heading agrees",
+    (await admin.page.locator("h1").first().textContent())?.trim() === "Weddings",
+  );
+
+  for (const path of ["/events", "/dashboard", "/calendar", "/me", "/team", "/venues"]) {
+    const left = await reads(path);
+    check(`nothing on ${path} still says event`, left.length === 0, left.join(" | "));
+  }
 }
 
 /* ---------- 3. calendar ---------- */
@@ -95,7 +128,7 @@ let newEventUrl;
   await admin.page.fill("#event_date", "2027-09-18");
   await admin.page.selectOption("#status", "confirmed");
   await admin.page.fill("#contact_email", "a@b");
-  await admin.page.click('button:has-text("Create event")');
+  await admin.page.click('button:has-text("Create wedding")');
   await admin.page.waitForSelector(".alert-error", { timeout: 10000 });
   check("server rejects malformed email that HTML5 allows", (await admin.page.textContent(".alert-error")).includes("valid contact email"));
 
@@ -109,7 +142,7 @@ let newEventUrl;
   );
 
   await admin.page.fill("#contact_email", "test@example.test");
-  await admin.page.click('button:has-text("Create event")');
+  await admin.page.click('button:has-text("Create wedding")');
   await admin.page.waitForURL(/\/events\/\d+$/, { timeout: 15000 });
   newEventUrl = admin.page.url();
   const body = await admin.page.textContent("body");
@@ -502,7 +535,7 @@ await reportDj.ctx.close();
 
   // Deleting keeps the history rather than cascading it away.
   await owner.page.goto(`${BASE}/events/${auditEventId}`);
-  await owner.page.click('form:has(button:has-text("Delete event")) button[type="submit"]');
+  await owner.page.click('form:has(button:has-text("Delete wedding")) button[type="submit"]');
   await owner.page.waitForURL(`${BASE}/events`);
   await owner.page.goto(`${BASE}/activity`);
   body = await owner.page.textContent("body");
@@ -719,7 +752,7 @@ await reportDj.ctx.close();
   // Deleting the booking should take its unsent mail with it.
   const cleanup = await signIn("owner@piper.test");
   await cleanup.page.goto(`${BASE}/events/${mailEventId}`);
-  await cleanup.page.click('form:has(button:has-text("Delete event")) button[type="submit"]');
+  await cleanup.page.click('form:has(button:has-text("Delete wedding")) button[type="submit"]');
   await cleanup.page.waitForURL(`${BASE}/events`);
   await cleanup.page.goto(`${BASE}/outbox`);
   const stillWaiting = await cleanup.page

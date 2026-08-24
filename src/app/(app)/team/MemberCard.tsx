@@ -50,7 +50,7 @@ export default function MemberCard({ member, title }: { member: User; title?: st
             <div className="field">
               <label>Role *</label>
               <select name="role" defaultValue={kept.role ?? member.role}>
-                <option value="dj">DJ — sees only their own events</option>
+                <option value="dj">DJ — sees only their own weddings</option>
                 <option value="admin">Admin — full access</option>
               </select>
             </div>
