@@ -2084,29 +2084,42 @@ await reportDj.ctx.close();
 
   // Retiring one takes it off the chart and it does not come back — the fleet
   // is established, not enforced.
+  //
+  // Scoped to the summary, not the whole card. Every card holds an edit form
+  // whose class dropdown lists every class, so `has-text("Mini van")` matches
+  // all six of them and picks whichever is first. That cost a run.
+  const subject = "Pynx Cargo";
   await ops.page.goto(`${BASE}/dispatch/vehicles`);
-  const card = ops.page.locator('details.card:has-text("Mini van")').first();
+  const card = ops.page.locator(`details.card:has(summary:has-text("${subject}"))`).first();
   await card.locator("summary").click();
   await card.locator('button:has-text("Retire")').click();
-  await ops.page.waitForTimeout(1000);
+  await ops.page.waitForTimeout(1200);
   await ops.page.goto(`${BASE}/dispatch/gantt`);
   await ops.page.waitForTimeout(1000);
   const retired = await ops.page.locator(".board-grid-name > div:first-child").allTextContents();
-  check("a retired vehicle leaves the chart", !retired.includes("Mini van"), retired.join(", "));
+  check("a retired vehicle leaves the chart", !retired.includes(subject), retired.join(", "));
+
+  // And a restart does not quietly undo that decision: the fleet is filled in
+  // by name, and a retired row still has its name.
+  await ops.page.goto(`${BASE}/dispatch/gantt`);
+  await ops.page.waitForTimeout(800);
+  const stillGone = await ops.page.locator(".board-grid-name > div:first-child").allTextContents();
+  check("and stays retired on the next read", !stillGone.includes(subject), stillGone.join(", "));
 
   // Put it back the way the fleet page does, so the suite leaves no mark. The
   // retired list sits at the foot of the same page.
   await ops.page.goto(`${BASE}/dispatch/vehicles`);
   await ops.page
-    .locator('li:has-text("Mini van"):has(button:has-text("Put it back"))')
+    .locator('li:has(button:has-text("Put it back"))')
+    .filter({ hasText: subject })
     .first()
     .locator('button:has-text("Put it back")')
     .click();
-  await ops.page.waitForTimeout(1000);
+  await ops.page.waitForTimeout(1200);
   await ops.page.goto(`${BASE}/dispatch/gantt`);
   await ops.page.waitForTimeout(1000);
   const restored = await ops.page.locator(".board-grid-name > div:first-child").allTextContents();
-  check("and the suite puts it back", restored.includes("Mini van"), restored.join(", "));
+  check("and the suite puts it back", restored.includes(subject), restored.join(", "));
 
   await ops.ctx.close();
 }
