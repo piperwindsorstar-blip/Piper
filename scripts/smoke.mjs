@@ -2035,6 +2035,82 @@ await reportDj.ctx.close();
   await ops.ctx.close();
 }
 
+/* ---------- 28. the standing fleet is a fixture ---------- */
+{
+  const ops = await signIn("owner@piper.test");
+
+  // The vehicle column is the fleet, in the shop's own order — hires by size,
+  // then the van Pynx owns. Not alphabetical, which opens the sheet with the
+  // 26 ft truck, and not a list of whatever happens to have been booked.
+  const STANDING = [
+    "Cargo van",
+    "Cube van",
+    "26 ft truck",
+    "Passenger vehicle",
+    "Mini van",
+    "Pynx Cargo",
+  ];
+
+  for (const [page_, where] of [
+    [`${BASE}/dispatch/gantt`, "the Gantt"],
+    [`${BASE}/dispatch`, "the board"],
+  ]) {
+    await ops.page.goto(page_);
+    await ops.page.waitForTimeout(1200);
+    const column = await ops.page.locator(".board-grid-name > div:first-child").allTextContents();
+    const standingOnly = column.filter((n) => STANDING.includes(n));
+    check(
+      `${where} lists the whole standing fleet`,
+      STANDING.every((n) => column.includes(n)),
+      column.join(", "),
+    );
+    check(
+      `${where} lists it in the shop's order`,
+      standingOnly.join("|") === STANDING.join("|"),
+      standingOnly.join(", "),
+    );
+  }
+
+  // Rows are a fixture, not a product of the data: an empty month still has
+  // every vehicle in it.
+  await ops.page.goto(`${BASE}/dispatch/gantt?at=2029-11-01`);
+  await ops.page.waitForTimeout(1200);
+  const empty = await ops.page.locator(".board-grid-name > div:first-child").allTextContents();
+  check(
+    "a month with nothing planned still shows every vehicle",
+    STANDING.every((n) => empty.includes(n)),
+    empty.join(", "),
+  );
+
+  // Retiring one takes it off the chart and it does not come back — the fleet
+  // is established, not enforced.
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  const card = ops.page.locator('details.card:has-text("Mini van")').first();
+  await card.locator("summary").click();
+  await card.locator('button:has-text("Retire")').click();
+  await ops.page.waitForTimeout(1000);
+  await ops.page.goto(`${BASE}/dispatch/gantt`);
+  await ops.page.waitForTimeout(1000);
+  const retired = await ops.page.locator(".board-grid-name > div:first-child").allTextContents();
+  check("a retired vehicle leaves the chart", !retired.includes("Mini van"), retired.join(", "));
+
+  // Put it back the way the fleet page does, so the suite leaves no mark. The
+  // retired list sits at the foot of the same page.
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  await ops.page
+    .locator('li:has-text("Mini van"):has(button:has-text("Put it back"))')
+    .first()
+    .locator('button:has-text("Put it back")')
+    .click();
+  await ops.page.waitForTimeout(1000);
+  await ops.page.goto(`${BASE}/dispatch/gantt`);
+  await ops.page.waitForTimeout(1000);
+  const restored = await ops.page.locator(".board-grid-name > div:first-child").allTextContents();
+  check("and the suite puts it back", restored.includes("Mini van"), restored.join(", "));
+
+  await ops.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

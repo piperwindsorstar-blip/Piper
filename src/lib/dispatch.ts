@@ -6,6 +6,7 @@ import {
   type RunStatus,
   type VehicleClass,
 } from "./dispatch-types";
+import { FLEET_ORDER } from "./fleet";
 
 /**
  * Which vehicle is where, and when.
@@ -113,7 +114,7 @@ export function listVehicles(includeInactive = false): Vehicle[] {
   return db()
     .prepare(
       `SELECT * FROM vehicles ${includeInactive ? "" : "WHERE active = 1"}
-       ORDER BY active DESC, name COLLATE NOCASE`,
+       ORDER BY active DESC, ${FLEET_ORDER}`,
     )
     .all() as Vehicle[];
 }
@@ -386,7 +387,7 @@ export function publicVehicles(): PublicVehicle[] {
   return db()
     .prepare(
       `SELECT id, name, class, ownership FROM vehicles
-        WHERE active = 1 ORDER BY name COLLATE NOCASE`,
+        WHERE active = 1 ORDER BY ${FLEET_ORDER}`,
     )
     .all() as PublicVehicle[];
 }

@@ -261,91 +261,16 @@ conn.prepare("UPDATE events SET plan_submitted_at = datetime('now') WHERE id = ?
 
 /* ------------------------------------------------------------ dispatch */
 
-// A small fleet, so the dispatch board shows something on a fresh install
-// rather than an empty grid that gives no sense of what it is for.
-const vehicles = [
-  // The classes Pynx hires from Pencar, and the one van it owns. Three of each
-  // hired class can be out at once; there is only one Pynx Cargo.
-  {
-    name: "Cargo van",
-    class: "cargo_van",
-    ownership: "pencar",
-    slots: 3,
-    weight_capacity: "3500 lb",
-    passenger_capacity: 2,
-    capacity_note: "Ceremony kit and speakers",
-  },
-  {
-    name: "Cube van",
-    class: "cube_van",
-    ownership: "pencar",
-    slots: 3,
-    weight_capacity: "1 ton",
-    passenger_capacity: 3,
-    capacity_note: "Full rig plus booth",
-  },
-  {
-    name: "26 ft truck",
-    class: "truck_26",
-    ownership: "pencar",
-    slots: 3,
-    weight_capacity: "5 ton",
-    passenger_capacity: 3,
-    capacity_note: "Big loads, busy weekends",
-  },
-  {
-    name: "Passenger vehicle",
-    class: "passenger",
-    ownership: "pencar",
-    slots: 3,
-    weight_capacity: null,
-    passenger_capacity: 5,
-    capacity_note: "Crew only",
-  },
-  {
-    name: "Mini van",
-    class: "mini_van",
-    ownership: "pencar",
-    slots: 3,
-    weight_capacity: null,
-    passenger_capacity: 7,
-    capacity_note: "Crew and small kit",
-  },
-  {
-    name: "Pynx Cargo",
-    class: "cargo_van",
-    ownership: "other",
-    slots: 1,
-    weight_capacity: "3500 lb",
-    passenger_capacity: 2,
-    capacity_note: "Ours — always available",
-  },
-].map((v) =>
+// The standing fleet is already there: `db()` establishes it when the
+// database is opened, so the board is never an empty grid and the seed has
+// nothing to add. It only needs the ids to hang its sample runs on.
+const fleetId = (name: string) =>
   Number(
-    conn
-      .prepare(
-        `INSERT INTO vehicles
-           (name, class, ownership, plate, home_base, weight_capacity, passenger_capacity,
-            rental_from, rental_due, capacity_note, notes, slots)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        v.name,
-        v.class,
-        v.ownership,
-        null,
-        "Shop",
-        v.weight_capacity,
-        v.passenger_capacity,
-        null,
-        null,
-        v.capacity_note,
-        null,
-        v.slots,
-      )
-      .lastInsertRowid,
-  ),
-);
+    (conn.prepare("SELECT id FROM vehicles WHERE name = ? COLLATE NOCASE").get(name) as {
+      id: number;
+    }).id,
+  );
+const vehicles = ["Cargo van", "Cube van", "26 ft truck"].map(fleetId);
 
 const addRun = conn.prepare(
   `INSERT INTO dispatch_runs

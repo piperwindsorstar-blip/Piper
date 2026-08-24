@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { LATEST_VERSION, MIGRATIONS } from "./migrations";
+import { ensureStandingFleet } from "./fleet";
 
 const DB_DIR = process.env.PIPER_DATA_DIR ?? path.join(process.cwd(), "data");
 const DB_PATH = path.join(DB_DIR, "piper.db");
@@ -60,6 +61,11 @@ export function db(): Database.Database {
   conn.pragma("journal_mode = WAL");
   conn.pragma("foreign_keys = ON");
   migrate(conn);
+
+  // The standing fleet is established here rather than by the seed script,
+  // so the board and the Gantt open on the same rows on every install —
+  // including one whose database predates the fleet.
+  ensureStandingFleet(conn);
 
   instance = conn;
   return instance;
