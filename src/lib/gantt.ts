@@ -1,7 +1,6 @@
-import crypto from "node:crypto";
-import { db, nowIso } from "./db";
+import { db } from "./db";
 import { toIso, parseIso } from "./dates";
-import { COMMITTED, type RunStatus, type VehicleClass } from "./dispatch-types";
+import { type RunStatus } from "./dispatch-types";
 import { layoutRuns, type RunBar, type Vehicle } from "./dispatch";
 
 /**
@@ -16,9 +15,6 @@ import { layoutRuns, type RunBar, type Vehicle } from "./dispatch";
  * booking somebody will act on, and booking a van must not silently redraw a
  * plan somebody else made. They inform each other — the recommender reads both
  * — but neither writes the other.
- *
- * Cells are soft-deleted so that clearing a vehicle's whole row can be undone
- * after a reload, rather than only while the page is still open.
  */
 
 /** The Gantt uses the same vocabulary as the board, minus the shop day. */
@@ -161,38 +157,6 @@ export function cycleDay(vehicleId: number, slot: number, date: string): CellSta
   return null;
 }
 
-/**
- * Clears a vehicle's cells across a window, keeping them for an undo.
- *
- * Returns the batch id, which is what `undoClear` needs — an undo that just
- * restored "whatever was cleared last" would resurrect the wrong row the
- * moment two people were working at once.
- */
-export function clearVehicle(vehicleId: number, from: string, to: string): string | null {
-  const batch = crypto.randomBytes(8).toString("hex");
-  const result = db()
-    .prepare(
-      `UPDATE gantt_cells SET cleared_at = ?, batch = ?
-        WHERE cleared_at IS NULL AND vehicle_id = ? AND starts_on <= ? AND ends_on >= ?`,
-    )
-    .run(nowIso(), batch, vehicleId, to, from);
-
-  return result.changes > 0 ? batch : null;
-}
-
-export function undoClear(batch: string): number {
-  const result = db()
-    .prepare("UPDATE gantt_cells SET cleared_at = NULL, batch = NULL WHERE batch = ?")
-    .run(batch);
-  return result.changes;
-}
-
-/** Housekeeping: a cleared cell is only useful while an undo is plausible. */
-export function pruneCleared(): void {
-  const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString().replace("T", " ").slice(0, 19);
-  db().prepare("DELETE FROM gantt_cells WHERE cleared_at IS NOT NULL AND cleared_at < ?").run(cutoff);
-}
-
 /* ---------------------------------------------------------------- layout */
 
 /**
@@ -262,91 +226,6 @@ export function ganttRows(days: string[], vehicles: Vehicle[]): GanttRow[] {
     }
 
     return { vehicle, slots };
-  });
-}
-
-/* ----------------------------------------------------------- recommending */
-
-export type Suggestion = {
-  vehicle: Vehicle;
-  free: boolean;
-  /** How many of this vehicle's slots are still open over the dates. */
-  spare: number;
-  /** Why not, when it isn't: what is in the way. */
-  conflicts: string[];
-  classMatch: boolean;
-};
-
-/**
- * Which vehicles could take a job on these dates.
- *
- * Reads both surfaces, because either one means the vehicle is spoken for: a
- * booking on the board, or a commitment already pencilled on the Gantt. A
- * 'needed' cell is not a conflict — it is somebody else's unmet want, which is
- * worth mentioning but does not make the vehicle unavailable.
- *
- * Sorted so the useful answer is first: free and the right class, then free,
- * then the rest with their reasons.
- */
-export function suggestVehicles(
-  vehicles: Vehicle[],
-  from: string,
-  to: string,
-  wanted?: VehicleClass,
-): Suggestion[] {
-  const runs = db()
-    .prepare(
-      `SELECT r.vehicle_id, r.label, r.status FROM dispatch_runs r
-        WHERE r.starts_on <= ? AND r.ends_on >= ?`,
-    )
-    .all(to, from) as { vehicle_id: number; label: string; status: RunStatus }[];
-
-  const cells = db()
-    .prepare(
-      `SELECT vehicle_id, state, show_name, note FROM gantt_cells
-        WHERE cleared_at IS NULL AND starts_on <= ? AND ends_on >= ?`,
-    )
-    .all(to, from) as {
-      vehicle_id: number;
-      state: CellState;
-      show_name: string | null;
-      note: string | null;
-    }[];
-
-  const suggestions = vehicles.map((vehicle) => {
-    const conflicts: string[] = [];
-
-    for (const run of runs) {
-      if (run.vehicle_id !== vehicle.id) continue;
-      if (COMMITTED.includes(run.status)) conflicts.push(`booked: ${run.label}`);
-    }
-    for (const cell of cells) {
-      if (cell.vehicle_id !== vehicle.id) continue;
-      if (COMMITTED.includes(cell.state as RunStatus)) {
-        const what = cell.show_name ?? cell.note;
-        conflicts.push(`pencilled in${what ? `: ${what}` : ""}`);
-      }
-    }
-
-    // Slots matter here. Three cube vans can be hired at once, so one booked
-    // out of three leaves two — answering "spoken for" because a single
-    // commitment exists would send somebody phoning round for nothing.
-    const slots = Math.max(1, vehicle.slots);
-    const spare = Math.max(0, slots - conflicts.length);
-
-    return {
-      vehicle,
-      free: spare > 0,
-      spare,
-      conflicts,
-      classMatch: wanted ? vehicle.class === wanted : false,
-    };
-  });
-
-  return suggestions.sort((a, b) => {
-    if (a.free !== b.free) return a.free ? -1 : 1;
-    if (a.classMatch !== b.classMatch) return a.classMatch ? -1 : 1;
-    return a.vehicle.name.localeCompare(b.vehicle.name);
   });
 }
 

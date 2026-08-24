@@ -1932,72 +1932,36 @@ await reportDj.ctx.close();
     (await ops.page.locator(`.run-bar:has-text("Plan ${stamp}")`).count()) === 0,
   );
 
-  // The recommender reads both surfaces.
   const day = (offset) => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
     return d.toISOString().slice(0, 10);
   };
-  const suggestion = `li:has(strong:text-is("${van}"))`;
-  await ops.page.goto(`${BASE}/dispatch/gantt?from=${day(60)}&to=${day(60)}`);
-  let offered = await ops.page.textContent(suggestion);
-  check("it can suggest a free vehicle", (offered ?? "").includes("3 of 3 free"), offered ?? "none");
 
-  // Book it on the board and the count comes down rather than the vehicle
-  // vanishing from the list: three of a hired kind can be out at once, so
-  // answering "spoken for" after the first would send somebody phoning round
-  // for a van that is sitting on the lot.
-  for (let i = 1; i <= 3; i++) {
-    await ops.page.goto(`${BASE}/dispatch?view=week&week=${day(60)}`);
-    await ops.page.selectOption("#vehicle_id", { label: van });
-    await ops.page.fill("#label", `Taken ${i} ${stamp}`);
-    await ops.page.fill("#starts_on", day(60));
-    await ops.page.click('button:has-text("Send it out")');
-    await ops.page.waitForTimeout(1200);
+  // A booking on the board still does not touch the plan. The two surfaces
+  // used to be tied together by the recommender that read both; with that gone
+  // the separation matters more, not less, so it is checked directly.
+  await ops.page.goto(`${BASE}/dispatch?view=week&week=${day(60)}`);
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.fill("#label", `Taken ${stamp}`);
+  await ops.page.fill("#starts_on", day(60));
+  await ops.page.click('button:has-text("Send it out")');
+  await ops.page.waitForTimeout(1200);
 
-    await ops.page.goto(`${BASE}/dispatch/gantt?from=${day(60)}&to=${day(60)}`);
-    offered = await ops.page.textContent(suggestion);
-    if (i < 3) {
-      check(
-        `booking one takes a slot off the count (${i} of 3)`,
-        (offered ?? "").includes(`${3 - i} of 3 free`),
-        offered ?? "none",
-      );
-    }
-  }
-  check(
-    "and once every slot is out it stops being offered",
-    (offered ?? "").includes("Spoken for"),
-    offered ?? "none",
-  );
-  check(
-    "and says what is in the way",
-    (offered ?? "").includes(`booked: Taken 1 ${stamp}`),
-    offered ?? "none",
-  );
-
-  // Clear the row, then undo it.
   await ops.page.goto(`${BASE}/dispatch/gantt`);
-  await ops.page.selectOption("#clear_vehicle", { label: van });
-  await ops.page.click('button:has-text("Clear")');
-  await ops.page.waitForTimeout(1200);
-  check("clearing a row reports back", (await ops.page.textContent("body")).includes(`Cleared ${van}`));
+  await ops.page.waitForTimeout(1000);
   check(
-    "and the row is empty",
-    (await ops.page
-      .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
-      .locator(".gantt-cell.run-pynx")
-      .count()) === 0,
+    "booking a vehicle never draws on the plan",
+    (await ops.page.textContent("body")).includes(`Taken ${stamp}`) === false,
   );
 
-  await ops.page.click('button:has-text("Undo")');
-  await ops.page.waitForTimeout(1200);
+  // The chart no longer offers to clear a row, or to recommend anything.
+  const gone = await ops.page.evaluate(() => document.body.innerText);
+  check("the chart no longer offers to clear a row", !gone.includes("Clear a row"), "");
+  check("and the recommender is gone with it", !gone.includes("What could take it?"), "");
   check(
-    "undo puts it back",
-    (await ops.page
-      .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
-      .locator(".gantt-cell.run-pynx")
-      .count()) > 0,
+    "leaving the chart and its key",
+    gone.includes("This is the plan, not the schedule") && gone.includes("Pynx Cargo"),
   );
 
   // Clean up: the board run, then the vehicle (its cells go with it).

@@ -7,18 +7,15 @@ import { recordAction, recordChanges, vehicleSubject } from "@/lib/activity";
 import { getVehicle } from "@/lib/dispatch";
 import { isRunStatus } from "@/lib/dispatch-types";
 import {
-  clearVehicle,
   createCell,
   cycleDay,
   deleteCell,
   getCell,
-  pruneCleared,
-  undoClear,
   updateCell,
   type CellState,
 } from "@/lib/gantt";
 
-export type GanttState = { error?: string; ok?: string; undoBatch?: string };
+export type GanttState = { error?: string; ok?: string };
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
@@ -111,45 +108,4 @@ export async function removeCell(formData: FormData): Promise<void> {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id)) deleteCell(id);
   revalidatePath("/dispatch/gantt");
-}
-
-/**
- * Clears everything on one vehicle across the window on screen.
- *
- * Scoped to what is visible on purpose: a button that silently wiped next year
- * as well would be a button nobody dares press. Cells are kept for an undo.
- */
-export async function clearRow(_prev: GanttState, formData: FormData): Promise<GanttState> {
-  const admin = await requireAdmin();
-
-  const vehicleId = Number(formData.get("vehicle_id"));
-  const from = formData.get("from");
-  const to = formData.get("to");
-  if (!Number.isInteger(vehicleId) || !isDate(from) || !isDate(to)) {
-    return { error: "Couldn't work out what to clear." };
-  }
-
-  const vehicle = getVehicle(vehicleId);
-  if (!vehicle) return { error: "That vehicle no longer exists." };
-
-  pruneCleared();
-  const batch = clearVehicle(vehicleId, from, to);
-  if (!batch) return { ok: "Nothing to clear on that row." };
-
-  recordAction(vehicleSubject(vehicleId, vehicle.name), asActor(admin), "plan_cleared");
-  revalidatePath("/dispatch/gantt");
-  return { ok: `Cleared ${vehicle.name}.`, undoBatch: batch };
-}
-
-export async function undoClearRow(_prev: GanttState, formData: FormData): Promise<GanttState> {
-  await requireAdmin();
-
-  const batch = String(formData.get("batch") ?? "");
-  if (!batch) return { error: "Nothing to undo." };
-
-  const restored = undoClear(batch);
-  revalidatePath("/dispatch/gantt");
-  return restored > 0
-    ? { ok: `Put ${restored} back.` }
-    : { error: "That undo has expired." };
 }
