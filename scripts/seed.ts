@@ -302,7 +302,31 @@ addCell.run(vehicles[1], "booked", saturdayIn(6), saturdayIn(6), "Okonkwo & Reye
 addCell.run(vehicles[2], "needed", saturdayIn(6), saturdayIn(6), null, "Three shows that weekend");
 addCell.run(vehicles[0], "idle", saturdayIn(8), saturdayIn(8), null, null);
 
-console.log(`Seeded ${ids.length} events, 3 venues, 6 vehicles and 4 users.`);
+// A couple of places gear gets hired from, and two hires, so the Rentals tab
+// shows what it is for rather than an empty grid. Invented names, like the
+// couples and venues above — a real supplier list is something the shop adds.
+const addSupplier = conn.prepare(
+  "INSERT INTO rental_suppliers (name, contact, phone) VALUES (?, ?, ?)",
+);
+const riverside = Number(
+  addSupplier.run("Riverside AV Hire", "Parts desk", "905-555-0473").lastInsertRowid,
+);
+const stagecraft = Number(
+  addSupplier.run("Stagecraft Rentals", "Front counter", "519-555-0142").lastInsertRowid,
+);
+
+const addRental = conn.prepare(
+  `INSERT INTO rentals (supplier_id, item, quantity, state, starts_on, ends_on, job, reference, cost)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+);
+addRental.run(riverside, "Lighting console", 1, "out", saturdayIn(2), saturdayIn(3),
+  "26-0167", "Q-4471", "180");
+addRental.run(riverside, "Moving heads", 4, "booked", saturdayIn(4), saturdayIn(5),
+  "26-0512", "Q-4488", "95/day");
+addRental.run(stagecraft, "Video switcher", 1, "needed", saturdayIn(4), saturdayIn(4),
+  null, null, null);
+
+console.log(`Seeded ${ids.length} events, 3 venues, 6 vehicles, 2 rental places and 4 users.`);
 console.log("");
 console.log("  Sign in with any of these (password: piper1234)");
 console.log("    owner@piper.test    Sam Rivera    admin");

@@ -22,6 +22,8 @@ function subjectHref(group: ChangeGroup): string | null {
       return "/venues";
     case "vehicle":
       return "/dispatch/vehicles";
+    case "rental":
+      return "/dispatch/rentals";
     default:
       return null;
   }

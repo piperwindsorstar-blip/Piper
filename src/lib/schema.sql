@@ -431,3 +431,38 @@ CREATE INDEX IF NOT EXISTS idx_gantt_vehicle ON gantt_cells(vehicle_id, starts_o
 CREATE INDEX IF NOT EXISTS idx_gantt_dates ON gantt_cells(starts_on, ends_on);
 CREATE INDEX IF NOT EXISTS idx_gantt_live ON gantt_cells(cleared_at);
 CREATE INDEX IF NOT EXISTS idx_gantt_slot ON gantt_cells(vehicle_id, slot, starts_on);
+
+-- Gear hired in, and the places it comes from.
+--
+-- Separate from `vehicles` on purpose. A vehicle is a standing row that keeps
+-- its place on the board whether or not it moves; a hired console is a line on
+-- somebody's quote that exists for eleven days and then does not. Suppliers
+-- are the standing part — the places Pynx phones — so they get the rows and
+-- the hires get the bars.
+CREATE TABLE IF NOT EXISTS rental_suppliers (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,
+  contact    TEXT,
+  phone      TEXT,
+  notes      TEXT,
+  active     INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS rentals (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  supplier_id INTEGER NOT NULL REFERENCES rental_suppliers(id) ON DELETE CASCADE,
+  item        TEXT NOT NULL,
+  quantity    INTEGER NOT NULL DEFAULT 1,
+  state       TEXT NOT NULL DEFAULT 'booked'
+              CHECK (state IN ('needed', 'booked', 'out', 'returned')),
+  starts_on   TEXT NOT NULL,           -- picked up / delivered
+  ends_on     TEXT NOT NULL,           -- due back
+  job         TEXT,                    -- the show or job number it is for
+  reference   TEXT,                    -- their quote, PO or work order number
+  cost        TEXT,                    -- free text: "460", "$95/day"
+  notes       TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_rentals_dates ON rentals(starts_on, ends_on);
+CREATE INDEX IF NOT EXISTS idx_rentals_supplier ON rentals(supplier_id, starts_on);

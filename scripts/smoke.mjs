@@ -2183,6 +2183,210 @@ await reportDj.ctx.close();
   await ops.ctx.close();
 }
 
+/* ---------- 29. rentals: gear hired in ---------- */
+{
+  const stamp = Date.now();
+  const place = `Smoke Hire ${stamp}`;
+  const ops = await signIn("owner@piper.test");
+
+  const day = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.waitForTimeout(1200);
+  check(
+    "the rentals tab says what it is not",
+    (await ops.page.textContent("body")).includes("Gear coming in, not going out"),
+  );
+  check(
+    "and it is reachable from the dispatch tabs",
+    (await ops.page.locator(".tabs a").allTextContents()).map((t) => t.trim()).includes("Rentals"),
+  );
+
+  // A place to hire from. The supplier is the row, so it has to exist first.
+  await ops.page.locator("details:has(h2:text('The places')) > summary").click();
+  await ops.page.waitForTimeout(400);
+  const placeForm = 'form:has(button:has-text("Add the place"))';
+  await ops.page.fill(`${placeForm} input[name="name"]`, place);
+  await ops.page.fill(`${placeForm} input[name="contact"]`, "Parts desk");
+  await ops.page.fill(`${placeForm} input[name="phone"]`, "905-555-0100");
+  await ops.page.click('button:has-text("Add the place")');
+  await ops.page.waitForTimeout(1200);
+
+  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.waitForTimeout(1200);
+  const row = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${place}"))`);
+  check("a place gets a row on the chart", (await row.count()) === 1);
+  check(
+    "and the row carries who to ask for",
+    (await row.textContent()).includes("Parts desk"),
+  );
+  check("an empty place still has a track to write in", (await row.locator(".gantt-track").count()) === 1);
+
+  async function hire({ track, cell, item, qty, state, from, to, job }) {
+    await row.locator(".gantt-track").nth(track).locator(".gantt-cell").nth(cell).click();
+    await ops.page.waitForTimeout(700);
+    await ops.page.fill(".gantt-dialog #item", item);
+    if (qty) await ops.page.fill(".gantt-dialog #quantity", String(qty));
+    await ops.page.selectOption(".gantt-dialog #state", state);
+    await ops.page.fill(".gantt-dialog #starts_on", from);
+    await ops.page.fill(".gantt-dialog #ends_on", to);
+    if (job) await ops.page.fill(".gantt-dialog #job", job);
+    await ops.page.click('.gantt-dialog button:has-text("Save")');
+    await ops.page.waitForTimeout(1400);
+  }
+
+  // Clicking a square opens the dialog with the day and the place already in it.
+  await row.locator(".gantt-cell").nth(3).click();
+  await ops.page.waitForTimeout(700);
+  check(
+    "clicking a square asks for the item first",
+    (await ops.page.locator(".gantt-dialog label").allTextContents())[0] === "Item *",
+  );
+  check(
+    "and it names the place it will hire from",
+    ((await ops.page.locator(".gantt-dialog h2").textContent()) ?? "").includes(place),
+  );
+  // Empty is the browser's job — the field is required, so clearing it never
+  // reaches the server and waiting for a server error would hang. Whitespace is
+  // the server's job: HTML5 counts a space as filled in, and the action trims.
+  await ops.page.fill(".gantt-dialog #item", "");
+  check(
+    "the item is required before the form will submit",
+    await ops.page.locator(".gantt-dialog #item").evaluate((el) => !el.checkValidity()),
+  );
+
+  await ops.page.fill(".gantt-dialog #item", "   ");
+  check(
+    "and a space counts as filled in as far as the browser knows",
+    await ops.page.locator(".gantt-dialog #item").evaluate((el) => el.checkValidity()),
+  );
+  await ops.page.click('.gantt-dialog button:has-text("Save")');
+  await ops.page.waitForTimeout(1200);
+  check(
+    "so the server refuses a hire with nothing but spaces for an item",
+    ((await ops.page.locator(".gantt-dialog .alert-error").textContent()) ?? "").includes(
+      "what the item is",
+    ),
+  );
+  await ops.page.locator('.gantt-dialog button[aria-label="Close"]').click();
+  await ops.page.waitForTimeout(400);
+
+  await hire({
+    track: 0, cell: 4, item: `Console ${stamp}`, qty: 2, state: "out",
+    from: day(2), to: day(6), job: `26-${stamp % 10000}`,
+  });
+  await ops.page.reload();
+  await ops.page.waitForTimeout(1400);
+  check(
+    "a hire is drawn across the days it is held",
+    (await row.locator(".gantt-cell.rental-out").count()) === 5,
+    `${await row.locator(".gantt-cell.rental-out").count()} days`,
+  );
+  check(
+    "the block says the item and how many",
+    ((await row.locator(".gantt-note").first().textContent()) ?? "").includes(`2× Console ${stamp}`),
+  );
+
+  // A used row always leaves a spare track, or a second hire over the same days
+  // could never be started — every square in the only track belongs to the first.
+  check(
+    "a used row keeps a spare track",
+    (await row.locator(".gantt-track").count()) === 2,
+    `${await row.locator(".gantt-track").count()} tracks`,
+  );
+  await hire({
+    track: 1, cell: 5, item: `Switcher ${stamp}`, state: "booked",
+    from: day(3), to: day(8),
+  });
+  await ops.page.reload();
+  await ops.page.waitForTimeout(1400);
+  // Both blocks drawn, in their own colours, rather than an exact day count:
+  // the second hire runs to day+8, which lands in the next month whenever the
+  // suite runs late in one, and a block clipped by the window is correct.
+  const labels = (await row.locator(".gantt-note").allTextContents()).join(" | ");
+  check(
+    "two hires from one place can overlap",
+    labels.includes(`Console ${stamp}`) &&
+      labels.includes(`Switcher ${stamp}`) &&
+      (await row.locator(".gantt-cell.rental-out").count()) > 0 &&
+      (await row.locator(".gantt-cell.rental-booked").count()) > 0,
+    labels,
+  );
+  check("and the row grows another spare", (await row.locator(".gantt-track").count()) === 3);
+
+  // Overdue: due back before today, and nobody has said it is back.
+  await hire({
+    track: 2, cell: 1, item: `Late ${stamp}`, state: "out",
+    from: day(-9), to: day(-3),
+  });
+  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.waitForTimeout(1400);
+  let body = await ops.page.textContent("body");
+  check("a hire past its due-back date is flagged", body.includes("past due back"));
+  check("and the flag names it", body.includes(`Late ${stamp}`));
+  check(
+    "the block is marked late as well",
+    (await ops.page.locator(".gantt-cell.rental-overdue").count()) > 0,
+  );
+
+  await ops.page
+    .locator(`li:has-text("Late ${stamp}") button:has-text("Back with them")`)
+    .first()
+    .click();
+  await ops.page.waitForTimeout(1400);
+  // Scoped to the banner. The block stays on the chart with its label — it is
+  // still a hire, just a returned one — so the whole page still says its name.
+  const banner = await ops.page.locator(".alert-warn").count();
+  check(
+    "marking it back clears the flag",
+    banner === 0 || !(await ops.page.locator(".alert-warn").first().textContent()).includes(`Late ${stamp}`),
+  );
+  check(
+    "and the block turns returned rather than vanishing",
+    (await ops.page.locator(".gantt-cell.rental-returned").count()) > 0,
+  );
+
+  // None of it reached the fleet. The two charts share a look, not a table.
+  await ops.page.goto(`${BASE}/dispatch`);
+  await ops.page.waitForTimeout(1200);
+  const board = await ops.page.evaluate(() => document.body.innerText);
+  check("a hire never appears on the board", !board.includes(`Console ${stamp}`));
+  await ops.page.goto(`${BASE}/dispatch/gantt`);
+  await ops.page.waitForTimeout(1200);
+  const plan = await ops.page.evaluate(() => document.body.innerText);
+  check("nor on the plan", !plan.includes(`Console ${stamp}`) && !plan.includes(place));
+
+  // A DJ cannot reach any of it.
+  await ops.ctx.close();
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/dispatch/rentals`);
+  check("a DJ cannot reach the rentals", !dj.page.url().includes("/rentals"), dj.page.url());
+  await dj.ctx.close();
+
+  // Clean up: retiring the place takes its hires off the chart with it.
+  const tidy = await signIn("owner@piper.test");
+  await tidy.page.goto(`${BASE}/dispatch/rentals`);
+  await tidy.page.waitForTimeout(1000);
+  await tidy.page.locator("details:has(h2:text('The places')) > summary").click();
+  await tidy.page.waitForTimeout(400);
+  const placeCard = tidy.page.locator(`details.card-body:has(summary:has-text("${place}"))`);
+  await placeCard.locator("summary").click();
+  await tidy.page.waitForTimeout(400);
+  await placeCard.locator('button:has-text("Retire")').click();
+  await tidy.page.waitForTimeout(1200);
+  const left = await tidy.page.evaluate(() => document.body.innerText);
+  check(
+    "retiring a place takes its row off the chart",
+    !left.includes(`Console ${stamp}`),
+    "hires still drawn",
+  );
+  await tidy.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

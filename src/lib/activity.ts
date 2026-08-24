@@ -121,7 +121,7 @@ export const REASON_LABELS: Record<string, string> = {
 /* ------------------------------------------------------------ record audit */
 
 /** What a `record_audit` row is about. Bookings have their own table. */
-export type SubjectType = "staff" | "venue" | "settings" | "vehicle";
+export type SubjectType = "staff" | "venue" | "settings" | "vehicle" | "rental";
 
 export type Subject = { type: SubjectType; id: number | null; label: string };
 
@@ -141,6 +141,15 @@ export const settingsSubject: Subject = { type: "settings", id: null, label: "Se
 
 export const vehicleSubject = (id: number | null, name: string): Subject => ({
   type: "vehicle",
+  id,
+  label: name,
+});
+
+/** A place gear is hired from. Its own type, not a vehicle — the feed links
+    them to different pages and calling a supplier a vehicle would send anyone
+    following the trail to the fleet. */
+export const rentalSubject = (id: number | null, name: string): Subject => ({
+  type: "rental",
   id,
   label: name,
 });

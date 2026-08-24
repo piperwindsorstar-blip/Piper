@@ -433,6 +433,42 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE gantt_cells ADD COLUMN show_name TEXT;
     `,
   },
+  {
+    version: 17,
+    label: "gear hired in, and who from",
+    up: `
+      -- Gear coming in, which is a different question from the fleet going
+      -- out. A supplier is a standing row — the places Pynx phones — while a
+      -- hire is a line that exists for a fortnight and then does not.
+      CREATE TABLE IF NOT EXISTS rental_suppliers (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        name       TEXT NOT NULL,
+        contact    TEXT,
+        phone      TEXT,
+        notes      TEXT,
+        active     INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS rentals (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplier_id INTEGER NOT NULL REFERENCES rental_suppliers(id) ON DELETE CASCADE,
+        item        TEXT NOT NULL,
+        quantity    INTEGER NOT NULL DEFAULT 1,
+        state       TEXT NOT NULL DEFAULT 'booked'
+                    CHECK (state IN ('needed', 'booked', 'out', 'returned')),
+        starts_on   TEXT NOT NULL,
+        ends_on     TEXT NOT NULL,
+        job         TEXT,
+        reference   TEXT,
+        cost        TEXT,
+        notes       TEXT,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_rentals_dates ON rentals(starts_on, ends_on);
+      CREATE INDEX IF NOT EXISTS idx_rentals_supplier ON rentals(supplier_id, starts_on);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

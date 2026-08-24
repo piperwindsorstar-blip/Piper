@@ -848,6 +848,25 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .run-swatch.run-idle   { background: var(--run-idle); }
 .run-swatch.run-shop   { background: var(--run-shop); }
 
+/* Hired-in gear, on the plan's palette rather than a new one: purple is a want,
+   yellow is arranged, green is in the building, blue is done with. Somebody
+   reading both charts should not be learning two colour schemes. Overdue is the
+   exception and gets its own red, because it is the only state on either chart
+   that is asking for something to be done today. */
+:root { --rental-overdue: #dc2626; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --rental-overdue: #f87171; }
+}
+:root[data-theme="dark"] { --rental-overdue: #f87171; }
+
+.run-swatch.rental-needed   { background: var(--run-needed); }
+.run-swatch.rental-booked   { background: var(--run-booked); }
+.run-swatch.rental-out      { background: var(--run-pynx); }
+.run-swatch.rental-returned { background: var(--run-idle); }
+.run-swatch.rental-overdue  { background: var(--rental-overdue); }
+
+
+
 .run-remove {
   position: absolute;
   top: 0.15rem;
@@ -1187,6 +1206,19 @@ input:focus, select:focus, textarea:focus {
 .gantt-cell.run-own    { background: var(--run-own); }
 .gantt-cell.run-pynx   { background: var(--run-pynx); }
 .gantt-cell.run-idle   { background: var(--run-idle); }
+
+/* Hired-in gear, on the same squares. Written as compound selectors like the
+   ones above, not as bare `.rental-out`: `.gantt-cell` sets a transparent
+   background further up and a single class would tie with it and lose on
+   order, leaving every block unfilled. */
+.gantt-cell.rental-needed   { background: var(--run-needed); }
+.gantt-cell.rental-booked   { background: var(--run-booked); }
+.gantt-cell.rental-out      { background: var(--run-pynx); }
+.gantt-cell.rental-returned { background: var(--run-idle); }
+
+/* Overdue keeps the state colour and adds a bar underneath, so a block still
+   says where the hire got to as well as that it is late. */
+.gantt-cell.rental-overdue { box-shadow: inset 0 -3px 0 var(--rental-overdue); }
 .gantt-cell.run-booked:hover,
 .gantt-cell.run-needed:hover,
 .gantt-cell.run-own:hover,
