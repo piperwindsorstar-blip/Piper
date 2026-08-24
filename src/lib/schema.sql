@@ -406,3 +406,22 @@ CREATE INDEX IF NOT EXISTS idx_runs_status ON dispatch_runs(status, starts_on);
 CREATE INDEX IF NOT EXISTS idx_runs_vehicle ON dispatch_runs(vehicle_id, starts_on);
 CREATE INDEX IF NOT EXISTS idx_runs_dates ON dispatch_runs(starts_on, ends_on);
 CREATE INDEX IF NOT EXISTS idx_runs_event ON dispatch_runs(event_id);
+
+-- The Gantt: a planning surface, deliberately independent of dispatch_runs.
+-- Pencilling in "we'll want the cube that week" must not create a booking, and
+-- booking a van must not silently redraw somebody's plan.
+CREATE TABLE IF NOT EXISTS gantt_cells (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  state      TEXT NOT NULL
+               CHECK (state IN ('booked', 'needed', 'idle', 'own', 'pynx')),
+  starts_on  TEXT NOT NULL,
+  ends_on    TEXT NOT NULL,
+  note       TEXT,
+  cleared_at TEXT,                     -- soft delete, so a clear-all is undoable
+  batch      TEXT,                     -- groups one clear-all, for undo
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_gantt_vehicle ON gantt_cells(vehicle_id, starts_on);
+CREATE INDEX IF NOT EXISTS idx_gantt_dates ON gantt_cells(starts_on, ends_on);
+CREATE INDEX IF NOT EXISTS idx_gantt_live ON gantt_cells(cleared_at);

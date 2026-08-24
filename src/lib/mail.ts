@@ -20,6 +20,8 @@ import type { OutboxKind, OutboxRow, OutboxStatus } from "./mail-types";
 export type { OutboxKind, OutboxStatus, OutboxRow } from "./mail-types";
 export { KIND_LABELS } from "./mail-types";
 
+import { storedMail } from "./settings";
+
 /* ------------------------------------------------------------- transport */
 
 export type MailConfig = {
@@ -33,10 +35,26 @@ export type MailConfig = {
 };
 
 /**
- * Read from the environment so credentials live in /etc/piper.env, readable
- * only by root, and never in the repository or the database.
+ * The environment first, then whatever an admin saved in the settings page.
+ *
+ * /etc/piper.env is the better home for a password: root-only, out of the
+ * repository, out of every database backup. It stays authoritative. But a
+ * mail server nobody can configure is a mail server that never sends
+ * anything, and "ask Martin to ssh in" is not a workable answer to a locked-out
+ * DJ on a Friday night — so the settings page is a real fallback rather than a
+ * decoration, and the page says plainly which of the two is in force.
  */
 export function mailConfig(): MailConfig | null {
+  return envMail() ?? dbMail();
+}
+
+/** Where the settings are coming from, for the settings page to report. */
+export function mailSource(): "environment" | "settings" | null {
+  if (envMail()) return "environment";
+  return dbMail() ? "settings" : null;
+}
+
+function envMail(): MailConfig | null {
   const host = process.env.PIPER_SMTP_HOST;
   const user = process.env.PIPER_SMTP_USER;
   const pass = process.env.PIPER_SMTP_PASS;
@@ -56,6 +74,21 @@ export function mailConfig(): MailConfig | null {
     pass,
     from,
     replyTo: process.env.PIPER_MAIL_REPLY_TO || null,
+  };
+}
+
+function dbMail(): MailConfig | null {
+  const stored = storedMail();
+  if (!stored || !stored.host || !stored.from) return null;
+
+  return {
+    host: stored.host,
+    port: stored.port,
+    secure: stored.secure,
+    user: stored.user,
+    pass: stored.pass,
+    from: stored.from,
+    replyTo: stored.replyTo || null,
   };
 }
 
@@ -280,6 +313,29 @@ export async function sendQueued(id: number, approvedBy: number): Promise<SendRe
     .prepare("UPDATE outbox SET status = 'sent', sent_at = ?, error = NULL, approved_by = ? WHERE id = ?")
     .run(nowIso(), approvedBy, id);
   return { ok: true };
+}
+
+/**
+ * Sends a test message with settings that have not been saved yet.
+ *
+ * Takes the config rather than reading it, so an admin can prove a password
+ * works before committing it — otherwise the only way to test a change is to
+ * save it over a working one and find out afterwards.
+ */
+export async function sendTest(config: MailConfig, to: string): Promise<SendResult> {
+  try {
+    await transportFor(config).sendMail({
+      from: config.from,
+      to,
+      subject: "Piper can send email",
+      text:
+        "If you are reading this, Piper's mail settings are working.\n\n" +
+        "Nothing else was sent. You can close this.\n\nPiper",
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message || "Sending failed." };
+  }
 }
 
 /** Confirms the mail server accepts the credentials, without sending anything. */

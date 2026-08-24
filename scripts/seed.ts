@@ -361,6 +361,16 @@ addRun.run(vehicles[2], null, "Held for the weekend", "booked", saturdayIn(2), s
 addRun.run(vehicles[1], null, "Second show, no van yet", "needed", saturdayIn(2), saturdayIn(2),
   null, null, "Harbour Hall", null, null);
 
+// A little of the plan too, so the Gantt shows what it is for rather than an
+// empty grid. Deliberately not the same days as the runs above: the point of
+// the Gantt is that it is a separate surface.
+const addCell = conn.prepare(
+  `INSERT INTO gantt_cells (vehicle_id, state, starts_on, ends_on, note) VALUES (?, ?, ?, ?, ?)`,
+);
+addCell.run(vehicles[1], "booked", saturdayIn(6), saturdayIn(6), "Festival weekend");
+addCell.run(vehicles[2], "needed", saturdayIn(6), saturdayIn(6), "Three shows");
+addCell.run(vehicles[0], "idle", saturdayIn(8), saturdayIn(8), null);
+
 console.log(`Seeded ${ids.length} events, 3 venues, 4 vehicles and 4 users.`);
 console.log("");
 console.log("  Sign in with any of these (password: piper1234)");

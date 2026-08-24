@@ -1161,3 +1161,62 @@ input:focus, select:focus, textarea:focus {
 .board-grid-compact .run-bar-label a { color: inherit; }
 
 .board-grid-hint { padding: 0.5rem 1.1rem 0; margin: 0; }
+
+.mail-test { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+/* ---------------------------------------------------------------- gantt */
+
+/* Squares you click, rather than bars you read. The Gantt is edited straight
+   from the chart, so every day is a control and the whole row has to stay
+   hittable at month and quarter width. */
+.gantt-track { display: grid; }
+.gantt-cell {
+  position: relative;
+  min-height: 2.1rem;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  transition: background 100ms ease;
+}
+.gantt-cell:hover { background: var(--surface-alt); }
+.gantt-cell.run-booked { background: var(--run-booked); }
+.gantt-cell.run-needed { background: var(--run-needed); }
+.gantt-cell.run-own    { background: var(--run-own); }
+.gantt-cell.run-pynx   { background: var(--run-pynx); }
+.gantt-cell.run-idle   { background: var(--run-idle); }
+.gantt-cell.run-booked:hover,
+.gantt-cell.run-needed:hover,
+.gantt-cell.run-own:hover,
+.gantt-cell.run-pynx:hover,
+.gantt-cell.run-idle:hover { filter: brightness(1.12); }
+
+/* A note sits on the first day of its span and is allowed to overflow, since
+   the days after it are the same block and have nothing of their own to say. */
+.gantt-note {
+  position: absolute;
+  left: 0.3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  color: #fff;
+  pointer-events: none;
+  z-index: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.gantt-grid .board-grid-row:last-child .gantt-cell:first-child { border-bottom-left-radius: 0; }
+
+.gantt-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 10, 18, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+}
+.gantt-dialog { width: min(30rem, 100%); box-shadow: var(--shadow-lift); }

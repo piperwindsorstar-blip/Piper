@@ -109,3 +109,48 @@ export const SHOP_LABELS: Record<
 };
 
 export const RULES_MAX = 800;
+
+/* -------------------------------------------------------------------- mail */
+
+/**
+ * SMTP settings as an admin edits them. The password is deliberately absent
+ * from anything sent to the browser — see `MailSettingsView`.
+ */
+export type MailSettings = {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  from: string;
+  replyTo: string;
+};
+
+export const NO_MAIL: MailSettings = {
+  host: "",
+  port: 587,
+  secure: false,
+  user: "",
+  pass: "",
+  from: "",
+  replyTo: "",
+};
+
+/**
+ * What the settings form is allowed to know: everything except the password,
+ * which is replaced by a flag saying whether one is stored. A password that
+ * round-trips through a form is a password sitting in the page source of every
+ * admin's browser, in their history, and in any screenshot they take of it.
+ */
+export type MailSettingsView = Omit<MailSettings, "pass"> & {
+  hasPassword: boolean;
+  /** True when /etc/piper.env is supplying the settings and the form cannot. */
+  fromEnvironment: boolean;
+};
+
+/** Common ports, so nobody has to remember which one implies TLS. */
+export const MAIL_PORTS = [
+  { port: 587, label: "587 — STARTTLS (most providers)" },
+  { port: 465, label: "465 — TLS from the start" },
+  { port: 25, label: "25 — unencrypted, rarely right" },
+];

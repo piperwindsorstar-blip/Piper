@@ -1669,6 +1669,244 @@ await reportDj.ctx.close();
   await dj.ctx.close();
 }
 
+/* ---------- 26. the Gantt, and that it stays out of the board ---------- */
+{
+  const stamp = Date.now();
+  const ops = await signIn("owner@piper.test");
+
+  const van = `Gantt Van ${stamp}`;
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  await ops.page.fill('form:has(button:has-text("Add vehicle")) input[name="name"]', van);
+  await ops.page.click('button:has-text("Add vehicle")');
+  await ops.page.waitForTimeout(900);
+
+  await ops.page.goto(`${BASE}/dispatch/gantt`);
+  check("the Gantt says what it is not", (await ops.page.textContent("body")).includes("not the schedule"));
+
+  const row = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`);
+  const cell = row.locator(".gantt-cell").nth(8);
+
+  // One click cycles: empty -> needed -> booked -> empty.
+  await cell.click();
+  await ops.page.waitForTimeout(900);
+  check("a click plans a needed day", ((await cell.getAttribute("class")) ?? "").includes("run-needed"));
+  await cell.click();
+  await ops.page.waitForTimeout(900);
+  check("a second click books it", ((await cell.getAttribute("class")) ?? "").includes("run-booked"));
+
+  await ops.page.reload();
+  await ops.page.waitForTimeout(700);
+  const after = ops.page
+    .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
+    .locator(".gantt-cell")
+    .nth(8);
+  check("and it survives a reload", ((await after.getAttribute("class")) ?? "").includes("run-booked"));
+
+  await after.click();
+  await ops.page.waitForTimeout(900);
+  check("a third click clears it", !((await after.getAttribute("class")) ?? "").includes("run-"));
+
+  // Right-click opens the dialog for the states a single click cannot reach.
+  const dialogCell = ops.page
+    .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
+    .locator(".gantt-cell")
+    .nth(10);
+  await dialogCell.click({ button: "right" });
+  await ops.page.waitForTimeout(500);
+  check("right-click opens the editor", (await ops.page.locator(".gantt-dialog").count()) === 1);
+
+  await ops.page.selectOption("#state", "pynx");
+  await ops.page.fill("#note", `Plan ${stamp}`);
+  await ops.page.click('.gantt-dialog button:has-text("Save")');
+  await ops.page.waitForTimeout(1400);
+  check(
+    "the dialog can set a state a click cannot",
+    (await ops.page.locator(".gantt-cell.run-pynx").count()) > 0,
+  );
+  check("and its note shows on the chart", (await ops.page.textContent("body")).includes(`Plan ${stamp}`));
+
+  // The whole point: none of that reached the weekly board.
+  await ops.page.goto(`${BASE}/dispatch?view=week`);
+  check(
+    "planning never books a vehicle",
+    (await ops.page.locator(`.run-bar:has-text("Plan ${stamp}")`).count()) === 0,
+  );
+
+  // The recommender reads both surfaces.
+  const day = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+  await ops.page.goto(`${BASE}/dispatch/gantt?from=${day(60)}&to=${day(60)}`);
+  let body = await ops.page.textContent("body");
+  check("it can suggest a free vehicle", body.includes(van) && body.includes("Free"));
+
+  // Book that vehicle on the board and it should stop being offered.
+  await ops.page.goto(`${BASE}/dispatch?view=week&week=${day(60)}`);
+  await ops.page.selectOption("#vehicle_id", { label: van });
+  await ops.page.fill("#label", `Taken ${stamp}`);
+  await ops.page.fill("#starts_on", day(60));
+  await ops.page.click('button:has-text("Send it out")');
+  await ops.page.waitForTimeout(1200);
+
+  await ops.page.goto(`${BASE}/dispatch/gantt?from=${day(60)}&to=${day(60)}`);
+  body = await ops.page.textContent("body");
+  check("a booking on the board removes it from the suggestions", body.includes("Spoken for"));
+  check("and says what is in the way", body.includes(`booked: Taken ${stamp}`));
+
+  // Clear the row, then undo it.
+  await ops.page.goto(`${BASE}/dispatch/gantt`);
+  await ops.page.selectOption("#clear_vehicle", { label: van });
+  await ops.page.click('button:has-text("Clear")');
+  await ops.page.waitForTimeout(1200);
+  check("clearing a row reports back", (await ops.page.textContent("body")).includes(`Cleared ${van}`));
+  check(
+    "and the row is empty",
+    (await ops.page
+      .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
+      .locator(".gantt-cell.run-pynx")
+      .count()) === 0,
+  );
+
+  await ops.page.click('button:has-text("Undo")');
+  await ops.page.waitForTimeout(1200);
+  check(
+    "undo puts it back",
+    (await ops.page
+      .locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`)
+      .locator(".gantt-cell.run-pynx")
+      .count()) > 0,
+  );
+
+  // Clean up: the board run, then the vehicle (its cells go with it).
+  await ops.page.goto(`${BASE}/dispatch?week=${day(60)}`);
+  const boardRow = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${van}"))`);
+  for (let i = 0; i < 4; i++) {
+    const remove = boardRow.locator('button[aria-label^="Remove "]');
+    if ((await remove.count()) === 0) break;
+    await boardRow.locator(".run-bar").first().hover();
+    await remove.first().click();
+    await ops.page.waitForTimeout(700);
+  }
+  await ops.page.goto(`${BASE}/dispatch/vehicles`);
+  const card = ops.page.locator(`details.card:has-text("${van}")`).first();
+  await card.locator("summary").click();
+  await card.locator('button:has-text("Retire")').click();
+  await ops.page.waitForTimeout(900);
+  check("the suite retires its vehicle", (await ops.page.textContent("body")).includes("Retired"));
+  await ops.ctx.close();
+
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}/dispatch/gantt`);
+  check("a DJ cannot reach the Gantt", !dj.page.url().includes("/gantt"), dj.page.url());
+  await dj.ctx.close();
+}
+
+/* ---------- 27. mail configured from inside the app ---------- */
+{
+  const stamp = Date.now();
+  const ops = await signIn("owner@piper.test");
+
+  // Start from a known state rather than assuming one. A previous run that
+  // died mid-section would otherwise leave mail configured and every
+  // assertion here would be measuring that instead of this run.
+  await ops.page.goto(`${BASE}/settings`);
+  const stop = ops.page.locator('form#mail-form button:has-text("Stop sending email")');
+  if ((await stop.count()) > 0) {
+    await stop.click();
+    await ops.page.waitForTimeout(1200);
+  }
+
+  await ops.page.goto(`${BASE}/settings`);
+  const before = await ops.page.textContent("body");
+  check("mail reports itself unconfigured to begin with", before.includes("Not configured"));
+
+  // Saving needs the parts that actually matter.
+  await ops.page.fill("#host", "127.0.0.1");
+  await ops.page.fill("#from", `Pynx <office+${stamp}@pynxpro.ca>`);
+  await ops.page.locator('form#mail-form button:has-text("Save mail settings")').click();
+  await ops.page.waitForTimeout(1000);
+  const noPass = (await ops.page.locator(".alert-error").count())
+    ? await ops.page.locator(".alert-error").first().textContent()
+    : "";
+  check("a save without a password is refused", (noPass ?? "").includes("password"), noPass ?? "none");
+
+  await ops.page.fill("#pass", `secret-${stamp}`);
+  await ops.page.locator('form#mail-form button:has-text("Save mail settings")').click();
+  await ops.page.waitForTimeout(1200);
+  check("with one, it saves", (await ops.page.textContent("body")).includes("Mail settings saved"));
+
+  await ops.page.reload();
+  await ops.page.waitForTimeout(600);
+  check("and reports where it came from", (await ops.page.textContent("body")).includes("Configured here"));
+  check(
+    "the password never reaches the browser",
+    !(await ops.page.content()).includes(`secret-${stamp}`),
+    "not in page source",
+  );
+  check(
+    "the form says one is stored",
+    ((await ops.page.getAttribute("#pass", "placeholder")) ?? "").includes("Stored"),
+  );
+
+  // A blank password on a later save keeps the stored one rather than wiping it.
+  await ops.page.fill("#replyTo", `replies+${stamp}@pynxpro.ca`);
+  await ops.page.locator('form#mail-form button:has-text("Save mail settings")').click();
+  await ops.page.waitForTimeout(1200);
+  check(
+    "editing another field keeps the password",
+    (await ops.page.textContent("body")).includes("Mail settings saved"),
+  );
+  await ops.page.reload();
+  await ops.page.waitForTimeout(600);
+  check("still configured after that", (await ops.page.textContent("body")).includes("Configured here"));
+
+  // The outbox stops complaining once mail exists.
+  await ops.page.goto(`${BASE}/outbox`);
+  check(
+    "the outbox no longer says mail is unset",
+    !(await ops.page.textContent("body")).includes("No mail server is configured"),
+  );
+
+  // A test send against a server that is not there fails honestly rather than
+  // claiming success.
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.fill("#host", "127.0.0.1");
+  await ops.page.fill("#pass", "whatever");
+  await ops.page.fill("#to", "someone@pynxpro.ca");
+  await ops.page.locator('form#mail-form button:has-text("Send a test")').click();
+  await ops.page.waitForTimeout(4000);
+  check(
+    "a failing test reports the refusal",
+    ((await ops.page.textContent("body")) ?? "").includes("refused it"),
+  );
+
+  // Emptying the boxes is not a way out — saving refuses a blank server — so
+  // there is a button for it.
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.fill("#host", "");
+  await ops.page.locator('form#mail-form button:has-text("Save mail settings")').click();
+  await ops.page.waitForTimeout(1200);
+  // Either the browser's own required-check or the server refuses it; what
+  // matters is that emptying the box does not quietly unconfigure mail.
+  await ops.page.reload();
+  await ops.page.waitForTimeout(700);
+  check(
+    "a blank server is refused rather than half-saved",
+    (await ops.page.textContent("body")).includes("Configured here"),
+  );
+  await ops.page.locator('form#mail-form button:has-text("Stop sending email")').click();
+  await ops.page.waitForTimeout(1200);
+  await ops.page.reload();
+  await ops.page.waitForTimeout(600);
+  check(
+    "the suite leaves mail unconfigured again",
+    (await ops.page.textContent("body")).includes("Not configured"),
+  );
+  await ops.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

@@ -1,5 +1,7 @@
 import { db, nowIso } from "./db";
 import {
+  NO_MAIL as NO_MAIL_VALUE,
+  type MailSettings as MailShape,
   NO_SHOP as NO_SHOP_VALUE,
   RULES_MAX as RULES_MAX_VALUE,
   type ShopDetails as ShopShape,
@@ -21,7 +23,7 @@ import {
  * page. What belongs here is the opposite: things that are meant to be seen.
  */
 
-export type SettingKey = "login_banner" | "public_board" | "shop_details";
+export type SettingKey = "login_banner" | "public_board" | "shop_details" | "mail";
 
 export function getSetting(key: SettingKey): string | null {
   const row = db().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
@@ -160,4 +162,56 @@ export function publicShopDetails(): ShopShape | null {
   if (!shop.showOnBoard) return null;
   if (shop.showCodes) return shop;
   return { ...shop, gate: "", lockBox: "" };
+}
+
+/* -------------------------------------------------------------------- mail */
+
+export type { MailSettings, MailSettingsView } from "./settings-types";
+export { NO_MAIL, MAIL_PORTS } from "./settings-types";
+
+/**
+ * SMTP settings stored in the database, for installations where nobody wants
+ * to edit a file over ssh to send an email.
+ *
+ * This is a real trade-off and worth naming. A password in the database is a
+ * password in every backup, and the backups are plain files on the same disk.
+ * The environment is still the better place and still wins where it is set —
+ * but a mail server that nobody can configure is a mail server that never
+ * sends anything, and an unsendable password reset helps no one at all.
+ *
+ * So: the environment takes precedence, this is the fallback, and the settings
+ * page says which is in force.
+ */
+export function storedMail(): MailShape | null {
+  const raw = getSetting("mail");
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<MailShape>;
+    const text = (v: unknown, max = 200) => (typeof v === "string" ? v.slice(0, max) : "");
+    const host = text(parsed.host);
+    const from = text(parsed.from);
+    if (!host || !from) return null;
+
+    const port = Number(parsed.port);
+    return {
+      host,
+      port: Number.isInteger(port) && port > 0 && port < 65536 ? port : 587,
+      secure: parsed.secure === true,
+      user: text(parsed.user),
+      pass: typeof parsed.pass === "string" ? parsed.pass : "",
+      from,
+      replyTo: text(parsed.replyTo),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveMail(settings: MailShape, userId: number | null): void {
+  setSetting("mail", JSON.stringify(settings), userId);
+}
+
+export function clearMail(userId: number | null): void {
+  setSetting("mail", JSON.stringify(NO_MAIL_VALUE), userId);
 }

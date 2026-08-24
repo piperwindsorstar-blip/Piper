@@ -18,15 +18,25 @@ export default function ShopForm({ shop }: { shop: ShopDetails }) {
   const [showOnBoard, setShowOnBoard] = useState(shop.showOnBoard);
   const [showCodes, setShowCodes] = useState(shop.showCodes);
 
+  // Same as the mail form: a rejected save hands back what was typed, minus the
+  // codes, which never make the round trip.
+  const kept = state.values ?? {};
+
   const field = (key: keyof typeof SHOP_LABELS, placeholder?: string) => (
     <div className="field" key={key}>
       <label htmlFor={key}>{SHOP_LABELS[key]}</label>
-      <input id={key} name={key} type="text" defaultValue={shop[key]} placeholder={placeholder} />
+      <input
+        id={key}
+        name={key}
+        type="text"
+        defaultValue={kept[key] ?? shop[key]}
+        placeholder={placeholder}
+      />
     </div>
   );
 
   return (
-    <form action={formAction}>
+    <form action={formAction} key={state.stamp ?? 0}>
       {state.error && <div className="alert alert-error">{state.error}</div>}
       {state.ok && <div className="alert alert-ok">{state.ok}</div>}
 
@@ -52,7 +62,7 @@ export default function ShopForm({ shop }: { shop: ShopDetails }) {
           name="rules"
           rows={4}
           maxLength={RULES_MAX}
-          defaultValue={shop.rules}
+          defaultValue={kept.rules ?? shop.rules}
           placeholder={"Fuel up before you bring it back.\nKeys go in the lock box, not your pocket.\nCall the shop before 7am if you're stuck."}
         />
       </div>

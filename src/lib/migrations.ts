@@ -368,6 +368,33 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_vehicles_class ON vehicles(class);
     `,
   },
+  {
+    version: 13,
+    label: "gantt, independent of the weekly board",
+    up: `
+      -- Deliberately its own table. The shop's Gantt is a planning surface that
+      -- does not write the schedule and is not written by it: pencilling in
+      -- "we'll want the cube that week" must not create a booking, and booking
+      -- a van must not silently redraw somebody's plan.
+      CREATE TABLE IF NOT EXISTS gantt_cells (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+        state      TEXT NOT NULL
+                     CHECK (state IN ('booked', 'needed', 'idle', 'own', 'pynx')),
+        starts_on  TEXT NOT NULL,
+        ends_on    TEXT NOT NULL,
+        note       TEXT,
+        -- Soft delete, so "clear all" on a vehicle can be undone after a
+        -- reload rather than only while the page is still open.
+        cleared_at TEXT,
+        batch      TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_gantt_vehicle ON gantt_cells(vehicle_id, starts_on);
+      CREATE INDEX IF NOT EXISTS idx_gantt_dates ON gantt_cells(starts_on, ends_on);
+      CREATE INDEX IF NOT EXISTS idx_gantt_live ON gantt_cells(cleared_at);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);
