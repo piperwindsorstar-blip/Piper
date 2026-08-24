@@ -264,57 +264,61 @@ conn.prepare("UPDATE events SET plan_submitted_at = datetime('now') WHERE id = ?
 // A small fleet, so the dispatch board shows something on a fresh install
 // rather than an empty grid that gives no sense of what it is for.
 const vehicles = [
+  // The classes Pynx hires from Pencar, and the one van it owns. Three of each
+  // hired class can be out at once; there is only one Pynx Cargo.
   {
-    name: "Cargo 1",
+    name: "Cargo van",
     class: "cargo_van",
     ownership: "pencar",
-    plate: null,
-    home_base: "Shop",
+    slots: 3,
     weight_capacity: "3500 lb",
     passenger_capacity: 2,
     capacity_note: "Ceremony kit and speakers",
-    notes: null,
-    rental_from: null,
-    rental_due: null,
   },
   {
-    name: "Cube 1",
+    name: "Cube van",
     class: "cube_van",
     ownership: "pencar",
-    plate: null,
-    home_base: "Shop",
+    slots: 3,
     weight_capacity: "1 ton",
     passenger_capacity: 3,
     capacity_note: "Full rig plus booth",
-    notes: null,
-    rental_from: saturdayIn(2),
-    rental_due: saturdayIn(3),
   },
   {
-    name: "26 ft",
+    name: "26 ft truck",
     class: "truck_26",
     ownership: "pencar",
-    plate: null,
-    home_base: "Yard",
+    slots: 3,
     weight_capacity: "5 ton",
     passenger_capacity: 3,
     capacity_note: "Big loads, busy weekends",
-    notes: "Hired when both vans are out.",
-    rental_from: saturdayIn(2),
-    rental_due: saturdayIn(3),
   },
   {
-    name: "Crew mini van",
+    name: "Passenger vehicle",
+    class: "passenger",
+    ownership: "pencar",
+    slots: 3,
+    weight_capacity: null,
+    passenger_capacity: 5,
+    capacity_note: "Crew only",
+  },
+  {
+    name: "Mini van",
     class: "mini_van",
     ownership: "pencar",
-    plate: null,
-    home_base: "Shop",
+    slots: 3,
     weight_capacity: null,
     passenger_capacity: 7,
     capacity_note: "Crew and small kit",
-    notes: null,
-    rental_from: null,
-    rental_due: null,
+  },
+  {
+    name: "Pynx Cargo",
+    class: "cargo_van",
+    ownership: "other",
+    slots: 1,
+    weight_capacity: "3500 lb",
+    passenger_capacity: 2,
+    capacity_note: "Ours — always available",
   },
 ].map((v) =>
   Number(
@@ -322,21 +326,22 @@ const vehicles = [
       .prepare(
         `INSERT INTO vehicles
            (name, class, ownership, plate, home_base, weight_capacity, passenger_capacity,
-            rental_from, rental_due, capacity_note, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            rental_from, rental_due, capacity_note, notes, slots)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         v.name,
         v.class,
         v.ownership,
-        v.plate,
-        v.home_base,
+        null,
+        "Shop",
         v.weight_capacity,
         v.passenger_capacity,
-        v.rental_from,
-        v.rental_due,
+        null,
+        null,
         v.capacity_note,
-        v.notes,
+        null,
+        v.slots,
       )
       .lastInsertRowid,
   ),
@@ -371,7 +376,7 @@ addCell.run(vehicles[1], "booked", saturdayIn(6), saturdayIn(6), "Festival weeke
 addCell.run(vehicles[2], "needed", saturdayIn(6), saturdayIn(6), "Three shows");
 addCell.run(vehicles[0], "idle", saturdayIn(8), saturdayIn(8), null);
 
-console.log(`Seeded ${ids.length} events, 3 venues, 4 vehicles and 4 users.`);
+console.log(`Seeded ${ids.length} events, 3 venues, 6 vehicles and 4 users.`);
 console.log("");
 console.log("  Sign in with any of these (password: piper1234)");
 console.log("    owner@piper.test    Sam Rivera    admin");

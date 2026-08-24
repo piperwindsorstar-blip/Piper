@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { listVehicles, monthDays, shiftMonth } from "@/lib/dispatch";
 import { CLASS_LABELS, CLASS_SHORT, OWNERSHIP_LABELS, VEHICLE_CLASSES, isVehicleClass } from "@/lib/dispatch-types";
-import { ganttLanes, quarterDays, suggestVehicles } from "@/lib/gantt";
+import { ganttRows, quarterDays, suggestVehicles } from "@/lib/gantt";
 import { formatDate, monthLabel, parseIso, todayIso } from "@/lib/dates";
 import Icon from "@/components/Icon";
 import GanttGrid from "./GanttGrid";
@@ -31,7 +31,7 @@ export default async function GanttPage({
 
   const days = quarter ? quarterDays(anchor) : monthDays(anchor);
   const vehicles = listVehicles();
-  const rows = ganttLanes(days, vehicles);
+  const rows = ganttRows(days, vehicles);
 
   const from = days[0];
   const to = days[days.length - 1];
@@ -92,22 +92,24 @@ export default async function GanttPage({
             days={days}
             today={today}
             compact={quarter}
-            vehicles={rows.map(({ vehicle, bars, lanes }) => ({
+            vehicles={rows.map(({ vehicle, slots }) => ({
               id: vehicle.id,
               name: vehicle.name,
               subtitle: `${CLASS_SHORT[vehicle.class]} · ${OWNERSHIP_LABELS[vehicle.ownership]}`,
-              lanes,
-              bars: bars.map((b) => ({
-                id: b.run.id,
-                state: b.run.status as "booked" | "needed" | "idle" | "own" | "pynx",
-                column: b.column,
-                span: b.span,
-                lane: b.lane,
-                continuesLeft: b.continuesLeft,
-                continuesRight: b.continuesRight,
-                startsOn: b.run.starts_on,
-                endsOn: b.run.ends_on,
-                note: b.run.label || null,
+              slots: slots.map(({ slot, bars }) => ({
+                slot,
+                bars: bars.map((b) => ({
+                  id: b.run.id,
+                  state: b.run.status as "booked" | "needed" | "idle" | "own" | "pynx",
+                  column: b.column,
+                  span: b.span,
+                  lane: b.lane,
+                  continuesLeft: b.continuesLeft,
+                  continuesRight: b.continuesRight,
+                  startsOn: b.run.starts_on,
+                  endsOn: b.run.ends_on,
+                  note: b.run.label || null,
+                })),
               })),
             }))}
           />
@@ -195,13 +197,14 @@ export default async function GanttPage({
                         {s.vehicle.passenger_capacity ? ` · ${s.vehicle.passenger_capacity} seats` : ""}
                         {s.vehicle.weight_capacity ? ` · ${s.vehicle.weight_capacity}` : ""}
                       </span>
-                      {!s.free && (
+                      {s.conflicts.length > 0 && (
                         <div className="small muted">{s.conflicts.join(" · ")}</div>
                       )}
                     </span>
                     {s.free ? (
                       <span className={`badge ${s.classMatch ? "badge-confirmed" : "badge-plain"}`}>
-                        {s.classMatch ? "Free — right kind" : "Free"}
+                        {s.vehicle.slots > 1 ? `${s.spare} of ${s.vehicle.slots} free` : "Free"}
+                        {s.classMatch ? " · right kind" : ""}
                       </span>
                     ) : (
                       <span className="badge badge-cancelled">Spoken for</span>

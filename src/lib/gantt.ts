@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { db, nowIso } from "./db";
 import { toIso, parseIso } from "./dates";
 import { COMMITTED, type RunStatus, type VehicleClass } from "./dispatch-types";
-import { layoutRuns, type Vehicle } from "./dispatch";
+import { layoutRuns, type RunBar, type Vehicle } from "./dispatch";
 
 /**
  * The Gantt: what the shop expects to need, months out.
@@ -31,6 +31,8 @@ export type GanttCell = {
   starts_on: string;
   ends_on: string;
   note: string | null;
+  /** Which of the vehicle's rows this sits in. Fixed, not re-packed. */
+  slot: number;
   cleared_at: string | null;
   batch: string | null;
   created_at: string;
@@ -54,16 +56,17 @@ export function getCell(id: number): GanttCell | null {
   );
 }
 
-/** The live cell covering one vehicle-day, if any. */
-export function cellOn(vehicleId: number, date: string): GanttCell | null {
+/** The live cell in one slot on one day, if any. */
+export function cellOn(vehicleId: number, slot: number, date: string): GanttCell | null {
   return (
     (db()
       .prepare(
         `SELECT * FROM gantt_cells
-          WHERE cleared_at IS NULL AND vehicle_id = ? AND starts_on <= ? AND ends_on >= ?
+          WHERE cleared_at IS NULL AND vehicle_id = ? AND slot = ?
+            AND starts_on <= ? AND ends_on >= ?
           ORDER BY id DESC LIMIT 1`,
       )
-      .get(vehicleId, date, date) as GanttCell | undefined) ?? null
+      .get(vehicleId, slot, date, date) as GanttCell | undefined) ?? null
   );
 }
 
@@ -75,25 +78,34 @@ export type CellInput = {
   starts_on: string;
   ends_on: string;
   note: string | null;
+  slot: number;
 };
 
 export function createCell(input: CellInput): number {
   const result = db()
     .prepare(
-      `INSERT INTO gantt_cells (vehicle_id, state, starts_on, ends_on, note)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO gantt_cells (vehicle_id, state, starts_on, ends_on, note, slot)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run(input.vehicle_id, input.state, input.starts_on, input.ends_on, input.note);
+    .run(input.vehicle_id, input.state, input.starts_on, input.ends_on, input.note, input.slot);
   return Number(result.lastInsertRowid);
 }
 
 export function updateCell(id: number, input: CellInput): void {
   db()
     .prepare(
-      `UPDATE gantt_cells SET vehicle_id = ?, state = ?, starts_on = ?, ends_on = ?, note = ?
-        WHERE id = ?`,
+      `UPDATE gantt_cells SET vehicle_id = ?, state = ?, starts_on = ?, ends_on = ?,
+         note = ?, slot = ? WHERE id = ?`,
     )
-    .run(input.vehicle_id, input.state, input.starts_on, input.ends_on, input.note, id);
+    .run(
+      input.vehicle_id,
+      input.state,
+      input.starts_on,
+      input.ends_on,
+      input.note,
+      input.slot,
+      id,
+    );
 }
 
 export function deleteCell(id: number): void {
@@ -112,8 +124,8 @@ export function deleteCell(id: number): void {
  * splitting it; splitting a span by clicking one of its middle days is almost
  * never what somebody means, and the dialog can do it deliberately.
  */
-export function cycleDay(vehicleId: number, date: string): CellState | null {
-  const existing = cellOn(vehicleId, date);
+export function cycleDay(vehicleId: number, slot: number, date: string): CellState | null {
+  const existing = cellOn(vehicleId, slot, date);
 
   if (!existing) {
     createCell({
@@ -122,6 +134,7 @@ export function cycleDay(vehicleId: number, date: string): CellState | null {
       starts_on: date,
       ends_on: date,
       note: null,
+      slot,
     });
     return "needed";
   }
@@ -169,39 +182,55 @@ export function pruneCleared(): void {
 
 /* ---------------------------------------------------------------- layout */
 
-/** Cells as bars, reusing the board's lane packing so the two look alike. */
-export function ganttLanes(days: string[], vehicles: Vehicle[]) {
+/**
+ * Every vehicle, every slot, whether or not anything is planned in it.
+ *
+ * The rows are a permanent fixture rather than a list of what happens to have
+ * data. A chart that grows and shrinks as blocks are added is a chart you
+ * cannot point at across a room — the shop reads this the way it reads a
+ * printed sheet, and the fifth row is the 26 ft truck whether or not the 26 ft
+ * truck is doing anything this month.
+ *
+ * Slots come from the vehicle, not from the data: three for a hired class,
+ * because three cube vans can be out at once, and one for a vehicle Pynx owns.
+ */
+export type GanttSlot = { slot: number; bars: RunBar[] };
+export type GanttRow = { vehicle: Vehicle; slots: GanttSlot[] };
+
+export function ganttRows(days: string[], vehicles: Vehicle[]): GanttRow[] {
   const cells = cellsBetween(days[0], days[days.length - 1]);
 
   return vehicles.map((vehicle) => {
-    // layoutRuns wants run-shaped records; a cell is the same shape for the
-    // purpose of working out where a bar goes.
-    const asRuns = cells
-      .filter((c) => c.vehicle_id === vehicle.id)
-      .map((c) => ({
-        ...c,
-        event_id: null,
-        label: c.note ?? "",
-        status: c.state as RunStatus,
-        meet_time: null,
-        crew: null,
-        site: null,
-        driver_id: null,
-        keys_with: null,
-        notes: null,
-        vehicle_name: vehicle.name,
-        vehicle_class: vehicle.class,
-        vehicle_ownership: vehicle.ownership,
-        driver_name: null,
-        event_date: null,
-      }));
+    const count = Math.max(1, vehicle.slots);
+    const slots: GanttSlot[] = [];
 
-    const bars = layoutRuns(days, asRuns);
-    return {
-      vehicle,
-      bars,
-      lanes: bars.reduce((max, b) => Math.max(max, b.lane + 1), 1),
-    };
+    for (let slot = 0; slot < count; slot++) {
+      // layoutRuns wants run-shaped records; a cell is the same shape for the
+      // purpose of working out where a bar goes.
+      const asRuns = cells
+        .filter((c) => c.vehicle_id === vehicle.id && c.slot === slot)
+        .map((c) => ({
+          ...c,
+          event_id: null,
+          label: c.note ?? "",
+          status: c.state as RunStatus,
+          meet_time: null,
+          crew: null,
+          site: null,
+          driver_id: null,
+          keys_with: null,
+          notes: null,
+          vehicle_name: vehicle.name,
+          vehicle_class: vehicle.class,
+          vehicle_ownership: vehicle.ownership,
+          driver_name: null,
+          event_date: null,
+        }));
+
+      slots.push({ slot, bars: layoutRuns(days, asRuns) });
+    }
+
+    return { vehicle, slots };
   });
 }
 
@@ -210,6 +239,8 @@ export function ganttLanes(days: string[], vehicles: Vehicle[]) {
 export type Suggestion = {
   vehicle: Vehicle;
   free: boolean;
+  /** How many of this vehicle's slots are still open over the dates. */
+  spare: number;
   /** Why not, when it isn't: what is in the way. */
   conflicts: string[];
   classMatch: boolean;
@@ -260,9 +291,16 @@ export function suggestVehicles(
       }
     }
 
+    // Slots matter here. Three cube vans can be hired at once, so one booked
+    // out of three leaves two — answering "spoken for" because a single
+    // commitment exists would send somebody phoning round for nothing.
+    const slots = Math.max(1, vehicle.slots);
+    const spare = Math.max(0, slots - conflicts.length);
+
     return {
       vehicle,
-      free: conflicts.length === 0,
+      free: spare > 0,
+      spare,
       conflicts,
       classMatch: wanted ? vehicle.class === wanted : false,
     };

@@ -35,11 +35,16 @@ export async function cycleCell(formData: FormData): Promise<void> {
   await requireAdmin();
 
   const vehicleId = Number(formData.get("vehicle_id"));
+  const slot = Number(formData.get("slot") ?? 0);
   const date = formData.get("date");
   if (!Number.isInteger(vehicleId) || !isDate(date)) return;
-  if (!getVehicle(vehicleId)) return;
 
-  cycleDay(vehicleId, date);
+  const vehicle = getVehicle(vehicleId);
+  if (!vehicle) return;
+  // A slot that does not exist on this vehicle is not a slot to write into.
+  if (!Number.isInteger(slot) || slot < 0 || slot >= Math.max(1, vehicle.slots)) return;
+
+  cycleDay(vehicleId, slot, date);
   revalidatePath("/dispatch/gantt");
 }
 
@@ -62,6 +67,12 @@ export async function saveCell(_prev: GanttState, formData: FormData): Promise<G
   if (!vehicle) return { error: "That vehicle no longer exists." };
 
   const note = String(formData.get("note") ?? "").trim() || null;
+  const slotRaw = Number(formData.get("slot") ?? 0);
+  const slot =
+    Number.isInteger(slotRaw) && slotRaw >= 0 && slotRaw < Math.max(1, vehicle.slots)
+      ? slotRaw
+      : 0;
+
   const idRaw = formData.get("id");
   const input = {
     vehicle_id: vehicleId,
@@ -69,6 +80,7 @@ export async function saveCell(_prev: GanttState, formData: FormData): Promise<G
     starts_on: startsOn,
     ends_on: endsOn,
     note,
+    slot,
   };
 
   if (idRaw) {

@@ -395,6 +395,34 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_gantt_live ON gantt_cells(cleared_at);
     `,
   },
+  {
+    version: 14,
+    label: "gantt slots per vehicle",
+    up: `
+      -- A Gantt row is a permanent fixture with a fixed number of slots, not a
+      -- row that grows to fit whatever was typed. Three for anything hired,
+      -- because three cube vans can be out at once and the plan has to be able
+      -- to say so; one for a vehicle Pynx owns, since there is only one of it.
+      ALTER TABLE vehicles ADD COLUMN slots INTEGER NOT NULL DEFAULT 3;
+      UPDATE vehicles SET slots = 1 WHERE ownership = 'other';
+
+      -- Which slot a block sits in. Without this the chart re-packs blocks on
+      -- every render and a plan quietly rearranges itself between visits.
+      ALTER TABLE gantt_cells ADD COLUMN slot INTEGER NOT NULL DEFAULT 0;
+      CREATE INDEX IF NOT EXISTS idx_gantt_slot ON gantt_cells(vehicle_id, slot, starts_on);
+    `,
+  },
+  {
+    version: 15,
+    label: "a crew member's own car is one car",
+    up: `
+      -- 14 gave three slots to everything that was not Pynx-owned, which swept
+      -- up the crew's own cars. A crew member's car is one car: three rows for
+      -- it invite somebody to book it twice on the same Saturday. Only a hire
+      -- is a class with several of them behind it.
+      UPDATE vehicles SET slots = 1 WHERE ownership = 'personal' AND slots > 1;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

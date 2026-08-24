@@ -1204,6 +1204,9 @@ await reportDj.ctx.close();
   await ops.page.fill(`${addForm} input[name="name"]`, van);
   await ops.page.selectOption(`${addForm} select[name="class"]`, "cube_van");
   await ops.page.selectOption(`${addForm} select[name="ownership"]`, "pencar");
+  // One at a time, so the overlap checks below measure a refusal rather than
+  // the second of three slots quietly being free.
+  await ops.page.fill(`${addForm} input[name="slots"]`, "1");
   await ops.page.fill(`${addForm} input[name="weight_capacity"]`, "1 ton");
   await ops.page.fill(`${addForm} input[name="passenger_capacity"]`, "3");
   await ops.page.fill(`${addForm} input[name="home_base"]`, "Shop");
@@ -1262,7 +1265,9 @@ await reportDj.ctx.close();
   await ops.page.fill("#starts_on", day(1));
   await ops.page.click('button:has-text("Send it out")');
   await ops.page.waitForTimeout(1200);
-  const refusal = await ops.page.textContent(".alert-error");
+  const refusal = (await ops.page.locator(".alert-error").count())
+    ? await ops.page.locator(".alert-error").first().textContent()
+    : "";
   check("an overlapping booking is refused", (refusal ?? "").includes("already out for"), refusal ?? "none");
   check("the refusal names the clash", (refusal ?? "").includes(`Smoke run ${stamp}`));
   check(
@@ -1329,6 +1334,53 @@ await reportDj.ctx.close();
       .getAttribute("title");
     check("dragging an edge moves that date", (title ?? "").includes(day(1)), title ?? "none");
     check("and leaves the other end alone", (title ?? "").includes(day(2)), title ?? "none");
+  }
+
+  // A hired class with three slots takes three bookings on one day, and
+  // refuses the fourth.
+  {
+    const dayOne = day(3);
+    for (let i = 1; i <= 3; i++) {
+      await ops.page.goto(`${BASE}/dispatch?view=week`);
+      await ops.page.selectOption("#vehicle_id", { label: "Cube van" });
+      await ops.page.fill("#label", `Hire ${i} ${stamp}`);
+      await ops.page.fill("#starts_on", dayOne);
+      await ops.page.click('button:has-text("Send it out")');
+      await ops.page.waitForTimeout(1100);
+    }
+    const three = await ops.page.locator(`.run-bar:has-text("Hire 3 ${stamp}")`).count();
+    check("three of a hired class can be out at once", three === 1, `${three} found`);
+
+    await ops.page.selectOption("#vehicle_id", { label: "Cube van" });
+    await ops.page.fill("#label", `Hire 4 ${stamp}`);
+    await ops.page.fill("#starts_on", dayOne);
+    await ops.page.click('button:has-text("Send it out")');
+    await ops.page.waitForTimeout(1100);
+    const fourth = (await ops.page.locator(".alert-error").count())
+      ? await ops.page.locator(".alert-error").first().textContent()
+      : "";
+    check(
+      "but a fourth is refused, naming the row",
+      (fourth ?? "").includes("Cube van: all 3 are already out"),
+      fourth ?? "none",
+    );
+
+    // Clean up the three.
+    await ops.page.goto(`${BASE}/dispatch?week=${dayOne}`);
+    const cubeRow = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("Cube van"))`);
+    for (let i = 0; i < 6; i++) {
+      // Anchored on "Remove": the drag handles carry the label too, and
+      // clicking one of those does nothing while the loop cheerfully counts
+      // down — which is how three vans were left on the board for the next
+      // run of the suite to trip over.
+      const remove = cubeRow.locator(
+        `button[aria-label^="Remove "][aria-label*="${stamp}"]`,
+      );
+      if ((await remove.count()) === 0) break;
+      await cubeRow.locator(".run-bar").first().hover();
+      await remove.first().click();
+      await ops.page.waitForTimeout(700);
+    }
   }
 
   // Dates that make no sense are refused.
@@ -1725,6 +1777,61 @@ await reportDj.ctx.close();
   );
   check("and its note shows on the chart", (await ops.page.textContent("body")).includes(`Plan ${stamp}`));
 
+  // Slots: a hired class gets three rows, an owned vehicle one, and they are
+  // independent of each other.
+  {
+    const cube = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("Cube van"))`);
+    const owned = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("Pynx Cargo"))`);
+    await ops.page.goto(`${BASE}/dispatch/gantt`);
+    check("a hired class gets three slots", (await cube.locator(".gantt-track").count()) === 3);
+    check("a vehicle Pynx owns gets one", (await owned.locator(".gantt-track").count()) === 1);
+
+    const first = cube.locator(".gantt-track").nth(0).locator(".gantt-cell").nth(6);
+    const second = cube.locator(".gantt-track").nth(1).locator(".gantt-cell").nth(6);
+    const third = cube.locator(".gantt-track").nth(2).locator(".gantt-cell").nth(6);
+    await first.click();
+    await ops.page.waitForTimeout(900);
+    check(
+      "planning one slot leaves the others alone",
+      !((await second.getAttribute("class")) ?? "").includes("run-") &&
+        !((await third.getAttribute("class")) ?? "").includes("run-"),
+    );
+
+    await second.click();
+    await ops.page.waitForTimeout(900);
+    await ops.page.reload();
+    await ops.page.waitForTimeout(800);
+    const cube2 = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("Cube van"))`);
+    check(
+      "each slot keeps its own plan across a reload",
+      ((await cube2.locator(".gantt-track").nth(0).locator(".gantt-cell").nth(6).getAttribute("class")) ?? "").includes("run-needed") &&
+        ((await cube2.locator(".gantt-track").nth(1).locator(".gantt-cell").nth(6).getAttribute("class")) ?? "").includes("run-needed"),
+    );
+
+    // Put them back. Clicking a fixed number of times assumes every click
+    // lands, and a click that does not leaves a block on the shared fleet for
+    // the next run of the suite to measure. Cycle until the square is bare.
+    for (const cell of [
+      cube2.locator(".gantt-track").nth(0).locator(".gantt-cell").nth(6),
+      cube2.locator(".gantt-track").nth(1).locator(".gantt-cell").nth(6),
+    ]) {
+      for (let i = 0; i < 5; i++) {
+        if (!((await cell.getAttribute("class")) ?? "").includes("run-")) break;
+        await cell.click();
+        await ops.page.waitForTimeout(800);
+      }
+    }
+    await ops.page.reload();
+    await ops.page.waitForTimeout(800);
+    check(
+      "the suite leaves the shared fleet's plan as it found it",
+      (await ops.page
+        .locator(`.board-grid-row:has(.board-grid-name:has-text("Cube van"))`)
+        .locator(".gantt-cell.run-needed, .gantt-cell.run-booked")
+        .count()) === 0,
+    );
+  }
+
   // The whole point: none of that reached the weekly board.
   await ops.page.goto(`${BASE}/dispatch?view=week`);
   check(
@@ -1738,22 +1845,43 @@ await reportDj.ctx.close();
     d.setDate(d.getDate() + offset);
     return d.toISOString().slice(0, 10);
   };
+  const suggestion = `li:has(strong:text-is("${van}"))`;
   await ops.page.goto(`${BASE}/dispatch/gantt?from=${day(60)}&to=${day(60)}`);
-  let body = await ops.page.textContent("body");
-  check("it can suggest a free vehicle", body.includes(van) && body.includes("Free"));
+  let offered = await ops.page.textContent(suggestion);
+  check("it can suggest a free vehicle", (offered ?? "").includes("3 of 3 free"), offered ?? "none");
 
-  // Book that vehicle on the board and it should stop being offered.
-  await ops.page.goto(`${BASE}/dispatch?view=week&week=${day(60)}`);
-  await ops.page.selectOption("#vehicle_id", { label: van });
-  await ops.page.fill("#label", `Taken ${stamp}`);
-  await ops.page.fill("#starts_on", day(60));
-  await ops.page.click('button:has-text("Send it out")');
-  await ops.page.waitForTimeout(1200);
+  // Book it on the board and the count comes down rather than the vehicle
+  // vanishing from the list: three of a hired kind can be out at once, so
+  // answering "spoken for" after the first would send somebody phoning round
+  // for a van that is sitting on the lot.
+  for (let i = 1; i <= 3; i++) {
+    await ops.page.goto(`${BASE}/dispatch?view=week&week=${day(60)}`);
+    await ops.page.selectOption("#vehicle_id", { label: van });
+    await ops.page.fill("#label", `Taken ${i} ${stamp}`);
+    await ops.page.fill("#starts_on", day(60));
+    await ops.page.click('button:has-text("Send it out")');
+    await ops.page.waitForTimeout(1200);
 
-  await ops.page.goto(`${BASE}/dispatch/gantt?from=${day(60)}&to=${day(60)}`);
-  body = await ops.page.textContent("body");
-  check("a booking on the board removes it from the suggestions", body.includes("Spoken for"));
-  check("and says what is in the way", body.includes(`booked: Taken ${stamp}`));
+    await ops.page.goto(`${BASE}/dispatch/gantt?from=${day(60)}&to=${day(60)}`);
+    offered = await ops.page.textContent(suggestion);
+    if (i < 3) {
+      check(
+        `booking one takes a slot off the count (${i} of 3)`,
+        (offered ?? "").includes(`${3 - i} of 3 free`),
+        offered ?? "none",
+      );
+    }
+  }
+  check(
+    "and once every slot is out it stops being offered",
+    (offered ?? "").includes("Spoken for"),
+    offered ?? "none",
+  );
+  check(
+    "and says what is in the way",
+    (offered ?? "").includes(`booked: Taken 1 ${stamp}`),
+    offered ?? "none",
+  );
 
   // Clear the row, then undo it.
   await ops.page.goto(`${BASE}/dispatch/gantt`);

@@ -3,7 +3,9 @@
 import { useActionState, useState } from "react";
 import {
   CLASS_LABELS,
+  defaultSlotsFor,
   HIRED,
+  MAX_SLOTS,
   OWNERSHIP_LABELS,
   OWNERSHIPS,
   VEHICLE_CLASSES,
@@ -25,6 +27,7 @@ export type EditableVehicle = {
   rental_due: string | null;
   capacity_note: string | null;
   notes: string | null;
+  slots: number;
 };
 
 /**
@@ -139,6 +142,23 @@ export default function VehicleForm({ vehicle }: { vehicle?: EditableVehicle }) 
             </div>
           </>
         )}
+
+        <div className="field">
+          <label>How many at once</label>
+          <input
+            name="slots"
+            type="number"
+            min={1}
+            max={MAX_SLOTS}
+            defaultValue={vehicle?.slots ?? defaultSlotsFor(ownership)}
+            key={vehicle ? vehicle.slots : ownership}
+          />
+          <div className="small faint">
+            {hired
+              ? "Rows on the plan — three hired at once needs three."
+              : "One row: there is only one of it."}
+          </div>
+        </div>
 
         <div className="field">
           <label>What it holds</label>

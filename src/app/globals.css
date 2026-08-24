@@ -1220,3 +1220,8 @@ input:focus, select:focus, textarea:focus {
   z-index: 50;
 }
 .gantt-dialog { width: min(30rem, 100%); box-shadow: var(--shadow-lift); }
+
+/* A vehicle's slots stack inside its row. Three hired cube vans are three
+   rows under one name, not three separate vehicles. */
+.gantt-slots { display: grid; }
+.gantt-slots .gantt-track + .gantt-track { border-top: 1px dashed var(--border); }

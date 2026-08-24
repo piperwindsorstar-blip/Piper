@@ -19,8 +19,10 @@ import {
   type VehicleInput,
 } from "@/lib/dispatch";
 import {
+  defaultSlotsFor,
   HIRED,
   isOwnership,
+  MAX_SLOTS,
   isRunStatus,
   isVehicleClass,
   STATUS_SHORT,
@@ -47,6 +49,16 @@ function readVehicle(formData: FormData): VehicleInput | null {
   const seats = text(formData, "passenger_capacity");
   const hired = HIRED.includes(ownership);
 
+  // How many of this can be out at once, which is how many rows it gets on the
+  // Gantt. Blank falls back to what the ownership implies rather than to one:
+  // a hired class with a single row cannot express two cube vans on a Saturday,
+  // which is the situation the chart exists for.
+  const slotsRaw = text(formData, "slots");
+  const slots =
+    slotsRaw !== null && /^\d+$/.test(slotsRaw)
+      ? Math.min(Math.max(Number(slotsRaw), 1), MAX_SLOTS)
+      : defaultSlotsFor(ownership);
+
   return {
     name,
     class: isVehicleClass(rawClass) ? rawClass : "other",
@@ -62,6 +74,7 @@ function readVehicle(formData: FormData): VehicleInput | null {
     rental_due: hired ? text(formData, "rental_due") : null,
     capacity_note: text(formData, "capacity_note"),
     notes: text(formData, "notes"),
+    slots,
   };
 }
 
@@ -99,6 +112,7 @@ export async function saveVehicle(
       { field: "Plate", from: before.plate, to: input.plate },
       { field: "Home base", from: before.home_base, to: input.home_base },
       { field: "Weight capacity", from: before.weight_capacity, to: input.weight_capacity },
+      { field: "Slots on the plan", from: String(before.slots), to: String(input.slots) },
       {
         field: "Seats",
         from: before.passenger_capacity === null ? null : String(before.passenger_capacity),
@@ -173,13 +187,17 @@ function readRun(formData: FormData): RunInput | null {
 /**
  * Books a vehicle out.
  *
- * An overlap between two commitments on one vehicle is refused, not warned
- * about. That is not what this originally did — the first version reported the
- * clash and saved anyway, on the reasoning that an app which says no teaches
- * people to keep the real schedule somewhere else. The shop's own dispatch
- * board forbids it outright, and asked for it twice while being built, which
- * settles it: a van cannot be in two places, and a board that lets you say it
- * can is a board nobody can trust at a glance.
+ * An overlap beyond what the vehicle has is refused, not warned about. That is
+ * not what this originally did — the first version reported the clash and
+ * saved anyway, on the reasoning that an app which says no teaches people to
+ * keep the real schedule somewhere else. The shop's own board forbids it and
+ * asked for that twice while being built, which settles it: a van cannot be in
+ * two places, and a board that lets you say it can is not worth a glance.
+ *
+ * "Beyond what the vehicle has" rather than "at all", because a row is a class
+ * as often as it is a vehicle: three cube vans can be hired for one Saturday,
+ * and a row with three slots must be allowed to say so. A Pynx-owned van has
+ * one slot and behaves exactly as before.
  *
  * Only real commitments collide. A day marked 'needed' is the absence of an
  * arrangement, and idle and shop days are the vehicle sitting still, so those
@@ -216,7 +234,8 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
     id ?? undefined,
   ).filter((c) => COMMITTED.includes(c.status) && COMMITTED.includes(input.status));
 
-  if (clashes.length > 0) {
+  const slots = Math.max(1, vehicle.slots);
+  if (clashes.length >= slots) {
     const when = clashes
       .map((c) =>
         c.starts_on === c.ends_on
@@ -226,8 +245,13 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
       .join(", ");
     return {
       error:
-        `${vehicle.name} is already out for ${when}. ` +
-        `Pick another vehicle, or change those dates first.`,
+        slots === 1
+          ? `${vehicle.name} is already out for ${when}. ` +
+            `Pick another vehicle, or change those dates first.`
+          : // Named, because "All 3 are already out" on a board of six rows
+            // leaves somebody hunting for which three.
+            `${vehicle.name}: all ${slots} are already out for ${when}. ` +
+            `Pick another vehicle, or change those dates first.`,
     };
   }
 

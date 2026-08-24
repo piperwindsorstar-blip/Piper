@@ -374,6 +374,9 @@ CREATE TABLE IF NOT EXISTS vehicles (
   rental_due         TEXT,                    -- hires only: back by this date
   capacity_note      TEXT,
   notes              TEXT,
+  -- How many of this vehicle can be out at once, and so how many rows it gets
+  -- on the Gantt. Three for a hired class; one for a vehicle Pynx owns.
+  slots              INTEGER NOT NULL DEFAULT 3,
   active             INTEGER NOT NULL DEFAULT 1,
   created_at         TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -418,6 +421,7 @@ CREATE TABLE IF NOT EXISTS gantt_cells (
   starts_on  TEXT NOT NULL,
   ends_on    TEXT NOT NULL,
   note       TEXT,
+  slot       INTEGER NOT NULL DEFAULT 0,  -- which row of the vehicle it sits in
   cleared_at TEXT,                     -- soft delete, so a clear-all is undoable
   batch      TEXT,                     -- groups one clear-all, for undo
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -425,3 +429,4 @@ CREATE TABLE IF NOT EXISTS gantt_cells (
 CREATE INDEX IF NOT EXISTS idx_gantt_vehicle ON gantt_cells(vehicle_id, starts_on);
 CREATE INDEX IF NOT EXISTS idx_gantt_dates ON gantt_cells(starts_on, ends_on);
 CREATE INDEX IF NOT EXISTS idx_gantt_live ON gantt_cells(cleared_at);
+CREATE INDEX IF NOT EXISTS idx_gantt_slot ON gantt_cells(vehicle_id, slot, starts_on);

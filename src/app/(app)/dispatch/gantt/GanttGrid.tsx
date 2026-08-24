@@ -35,12 +35,14 @@ export type GanttBar = {
   note: string | null;
 };
 
+export type GanttSlotRow = { slot: number; bars: GanttBar[] };
+
 export type GanttVehicle = {
   id: number;
   name: string;
   subtitle: string;
-  lanes: number;
-  bars: GanttBar[];
+  /** Always rendered, empty or not — the rows are a fixture. */
+  slots: GanttSlotRow[];
 };
 
 const CYCLE_STATES = ["needed", "booked"] as const;
@@ -60,6 +62,7 @@ export default function GanttGrid({
   const [dialog, setDialog] = useState<{
     vehicleId: number;
     vehicleName: string;
+    slot: number;
     bar: GanttBar | null;
     date: string;
   } | null>(null);
@@ -68,15 +71,21 @@ export default function GanttGrid({
   const [optimistic, setOptimistic] = useState<Record<string, string | null>>({});
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function stateOn(vehicle: GanttVehicle, day: string): string | null {
-    const key = `${vehicle.id}|${day}`;
-    if (key in optimistic) return optimistic[key];
-    const bar = vehicle.bars.find((b) => b.startsOn <= day && b.endsOn >= day);
+  const key = (vehicleId: number, slot: number, day: string) => `${vehicleId}|${slot}|${day}`;
+
+  function barIn(row: GanttSlotRow, day: string): GanttBar | undefined {
+    return row.bars.find((b) => b.startsOn <= day && b.endsOn >= day);
+  }
+
+  function stateOn(vehicle: GanttVehicle, row: GanttSlotRow, day: string): string | null {
+    const k = key(vehicle.id, row.slot, day);
+    if (k in optimistic) return optimistic[k];
+    const bar = barIn(row, day);
     return bar ? bar.state : null;
   }
 
-  function onCycle(vehicle: GanttVehicle, day: string) {
-    const current = stateOn(vehicle, day);
+  function onCycle(vehicle: GanttVehicle, row: GanttSlotRow, day: string) {
+    const current = stateOn(vehicle, row, day);
     const next =
       current === null
         ? CYCLE_STATES[0]
@@ -84,25 +93,32 @@ export default function GanttGrid({
           ? CYCLE_STATES[1]
           : null;
 
-    setOptimistic((o) => ({ ...o, [`${vehicle.id}|${day}`]: next }));
+    const k = key(vehicle.id, row.slot, day);
+    setOptimistic((o) => ({ ...o, [k]: next }));
 
     const form = new FormData();
     form.set("vehicle_id", String(vehicle.id));
+    form.set("slot", String(row.slot));
     form.set("date", day);
     startTransition(async () => {
       await cycleCell(form);
       // Let the server's answer take over again once it has re-rendered.
       setOptimistic((o) => {
-        const next = { ...o };
-        delete next[`${vehicle.id}|${day}`];
-        return next;
+        const rest = { ...o };
+        delete rest[k];
+        return rest;
       });
     });
   }
 
-  function openDialog(vehicle: GanttVehicle, day: string) {
-    const bar = vehicle.bars.find((b) => b.startsOn <= day && b.endsOn >= day) ?? null;
-    setDialog({ vehicleId: vehicle.id, vehicleName: vehicle.name, bar, date: day });
+  function openDialog(vehicle: GanttVehicle, row: GanttSlotRow, day: string) {
+    setDialog({
+      vehicleId: vehicle.id,
+      vehicleName: vehicle.name,
+      slot: row.slot,
+      bar: barIn(row, day) ?? null,
+      date: day,
+    });
   }
 
   return (
@@ -131,56 +147,69 @@ export default function GanttGrid({
               <div className="board-grid-name">
                 <div>{vehicle.name}</div>
                 <div className="small faint">{vehicle.subtitle}</div>
+                {vehicle.slots.length > 1 && (
+                  <div className="small faint">{vehicle.slots.length} at once</div>
+                )}
               </div>
 
-              <div
-                className="gantt-track"
-                style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
-              >
-                {days.map((day) => {
-                  const state = stateOn(vehicle, day);
-                  const bar = vehicle.bars.find((b) => b.startsOn <= day && b.endsOn >= day);
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      className={[
-                        "gantt-cell",
-                        state ? `run-${state}` : "",
-                        day === today ? "board-today" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      title={
-                        state
-                          ? `${STATUS_SHORT[state as RunStatus]}${bar?.note ? ` — ${bar.note}` : ""} · right-click to edit`
-                          : `${day} · click to plan, right-click for options`
-                      }
-                      aria-label={`${vehicle.name} on ${day}: ${
-                        state ? STATUS_LABELS[state as RunStatus] : "nothing planned"
-                      }`}
-                      onClick={() => onCycle(vehicle, day)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        openDialog(vehicle, day);
-                      }}
-                      // No right button on a phone, so a long press opens it.
-                      onPointerDown={() => {
-                        pressTimer.current = setTimeout(() => openDialog(vehicle, day), 550);
-                      }}
-                      onPointerUp={() => {
-                        if (pressTimer.current) clearTimeout(pressTimer.current);
-                      }}
-                      onPointerLeave={() => {
-                        if (pressTimer.current) clearTimeout(pressTimer.current);
-                      }}
-                    >
-                      {bar?.note && !compact && bar.startsOn === day && (
-                        <span className="gantt-note">{bar.note}</span>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="gantt-slots">
+                {vehicle.slots.map((row) => (
+                  <div
+                    key={row.slot}
+                    className="gantt-track"
+                    style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+                  >
+                    {days.map((day) => {
+                      const state = stateOn(vehicle, row, day);
+                      const bar = barIn(row, day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          className={[
+                            "gantt-cell",
+                            state ? `run-${state}` : "",
+                            day === today ? "board-today" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          title={
+                            state
+                              ? `${STATUS_SHORT[state as RunStatus]}${bar?.note ? ` — ${bar.note}` : ""} · right-click to edit`
+                              : `${day} · click to plan, right-click for options`
+                          }
+                          aria-label={`${vehicle.name}${
+                            vehicle.slots.length > 1 ? ` slot ${row.slot + 1}` : ""
+                          } on ${day}: ${
+                            state ? STATUS_LABELS[state as RunStatus] : "nothing planned"
+                          }`}
+                          onClick={() => onCycle(vehicle, row, day)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            openDialog(vehicle, row, day);
+                          }}
+                          // No right button on a phone, so a long press opens it.
+                          onPointerDown={() => {
+                            pressTimer.current = setTimeout(
+                              () => openDialog(vehicle, row, day),
+                              550,
+                            );
+                          }}
+                          onPointerUp={() => {
+                            if (pressTimer.current) clearTimeout(pressTimer.current);
+                          }}
+                          onPointerLeave={() => {
+                            if (pressTimer.current) clearTimeout(pressTimer.current);
+                          }}
+                        >
+                          {bar?.note && !compact && bar.startsOn === day && (
+                            <span className="gantt-note">{bar.note}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -194,7 +223,7 @@ export default function GanttGrid({
 
       {dialog && (
         <CellDialog
-          key={`${dialog.vehicleId}-${dialog.date}-${dialog.bar?.id ?? "new"}`}
+          key={`${dialog.vehicleId}-${dialog.slot}-${dialog.date}-${dialog.bar?.id ?? "new"}`}
           dialog={dialog}
           onClose={() => setDialog(null)}
         />
@@ -207,7 +236,13 @@ function CellDialog({
   dialog,
   onClose,
 }: {
-  dialog: { vehicleId: number; vehicleName: string; bar: GanttBar | null; date: string };
+  dialog: {
+    vehicleId: number;
+    vehicleName: string;
+    slot: number;
+    bar: GanttBar | null;
+    date: string;
+  };
   onClose: () => void;
 }) {
   const [state, save, saving] = useActionState<GanttState, FormData>(saveCell, {});
@@ -238,6 +273,7 @@ function CellDialog({
           {state.error && <div className="alert alert-error">{state.error}</div>}
 
           <input type="hidden" name="vehicle_id" value={dialog.vehicleId} />
+          <input type="hidden" name="slot" value={dialog.slot} />
           {bar && <input type="hidden" name="id" value={bar.id} />}
 
           <div className="field">

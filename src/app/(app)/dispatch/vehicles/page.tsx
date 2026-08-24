@@ -39,6 +39,7 @@ export default async function FleetPage() {
                     .filter(Boolean)
                     .join(", ") || null,
                   vehicle.capacity_note,
+                  vehicle.slots > 1 ? `${vehicle.slots} at once` : null,
                   vehicle.rental_due ? `back by ${formatDate(vehicle.rental_due)}` : null,
                 ]
                   .filter(Boolean)
@@ -72,6 +73,7 @@ export default async function FleetPage() {
               rental_due: vehicle.rental_due,
               capacity_note: vehicle.capacity_note,
               notes: vehicle.notes,
+              slots: vehicle.slots,
             }}
           />
 

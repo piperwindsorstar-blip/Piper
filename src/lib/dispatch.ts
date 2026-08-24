@@ -52,6 +52,7 @@ export type Vehicle = {
   rental_due: string | null;
   capacity_note: string | null;
   notes: string | null;
+  slots: number;
   active: number;
   created_at: string;
 };
@@ -68,6 +69,7 @@ export type VehicleInput = {
   rental_due: string | null;
   capacity_note: string | null;
   notes: string | null;
+  slots: number;
 };
 
 export type Run = {
@@ -125,8 +127,8 @@ export function createVehicle(input: VehicleInput): number {
     .prepare(
       `INSERT INTO vehicles
          (name, class, ownership, plate, home_base, weight_capacity, passenger_capacity,
-          rental_from, rental_due, capacity_note, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          rental_from, rental_due, capacity_note, notes, slots)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.name,
@@ -140,6 +142,7 @@ export function createVehicle(input: VehicleInput): number {
       input.rental_due,
       input.capacity_note,
       input.notes,
+      input.slots,
     );
   return Number(result.lastInsertRowid);
 }
@@ -149,7 +152,7 @@ export function updateVehicle(id: number, input: VehicleInput): void {
     .prepare(
       `UPDATE vehicles SET name = ?, class = ?, ownership = ?, plate = ?, home_base = ?,
          weight_capacity = ?, passenger_capacity = ?, rental_from = ?, rental_due = ?,
-         capacity_note = ?, notes = ? WHERE id = ?`,
+         capacity_note = ?, notes = ?, slots = ? WHERE id = ?`,
     )
     .run(
       input.name,
@@ -163,6 +166,7 @@ export function updateVehicle(id: number, input: VehicleInput): void {
       input.rental_due,
       input.capacity_note,
       input.notes,
+      input.slots,
       id,
     );
 }

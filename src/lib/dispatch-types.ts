@@ -61,8 +61,27 @@ export const OWNERSHIP_LABELS: Record<Ownership, string> = {
   pencar: "Pencar hire",
   rental: "Other hire",
   personal: "Crew's own",
-  other: "Other",
+  // Pynx's own vehicles. The stored value stays 'other' because widening a
+  // CHECK constraint means rebuilding the table, and rebuilding this one takes
+  // its runs and plans with it. The label is what people read.
+  other: "Pynx owned",
 };
+
+/**
+ * How many of a row can be out at once.
+ *
+ * A hired row is a class rather than a vehicle: "cube van" means whichever
+ * three Pencar has free that Saturday. Everything else is one particular
+ * vehicle with one particular plate — Pynx's own van, or a crew member's car
+ * — so it gets one row and no more.
+ */
+export const DEFAULT_SLOTS = 3;
+export const SINGLE_SLOT = 1;
+export const MAX_SLOTS = 5;
+
+export function defaultSlotsFor(ownership: Ownership): number {
+  return HIRED.includes(ownership) ? DEFAULT_SLOTS : SINGLE_SLOT;
+}
 
 /** Anything hired has to go back, whoever it came from. */
 export const HIRED: Ownership[] = ["pencar", "rental"];
