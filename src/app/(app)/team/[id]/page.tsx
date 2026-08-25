@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { eventsAssignedTo } from "@/lib/events";
 import { getUser, staffStats } from "@/lib/team";
 import { changesBy, signInsForUser } from "@/lib/activity";
@@ -14,10 +14,12 @@ import StaffEventList from "@/components/StaffEventList";
 import StaffActivity from "@/components/StaffActivity";
 import MemberCard from "../MemberCard";
 import StaffRecordForm from "./StaffRecordForm";
+import PermissionsForm from "./PermissionsForm";
+import { permissionsFor } from "@/lib/permissions";
 import { toggleMember } from "../actions";
 
 export default async function StaffMemberPage({ params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requireArea("team", "view");
   const { id } = await params;
 
   const memberId = Number(id);
@@ -98,6 +100,19 @@ export default async function StaffMemberPage({ params }: { params: Promise<{ id
           <div className="card-body">
             <StaffRecordForm member={member} />
           </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <h2>What they can reach</h2>
+            <span className="small muted">Section by section</span>
+          </div>
+          <PermissionsForm
+            userId={member.id}
+            role={member.role}
+            current={permissionsFor(member)}
+            isSelf={member.id === admin.id}
+          />
         </div>
 
         {reset && resetLink && (

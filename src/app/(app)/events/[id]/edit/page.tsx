@@ -1,11 +1,11 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { listVenues } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import EventForm from "../../EventForm";
 import { loadEvent } from "../guard";
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireArea("weddings", "edit");
   const { id } = await params;
   const { event } = await loadEvent(id);
 

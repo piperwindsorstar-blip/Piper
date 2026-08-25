@@ -1,4 +1,6 @@
-import { requireAdmin } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import ReadOnly from "@/components/ReadOnly";
+import { requireArea } from "@/lib/auth";
 import { listVenues } from "@/lib/events";
 import { db } from "@/lib/db";
 import { mapVenueName, removeVenue, saveVenue, unmapVenueName } from "./actions";
@@ -18,7 +20,8 @@ function eventCounts(): Map<number, number> {
 }
 
 export default async function VenuesPage() {
-  await requireAdmin();
+  const user = await requireArea("venues", "view");
+  const canEdit = can(user, "venues", "edit");
   const venues = listVenues();
   const counts = eventCounts();
   const reportCounts = reportCountsByVenue();
@@ -37,6 +40,9 @@ export default async function VenuesPage() {
       </header>
 
       <div className="content">
+        {!canEdit && <ReadOnly what="The venue list is read-only for you." />}
+
+        {canEdit && (
         <div className="card">
           <div className="card-head">
             <h2>Add a venue</h2>
@@ -84,6 +90,7 @@ export default async function VenuesPage() {
             </form>
           </div>
         </div>
+        )}
 
         {venues.length === 0 ? (
           <div className="card">

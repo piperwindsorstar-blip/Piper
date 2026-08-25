@@ -63,11 +63,15 @@ export default function RentalGrid({
   suppliers,
   today,
   compact,
+  canEdit,
 }: {
   days: string[];
   suppliers: RentalSupplier[];
   today: string;
   compact: boolean;
+  /** Read-only viewers get the chart without the clicks: a square that opens a
+ * dialog whose save bounces is worse than a square that does nothing. */
+  canEdit: boolean;
 }) {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,6 +81,7 @@ export default function RentalGrid({
   }
 
   function open(supplier: RentalSupplier, track: RentalTrackRow, day: string) {
+    if (!canEdit) return;
     setDialog({
       supplierId: supplier.id,
       supplierName: supplier.name,
@@ -213,8 +218,9 @@ export default function RentalGrid({
       </div>
 
       <p className="small faint board-grid-hint">
-        Click a square to put something on hire from that place, or to edit what is already
-        there. Hover a block for the full name.
+        {canEdit
+          ? "Click a square to put something on hire from that place, or to edit what is already there. Hover a block for the full name."
+          : "Hover a block for the full name."}
       </p>
 
       {dialog && (

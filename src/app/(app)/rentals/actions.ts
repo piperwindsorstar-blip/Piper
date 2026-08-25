@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordAction, recordChanges, rentalSubject } from "@/lib/activity";
 import { ITEM_MAX, isRentalState } from "@/lib/rentals-types";
@@ -89,7 +89,7 @@ export async function saveSupplier(
   _prev: RentalsState,
   formData: FormData,
 ): Promise<RentalsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("rentals", "edit");
 
   const name = text(formData, "name");
   if (!name) return { error: "Give the place a name." };
@@ -122,7 +122,7 @@ export async function saveSupplier(
 }
 
 export async function toggleSupplier(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("rentals", "edit");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return;
 
@@ -150,7 +150,7 @@ export async function toggleSupplier(formData: FormData): Promise<void> {
  * is a single unit and that is why the board refuses.
  */
 export async function saveRental(_prev: RentalsState, formData: FormData): Promise<RentalsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("rentals", "edit");
 
   const supplierId = Number(formData.get("supplier_id"));
   const item = text(formData, "item");
@@ -211,7 +211,7 @@ export async function saveRental(_prev: RentalsState, formData: FormData): Promi
 }
 
 export async function removeRental(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("rentals", "edit");
   const id = Number(formData.get("id"));
   if (Number.isInteger(id)) deleteRental(id);
   revalidatePath("/rentals");
@@ -225,7 +225,7 @@ export async function removeRental(formData: FormData): Promise<void> {
  * to scroll past.
  */
 export async function markReturned(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("rentals", "edit");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return;
 

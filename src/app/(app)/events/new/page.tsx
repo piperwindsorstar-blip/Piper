@@ -1,10 +1,10 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { listVenues } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import EventForm from "../EventForm";
 
 export default async function NewEventPage() {
-  await requireAdmin();
+  await requireArea("weddings", "edit");
 
   return (
     <>

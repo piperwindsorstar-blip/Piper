@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { groupChanges, recentChanges } from "@/lib/activity";
 import { liveEventIds } from "@/lib/audit";
 import ChangeFeed from "@/components/ChangeFeed";
@@ -12,7 +12,7 @@ import ChangeFeed from "@/components/ChangeFeed";
  * booking's history can still be read, since audit rows outlive their subject.
  */
 export default async function ActivityPage() {
-  await requireAdmin();
+  await requireArea("activity", "view");
 
   const groups = groupChanges(recentChanges(200));
   const live = liveEventIds();

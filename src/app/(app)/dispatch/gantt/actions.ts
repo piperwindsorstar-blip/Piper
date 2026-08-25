@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordAction, recordChanges, vehicleSubject } from "@/lib/activity";
 import { getVehicle } from "@/lib/dispatch";
@@ -29,7 +29,7 @@ const isCellState = (v: unknown): v is CellState =>
  * square yellow must not put a van on somebody's Saturday.
  */
 export async function cycleCell(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("dispatch", "edit");
 
   const vehicleId = Number(formData.get("vehicle_id"));
   const slot = Number(formData.get("slot") ?? 0);
@@ -47,7 +47,7 @@ export async function cycleCell(formData: FormData): Promise<void> {
 
 /** The full dialog: any state, a span of days, the show, and a note. */
 export async function saveCell(_prev: GanttState, formData: FormData): Promise<GanttState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("dispatch", "edit");
 
   const vehicleId = Number(formData.get("vehicle_id"));
   const state = formData.get("state");
@@ -104,7 +104,7 @@ export async function saveCell(_prev: GanttState, formData: FormData): Promise<G
 }
 
 export async function removeCell(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("dispatch", "edit");
   const id = Number(formData.get("id"));
   if (Number.isInteger(id)) deleteCell(id);
   revalidatePath("/dispatch/gantt");

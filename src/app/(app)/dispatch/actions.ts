@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordAction, recordChanges, vehicleSubject } from "@/lib/activity";
 import { COMMITTED } from "@/lib/dispatch-types";
@@ -82,7 +82,7 @@ export async function saveVehicle(
   _prev: DispatchState,
   formData: FormData,
 ): Promise<DispatchState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("dispatch", "edit");
 
   const input = readVehicle(formData);
   if (!input) return { error: "Give the vehicle a name — whatever the crew calls it." };
@@ -132,7 +132,7 @@ export async function saveVehicle(
 }
 
 export async function toggleVehicle(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("dispatch", "edit");
 
   const id = Number(formData.get("id"));
   const activate = formData.get("activate") === "1";
@@ -204,7 +204,7 @@ function readRun(formData: FormData): RunInput | null {
  * coexist with anything.
  */
 export async function saveRun(_prev: DispatchState, formData: FormData): Promise<DispatchState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("dispatch", "edit");
 
   const input = readRun(formData);
   if (!input) return { error: "Pick a vehicle and a date." };
@@ -276,7 +276,7 @@ export async function saveRun(_prev: DispatchState, formData: FormData): Promise
 }
 
 export async function removeRun(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("dispatch", "edit");
 
   const id = Number(formData.get("id"));
   const run = getRun(id);
@@ -308,7 +308,7 @@ export async function removeRun(formData: FormData): Promise<void> {
  * around it.
  */
 export async function resizeRun(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("dispatch", "edit");
 
   const id = Number(formData.get("id"));
   const startsOn = text(formData, "starts_on");

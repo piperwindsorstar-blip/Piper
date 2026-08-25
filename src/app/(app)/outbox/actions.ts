@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import {
   cancelQueued,
   requeue,
@@ -22,7 +22,7 @@ export async function approveAndSend(
   _prev: OutboxState,
   formData: FormData,
 ): Promise<OutboxState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("outbox", "edit");
   const id = Number(formData.get("id"));
 
   const result = await sendQueued(id, admin.id);
@@ -34,7 +34,7 @@ export async function approveAndSend(
 }
 
 export async function saveDraft(_prev: OutboxState, formData: FormData): Promise<OutboxState> {
-  await requireAdmin();
+  await requireArea("outbox", "edit");
 
   const id = Number(formData.get("id"));
   const subject = String(formData.get("subject") ?? "").trim();
@@ -49,13 +49,13 @@ export async function saveDraft(_prev: OutboxState, formData: FormData): Promise
 }
 
 export async function discard(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("outbox", "edit");
   cancelQueued(Number(formData.get("id")));
   refresh();
 }
 
 export async function restore(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("outbox", "edit");
   requeue(Number(formData.get("id")));
   refresh();
 }
@@ -65,7 +65,7 @@ export async function testConnection(
   _prev: OutboxState,
   _formData: FormData,
 ): Promise<OutboxState> {
-  await requireAdmin();
+  await requireArea("outbox", "edit");
   const result = await verifyMailConnection();
   return result.ok
     ? { ok: "The mail server accepted the connection. Sending should work." }

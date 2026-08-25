@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { eventsBetween, overbookedDates } from "@/lib/events";
 import {
   addMonths,
@@ -17,7 +17,7 @@ import StatusBadge from "@/components/StatusBadge";
 type Search = { year?: string; month?: string };
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<Search> }) {
-  const user = await requireUser();
+  const user = await requireArea("calendar", "view");
   const params = await searchParams;
   const now = new Date();
 

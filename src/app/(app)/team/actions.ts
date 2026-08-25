@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import {
   diffFields,
@@ -22,6 +22,16 @@ import {
   type UserInput,
 } from "@/lib/team";
 import { requireUser } from "@/lib/auth";
+import { keyholdersAfter, permissionsFor, setPermissions } from "@/lib/permissions";
+import {
+  AREAS,
+  AREA_LABELS,
+  LEVEL_LABELS,
+  ROLE_DEFAULTS,
+  isLevel,
+  type Area,
+  type Level,
+} from "@/lib/permissions-types";
 
 /**
  * Mirrors the event form: a rejected submit hands back what was typed so React's
@@ -78,7 +88,7 @@ const STAFF_FIELD_LABELS = {
 } as const;
 
 export async function addMember(_prev: TeamState, formData: FormData): Promise<TeamState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("team", "edit");
 
   const input = readUser(formData);
   const password = String(formData.get("password") ?? "");
@@ -94,7 +104,7 @@ export async function addMember(_prev: TeamState, formData: FormData): Promise<T
 }
 
 export async function editMember(_prev: TeamState, formData: FormData): Promise<TeamState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("team", "edit");
 
   const id = Number(formData.get("id"));
   const input = readUser(formData);
@@ -134,7 +144,7 @@ export async function editMember(_prev: TeamState, formData: FormData): Promise<
 }
 
 export async function toggleMember(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("team", "edit");
 
   const id = Number(formData.get("id"));
   const activate = formData.get("activate") === "1";
@@ -154,7 +164,7 @@ export async function toggleMember(formData: FormData): Promise<void> {
 /* ------------------------------------------------------------ staff record */
 
 export async function saveStaffRecord(_prev: TeamState, formData: FormData): Promise<TeamState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("team", "edit");
 
   const id = Number(formData.get("id"));
   const existing = getUser(id);
@@ -204,4 +214,65 @@ export async function saveOwnDetails(_prev: TeamState, formData: FormData): Prom
   revalidatePath("/me");
   revalidatePath("/team");
   return { ok: "Saved." };
+}
+
+/**
+ * Sets what one person can reach.
+ *
+ * Two things it refuses, both of them lockouts rather than mistakes.
+ *
+ * Nobody may change their own. It is the one edit whose result you cannot
+ * undo — dropping your own Staff access removes the page you would use to put
+ * it back, and the only way in after that is the sqlite prompt on the server.
+ *
+ * And the last person who can change permissions may not lose it. Staff-edit
+ * is the permission that grants every other permission; with none left, the
+ * app keeps running and nobody can ever alter access again.
+ */
+export async function savePermissions(
+  _prev: TeamState,
+  formData: FormData,
+): Promise<TeamState> {
+  const admin = await requireArea("team", "edit");
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return { error: "Which staff member?" };
+  if (id === admin.id) {
+    return { error: "You cannot change your own access. Ask another admin." };
+  }
+
+  const member = getUser(id);
+  if (!member) return { error: "That staff member has already gone." };
+
+  const wanted: Partial<Record<Area, Level>> = {};
+  for (const area of AREAS) {
+    const value = formData.get(area);
+    if (isLevel(value)) wanted[area] = value;
+  }
+
+  const team = wanted.team ?? ROLE_DEFAULTS[member.role].team;
+  if (keyholdersAfter(member.id, team) === 0) {
+    return {
+      error:
+        "Somebody has to be able to change access. Give another admin Staff — can change first.",
+    };
+  }
+
+  const before = permissionsFor(member);
+  setPermissions(member, wanted);
+  const after = permissionsFor(member);
+
+  recordChanges(
+    staffSubject(member),
+    asActor(admin),
+    AREAS.filter((area) => before[area] !== after[area]).map((area) => ({
+      field: `Access — ${AREA_LABELS[area]}`,
+      from: LEVEL_LABELS[before[area]],
+      to: LEVEL_LABELS[after[area]],
+    })),
+  );
+
+  revalidatePath(`/team/${member.id}`);
+  revalidatePath("/team");
+  return { ok: `Saved what ${member.name} can reach.` };
 }

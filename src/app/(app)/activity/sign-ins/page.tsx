@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { recentFailures, recentSignIns, REASON_LABELS } from "@/lib/activity";
 import { formatStoredTimestamp } from "@/lib/dates";
 
@@ -29,7 +29,7 @@ function oneDayAgo(): string {
 }
 
 export default async function SignInsPage() {
-  await requireAdmin();
+  await requireArea("activity", "view");
 
   const rows = recentSignIns(200);
   const failures = recentFailures(oneDayAgo());

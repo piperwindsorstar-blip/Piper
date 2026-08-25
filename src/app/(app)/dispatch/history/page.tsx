@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { peopleWhoDrove, shiftWeek, whoDrove } from "@/lib/dispatch";
 import { CLASS_SHORT } from "@/lib/dispatch-types";
 import { formatDate, todayIso } from "@/lib/dates";
@@ -21,7 +21,7 @@ export default async function WhoDrovePage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; who?: string }>;
 }) {
-  await requireAdmin();
+  await requireArea("dispatch", "view");
   const params = await searchParams;
 
   const isDate = (v?: string) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);

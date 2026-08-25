@@ -53,11 +53,15 @@ export default function GanttGrid({
   vehicles,
   today,
   compact,
+  canEdit,
 }: {
   days: string[];
   vehicles: GanttVehicle[];
   today: string;
   compact: boolean;
+  /** Read-only viewers get the chart without the clicks. The actions refuse
+ * them anyway; this stops the refusal being a surprise. */
+  canEdit: boolean;
 }) {
   const [, startTransition] = useTransition();
   const [dialog, setDialog] = useState<{
@@ -86,6 +90,7 @@ export default function GanttGrid({
   }
 
   function onCycle(vehicle: GanttVehicle, row: GanttSlotRow, day: string) {
+    if (!canEdit) return;
     const current = stateOn(vehicle, row, day);
     const next =
       current === null
@@ -113,6 +118,7 @@ export default function GanttGrid({
   }
 
   function openDialog(vehicle: GanttVehicle, row: GanttSlotRow, day: string) {
+    if (!canEdit) return;
     setDialog({
       vehicleId: vehicle.id,
       vehicleName: vehicle.name,
@@ -230,8 +236,9 @@ export default function GanttGrid({
       </div>
 
       <p className="small faint board-grid-hint">
-        Click a square to cycle it: nothing → needed → booked → nothing. Right-click (or
-        press and hold) for spans, notes and the other states.
+        {canEdit
+          ? "Click a square to cycle it: nothing → needed → booked → nothing. Right-click (or press and hold) for spans, notes and the other states."
+          : "Hover a square to see what is planned."}
       </p>
 
       {dialog && (

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin, type User } from "@/lib/auth";
+import { requireArea, type User } from "@/lib/auth";
 import {
   asActor,
   eventLabel,
@@ -109,7 +109,7 @@ function readEventForm(formData: FormData) {
 }
 
 export async function saveEvent(_prev: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("weddings", "edit");
 
   const parsed = readEventForm(formData);
   if (!parsed.success) {
@@ -151,7 +151,7 @@ export async function saveEvent(_prev: FormState, formData: FormData): Promise<F
 }
 
 export async function removeEvent(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("weddings", "edit");
   const id = Number(formData.get("id"));
 
   // Label it before it's gone — the audit row has to stand on its own. Unsent
@@ -171,7 +171,7 @@ export async function removeEvent(formData: FormData): Promise<void> {
 }
 
 export async function rotatePlanLink(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("weddings", "edit");
   const id = Number(formData.get("id"));
   const event = getEventRaw(id);
 

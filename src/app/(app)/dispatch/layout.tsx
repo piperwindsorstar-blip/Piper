@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import DispatchTabs from "./DispatchTabs";
 
 /**
@@ -6,7 +6,7 @@ import DispatchTabs from "./DispatchTabs";
  * a shell that renders for anyone leaks what is behind it.
  */
 export default async function DispatchLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  await requireArea("dispatch", "view");
 
   return (
     <>

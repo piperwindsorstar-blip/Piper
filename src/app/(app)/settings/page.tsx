@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { loginBanner, publicBoard, rentalNotify, shopDetails, storedMail } from "@/lib/settings";
 import { mailSource } from "@/lib/mail";
 import { baseUrl } from "@/lib/urls";
@@ -9,7 +9,7 @@ import MailForm from "./MailForm";
 import RentalNotifyForm from "./RentalNotifyForm";
 
 export default async function SettingsPage() {
-  await requireAdmin();
+  await requireArea("settings", "view");
   const banner = loginBanner();
   const board = publicBoard();
   const origin = await baseUrl();

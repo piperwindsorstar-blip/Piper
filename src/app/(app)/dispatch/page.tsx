@@ -1,5 +1,7 @@
+import { can } from "@/lib/permissions";
+import ReadOnly from "@/components/ReadOnly";
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { listEvents } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import {
@@ -40,7 +42,8 @@ export default async function DispatchPage({
 }: {
   searchParams: Promise<{ week?: string; view?: string }>;
 }) {
-  const admin = await requireAdmin();
+  const admin = await requireArea("dispatch", "view");
+  const canEdit = can(admin, "dispatch", "edit");
   const { week, view } = await searchParams;
 
   const today = todayIso();
@@ -232,6 +235,9 @@ export default async function DispatchPage({
         </div>
       )}
 
+      {!canEdit && <ReadOnly what="This board is read-only for you." />}
+
+      {canEdit && (
       <div className="card">
         <div className="card-head">
           <h2>Mark a day</h2>
@@ -248,6 +254,7 @@ export default async function DispatchPage({
           defaultDate={from > today ? from : today}
         />
       </div>
+      )}
     </>
   );
 }

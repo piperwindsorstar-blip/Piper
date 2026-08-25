@@ -17,10 +17,13 @@ export default function OutboxItem({
   item,
   eventLabel,
   canSend,
+  readOnly = false,
 }: {
   item: OutboxRow;
   eventLabel: string | null;
   canSend: boolean;
+  /** Reading only: the buttons come off rather than bouncing. */
+  readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [sendState, send, sending] = useActionState(approveAndSend, empty);
@@ -84,7 +87,7 @@ export default function OutboxItem({
       )}
       {sendState.error && <p className="alert-error mail-error">{sendState.error}</p>}
 
-      {!editing && (
+      {!editing && !readOnly && (
         <footer className="btn-row mail-foot">
           {pending && (
             <>

@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { listUsers, statsForAll } from "@/lib/team";
 import { lastSignInForAll } from "@/lib/activity";
 import { countdownLabel, formatDate, formatStoredTimestamp } from "@/lib/dates";
 import AddMemberForm from "./AddMemberForm";
 
 export default async function StaffPage() {
-  await requireAdmin();
+  await requireArea("team", "view");
   const members = listUsers(true);
   const stats = statsForAll();
   const lastSeen = lastSignInForAll();

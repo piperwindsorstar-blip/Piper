@@ -469,6 +469,21 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_rentals_supplier ON rentals(supplier_id, starts_on);
     `,
   },
+  {
+    version: 18,
+    label: "per-person page permissions",
+    up: `
+      -- Only overrides live here. Somebody with no rows gets their role's
+      -- defaults, which are exactly what that role could reach before this
+      -- table existed — so nobody's access moved when it arrived.
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        area    TEXT NOT NULL,
+        level   TEXT NOT NULL CHECK (level IN ('none', 'view', 'edit')),
+        PRIMARY KEY (user_id, area)
+      );
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

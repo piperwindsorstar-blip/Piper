@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { getEvent } from "@/lib/events";
 import { readPlannerWorkbook } from "@/lib/planner-sheet";
 import { describeMerge, mergeSheet } from "@/lib/sheet-merge";
@@ -29,7 +29,7 @@ export async function uploadSheet(
   _prev: UploadState,
   formData: FormData,
 ): Promise<UploadState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("weddings", "edit");
 
   const eventId = Number(formData.get("event_id"));
   const file = formData.get("sheet");

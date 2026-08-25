@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import ReadOnly from "@/components/ReadOnly";
 import { monthDays, shiftMonth } from "@/lib/dispatch";
 import { listSuppliers, overdueRentals, rentalRows } from "@/lib/rentals";
 import { quarterDays } from "@/lib/gantt";
@@ -22,7 +24,8 @@ export default async function RentalsPage({
 }: {
   searchParams: Promise<{ at?: string; span?: string }>;
 }) {
-  await requireAdmin();
+  const user = await requireArea("rentals", "view");
+  const canEdit = can(user, "rentals", "edit");
   const params = await searchParams;
 
   const today = todayIso();
@@ -46,6 +49,8 @@ export default async function RentalsPage({
 
   return (
     <>
+      {!canEdit && <ReadOnly what="Rentals are read-only for you." />}
+
       <div className="alert alert-info">
         <strong>Gear coming in, not going out.</strong> What Pynx has hired and who
         from. The <Link href="/dispatch">board</Link> is for the fleet.
@@ -63,12 +68,14 @@ export default async function RentalsPage({
                   {r.item} <span className="faint small">from {r.supplier_name}</span>{" "}
                   <span className="faint small">· due {formatDate(r.ends_on)}</span>
                 </span>
+                {canEdit && (
                 <form action={markReturned}>
                   <input type="hidden" name="id" value={r.id} />
                   <button className="btn btn-sm" type="submit">
                     Back with them
                   </button>
                 </form>
+                )}
               </li>
             ))}
           </ul>
@@ -110,6 +117,7 @@ export default async function RentalsPage({
           </div>
         ) : (
           <RentalGrid
+            canEdit={canEdit}
             days={days}
             today={today}
             compact={quarter}
@@ -168,7 +176,7 @@ export default async function RentalsPage({
           </p>
         </div>
 
-        <SupplierForm />
+        {canEdit && <SupplierForm />}
 
         {suppliers.map((supplier) => (
           <details className="card-body" key={supplier.id}>

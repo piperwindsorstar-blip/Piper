@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { diffFields, recordAction, recordChanges, venueSubject } from "@/lib/activity";
 import {
@@ -40,7 +40,7 @@ function readVenue(formData: FormData): VenueInput | null {
 }
 
 export async function saveVenue(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("venues", "edit");
   const input = readVenue(formData);
   if (!input) return;
 
@@ -65,7 +65,7 @@ export async function saveVenue(formData: FormData): Promise<void> {
 }
 
 export async function removeVenue(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("venues", "edit");
 
   const id = Number(formData.get("id"));
   const venue = getVenue(id);
@@ -86,7 +86,7 @@ export async function removeVenue(formData: FormData): Promise<void> {
  * it would stay unmatched.
  */
 export async function mapVenueName(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("venues", "edit");
 
   const alias = String(formData.get("alias") ?? "").trim();
   const venueId = Number(formData.get("venue_id"));
@@ -106,7 +106,7 @@ export async function mapVenueName(formData: FormData): Promise<void> {
 }
 
 export async function unmapVenueName(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("venues", "edit");
 
   const alias = String(formData.get("alias") ?? "");
   const venueId = Number(formData.get("venue_id"));

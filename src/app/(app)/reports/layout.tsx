@@ -1,10 +1,10 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { allReports, computeGroups, testReports } from "@/lib/reports";
 import { formatEastern } from "@/lib/dates";
 import ReportTabs from "./ReportTabs";
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  await requireArea("reports", "view");
 
   const groups = computeGroups();
   const djOnly = [...groups.djByJob.keys()].filter((job) => !groups.whByJob.has(job)).length;

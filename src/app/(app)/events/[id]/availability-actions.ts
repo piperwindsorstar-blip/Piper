@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { requireArea, requireUser } from "@/lib/auth";
 import { answerAsDj, askAvailability } from "@/lib/availability";
 import { getEvent } from "@/lib/events";
 import { queueEmail } from "@/lib/mail";
@@ -17,7 +17,7 @@ export type AskState = { error?: string; ok?: string };
  * is recorded immediately, but nothing reaches the DJ until it is approved.
  */
 export async function askDj(_prev: AskState, formData: FormData): Promise<AskState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("weddings", "edit");
 
   const eventId = Number(formData.get("event_id"));
   const djId = Number(formData.get("dj_id"));

@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { db, nowIso } from "./db";
 export { hashPassword, verifyPassword } from "./password";
 import { USER_COLUMNS } from "./user-columns";
+import { can } from "./permissions";
+import type { Area, Level } from "./permissions-types";
 export { USER_COLUMNS };
 
 export type Role = "admin" | "dj";
@@ -79,6 +81,22 @@ export async function requireUser(): Promise<User> {
 export async function requireAdmin(): Promise<User> {
   const user = await requireUser();
   if (user.role !== "admin") redirect("/dashboard");
+  return user;
+}
+
+/**
+ * The gate every admin page and action goes through.
+ *
+ * Pages ask for "view", the actions behind them ask for "edit". Both, always —
+ * a page that hides its buttons is a suggestion, and the form still posts. The
+ * check that matters is the one on the action.
+ *
+ * Refused people land on the dashboard, which is why the dashboard is not a
+ * section anybody can be refused from.
+ */
+export async function requireArea(area: Area, needs: Level = "view"): Promise<User> {
+  const user = await requireUser();
+  if (!can(user, area, needs)) redirect("/dashboard");
   return user;
 }
 

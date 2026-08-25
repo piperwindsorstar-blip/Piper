@@ -1,11 +1,14 @@
-import { requireAdmin } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import ReadOnly from "@/components/ReadOnly";
+import { requireArea } from "@/lib/auth";
 import { CLASS_LABELS, HIRED, listVehicles, OWNERSHIP_LABELS } from "@/lib/dispatch";
 import { formatDate, todayIso } from "@/lib/dates";
 import VehicleForm from "../VehicleForm";
 import { toggleVehicle } from "../actions";
 
 export default async function FleetPage() {
-  await requireAdmin();
+  const user = await requireArea("dispatch", "view");
+  const canEdit = can(user, "dispatch", "edit");
 
   const vehicles = listVehicles(true);
   const active = vehicles.filter((v) => v.active);
@@ -14,12 +17,16 @@ export default async function FleetPage() {
 
   return (
     <>
-      <div className="card">
-        <div className="card-head">
-          <h2>Add a vehicle</h2>
+      {!canEdit && <ReadOnly what="The fleet is read-only for you." />}
+
+      {canEdit && (
+        <div className="card">
+          <div className="card-head">
+            <h2>Add a vehicle</h2>
+          </div>
+          <VehicleForm />
         </div>
-        <VehicleForm />
-      </div>
+      )}
 
       {active.map((vehicle) => (
         <details className="card" key={vehicle.id}>

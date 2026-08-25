@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { sendTest } from "@/lib/mail";
 import { asActor } from "@/lib/audit";
 import { recordAction, recordChanges, settingsSubject } from "@/lib/activity";
@@ -63,7 +63,7 @@ export async function saveBanner(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("settings", "edit");
 
   const message = String(formData.get("message") ?? "").trim();
   const toneRaw = String(formData.get("tone") ?? "info");
@@ -106,7 +106,7 @@ export async function saveBoard(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("settings", "edit");
 
   const note = String(formData.get("note") ?? "").trim();
   const on = formData.get("on") === "on";
@@ -148,7 +148,7 @@ export async function saveShop(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("settings", "edit");
 
   const text = (key: string) => String(formData.get(key) ?? "").trim();
   const rules = text("rules");
@@ -242,7 +242,7 @@ export async function saveMailSettings(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("settings", "edit");
 
   const settings = readMail(formData);
   // The password is never echoed back — it would then sit in the rendered page.
@@ -288,7 +288,7 @@ export async function testMailSettings(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  await requireAdmin();
+  await requireArea("settings", "edit");
 
   const to = String(formData.get("to") ?? "").trim();
   const kept = echo(formData, ["pass"]);
@@ -335,7 +335,7 @@ export async function clearMailSettings(
   _prev: SettingsState,
   _formData: FormData,
 ): Promise<SettingsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("settings", "edit");
 
   const before = storedMail();
   clearMail(admin.id);
@@ -361,7 +361,7 @@ export async function saveRentalNotify(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const admin = await requireAdmin();
+  const admin = await requireArea("settings", "edit");
 
   const on = formData.get("on") === "on";
   const to = splitAddresses(String(formData.get("to") ?? ""));

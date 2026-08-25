@@ -2527,6 +2527,139 @@ await reportDj.ctx.close();
   await ops.ctx.close();
 }
 
+/* ---------- 31. per-person permissions ---------- */
+{
+  const ops = await signIn("owner@piper.test");
+
+  // Nothing moved on the day this shipped: the defaults are exactly what the
+  // two roles could reach before permissions existed.
+  const navOf = async (page) =>
+    (await page.locator("nav a").allTextContents()).map((t) => t.trim());
+
+  await ops.page.goto(`${BASE}/dashboard`);
+  await ops.page.waitForTimeout(900);
+  const adminNav = await navOf(ops.page);
+  check(
+    "an admin still reaches everything",
+    ["Dispatch", "Rentals", "Staff", "Settings", "Activity", "Outbox"].every((s) =>
+      adminNav.includes(s),
+    ),
+    adminNav.join(", "),
+  );
+
+  const dj = await signIn("jordan@piper.test");
+  const djNav = await navOf(dj.page);
+  check(
+    "a DJ still reaches only their own work",
+    djNav.join("|") === ["Dashboard", "Calendar", "Weddings", "My page"].join("|"),
+    djNav.join(", "),
+  );
+
+  // Find the DJ's profile.
+  await ops.page.goto(`${BASE}/team`);
+  await ops.page.waitForTimeout(1000);
+  const djHref = await ops.page
+    .locator('a[href^="/team/"]')
+    .filter({ hasText: "Jordan" })
+    .first()
+    .getAttribute("href");
+
+  await ops.page.goto(`${BASE}${djHref}`);
+  await ops.page.waitForTimeout(1200);
+  check("every section is listed on a profile", (await ops.page.locator(".perm-row").count()) === 10);
+
+  // Grant one section to look at and one to work in.
+  await ops.page.selectOption("#perm-dispatch", "view");
+  await ops.page.selectOption("#perm-rentals", "edit");
+  await ops.page.click('button:has-text("Save access")');
+  await ops.page.waitForTimeout(1400);
+  check(
+    "access can be granted section by section",
+    ((await ops.page.locator(".alert-ok").first().textContent()) ?? "").includes("Jordan"),
+  );
+
+  const dj2 = await signIn("jordan@piper.test");
+  const grantedNav = await navOf(dj2.page);
+  check(
+    "the nav grows to match",
+    grantedNav.includes("Dispatch") && grantedNav.includes("Rentals"),
+    grantedNav.join(", "),
+  );
+  check("and no further", !grantedNav.includes("Settings") && !grantedNav.includes("Staff"));
+
+  await dj2.page.goto(`${BASE}/settings`);
+  await dj2.page.waitForTimeout(900);
+  check("a section not granted still refuses", !dj2.page.url().includes("/settings"));
+
+  // "Can look" is the interesting one: the page opens, the writing does not.
+  await dj2.page.goto(`${BASE}/dispatch?view=week`);
+  await dj2.page.waitForTimeout(1400);
+  const boardText = await dj2.page.evaluate(() => document.body.innerText);
+  check("a viewer reaches the page", dj2.page.url().includes("/dispatch"));
+  check("and is told it is read-only", boardText.includes("You can look, but not change"));
+  check(
+    "and is not shown a form that would bounce",
+    (await dj2.page.locator("#vehicle_id").count()) === 0,
+  );
+
+  // The plan's squares are its write control, so they have to be inert too.
+  await dj2.page.goto(`${BASE}/dispatch/gantt`);
+  await dj2.page.waitForTimeout(1400);
+  await dj2.page.locator(".gantt-cell").nth(5).click();
+  await dj2.page.waitForTimeout(900);
+  check("a viewer's click on the plan does nothing", (await dj2.page.locator(".gantt-dialog").count()) === 0);
+
+  // And the section they were given edit on still works properly.
+  await dj2.page.goto(`${BASE}/rentals`);
+  await dj2.page.waitForTimeout(1400);
+  check(
+    "the section they may edit is not read-only",
+    !(await dj2.page.evaluate(() => document.body.innerText)).includes("You can look, but not change"),
+  );
+  check(
+    "and its forms are there",
+    (await dj2.page.locator('form:has(button:has-text("Add the place"))').count()) === 1,
+  );
+  await dj2.ctx.close();
+  await dj.ctx.close();
+
+  // Nobody may change their own — the one edit with no way back.
+  await ops.page.goto(`${BASE}/team`);
+  await ops.page.waitForTimeout(1000);
+  const mine = await ops.page
+    .locator('a[href^="/team/"]')
+    .filter({ hasText: "Sam" })
+    .first()
+    .getAttribute("href");
+  await ops.page.goto(`${BASE}${mine}`);
+  await ops.page.waitForTimeout(1200);
+  check(
+    "nobody can change their own access",
+    (await ops.page.evaluate(() => document.body.innerText)).includes("These are your own"),
+  );
+  check(
+    "and the controls are not merely hidden",
+    (await ops.page.locator(".perm-row select").count()) === 0,
+  );
+
+  // Put the DJ back on the defaults so the rest of the suite sees what it expects.
+  await ops.page.goto(`${BASE}${djHref}`);
+  await ops.page.waitForTimeout(1200);
+  await ops.page.selectOption("#perm-dispatch", "none");
+  await ops.page.selectOption("#perm-rentals", "none");
+  await ops.page.click('button:has-text("Save access")');
+  await ops.page.waitForTimeout(1400);
+
+  const dj3 = await signIn("jordan@piper.test");
+  check(
+    "the suite puts the defaults back",
+    (await navOf(dj3.page)).join("|") ===
+      ["Dashboard", "Calendar", "Weddings", "My page"].join("|"),
+  );
+  await dj3.ctx.close();
+  await ops.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 function refresh(): void {
@@ -17,7 +17,7 @@ function refresh(): void {
  * where they were only ever yours.
  */
 export async function setManifest(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("reports", "edit");
 
   const id = Number(formData.get("id"));
   const value = String(formData.get("value") ?? "");
@@ -28,7 +28,7 @@ export async function setManifest(formData: FormData): Promise<void> {
 }
 
 export async function addAlias(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("reports", "edit");
 
   const alias = String(formData.get("alias") ?? "").trim();
   const canonical = String(formData.get("canonical") ?? "").trim();
@@ -46,7 +46,7 @@ export async function addAlias(formData: FormData): Promise<void> {
 }
 
 export async function removeAlias(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireArea("reports", "edit");
   db().prepare("DELETE FROM crew_aliases WHERE alias = ?").run(String(formData.get("alias") ?? ""));
   refresh();
 }

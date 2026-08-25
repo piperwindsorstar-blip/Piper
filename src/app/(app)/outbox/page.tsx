@@ -1,4 +1,6 @@
-import { requireAdmin } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import ReadOnly from "@/components/ReadOnly";
+import { requireArea } from "@/lib/auth";
 import { listOutbox, mailIsConfigured, type OutboxRow } from "@/lib/mail";
 import { getEventRaw } from "@/lib/events";
 import { eventLabel } from "@/lib/audit";
@@ -13,7 +15,8 @@ import MailStatus from "./MailStatus";
  * the wrong address, or a test event, cannot reach a real couple.
  */
 export default async function OutboxPage() {
-  await requireAdmin();
+  const user = await requireArea("outbox", "view");
+  const canEdit = can(user, "outbox", "edit");
 
   const all = listOutbox("all", 200);
   const waiting = all.filter((m) => m.status === "queued" || m.status === "failed");
@@ -65,12 +68,15 @@ export default async function OutboxPage() {
                   key={item.id}
                   item={item}
                   eventLabel={labelFor(item)}
-                  canSend={configured}
+                  canSend={configured && canEdit}
+                  readOnly={!canEdit}
                 />
               ))}
             </div>
           )}
         </div>
+
+        {!canEdit && <ReadOnly what="The outbox is read-only for you." />}
 
         {done.length > 0 && (
           <div className="card">
@@ -84,7 +90,8 @@ export default async function OutboxPage() {
                   key={item.id}
                   item={item}
                   eventLabel={labelFor(item)}
-                  canSend={configured}
+                  canSend={configured && canEdit}
+                  readOnly={!canEdit}
                 />
               ))}
             </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { listEvents } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import { countdownLabel, formatDate, formatTime } from "@/lib/dates";
@@ -10,7 +10,7 @@ import Cell from "@/components/Cell";
 type Search = { status?: string; q?: string; dj?: string };
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<Search> }) {
-  const user = await requireUser();
+  const user = await requireArea("weddings", "view");
   const params = await searchParams;
 
   const status = (params.status ?? "upcoming") as EventStatus | "all" | "upcoming";

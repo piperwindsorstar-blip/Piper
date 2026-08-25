@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import ReadOnly from "@/components/ReadOnly";
 import { listVehicles, monthDays, shiftMonth } from "@/lib/dispatch";
 import { CLASS_SHORT, OWNERSHIP_LABELS } from "@/lib/dispatch-types";
 import { ganttRows, quarterDays } from "@/lib/gantt";
@@ -19,7 +21,8 @@ export default async function GanttPage({
 }: {
   searchParams: Promise<{ at?: string; span?: string }>;
 }) {
-  await requireAdmin();
+  const user = await requireArea("dispatch", "view");
+  const canEdit = can(user, "dispatch", "edit");
   const params = await searchParams;
 
   const today = todayIso();
@@ -41,6 +44,8 @@ export default async function GanttPage({
 
   return (
     <>
+      {!canEdit && <ReadOnly what="The plan is read-only for you." />}
+
       <div className="alert alert-info">
         <strong>This is the plan, not the schedule.</strong> Nothing here books a vehicle.
         Use the <Link href="/dispatch">board</Link> when it is actually arranged.
@@ -79,6 +84,7 @@ export default async function GanttPage({
           </div>
         ) : (
           <GanttGrid
+            canEdit={canEdit}
             days={days}
             today={today}
             compact={quarter}

@@ -466,3 +466,17 @@ CREATE TABLE IF NOT EXISTS rentals (
 );
 CREATE INDEX IF NOT EXISTS idx_rentals_dates ON rentals(starts_on, ends_on);
 CREATE INDEX IF NOT EXISTS idx_rentals_supplier ON rentals(supplier_id, starts_on);
+
+-- What each person is allowed to reach.
+--
+-- Only overrides are stored: a person with no rows falls back to their role's
+-- defaults, so adding a role later, or changing what a role gets by default,
+-- reaches everybody who was never given an override. `area` is deliberately
+-- free text rather than a CHECK — the list of sections grows, and widening a
+-- CHECK means rebuilding the table.
+CREATE TABLE IF NOT EXISTS user_permissions (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  area    TEXT NOT NULL,
+  level   TEXT NOT NULL CHECK (level IN ('none', 'view', 'edit')),
+  PRIMARY KEY (user_id, area)
+);

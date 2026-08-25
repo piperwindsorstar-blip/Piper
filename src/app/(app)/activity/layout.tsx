@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import ActivityTabs from "./ActivityTabs";
 
 /**
@@ -7,7 +7,7 @@ import ActivityTabs from "./ActivityTabs";
  * the URL, even if every page below refused them.
  */
 export default async function ActivityLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  await requireArea("activity", "view");
 
   return (
     <>

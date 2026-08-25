@@ -1,11 +1,11 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 
 /**
  * Admin-only, gated in the layout for the same reason dispatch is: a shell that
  * renders for anyone leaks what is behind it.
  */
 export default async function RentalsLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  await requireArea("rentals", "view");
 
   return (
     <>
