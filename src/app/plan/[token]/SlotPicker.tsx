@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import type { Recommendation } from "@/lib/types";
+import TrackLink from "@/components/TrackLink";
 
 /**
  * The add-a-song row for one slot, with what past couples picked underneath.
  * Tapping a suggestion fills the fields rather than submitting, so the couple
  * still chooses — and can adjust the cue before saving.
+ *
+ * Pasting a link does the same thing from the other direction: the title and
+ * artist arrive from whichever service the link came from, so nobody retypes
+ * what they are already looking at in Spotify.
  */
 export default function SlotPicker({
   single,
@@ -49,12 +54,11 @@ export default function SlotPicker({
           <input name="cue" type="text" placeholder="Where should it start or stop? e.g. start at 1:28" />
         </div>
         <div className="field" style={{ marginBottom: "0.5rem" }}>
-          <div className="btn-row" style={{ flexWrap: "nowrap" }}>
-            <input name="link" type="text" placeholder="Spotify / Apple / YouTube link" />
+          <TrackLink title={title} artist={artist} setTitle={setTitle} setArtist={setArtist}>
             <button className="btn btn-sm btn-primary" type="submit">
               {single && hasSongs ? "Replace" : "Add"}
             </button>
-          </div>
+          </TrackLink>
         </div>
       </div>
 

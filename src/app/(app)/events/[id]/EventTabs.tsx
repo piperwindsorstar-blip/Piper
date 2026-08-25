@@ -10,6 +10,7 @@ export default function EventTabs({ eventId }: { eventId: number }) {
     { href: base, label: "Overview" },
     { href: `${base}/music`, label: "Music" },
     { href: `${base}/timeline`, label: "Timeline" },
+    { href: `${base}/day-of`, label: "Day-of sheet" },
   ];
 
   return (

@@ -19,7 +19,8 @@
     "db:backup": "tsx scripts/backup-db.ts",
     "db:verify-backup": "tsx scripts/verify-backup.ts",
     "db:recommendations": "tsx scripts/seed-recommendations.ts",
-    "db:check-schema": "tsx scripts/check-schema.ts"
+    "db:check-schema": "tsx scripts/check-schema.ts",
+    "check:links": "tsx scripts/check-links.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

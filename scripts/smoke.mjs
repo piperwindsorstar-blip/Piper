@@ -2660,6 +2660,130 @@ await reportDj.ctx.close();
   await ops.ctx.close();
 }
 
+/* ---------- 32. pasted links, and the day-of sheet ---------- */
+{
+  const ops = await signIn("owner@piper.test");
+
+  // The wedding the seed plants, which has songs, a timeline and a filled-in
+  // questionnaire — the three things the sheet is made of.
+  await ops.page.goto(`${BASE}/events`);
+  await ops.page.waitForTimeout(1200);
+  const href = (
+    await ops.page
+      .locator('a[href^="/events/"]')
+      .evaluateAll((as) => as.map((a) => a.getAttribute("href")))
+  ).find((h) => /^\/events\/\d+$/.test(h ?? ""));
+  check("a seeded wedding is there to read", Boolean(href), String(href));
+
+  /* ---- pasting a link ---- */
+
+  await ops.page.goto(`${BASE}${href}/music`);
+  await ops.page.waitForTimeout(1600);
+  const row = ops.page.locator('form:has(input[name="title"])').first();
+  check("the link box says what it accepts", 
+    ((await row.locator('input[name="link"]').getAttribute("placeholder")) ?? "").toLowerCase().includes("paste"));
+
+  // Deliberately the two branches that need no network, so this check measures
+  // Piper rather than whether Spotify is up. The live services have their own
+  // script: npm run check:links.
+  await row.locator('input[name="link"]').fill("https://example.com/some-page");
+  await row.locator('input[name="link"]').blur();
+  await ops.page.waitForTimeout(1200);
+  let said = await row.textContent();
+  check(
+    "a link that is not a song says so",
+    (said ?? "").includes("doesn't look like a link to a song"),
+    (said ?? "").slice(0, 90),
+  );
+
+  await row.locator('input[name="link"]').fill("https://tidal.com/browse/track/77364684");
+  await row.locator('input[name="link"]').blur();
+  await ops.page.waitForTimeout(1200);
+  said = await row.textContent();
+  check(
+    "a service with no public details says which, and keeps the link",
+    (said ?? "").includes("TIDAL doesn't publish"),
+    (said ?? "").slice(0, 90),
+  );
+  check(
+    "and a failed lookup never empties what was typed",
+    (await row.locator('input[name="link"]').inputValue()).includes("tidal.com"),
+  );
+
+  /* ---- the day-of sheet ---- */
+
+  await ops.page.goto(`${BASE}${href}`);
+  await ops.page.waitForTimeout(1200);
+  check(
+    "the sheet has its own tab",
+    (await ops.page.locator(".tabs a").allTextContents()).map((t) => t.trim()).includes("Day-of sheet"),
+  );
+
+  await ops.page.goto(`${BASE}${href}/day-of`);
+  await ops.page.waitForTimeout(1600);
+
+  const headers = (await ops.page.locator(".dayof-table thead th").allTextContents()).map((t) => t.trim());
+  check(
+    "it uses the planning spreadsheet's columns",
+    headers.join("|") === ["Time", "Section", "Activity", "Song Title", "Artist", "Cue / Notes"].join("|"),
+    headers.join(", "),
+  );
+
+  const activities = (await ops.page.locator(".dayof-activity").allTextContents()).map((t) => t.trim());
+  const at = (name) => activities.findIndex((a) => a === name);
+  check("it runs in the order of the night", at("Load in and sound check") === 0, activities[0]);
+  check(
+    "the ceremony comes before the cocktails",
+    at("Recessional") > -1 && at("Recessional") < at("Cocktail hour"),
+    `recessional ${at("Recessional")}, cocktails ${at("Cocktail hour")}`,
+  );
+  check(
+    "and the last dance is near the end",
+    at("Last dance") > at("Cake cutting") && at("Last dance") >= activities.length - 3,
+    `last dance ${at("Last dance")} of ${activities.length}`,
+  );
+
+  // The clock is shown but is not what the rows are sorted on. A wedding that
+  // ends after midnight would sort its last dance to the top on time alone.
+  const times = (await ops.page.locator(".dayof-time").allTextContents())
+    .map((t) => t.trim())
+    .filter(Boolean);
+  check("times are shown where the timeline has them", times.length > 0, `${times.length} timed rows`);
+
+  const body = await ops.page.evaluate(() => document.body.innerText);
+  check("a song carries its artist", body.includes("Canon in D") && body.includes("Pachelbel"));
+  check("must play is listed", body.includes("Must play"));
+  check("do not play is listed separately", body.includes("Do NOT play"));
+  check(
+    "what the couple answered is on the sheet",
+    body.includes("Microphones") || body.includes("Announcements"),
+  );
+  check(
+    "a slot nobody filled in is shown rather than hidden",
+    (await ops.page.locator(".dayof-empty").count()) > 0,
+  );
+  await ops.ctx.close();
+
+  // A DJ sees the sheet for their own wedding and nothing else — the sheet is
+  // read through the same scoping as everything else about a booking.
+  const dj = await signIn("jordan@piper.test");
+  await dj.page.goto(`${BASE}${href}/day-of`);
+  await dj.page.waitForTimeout(1400);
+  const mine = dj.page.url().includes("/day-of");
+  check(
+    "a DJ reaches the sheet for a wedding they are on",
+    mine,
+    dj.page.url(),
+  );
+  await dj.page.goto(`${BASE}/events/999999/day-of`);
+  await dj.page.waitForTimeout(1200);
+  check(
+    "and gets nothing for one that is not theirs",
+    !dj.page.url().includes("999999") || (await dj.page.evaluate(() => document.body.innerText)).length < 2000,
+  );
+  await dj.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 

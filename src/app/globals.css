@@ -1332,3 +1332,97 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 40rem) {
   .perm-row { grid-template-columns: 1fr; gap: 0.35rem; }
 }
+
+/* ------------------------------------------------------------ day-of sheet */
+
+/* The booth sheet. Built to be read at arm's length in a dark room and to
+   print as paper that survives a dead phone, so it borrows the planning
+   spreadsheet's columns rather than inventing a layout of its own. */
+.dayof { max-width: 62rem; }
+.dayof-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 2px solid var(--text);
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+.dayof-head h1 { margin: 0; font-size: 1.6rem; }
+.dayof-sub { color: var(--text-muted); font-size: 0.95rem; }
+.dayof-times { display: flex; flex-wrap: wrap; gap: 0.9rem; font-size: 0.85rem; }
+.dayof-times strong { color: var(--text-muted); font-weight: 600; margin-right: 0.2rem; }
+
+.dayof-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.35rem 1.2rem;
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+}
+/* Each fact is its own block, or a long answer — a coordinator's email, a
+   power note — runs straight over the column beside it. */
+.dayof-facts > div { min-width: 0; overflow-wrap: anywhere; }
+.dayof-facts dt { color: var(--text-muted); font-weight: 600; display: inline; }
+.dayof-facts dd { display: inline; margin: 0 0 0 0.35rem; }
+
+.dayof-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.dayof-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--text);
+  padding: 0.3rem 0.5rem;
+}
+.dayof-table td { padding: 0.32rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.dayof-time { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.dayof-section { color: var(--text-muted); font-size: 0.78rem; white-space: nowrap; }
+.dayof-activity { font-weight: 600; }
+.dayof-title { font-weight: 600; }
+.dayof-cue { color: var(--text-muted); }
+
+/* A slot nobody filled in. Greyed rather than dropped: on the night, knowing
+   there is no cake song is worth as much as knowing what it is. */
+.dayof-empty td { color: var(--text-muted); font-style: italic; }
+.dayof-empty .dayof-title { font-weight: 400; }
+
+/* A moment with no music of its own — speeches, the buffet, the shuttle. */
+.dayof-moment { background: var(--surface-alt); }
+
+.dayof-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.2rem 0; }
+.dayof-lists h2 { font-size: 0.95rem; margin: 0 0 0.35rem; }
+.dayof-lists ul { margin: 0; padding-left: 1.1rem; font-size: 0.86rem; }
+.dayof-lists li { margin-bottom: 0.15rem; }
+.dayof-never h2 { color: var(--rental-overdue); }
+
+.dayof-notes { font-size: 0.86rem; border-top: 1px solid var(--border); padding-top: 0.8rem; }
+.dayof-notes p { margin: 0 0 0.4rem; }
+.dayof-notes strong { color: var(--text-muted); }
+.dayof-notes ul { margin: 0.2rem 0 0.6rem; padding-left: 1.1rem; }
+.dayof-link { word-break: break-all; font-size: 0.8rem; }
+.dayof-foot { margin-top: 1rem; }
+
+@media (max-width: 48rem) {
+  .dayof-lists { grid-template-columns: 1fr; gap: 0.9rem; }
+  .dayof-table { font-size: 0.8rem; }
+  .dayof-section { display: none; }
+}
+
+/* Paper. The nav, the tabs and the app shell are not part of the sheet, and a
+   row split across a page break is a row somebody misses. */
+@media print {
+  .shell > nav,
+  .tabs,
+  .topbar,
+  .btn,
+  .dayof-foot { display: none !important; }
+  .main, .content, body { margin: 0; padding: 0; background: #fff; }
+  .dayof { max-width: none; color: #000; }
+  .dayof-table { font-size: 9.5pt; }
+  .dayof-table tr, .dayof-lists section { break-inside: avoid; }
+  .dayof-moment { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a[href]::after { content: ""; }
+}
