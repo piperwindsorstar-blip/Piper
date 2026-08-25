@@ -71,7 +71,7 @@ async function announceHire(
     cost: rental.cost,
     notes: rental.notes,
     bookedBy: bookedBy.name,
-    link: `${origin}/dispatch/rentals`,
+    link: `${origin}/rentals`,
   });
 
   const result = await sendDirect({ to: to.join(", "), subject: mail.subject, body: mail.body });
@@ -117,7 +117,7 @@ export async function saveSupplier(
     recordAction(rentalSubject(id, name), asActor(admin), "created");
   }
 
-  revalidatePath("/dispatch/rentals");
+  revalidatePath("/rentals");
   return { ok: `Saved ${name}.` };
 }
 
@@ -136,7 +136,7 @@ export async function toggleSupplier(formData: FormData): Promise<void> {
     asActor(admin),
     activate ? "restored" : "retired",
   );
-  revalidatePath("/dispatch/rentals");
+  revalidatePath("/rentals");
 }
 
 /* ---------------------------------------------------------------- rentals */
@@ -206,7 +206,7 @@ export async function saveRental(_prev: RentalsState, formData: FormData): Promi
     await announceHire(input, supplier, { name: admin.name, email: admin.email });
   }
 
-  revalidatePath("/dispatch/rentals");
+  revalidatePath("/rentals");
   return { ok: "Saved." };
 }
 
@@ -214,7 +214,7 @@ export async function removeRental(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = Number(formData.get("id"));
   if (Number.isInteger(id)) deleteRental(id);
-  revalidatePath("/dispatch/rentals");
+  revalidatePath("/rentals");
 }
 
 /**
@@ -239,5 +239,5 @@ export async function markReturned(formData: FormData): Promise<void> {
     asActor(admin),
     "returned",
   );
-  revalidatePath("/dispatch/rentals");
+  revalidatePath("/rentals");
 }

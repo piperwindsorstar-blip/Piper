@@ -2195,15 +2195,28 @@ await reportDj.ctx.close();
     return d.toISOString().slice(0, 10);
   };
 
-  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1200);
   check(
     "the rentals tab says what it is not",
     (await ops.page.textContent("body")).includes("Gear coming in, not going out"),
   );
   check(
-    "and it is reachable from the dispatch tabs",
-    (await ops.page.locator(".tabs a").allTextContents()).map((t) => t.trim()).includes("Rentals"),
+    "and it is its own section rather than a dispatch tab",
+    (await ops.page.locator("nav a").allTextContents()).map((t) => t.trim()).includes("Rentals") &&
+      !(await ops.page.locator(".tabs a").allTextContents())
+        .map((t) => t.trim())
+        .includes("Rentals"),
+  );
+
+  // The old address still works: it is in bookmarks and in every hire email
+  // already sent.
+  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.waitForTimeout(1200);
+  check(
+    "the old dispatch address still lands on it",
+    ops.page.url().endsWith("/rentals"),
+    ops.page.url(),
   );
 
   // A place to hire from. The supplier is the row, so it has to exist first.
@@ -2216,7 +2229,7 @@ await reportDj.ctx.close();
   await ops.page.click('button:has-text("Add the place")');
   await ops.page.waitForTimeout(1200);
 
-  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1200);
   const row = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${place}"))`);
   check("a place gets a row on the chart", (await row.count()) === 1);
@@ -2347,7 +2360,7 @@ await reportDj.ctx.close();
     track: 2, cell: 1, item: `Late ${stamp}`, state: "out",
     from: day(-9), to: day(-3),
   });
-  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1400);
   let body = await ops.page.textContent("body");
   check("a hire past its due-back date is flagged", body.includes("past due back"));
@@ -2387,13 +2400,13 @@ await reportDj.ctx.close();
   // A DJ cannot reach any of it.
   await ops.ctx.close();
   const dj = await signIn("jordan@piper.test");
-  await dj.page.goto(`${BASE}/dispatch/rentals`);
+  await dj.page.goto(`${BASE}/rentals`);
   check("a DJ cannot reach the rentals", !dj.page.url().includes("/rentals"), dj.page.url());
   await dj.ctx.close();
 
   // Clean up: retiring the place takes its hires off the chart with it.
   const tidy = await signIn("owner@piper.test");
-  await tidy.page.goto(`${BASE}/dispatch/rentals`);
+  await tidy.page.goto(`${BASE}/rentals`);
   await tidy.page.waitForTimeout(1000);
   await tidy.page.locator("details:has(h2:text('The places')) > summary").click();
   await tidy.page.waitForTimeout(400);
@@ -2463,7 +2476,7 @@ await reportDj.ctx.close();
 
   // The whole point of it being best effort: mail is not configured in this
   // suite, so the notice cannot go anywhere. Booking must still work.
-  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1200);
   await ops.page.locator("details:has(h2:text('The places')) > summary").click();
   await ops.page.waitForTimeout(400);
@@ -2472,7 +2485,7 @@ await reportDj.ctx.close();
   await ops.page.click('button:has-text("Add the place")');
   await ops.page.waitForTimeout(1200);
 
-  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1200);
   const row = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${place}"))`);
   await row.locator(".gantt-cell:not(.rental-block)").nth(4).click();
@@ -2502,7 +2515,7 @@ await reportDj.ctx.close();
   check("and it can be switched off again", text.includes("Nobody will be told"));
 
   // Clean up the place, which takes its hire with it.
-  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1200);
   await ops.page.locator("details:has(h2:text('The places')) > summary").click();
   await ops.page.waitForTimeout(400);
