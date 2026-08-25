@@ -10,6 +10,7 @@ import {
   deleteTimelineItem,
   moveSong,
   moveTimelineItem,
+  reorderSongs,
   seedDefaultTimeline,
   setSingleSong,
   timelineForEvent,
@@ -76,6 +77,33 @@ export async function moveSongAction(formData: FormData): Promise<void> {
 }
 
 /* -------------------------------------------------------------- timeline */
+
+/**
+ * The new order after a drag, as a comma-separated list of ids.
+ *
+ * A list rather than "moved id X to index N" because the browser already knows
+ * the whole answer, and a server that recomputes it from a move has to hold the
+ * same idea of the starting order — which it may not, if somebody else has been
+ * editing the same slot.
+ */
+export async function reorderSongsAction(formData: FormData): Promise<void> {
+  const eventId = Number(formData.get("event_id"));
+  const category = String(formData.get("category") ?? "");
+  if (!Number.isInteger(eventId) || !category) return;
+
+  // Scoped to the wedding, like every other planning write: a DJ may reorder
+  // the night they are working and nothing else.
+  await assertAccess(eventId);
+
+  const ids = String(formData.get("ids") ?? "")
+    .split(",")
+    .map((part) => Number(part.trim()))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  if (ids.length === 0) return;
+
+  reorderSongs(eventId, category, ids);
+  refresh(eventId);
+}
 
 export async function addTimelineAction(formData: FormData): Promise<void> {
   const eventId = Number(formData.get("event_id"));

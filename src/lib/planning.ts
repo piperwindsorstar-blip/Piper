@@ -67,6 +67,37 @@ export function deleteSong(id: number, eventId: number): void {
   db().prepare("DELETE FROM songs WHERE id = ? AND event_id = ?").run(id, eventId);
 }
 
+/**
+ * Rewrites the order of one slot's songs in a single pass.
+ *
+ * Takes the ids in the order they should end up, which is what a drag knows —
+ * a sequence of swaps would need the browser and the database to agree about
+ * every intermediate state, and they will not while a drag is still moving.
+ *
+ * Ids that do not belong to this event and slot are ignored rather than
+ * refused. A stale tab reordering a song the office has since deleted should
+ * reorder the rest, not fail the lot.
+ */
+export function reorderSongs(eventId: number, category: string, ids: number[]): void {
+  const mine = db()
+    .prepare("SELECT id FROM songs WHERE event_id = ? AND category = ?")
+    .all(eventId, category) as { id: number }[];
+  const allowed = new Set(mine.map((r) => r.id));
+
+  const wanted = ids.filter((id) => allowed.has(id));
+  if (wanted.length === 0) return;
+
+  // Anything the caller did not mention keeps its place at the end, so a row
+  // added in another tab is not silently dragged to the front.
+  const rest = mine.map((r) => r.id).filter((id) => !wanted.includes(id));
+
+  const write = db().prepare("UPDATE songs SET position = ? WHERE id = ? AND event_id = ?");
+  const apply = db().transaction(() => {
+    [...wanted, ...rest].forEach((id, position) => write.run(position, id, eventId));
+  });
+  apply();
+}
+
 export function moveSong(id: number, eventId: number, direction: -1 | 1): void {
   const song = db()
     .prepare("SELECT * FROM songs WHERE id = ? AND event_id = ?")

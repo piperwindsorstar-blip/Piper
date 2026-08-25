@@ -1426,3 +1426,31 @@ input:focus, select:focus, textarea:focus {
   .dayof-moment { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   a[href]::after { content: ""; }
 }
+
+/* The grip on a song row. Deliberately a real button: it is the keyboard path
+   as well as the drag handle, and arrow keys move the row from here. */
+.song-grip {
+  flex-shrink: 0;
+  width: 1.6rem;
+  align-self: stretch;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: grab;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  border-radius: 5px;
+  /* Without this the browser claims the gesture for scrolling and the row
+     never moves on a phone. */
+  touch-action: none;
+}
+.song-grip:hover { background: var(--surface-alt); color: var(--text); }
+.song-grip:active { cursor: grabbing; }
+.song-line-dragging {
+  background: var(--surface-alt);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  position: relative;
+  z-index: 2;
+}

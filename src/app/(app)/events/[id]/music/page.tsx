@@ -1,78 +1,9 @@
+import SongList from "./SongList";
 import AddSongFields from "./AddSongFields";
 import { entranceOrder, getQuestionnaire, songsByCategory, speeches } from "@/lib/planning";
-import { SONG_CATEGORIES, SONG_SECTIONS, type Song } from "@/lib/types";
-import { addSongAction, deleteSongAction, moveSongAction } from "../planning-actions";
+import { SONG_CATEGORIES, SONG_SECTIONS } from "@/lib/types";
+import { addSongAction } from "../planning-actions";
 import { loadEvent } from "../guard";
-
-function SongRow({ song, eventId, list }: { song: Song; eventId: number; list: Song[] }) {
-  const index = list.findIndex((s) => s.id === song.id);
-
-  return (
-    <div className="song-line">
-      <div className="song-main">
-        <div className="song-title">
-          {song.title}
-          {song.source === "client" && (
-            <span className="badge badge-accent" style={{ marginLeft: "0.5rem" }}>
-              From couple
-            </span>
-          )}
-        </div>
-        {(song.artist || song.cue || song.notes) && (
-          <div className="song-sub">
-            {[song.artist, song.notes].filter(Boolean).join(" · ")}
-            {song.cue && (
-              <>
-                {(song.artist || song.notes) && " · "}
-                <strong style={{ color: "var(--accent-text)" }}>{song.cue}</strong>
-              </>
-            )}
-          </div>
-        )}
-        {song.link && (
-          <a className="small" href={song.link} target="_blank" rel="noreferrer">
-            Listen
-          </a>
-        )}
-      </div>
-
-      <div className="btn-row">
-        {list.length > 1 && (
-          <>
-            <form action={moveSongAction} className="inline-form">
-              <input type="hidden" name="event_id" value={eventId} />
-              <input type="hidden" name="id" value={song.id} />
-              <input type="hidden" name="direction" value="up" />
-              <button className="btn btn-icon" type="submit" disabled={index === 0} aria-label="Move up">
-                ↑
-              </button>
-            </form>
-            <form action={moveSongAction} className="inline-form">
-              <input type="hidden" name="event_id" value={eventId} />
-              <input type="hidden" name="id" value={song.id} />
-              <input type="hidden" name="direction" value="down" />
-              <button
-                className="btn btn-icon"
-                type="submit"
-                disabled={index === list.length - 1}
-                aria-label="Move down"
-              >
-                ↓
-              </button>
-            </form>
-          </>
-        )}
-        <form action={deleteSongAction} className="inline-form">
-          <input type="hidden" name="event_id" value={eventId} />
-          <input type="hidden" name="id" value={song.id} />
-          <button className="btn btn-icon btn-danger" type="submit" aria-label="Remove song">
-            ✕
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 export default async function MusicPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -247,9 +178,7 @@ export default async function MusicPage({ params }: { params: Promise<{ id: stri
                 </div>
               ) : (
                 <div style={{ marginBottom: "0.75rem" }}>
-                  {list.map((song) => (
-                    <SongRow key={song.id} song={song} eventId={event.id} list={list} />
-                  ))}
+                  <SongList songs={list} eventId={event.id} category={category.key} />
                 </div>
               )}
 

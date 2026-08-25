@@ -2784,6 +2784,112 @@ await reportDj.ctx.close();
   await dj.ctx.close();
 }
 
+/* ---------- 33. reordering songs by dragging ---------- */
+{
+  const ops = await signIn("owner@piper.test");
+  await ops.page.goto(`${BASE}/events/1/music`);
+  await ops.page.waitForTimeout(2000);
+
+  // The slot with the most songs in it, whichever that is.
+  const counts = await ops.page
+    .locator(".song-list")
+    .evaluateAll((els) => els.map((el, i) => ({ i, n: el.querySelectorAll(".song-line").length })));
+  const biggest = counts.sort((a, b) => b.n - a.n)[0];
+  check("a slot with several songs to order", biggest && biggest.n >= 3, `${biggest?.n ?? 0} songs`);
+
+  const list = ops.page.locator(".song-list").nth(biggest.i);
+  const titles = async () =>
+    (await list.locator(".song-title").allTextContents()).map((t) =>
+      t.replace("From couple", "").trim(),
+    );
+
+  const singles = counts.filter((c) => c.n === 1);
+  check(
+    "a slot with one song has nothing to drag",
+    singles.length === 0 ||
+      (await ops.page.locator(".song-list").nth(singles[0].i).locator(".song-grip").count()) === 0,
+  );
+  check("and a slot with several does", (await list.locator(".song-grip").count()) === biggest.n);
+
+  const before = await titles();
+
+  async function dragRow(from, to) {
+    const grip = list.locator(".song-grip").nth(from);
+    // Without this the handle can sit below the fold and the mouse moves to a
+    // point outside the viewport, where nothing receives it. That cost a run.
+    await grip.scrollIntoViewIfNeeded();
+    await ops.page.waitForTimeout(300);
+
+    const a = await grip.boundingBox();
+    const target = await list.locator(".song-line").nth(to).boundingBox();
+    const startY = a.y + a.height / 2;
+    const endY = target.y + target.height / 2;
+
+    await ops.page.mouse.move(a.x + a.width / 2, startY);
+    await ops.page.mouse.down();
+    for (let i = 1; i <= 10; i++) {
+      await ops.page.mouse.move(a.x + a.width / 2, startY + ((endY - startY) * i) / 10);
+      await ops.page.waitForTimeout(35);
+    }
+    await ops.page.mouse.up();
+    await ops.page.waitForTimeout(1600);
+  }
+
+  await dragRow(0, 2);
+  const dragged = await titles();
+  check(
+    "dragging a song moves it",
+    dragged[2] === before[0] && dragged.join("|") !== before.join("|"),
+    dragged.join(" | "),
+  );
+
+  await ops.page.reload();
+  await ops.page.waitForTimeout(1800);
+  check(
+    "and the new order is saved, not just drawn",
+    (await titles()).join("|") === dragged.join("|"),
+    (await titles()).join(" | "),
+  );
+
+  // The keyboard path, so this is not a mouse-only feature.
+  const grip = list.locator(".song-grip").nth(0);
+  await grip.scrollIntoViewIfNeeded();
+  await grip.focus();
+  await ops.page.keyboard.press("ArrowDown");
+  await ops.page.waitForTimeout(1600);
+  await ops.page.reload();
+  await ops.page.waitForTimeout(1800);
+  const afterKey = await titles();
+  check(
+    "the arrow keys move a song too",
+    afterKey[1] === dragged[0],
+    afterKey.join(" | "),
+  );
+
+  // No song was lost or duplicated along the way.
+  check(
+    "nothing is lost or duplicated by reordering",
+    afterKey.length === before.length &&
+      [...before].sort().join("|") === [...afterKey].sort().join("|"),
+    `${before.length} before, ${afterKey.length} after`,
+  );
+
+  // Put the seed back the way it was, so a re-run starts where this one did.
+  for (let guard = 0; guard < 8; guard++) {
+    const now = await titles();
+    if (now.join("|") === before.join("|")) break;
+    const wrong = now.findIndex((t, i) => t !== before[i]);
+    const wants = before[wrong];
+    const at = now.indexOf(wants);
+    if (at === -1 || at === wrong) break;
+    await dragRow(at, wrong);
+    await ops.page.reload();
+    await ops.page.waitForTimeout(1400);
+  }
+  check("the suite puts the order back", (await titles()).join("|") === before.join("|"), (await titles()).join(" | "));
+  await ops.ctx.close();
+}
+
 await admin.ctx.close();
 await browser.close();
 
