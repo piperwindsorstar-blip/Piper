@@ -148,6 +148,50 @@ export type MailSettingsView = Omit<MailSettings, "pass"> & {
   fromEnvironment: boolean;
 };
 
+/* ------------------------------------------------------- rental bookings */
+
+/**
+ * Who hears about a hire the moment somebody books one.
+ *
+ * A hire is arranged by whoever is standing in the warehouse, and the person
+ * who has to pay for it and plan around it is usually somewhere else. This is
+ * the note that closes that gap, and it goes straight out rather than through
+ * the approval queue — an internal heads-up that waits for approval is a
+ * heads-up that arrives after the van has left.
+ */
+export type RentalNotify = { on: boolean; to: string[] };
+
+export const NO_RENTAL_NOTIFY: RentalNotify = { on: false, to: [] };
+
+/** How many addresses one notice may go to, so a typo cannot become a mailshot. */
+export const NOTIFY_MAX = 10;
+
+/** Deliberately loose. A real check is whether the mail server accepts it. */
+export function looksLikeEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+/**
+ * Splits a typed list of addresses.
+ *
+ * Commas, semicolons, spaces and newlines all count, because people paste
+ * addresses out of whatever they had them in and a list that only accepts one
+ * separator silently keeps the first address and drops the rest.
+ */
+export function splitAddresses(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(/[,;\s]+/)) {
+    const address = part.trim();
+    if (!address) continue;
+    const key = address.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(address);
+  }
+  return out;
+}
+
 /** Common ports, so nobody has to remember which one implies TLS. */
 export const MAIL_PORTS = [
   { port: 587, label: "587 — STARTTLS (most providers)" },

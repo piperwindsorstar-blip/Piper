@@ -4,26 +4,28 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { sendTest } from "@/lib/mail";
 import { asActor } from "@/lib/audit";
-import { recordChanges, settingsSubject } from "@/lib/activity";
+import { recordAction, recordChanges, settingsSubject } from "@/lib/activity";
 import {
-  clearMail,
-  NO_MAIL,
-  saveMail,
-  storedMail,
-  RULES_MAX,
-  SHOP_LABELS,
-  saveShopDetails,
-  shopDetails,
-  BOARD_NOTE_MAX,
-  publicBoard,
-  savePublicBoard,
   BANNER_MAX,
   BANNER_TONES,
-  loginBanner,
-  saveLoginBanner,
+  BOARD_NOTE_MAX,
+  NO_MAIL,
+  RULES_MAX,
+  SHOP_LABELS,
   TONE_LABELS,
+  clearMail,
+  loginBanner,
+  publicBoard,
+  saveLoginBanner,
+  saveMail,
+  savePublicBoard,
+  saveRentalNotify as storeRentalNotify,
+  saveShopDetails,
+  shopDetails,
+  storedMail,
   type BannerTone,
 } from "@/lib/settings";
+import { NOTIFY_MAX, looksLikeEmail, splitAddresses } from "@/lib/settings-types";
 
 export type SettingsState = {
   error?: string;
@@ -346,4 +348,45 @@ export async function clearMailSettings(
   revalidatePath("/settings");
   revalidatePath("/outbox");
   return { ok: "Cleared. Piper will not send email until it is set up again." };
+}
+
+/**
+ * Saves where word goes when a hire is booked.
+ *
+ * The address is checked even when the switch is off, so a typo is caught while
+ * somebody is looking at the form rather than months later when the first hire
+ * is booked and nothing arrives.
+ */
+export async function saveRentalNotify(
+  _prev: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const admin = await requireAdmin();
+
+  const on = formData.get("on") === "on";
+  const to = splitAddresses(String(formData.get("to") ?? ""));
+
+  // Named one at a time, so a list of five with one typo says which one.
+  const bad = to.filter((address) => !looksLikeEmail(address));
+  if (bad.length > 0) {
+    return {
+      error: `${bad.join(", ")} ${bad.length === 1 ? "doesn't look like an email address" : "don't look like email addresses"}.`,
+      ...echo(formData),
+    };
+  }
+  if (to.length > NOTIFY_MAX) {
+    return { error: `That is more than ${NOTIFY_MAX} addresses.`, ...echo(formData) };
+  }
+  if (on && to.length === 0) {
+    return { error: "Give it somewhere to send to.", ...echo(formData) };
+  }
+
+  storeRentalNotify({ on, to }, admin.id);
+  recordAction(settingsSubject, asActor(admin), on ? "rental_notify_on" : "rental_notify_off");
+  revalidatePath("/settings");
+  return {
+    ok: on
+      ? `Hires will be sent to ${to.join(", ")}.`
+      : "Nobody will be told about hires.",
+  };
 }

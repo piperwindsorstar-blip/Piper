@@ -1,11 +1,12 @@
 import { requireAdmin } from "@/lib/auth";
-import { loginBanner, publicBoard, shopDetails, storedMail } from "@/lib/settings";
+import { loginBanner, publicBoard, rentalNotify, shopDetails, storedMail } from "@/lib/settings";
 import { mailSource } from "@/lib/mail";
 import { baseUrl } from "@/lib/urls";
 import BannerForm from "./BannerForm";
 import PublicBoardForm from "./PublicBoardForm";
 import ShopForm from "./ShopForm";
 import MailForm from "./MailForm";
+import RentalNotifyForm from "./RentalNotifyForm";
 
 export default async function SettingsPage() {
   await requireAdmin();
@@ -13,6 +14,7 @@ export default async function SettingsPage() {
   const board = publicBoard();
   const origin = await baseUrl();
   const shop = shopDetails();
+  const notify = rentalNotify();
 
   // The password never leaves the server — the form is told only whether one
   // exists.
@@ -74,6 +76,16 @@ export default async function SettingsPage() {
           </div>
           <div className="card-body">
             <MailForm mail={mail} />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <h2>Rental bookings</h2>
+            <span className="small muted">Told when somebody hires gear in</span>
+          </div>
+          <div className="card-body">
+            <RentalNotifyForm notify={notify} mailReady={source !== null} />
           </div>
         </div>
 

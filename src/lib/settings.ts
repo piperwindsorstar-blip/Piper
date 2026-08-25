@@ -12,6 +12,11 @@ import {
   NO_PUBLIC_BOARD as NO_PUBLIC_BOARD_VALUE,
   type LoginBanner,
   type PublicBoard as PublicBoardShape,
+  NO_RENTAL_NOTIFY,
+  NOTIFY_MAX,
+  looksLikeEmail,
+  splitAddresses,
+  type RentalNotify,
 } from "./settings-types";
 
 /**
@@ -23,7 +28,12 @@ import {
  * page. What belongs here is the opposite: things that are meant to be seen.
  */
 
-export type SettingKey = "login_banner" | "public_board" | "shop_details" | "mail";
+export type SettingKey =
+  | "login_banner"
+  | "public_board"
+  | "shop_details"
+  | "mail"
+  | "rental_notify";
 
 export function getSetting(key: SettingKey): string | null {
   const row = db().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
@@ -214,4 +224,44 @@ export function saveMail(settings: MailShape, userId: number | null): void {
 
 export function clearMail(userId: number | null): void {
   setSetting("mail", JSON.stringify(NO_MAIL_VALUE), userId);
+}
+
+/* ------------------------------------------------------- rental bookings */
+
+/**
+ * Where to send word when somebody books a hire.
+ *
+ * Off and empty by default. An address that arrives switched on would start
+ * mailing whoever happened to be first in the settings table the moment this
+ * shipped.
+ */
+export function rentalNotify(): RentalNotify {
+  const raw = getSetting("rental_notify");
+  if (!raw) return NO_RENTAL_NOTIFY;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<RentalNotify>;
+    // Tolerates the single string this was before a list was needed, so an
+    // address saved by the earlier shape is not silently dropped.
+    const stored = Array.isArray(parsed.to)
+      ? parsed.to
+      : typeof parsed.to === "string"
+        ? splitAddresses(parsed.to)
+        : [];
+    const to = stored
+      .filter((a): a is string => typeof a === "string")
+      .map((a) => a.trim())
+      .filter(looksLikeEmail)
+      .slice(0, NOTIFY_MAX);
+
+    // On is only meaningful with somewhere to send to, so the two are resolved
+    // together rather than left to disagree.
+    return { on: parsed.on === true && to.length > 0, to };
+  } catch {
+    return NO_RENTAL_NOTIFY;
+  }
+}
+
+export function saveRentalNotify(notify: RentalNotify, userId: number | null): void {
+  setSetting("rental_notify", JSON.stringify(notify), userId);
 }

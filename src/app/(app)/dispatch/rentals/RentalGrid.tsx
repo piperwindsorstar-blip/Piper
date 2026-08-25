@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState, type CSSProperties } from "react";
+import { useActionState, useRef, useState } from "react";
 import { RENTAL_LABELS, RENTAL_SHORT, RENTAL_STATES, type RentalState } from "@/lib/rentals-types";
 import Icon from "@/components/Icon";
 import { removeRental, saveRental, type RentalsState } from "./actions";
@@ -9,8 +9,14 @@ import { removeRental, saveRental, type RentalsState } from "./actions";
  * Gear hired in, on the same chart as the plan.
  *
  * Deliberately the same shape and the same colours as the Gantt: a row per
- * place, a square per day, a block across the days something is held for.
- * Somebody who can read one can read the other without being told.
+ * place, and a block across the days something is held for. Somebody who can
+ * read one can read the other without being told.
+ *
+ * The block is one element, not a run of squares. A five-day hire is one thing
+ * that happened — it goes back on one day, for one price, on one line of a
+ * quote — so it is one thing to point at and one thing to click, and editing
+ * it changes the whole hire rather than a day of it. Days with nothing on them
+ * stay separate squares, because those are where a new hire gets started.
  *
  * The one interaction that differs is the click. A square on the plan cycles,
  * because "we'll want a van that Saturday" is the whole thought. A hire is not
@@ -112,39 +118,75 @@ export default function RentalGrid({
                     className="gantt-track"
                     style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
                   >
-                    {days.map((day) => {
+                    {/* One element per hire, spanning its days, rather than a
+                        square per day. A five-day hire is one thing that
+                        happened, so it should be one thing to point at and one
+                        thing to click — and joined, the block can carry its own
+                        dates without the eye having to count columns. Days with
+                        nothing on them stay separate squares, because those are
+                        where a new hire gets started. */}
+                    {days.map((day, i) => {
                       const bar = barIn(track, day);
+
+                      if (bar) {
+                        // Only the first visible day draws; the rest of the
+                        // span belongs to that one element.
+                        if (bar.startsOn !== day && i !== 0) return null;
+                        const from = days.indexOf(bar.startsOn);
+                        const column = from === -1 ? 1 : from + 1;
+                        const end = days.indexOf(bar.endsOn);
+                        const last = end === -1 ? days.length : end + 1;
+
+                        return (
+                          <button
+                            key={`bar-${bar.id}`}
+                            type="button"
+                            className={[
+                              "gantt-cell",
+                              "rental-block",
+                              `rental-${bar.state}`,
+                              bar.overdue ? "rental-overdue" : "",
+                              bar.startsOn < days[0] ? "rental-open-left" : "",
+                              bar.endsOn > days[days.length - 1] ? "rental-open-right" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            style={{ gridColumn: `${column} / ${last + 1}` }}
+                            title={[
+                              bar.item,
+                              bar.quantity > 1 ? `×${bar.quantity}` : "",
+                              `— ${RENTAL_SHORT[bar.state]}`,
+                              bar.overdue ? "(overdue)" : "",
+                              bar.job ? `· ${bar.job}` : "",
+                              "· click to edit the whole hire",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            aria-label={`${bar.item} from ${supplier.name}, ${bar.startsOn} to ${bar.endsOn}: ${RENTAL_LABELS[bar.state]}`}
+                            onClick={() => open(supplier, track, bar.startsOn)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              open(supplier, track, bar.startsOn);
+                            }}
+                          >
+                            {!compact && (
+                              <span className="rental-block-label">
+                                {bar.quantity > 1 ? `${bar.quantity}× ` : ""}
+                                {bar.item}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      }
+
                       return (
                         <button
                           key={day}
                           type="button"
-                          className={[
-                            "gantt-cell",
-                            bar ? `rental-${bar.state}` : "",
-                            bar?.overdue ? "rental-overdue" : "",
-                            day === today ? "board-today" : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          title={
-                            bar
-                              ? [
-                                  bar.item,
-                                  bar.quantity > 1 ? `×${bar.quantity}` : "",
-                                  `— ${RENTAL_SHORT[bar.state]}`,
-                                  bar.overdue ? "(overdue)" : "",
-                                  bar.job ? `· ${bar.job}` : "",
-                                  "· click to edit",
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")
-                              : `${day} · click to add a hire from ${supplier.name}`
-                          }
-                          aria-label={
-                            bar
-                              ? `${bar.item} from ${supplier.name} on ${day}: ${RENTAL_LABELS[bar.state]}`
-                              : `${supplier.name} on ${day}: nothing on hire`
-                          }
+                          className={`gantt-cell${day === today ? " board-today" : ""}`}
+                          style={{ gridColumn: `${i + 1} / ${i + 2}` }}
+                          title={`${day} · click to add a hire from ${supplier.name}`}
+                          aria-label={`${supplier.name} on ${day}: nothing on hire`}
                           onClick={() => open(supplier, track, day)}
                           onContextMenu={(e) => {
                             e.preventDefault();
@@ -159,17 +201,7 @@ export default function RentalGrid({
                           onPointerLeave={() => {
                             if (pressTimer.current) clearTimeout(pressTimer.current);
                           }}
-                        >
-                          {!compact && bar?.startsOn === day && (
-                            <span
-                              className="gantt-note"
-                              style={{ "--span": bar.span } as CSSProperties}
-                            >
-                              {bar.quantity > 1 ? `${bar.quantity}× ` : ""}
-                              {bar.item}
-                            </span>
-                          )}
-                        </button>
+                        />
                       );
                     })}
                   </div>

@@ -158,3 +158,49 @@ asked can't see this email.
 ${SIGN_OFF}`,
   };
 }
+
+/* ------------------------------------------------------ a hire is booked */
+
+/**
+ * Told to whoever is paying for it, the moment somebody arranges a hire.
+ *
+ * Not in Martin's voice like the rest of this file — this one goes to the
+ * office, not to a couple, so it reads like a note left on a desk. Everything
+ * that decides what to do next is in the first five lines: where it is from,
+ * when it goes out, when it comes back, and what is on it.
+ */
+export function rentalBooked(input: {
+  place: string;
+  placePhone: string | null;
+  item: string;
+  quantity: number;
+  pickUp: string;
+  dropOff: string;
+  job: string | null;
+  reference: string | null;
+  cost: string | null;
+  notes: string | null;
+  bookedBy: string;
+  link: string;
+}) {
+  const lines = [
+    `Where: ${input.place}${input.placePhone ? ` (${input.placePhone})` : ""}`,
+    `Pick up: ${formatDateLong(input.pickUp)}`,
+    `Drop off: ${formatDateLong(input.dropOff)}`,
+    `Items: ${input.quantity > 1 ? `${input.quantity} × ` : ""}${input.item}`,
+  ];
+  if (input.job) lines.push(`For: ${input.job}`);
+  if (input.reference) lines.push(`Their reference: ${input.reference}`);
+  if (input.cost) lines.push(`Cost: ${input.cost}`);
+  if (input.notes) lines.push(`Note: ${input.notes}`);
+
+  return {
+    subject: `Hire booked — ${input.item} from ${input.place}`,
+    body: `${input.bookedBy} has booked a hire.
+
+${lines.join("\n")}
+
+${input.link}
+`,
+  };
+}

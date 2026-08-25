@@ -5,6 +5,10 @@ import { requireAdmin } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordAction, recordChanges, rentalSubject } from "@/lib/activity";
 import { ITEM_MAX, isRentalState } from "@/lib/rentals-types";
+import { rentalNotify } from "@/lib/settings";
+import { rentalBooked } from "@/lib/mail-templates";
+import { mailIsConfigured, sendDirect } from "@/lib/mail";
+import { baseUrl } from "@/lib/urls";
 import {
   createRental,
   createSupplier,
@@ -17,6 +21,64 @@ import {
 } from "@/lib/rentals";
 
 export type RentalsState = { error?: string; ok?: string };
+
+/**
+ * Tells the office a hire has been arranged.
+ *
+ * Deliberately best-effort. The hire is already saved by the time this runs, so
+ * a mail server that is down, misconfigured or simply not set up must not turn
+ * a successful booking into an error — the person in the warehouse did their
+ * job and the record is correct either way. Failures go to the log, where the
+ * next person to wonder why the emails stopped will find them.
+ *
+ * Skipped when the person booking is the person being told. Being emailed about
+ * something you did ten seconds ago trains people to ignore the emails.
+ */
+async function announceHire(
+  rental: {
+    item: string;
+    quantity: number;
+    starts_on: string;
+    ends_on: string;
+    job: string | null;
+    reference: string | null;
+    cost: string | null;
+    notes: string | null;
+  },
+  supplier: { name: string; phone: string | null },
+  bookedBy: { name: string; email: string },
+): Promise<void> {
+  const notify = rentalNotify();
+  if (!notify.on || !mailIsConfigured()) return;
+
+  // Never back to whoever booked it. Being emailed about something you did ten
+  // seconds ago only teaches people to ignore the emails — but the others on
+  // the list still hear about it, which is the whole point of a list.
+  const mine = bookedBy.email.trim().toLowerCase();
+  const to = notify.to.filter((address) => address.trim().toLowerCase() !== mine);
+  if (to.length === 0) return;
+
+  const origin = await baseUrl();
+  const mail = rentalBooked({
+    place: supplier.name,
+    placePhone: supplier.phone,
+    item: rental.item,
+    quantity: rental.quantity,
+    pickUp: rental.starts_on,
+    dropOff: rental.ends_on,
+    job: rental.job,
+    reference: rental.reference,
+    cost: rental.cost,
+    notes: rental.notes,
+    bookedBy: bookedBy.name,
+    link: `${origin}/dispatch/rentals`,
+  });
+
+  const result = await sendDirect({ to: to.join(", "), subject: mail.subject, body: mail.body });
+  if (!result.ok) {
+    console.error(`[piper] could not announce a hire: ${result.error}`);
+  }
+}
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim() || null;
@@ -137,6 +199,11 @@ export async function saveRental(_prev: RentalsState, formData: FormData): Promi
   } else {
     createRental(input);
     recordAction(rentalSubject(supplierId, supplier.name), asActor(admin), "hired");
+
+    // Only on a new hire. An edit that nudges a date by a day does not need to
+    // reach somebody's phone, and a booking that mails on every save is a
+    // booking nobody reads the mail about.
+    await announceHire(input, supplier, { name: admin.name, email: admin.email });
   }
 
   revalidatePath("/dispatch/rentals");

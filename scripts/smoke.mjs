@@ -2227,7 +2227,12 @@ await reportDj.ctx.close();
   check("an empty place still has a track to write in", (await row.locator(".gantt-track").count()) === 1);
 
   async function hire({ track, cell, item, qty, state, from, to, job }) {
-    await row.locator(".gantt-track").nth(track).locator(".gantt-cell").nth(cell).click();
+    await row
+      .locator(".gantt-track")
+      .nth(track)
+      .locator(".gantt-cell:not(.rental-block)")
+      .nth(cell)
+      .click();
     await ops.page.waitForTimeout(700);
     await ops.page.fill(".gantt-dialog #item", item);
     if (qty) await ops.page.fill(".gantt-dialog #quantity", String(qty));
@@ -2240,7 +2245,7 @@ await reportDj.ctx.close();
   }
 
   // Clicking a square opens the dialog with the day and the place already in it.
-  await row.locator(".gantt-cell").nth(3).click();
+  await row.locator(".gantt-cell:not(.rental-block)").nth(3).click();
   await ops.page.waitForTimeout(700);
   check(
     "clicking a square asks for the item first",
@@ -2281,14 +2286,33 @@ await reportDj.ctx.close();
   });
   await ops.page.reload();
   await ops.page.waitForTimeout(1400);
+  // One element spanning its days, not five squares that happen to match. A
+  // five-day hire goes back on one day for one price on one line of a quote, so
+  // it is one thing to click and editing it changes the whole hire.
+  const block = row.locator(".rental-block").first();
+  check("a multi-day hire is one joined block", (await row.locator(".rental-block").count()) === 1);
+  const blockWidth = (await block.boundingBox())?.width ?? 0;
+  const dayWidth = (await row.locator(".gantt-cell:not(.rental-block)").first().boundingBox())?.width ?? 1;
   check(
-    "a hire is drawn across the days it is held",
-    (await row.locator(".gantt-cell.rental-out").count()) === 5,
-    `${await row.locator(".gantt-cell.rental-out").count()} days`,
+    "and it spans the days it is held",
+    blockWidth > dayWidth * 4 && blockWidth < dayWidth * 6,
+    `${Math.round(blockWidth)}px across a ${Math.round(dayWidth)}px day`,
   );
   check(
     "the block says the item and how many",
-    ((await row.locator(".gantt-note").first().textContent()) ?? "").includes(`2× Console ${stamp}`),
+    ((await block.textContent()) ?? "").includes(`2× Console ${stamp}`),
+  );
+  check(
+    "and clicking it edits the whole hire, not a day of it",
+    await (async () => {
+      await block.click();
+      await ops.page.waitForTimeout(700);
+      const from = await ops.page.inputValue(".gantt-dialog #starts_on");
+      const to = await ops.page.inputValue(".gantt-dialog #ends_on");
+      await ops.page.locator('.gantt-dialog button[aria-label="Close"]').click();
+      await ops.page.waitForTimeout(400);
+      return from === day(2) && to === day(6);
+    })(),
   );
 
   // A used row always leaves a spare track, or a second hire over the same days
@@ -2307,13 +2331,13 @@ await reportDj.ctx.close();
   // Both blocks drawn, in their own colours, rather than an exact day count:
   // the second hire runs to day+8, which lands in the next month whenever the
   // suite runs late in one, and a block clipped by the window is correct.
-  const labels = (await row.locator(".gantt-note").allTextContents()).join(" | ");
+  const labels = (await row.locator(".rental-block").allTextContents()).join(" | ");
   check(
     "two hires from one place can overlap",
     labels.includes(`Console ${stamp}`) &&
       labels.includes(`Switcher ${stamp}`) &&
-      (await row.locator(".gantt-cell.rental-out").count()) > 0 &&
-      (await row.locator(".gantt-cell.rental-booked").count()) > 0,
+      (await row.locator(".rental-block.rental-out").count()) > 0 &&
+      (await row.locator(".rental-block.rental-booked").count()) > 0,
     labels,
   );
   check("and the row grows another spare", (await row.locator(".gantt-track").count()) === 3);
@@ -2330,7 +2354,7 @@ await reportDj.ctx.close();
   check("and the flag names it", body.includes(`Late ${stamp}`));
   check(
     "the block is marked late as well",
-    (await ops.page.locator(".gantt-cell.rental-overdue").count()) > 0,
+    (await ops.page.locator(".rental-block.rental-overdue").count()) > 0,
   );
 
   await ops.page
@@ -2347,7 +2371,7 @@ await reportDj.ctx.close();
   );
   check(
     "and the block turns returned rather than vanishing",
-    (await ops.page.locator(".gantt-cell.rental-returned").count()) > 0,
+    (await ops.page.locator(".rental-block.rental-returned").count()) > 0,
   );
 
   // None of it reached the fleet. The two charts share a look, not a table.
@@ -2385,6 +2409,109 @@ await reportDj.ctx.close();
     "hires still drawn",
   );
   await tidy.ctx.close();
+}
+
+/* ---------- 30. word goes out when a hire is booked ---------- */
+{
+  const stamp = Date.now();
+  const place = `Notify Hire ${stamp}`;
+  const ops = await signIn("owner@piper.test");
+
+  const day = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const notifyForm = 'form:has(#notify_to)';
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.waitForTimeout(1200);
+  check(
+    "the settings say who hears about a hire",
+    (await ops.page.locator(notifyForm).count()) === 1,
+  );
+
+  // Every address is checked, and a bad one is named rather than the whole list
+  // being rejected as "invalid".
+  await ops.page.fill(`${notifyForm} #notify_to`, "office@pynxpro.test, not-an-address");
+  await ops.page.locator(`${notifyForm} button[type=submit]`).click();
+  await ops.page.waitForTimeout(1200);
+  let text = await ops.page.evaluate(() => document.body.innerText);
+  check("a bad address is refused by name", text.includes("not-an-address"), text.slice(0, 120));
+  check(
+    "and the rest of the list survives the refusal",
+    (await ops.page.inputValue(`${notifyForm} #notify_to`)).includes("office@pynxpro.test"),
+  );
+
+  // Switched on with nowhere to send is the one combination that cannot work.
+  await ops.page.fill(`${notifyForm} #notify_to`, "");
+  await ops.page.locator(`${notifyForm} input[name="on"]`).check();
+  await ops.page.locator(`${notifyForm} button[type=submit]`).click();
+  await ops.page.waitForTimeout(1200);
+  text = await ops.page.evaluate(() => document.body.innerText);
+  check("switching it on with no address is refused", text.includes("somewhere to send"));
+
+  await ops.page.fill(`${notifyForm} #notify_to`, "office@pynxpro.test, second@pynxpro.test");
+  await ops.page.locator(`${notifyForm} input[name="on"]`).check();
+  await ops.page.locator(`${notifyForm} button[type=submit]`).click();
+  await ops.page.waitForTimeout(1200);
+  text = await ops.page.evaluate(() => document.body.innerText);
+  check(
+    "more than one address can be told",
+    text.includes("office@pynxpro.test") && text.includes("second@pynxpro.test"),
+  );
+
+  // The whole point of it being best effort: mail is not configured in this
+  // suite, so the notice cannot go anywhere. Booking must still work.
+  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.waitForTimeout(1200);
+  await ops.page.locator("details:has(h2:text('The places')) > summary").click();
+  await ops.page.waitForTimeout(400);
+  const placeForm = 'form:has(button:has-text("Add the place"))';
+  await ops.page.fill(`${placeForm} input[name="name"]`, place);
+  await ops.page.click('button:has-text("Add the place")');
+  await ops.page.waitForTimeout(1200);
+
+  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.waitForTimeout(1200);
+  const row = ops.page.locator(`.board-grid-row:has(.board-grid-name:has-text("${place}"))`);
+  await row.locator(".gantt-cell:not(.rental-block)").nth(4).click();
+  await ops.page.waitForTimeout(700);
+  await ops.page.fill(".gantt-dialog #item", `Console ${stamp}`);
+  await ops.page.selectOption(".gantt-dialog #state", "booked");
+  await ops.page.fill(".gantt-dialog #starts_on", day(2));
+  await ops.page.fill(".gantt-dialog #ends_on", day(4));
+  await ops.page.click('.gantt-dialog button:has-text("Save")');
+  await ops.page.waitForTimeout(1600);
+  await ops.page.reload();
+  await ops.page.waitForTimeout(1400);
+  check(
+    "a hire still books when the notice cannot be sent",
+    (await row.locator(".rental-block").count()) === 1,
+    "the booking is the work; the email is a courtesy",
+  );
+
+  // Put the setting back so the next run starts where this one did.
+  await ops.page.goto(`${BASE}/settings`);
+  await ops.page.waitForTimeout(1200);
+  await ops.page.locator(`${notifyForm} input[name="on"]`).uncheck();
+  await ops.page.fill(`${notifyForm} #notify_to`, "");
+  await ops.page.locator(`${notifyForm} button[type=submit]`).click();
+  await ops.page.waitForTimeout(1200);
+  text = await ops.page.evaluate(() => document.body.innerText);
+  check("and it can be switched off again", text.includes("Nobody will be told"));
+
+  // Clean up the place, which takes its hire with it.
+  await ops.page.goto(`${BASE}/dispatch/rentals`);
+  await ops.page.waitForTimeout(1200);
+  await ops.page.locator("details:has(h2:text('The places')) > summary").click();
+  await ops.page.waitForTimeout(400);
+  const card = ops.page.locator(`details.card-body:has(summary:has-text("${place}"))`);
+  await card.locator("summary").click();
+  await ops.page.waitForTimeout(400);
+  await card.locator('button:has-text("Retire")').click();
+  await ops.page.waitForTimeout(1200);
+  await ops.ctx.close();
 }
 
 await admin.ctx.close();
