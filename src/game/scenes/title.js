@@ -29,7 +29,7 @@ export class TitleScene {
         { label: 'CONTINUE', disabled: !any },
         { label: 'HOW TO PLAY' },
       ],
-      x: W / 2 - 40, y: 148, cellW: 96, cellH: 14, rows: 3,
+      x: W / 2 - 36, y: 161, cellW: 84, cellH: 14, rows: 3,
     });
     this.slotMenu = new Menu({
       items: SLOTS.map((s) => {
@@ -81,32 +81,37 @@ export class TitleScene {
       const tw = 0.55 + 0.45 * Math.sin(this.t * 2 + s.p * 9);
       scr.px(s.x, s.y, `rgba(200,220,255,${(s.s * tw).toFixed(2)})`);
     }
-    // horizon
-    scr.vgrad(0, 92, W, 60, '#1a1038', '#0a0a18');
-    for (let x = 0; x < W; x++) {
-      const hgt = 12 + Math.round(10 * Math.sin(x * 0.05) + 6 * Math.sin(x * 0.13 + 2));
-      scr.rect(x, 132 - hgt, 1, hgt + 20, '#12102a');
-    }
-    scr.rect(0, 152, W, H - 152, '#080810');
-
-    // a wyrm silhouette drifting behind the logo
-    const drift = Math.sin(this.t * 0.4) * 10;
-    const cv = monsterSprite({ plan: 'dragon', palette: ['#241c3a', '#2e2448', '#181230'], scale: 2 }, 0);
-    scr.ctx.globalAlpha = 0.8;
-    scr.ctx.drawImage(cv, Math.round(W / 2 - cv.width / 2 + drift), 62);
+    // The wyrm is drawn BEFORE the ridge so the hills cut it off at the waist:
+    // it reads as standing behind them rather than floating over the menu.
+    const drift = Math.round(Math.sin(this.t * 0.4) * 8);
+    const flap = Math.floor(this.t * 1.6) % 2;
+    const cv = monsterSprite({ plan: 'dragon', palette: ['#3c2f63', '#4e3f7c', '#281f47'], scale: 1.8 }, flap);
+    scr.ctx.globalAlpha = 0.85;
+    scr.ctx.drawImage(cv, Math.round(W / 2 - cv.width / 2 + drift), 92);
     scr.ctx.globalAlpha = 1;
+
+    // horizon and ridge
+    scr.vgrad(0, 150, W, 30, '#1a1038', '#0c0a1c');
+    for (let x = 0; x < W; x++) {
+      const hgt = 14 + Math.round(11 * Math.sin(x * 0.045) + 6 * Math.sin(x * 0.13 + 2));
+      scr.rect(x, 168 - hgt, 1, hgt + 8, '#151230');
+      scr.px(x, 168 - hgt, '#221d44');
+    }
+    scr.rect(0, 176, W, H - 176, '#080610');
+    for (let i = 0; i < 40; i++) scr.px((i * 83) % W, 178 + ((i * 31) % 44), '#0e0b1a');
 
     // logo
     const bob = Math.round(Math.sin(this.t * 1.4) * 1.5);
-    scr.textCenter('QUEST OF THE', W / 2, 26 + bob, PAL.textDim, { size: 10 });
-    scr.textCenter('THIRTEEN', W / 2, 38 + bob, PAL.gold, { size: 22, bold: true });
-    scr.rect(W / 2 - 66, 62 + bob, 132, 1, PAL.frame1);
-    scr.textCenter('a wheel of nine, and four beside it', W / 2, 66 + bob, PAL.textDim, { size: 8 });
+    scr.textCenter('QUEST OF THE', W / 2, 22 + bob, PAL.textDim, { size: 12 });
+    scr.textCenter('THIRTEEN', W / 2, 38 + bob, PAL.gold, { size: 22 });
+    scr.rect(W / 2 - 70, 66 + bob, 140, 1, PAL.frame1);
+    scr.textCenter('a wheel of nine, and four beside it', W / 2, 72 + bob, PAL.textDim);
 
     if (this.mode === 'main') {
-      scr.window(W / 2 - 56, 142, 112, 50);
+      scr.window(W / 2 - 58, 154, 116, 50);
+      this.menu.x = W / 2 - 36; this.menu.y = 161;
       this.menu.draw(scr);
-      scr.textCenter('Z / Enter — confirm    X / Esc — back', W / 2, H - 14, PAL.textDim);
+      scr.textCenter('Z confirm · X back', W / 2, H - 12, PAL.textDim);
     } else if (this.mode === 'slots') {
       scr.window(34, 84, 188, 96);
       scr.text('CONTINUE', 42, 90, PAL.gold);

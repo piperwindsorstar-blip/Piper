@@ -1,0 +1,58 @@
+<!doctype html><meta charset="utf-8"><title>sprite sheet</title>
+<style>body{margin:0;background:#1a1a28}canvas{image-rendering:pixelated;display:block;margin:0 auto}</style>
+<canvas id="c" width="720" height="620"></canvas>
+<script type="module">
+// Contact sheet of every generated sprite, for reviewing the art in one pass.
+import { monsterSprite, heroSprite, npcSprite, tileSprite, TILE_NAMES } from '../src/engine/sprites.js';
+import { ENEMIES } from '../src/data/enemies.js';
+import { ROOT_CLASSES } from '../src/data/classes.js';
+const c = document.getElementById('c').getContext('2d');
+c.imageSmoothingEnabled = false;
+c.fillStyle = '#1a1a28'; c.fillRect(0, 0, 720, 620);
+c.font = '9px monospace'; c.textBaseline = 'top';
+const label = (t, x, y) => { c.fillStyle = '#8fa'; c.fillText(t, x, y); };
+
+// one of each monster body plan
+const seen = new Set();
+let i = 0;
+for (const e of ENEMIES) {
+  if (seen.has(e.sprite.plan + e.family)) continue;
+  seen.add(e.sprite.plan + e.family);
+  const x = 10 + (i % 8) * 88, y = 14 + Math.floor(i / 8) * 82;
+  const cv = monsterSprite(e.sprite, 0);
+  c.drawImage(cv, x + 40 - cv.width / 2, y + 62 - cv.height);
+  label(e.name.slice(0, 13), x, y + 64);
+  i++;
+}
+// every root class
+const base = 14 + Math.ceil(i / 8) * 82;
+ROOT_CLASSES.forEach((cl, k) => {
+  const x = 10 + (k % 12) * 58, y = base + Math.floor(k / 12) * 62;
+  c.drawImage(heroSprite({ classId: cl.id, elementId: 'fire', skin: k % 4, hair: k % 6 }), x + 6, y);
+  label(cl.name.slice(0, 8), x, y + 34);
+});
+// tier-4 sprites, to check the promoted look
+const t4 = ['swordsaint', 'bastion', 'dragonfist', 'skylancer', 'ninja', 'deadeye',
+  'tempestdancer', 'sage', 'archmage', 'hierophant', 'espercaller', 'seer'];
+const b2 = base + 68;
+t4.forEach((id, k) => {
+  const x = 10 + (k % 12) * 58, y = b2 + Math.floor(k / 12) * 62;
+  c.drawImage(heroSprite({ classId: id, elementId: ['fire','earth','light','dark','wind','ice'][k % 6], skin: k % 4, hair: k % 6 }), x + 6, y);
+  label(id.slice(0, 9), x, y + 34);
+});
+// npcs
+const b3 = b2 + 68;
+['shop', 'inn', 'temple', 'guild', 'talk'].forEach((k, n) => {
+  const x = 10 + n * 58;
+  c.drawImage(npcSprite(k, n, 0), x + 8, b3);
+  label(k, x, b3 + 24);
+});
+// tiles
+const b4 = b3 + 42;
+TILE_NAMES.forEach((n, k) => {
+  const x = 10 + (k % 20) * 34, y = b4 + Math.floor(k / 20) * 42;
+  c.drawImage(tileSprite(n), x, y); c.drawImage(tileSprite(n), x + 16, y);
+  label(n.slice(0, 5), x, y + 18);
+});
+document.title = 'ready';
+</script>

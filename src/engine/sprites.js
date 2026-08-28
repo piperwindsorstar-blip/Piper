@@ -444,11 +444,34 @@ export function npcSprite(kind, variant = 0, frame = 0) {
 // ---------------------------------------------------------------------------
 //  MONSTER BODY PLANS
 // ---------------------------------------------------------------------------
+const MW = 44, MH = 36;   // base monster canvas: wide enough for a full wingspan
+
+/**
+ * Monsters are drawn once at 1:1 and then blown up with nearest-neighbour, so
+ * `scale` makes the creature bigger — not just its canvas. The outline is
+ * traced before the blit, which is why a boss gets the thick keyline a SNES
+ * boss has rather than a hairline lost at size.
+ */
 export function monsterSprite(sprite, frame = 0) {
-  const [c1, c2, c3] = sprite.palette;
   const sc = sprite.scale ?? 1;
-  const w = Math.round(32 * sc), h = Math.round(32 * sc);
-  const key = `mon|${sprite.plan}|${sprite.palette.join()}|${sc}|${frame}`;
+  const base = monsterBase(sprite, frame);
+  if (sc === 1) return base;
+  const key = `mon@${sc}|${sprite.plan}|${sprite.palette.join()}|${frame}`;
+  if (cache.has(key)) return cache.get(key);
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(MW * sc);
+  cv.height = Math.round(MH * sc);
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.drawImage(base, 0, 0, cv.width, cv.height);
+  cache.set(key, cv);
+  return cv;
+}
+
+function monsterBase(sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const w = MW, h = MH;
+  const key = `mon|${sprite.plan}|${sprite.palette.join()}|${frame}`;
   return make(key, w, h, (P) => {
     const ax = w / 2;
     const bob = frame === 1 ? 1 : 0;
@@ -457,7 +480,8 @@ export function monsterSprite(sprite, frame = 0) {
     switch (sprite.plan) {
       case 'blob': {
         P.ellipse(ax, H2 - 6 + bob, w * 0.42, h * 0.30, c1);
-        P.ellipse(ax, H2 - 9 + bob, w * 0.34, h * 0.22, c2);
+        P.ellipse(ax - w * 0.08, H2 - 9 + bob, w * 0.30, h * 0.20, c2);
+        P.ellipse(ax + w * 0.14, H2 - 5 + bob, w * 0.20, h * 0.16, shade(c1, -0.25));
         P.ellipse(ax, H2 - 3, w * 0.44, h * 0.10, c3);
         P.ellipse(ax - w * 0.12, H2 - 12 + bob, 2, 2, eye);
         P.ellipse(ax + w * 0.12, H2 - 12 + bob, 2, 2, eye);
@@ -468,7 +492,8 @@ export function monsterSprite(sprite, frame = 0) {
       }
       case 'quadruped': {
         P.rect(ax - w * 0.30, H2 - 14 + bob, w * 0.52, h * 0.28, c1);   // body
-        P.rect(ax - w * 0.30, H2 - 14 + bob, w * 0.52, 2, c2);
+        P.rect(ax - w * 0.30, H2 - 14 + bob, w * 0.52, 2, c2);          // lit spine
+        P.rect(ax - w * 0.30, H2 - 9, w * 0.52, 3, shade(c1, -0.28));   // belly shadow
         P.rect(ax - w * 0.30, H2 - 6, w * 0.52, 2, c3);
         for (const lx of [-0.26, -0.10, 0.10, 0.24]) {
           P.rect(ax + w * lx, H2 - 6, 3, 6, c3);
@@ -482,45 +507,91 @@ export function monsterSprite(sprite, frame = 0) {
         break;
       }
       case 'humanoid': {
-        P.rect(ax - 4, H2 - 30 + bob, 8, 8, c1);                        // head
-        P.rect(ax - 4, H2 - 30 + bob, 8, 2, c2);
-        P.rect(ax - 3, H2 - 26 + bob, 2, 2, eye); P.px(ax - 3, H2 - 26 + bob, pupil);
-        P.rect(ax + 1, H2 - 26 + bob, 2, 2, eye); P.px(ax + 2, H2 - 26 + bob, pupil);
-        P.rect(ax - 6, H2 - 22 + bob, 12, 12, c1);                      // torso
-        P.rect(ax - 6, H2 - 22 + bob, 12, 2, c2);
-        P.rect(ax + 2, H2 - 22 + bob, 4, 12, c3);
-        P.rect(ax - 9, H2 - 21 + bob, 3, 10, c3);                       // arms
-        P.rect(ax + 6, H2 - 21 + bob, 3, 10, c3);
-        P.rect(ax - 5, H2 - 10, 4, 9, c3);                              // legs
-        P.rect(ax + 1, H2 - 10, 4, 9, c3);
+        const dark = shade(c1, -0.32);
+        // legs
+        P.rect(ax - 5, H2 - 10, 4, 10, c3);
+        P.rect(ax + 1, H2 - 10, 4, 10, shade(c3, -0.25));
+        P.rect(ax - 6, H2 - 2, 5, 2, '#2a2028');
+        P.rect(ax + 1, H2 - 2, 5, 2, '#2a2028');
+        // torso, lit on the left
+        P.rect(ax - 6, H2 - 22 + bob, 12, 13, c1);
+        P.rect(ax - 6, H2 - 22 + bob, 3, 13, c2);
+        P.rect(ax + 3, H2 - 22 + bob, 3, 13, dark);
+        P.rect(ax - 6, H2 - 22 + bob, 12, 2, shade(c2, 0.15));          // shoulders
+        P.rect(ax - 6, H2 - 14 + bob, 12, 1, c3);                       // belt
+        // arms
+        P.rect(ax - 9, H2 - 21 + bob, 3, 11, dark);
+        P.rect(ax + 6, H2 - 21 + bob, 3, 11, c2);
+        // head
+        P.rect(ax - 4, H2 - 31 + bob, 8, 9, c1);
+        P.rect(ax - 4, H2 - 31 + bob, 3, 9, c2);
+        P.rect(ax + 2, H2 - 31 + bob, 2, 9, dark);
+        P.rect(ax - 4, H2 - 31 + bob, 8, 2, shade(c3, 0.1));            // brow
+        P.rect(ax - 3, H2 - 27 + bob, 2, 2, eye); P.px(ax - 3, H2 - 27 + bob, pupil);
+        P.rect(ax + 1, H2 - 27 + bob, 2, 2, eye); P.px(ax + 2, H2 - 27 + bob, pupil);
+        P.rect(ax - 2, H2 - 24 + bob, 4, 1, dark);                      // mouth
+        // a blade in the near hand
+        P.rect(ax + 8, H2 - 30 + bob, 2, 18, '#9aa2b6');
+        P.rect(ax + 8, H2 - 30 + bob, 1, 18, '#dfe4f0');
+        P.rect(ax + 6, H2 - 13 + bob, 6, 2, c3);
         break;
       }
       case 'flyer': {
-        const flap = frame === 1 ? 2 : 0;
-        P.ellipse(ax, H2 - 16 + bob, 5, 7, c1);                         // body
-        P.ellipse(ax, H2 - 19 + bob, 4, 4, c2);
-        for (const s of [-1, 1]) {                                      // wings
-          for (let i = 0; i < 10; i++) {
-            const yy = H2 - 20 + bob + Math.round(i * 0.5) - flap;
-            P.rect(ax + s * (5 + i), yy, 1, Math.max(1, 8 - i), s < 0 ? c3 : c1);
+        const flap = frame === 1 ? 3 : 0;
+        // Wings as a lens: widest through the middle rows, tapering at both the
+        // leading and trailing edge. A straight taper reads as a paper dart.
+        const WH = 9, WSPAN = 15;
+        for (const sgn of [-1, 1]) {
+          const back = sgn < 0;
+          const face = back ? shade(c3, -0.2) : c1;
+          const lit = back ? c3 : c2;
+          for (let r = 0; r < WH; r++) {
+            const t = (r - (WH - 1) / 2) / ((WH - 1) / 2);
+            const span = Math.round(WSPAN * Math.sqrt(Math.max(0, 1 - t * t)));
+            if (span <= 0) continue;
+            const yy = H2 - 21 + bob - flap + r;
+            const x0 = sgn < 0 ? ax - 4 - span : ax + 4;
+            P.rect(x0, yy, span, 1, face);
+            if (r < 3) P.rect(x0, yy, span, 1, lit);          // lit upper coverts
+          }
+          // feather separators along the trailing edge
+          for (let k = 0; k < 3; k++) {
+            const wx = ax + sgn * (7 + k * 4);
+            P.rect(wx, H2 - 16 + bob - flap + k, 1, 4, shade(face, -0.35));
           }
         }
-        P.px(ax - 2, H2 - 20 + bob, eye);
-        P.px(ax + 2, H2 - 20 + bob, eye);
-        P.ellipse(ax, H2 - 8, 3, 4, c3);                                // tail
+        P.ellipse(ax, H2 - 12 + bob, 5, 8, c1);                         // body
+        P.ellipse(ax - 1, H2 - 14 + bob, 3, 5, c2);
+        P.ellipse(ax + 2, H2 - 10 + bob, 2, 4, shade(c1, -0.3));
+        P.ellipse(ax, H2 - 21 + bob, 4, 4, c1);                         // head
+        P.ellipse(ax - 1, H2 - 22 + bob, 2, 2, c2);
+        P.rect(ax - 3, H2 - 22 + bob, 2, 2, eye); P.px(ax - 3, H2 - 22 + bob, pupil);
+        P.rect(ax + 1, H2 - 22 + bob, 2, 2, eye); P.px(ax + 2, H2 - 22 + bob, pupil);
+        P.rect(ax - 1, H2 - 18 + bob, 3, 2, shade(c3, 0.25));           // beak
+        for (let i = 0; i < 5; i++) P.rect(ax - 2 + (i % 2), H2 - 5 + i, 3, 1, c3);
         break;
       }
       case 'serpent': {
-        for (let i = 0; i < 16; i++) {
-          const yy = H2 - 2 - i * 1.6;
-          const xx = ax + Math.round(Math.sin(i * 0.55 + (frame === 1 ? 0.5 : 0)) * w * 0.22);
-          const rr = Math.max(2, 6 - i * 0.25);
-          P.ellipse(xx, yy, rr, rr * 0.6, i % 2 ? c1 : c2);
+        const ph = frame === 1 ? 0.5 : 0;
+        // a coiled body that tapers upward, each segment shaded on its right
+        for (let i = 0; i < 20; i++) {
+          const yy = H2 - 2 - i * 1.35;
+          const xx = ax + Math.round(Math.sin(i * 0.42 + ph) * w * 0.20);
+          const rr = Math.max(2.5, 7 - i * 0.2);
+          P.ellipse(xx, yy, rr, rr * 0.62, c1);
+          P.ellipse(xx - rr * 0.35, yy - 1, rr * 0.5, rr * 0.3, c2);
+          P.ellipse(xx + rr * 0.5, yy + 1, rr * 0.3, rr * 0.25, shade(c1, -0.3));
+          if (i % 3 === 0) P.px(xx, yy, c3);                            // scale row
         }
-        const hx = ax + Math.round(Math.sin(16 * 0.55) * w * 0.22);
-        P.ellipse(hx, H2 - 27, 5, 4, c1);
-        P.px(hx - 2, H2 - 28, eye); P.px(hx + 2, H2 - 28, eye);
-        P.rect(hx - 1, H2 - 24, 2, 2, c3);
+        const hx = ax + Math.round(Math.sin(20 * 0.42 + ph) * w * 0.20);
+        const hy = H2 - 30;
+        P.ellipse(hx, hy, 7, 5, c1);                                    // head
+        P.ellipse(hx - 2, hy - 1, 4, 3, c2);
+        P.rect(hx - 4, hy - 3, 2, 2, eye); P.px(hx - 4, hy - 3, pupil);
+        P.rect(hx + 2, hy - 3, 2, 2, eye); P.px(hx + 3, hy - 3, pupil);
+        P.rect(hx - 2, hy + 3, 5, 2, shade(c3, 0.15));                  // snout
+        P.rect(hx - 1, hy + 5, 3, 3, '#d84040');                        // tongue
+        P.mrect(hx, 4, hy - 7, 2, 4, c3);                               // horns
         break;
       }
       case 'construct': {
@@ -538,34 +609,67 @@ export function monsterSprite(sprite, frame = 0) {
         break;
       }
       case 'plant': {
-        P.rect(ax - 2, H2 - 18, 4, 18, c3);                             // stalk
-        for (let i = 0; i < 5; i++) {                                   // leaves
-          const s = i % 2 ? 1 : -1;
-          P.ellipse(ax + s * 7, H2 - 4 - i * 3, 6, 2, c1);
+        // thick stalk with a lit left edge
+        P.rect(ax - 3, H2 - 20, 6, 20, c3);
+        P.rect(ax - 3, H2 - 20, 2, 20, c1);
+        P.rect(ax + 2, H2 - 20, 1, 20, shade(c3, -0.3));
+        for (let i = 0; i < 4; i++) P.rect(ax - 3, H2 - 4 - i * 5, 6, 1, shade(c3, -0.35));
+        // two broad leaves, one lit and one in shadow
+        P.ellipse(ax - 9, H2 - 9, 7, 3, c1);
+        P.ellipse(ax - 9, H2 - 10, 6, 2, c2);
+        P.rect(ax - 15, H2 - 9, 12, 1, shade(c1, -0.3));
+        P.ellipse(ax + 9, H2 - 14, 6, 3, shade(c1, -0.2));
+        P.rect(ax + 4, H2 - 14, 11, 1, shade(c3, -0.2));
+        // the head: a bulb split into an upper and lower jaw
+        P.ellipse(ax, H2 - 24 + bob, 9, 8, c1);
+        P.ellipse(ax - 2, H2 - 26 + bob, 6, 5, c2);
+        P.ellipse(ax, H2 - 23 + bob, 6, 4, '#2a1220');                  // maw
+        for (let i = -4; i <= 4; i += 3) {                              // teeth
+          P.rect(ax + i, H2 - 26 + bob, 1, 2, '#f4f0e0');
+          P.rect(ax + i + 1, H2 - 21 + bob, 1, 2, '#f4f0e0');
         }
-        P.ellipse(ax, H2 - 22 + bob, 8, 7, c1);                         // bud
-        P.ellipse(ax, H2 - 23 + bob, 5, 4, c2);
-        P.ellipse(ax, H2 - 22 + bob, 3, 2, '#301828');                  // maw
-        for (let i = -3; i <= 3; i += 2) P.px(ax + i, H2 - 23 + bob, '#f8f8f0');
+        P.px(ax - 5, H2 - 29 + bob, eye); P.px(ax + 5, H2 - 29 + bob, eye);
         break;
       }
       case 'dragon': {
-        const flap = frame === 1 ? 2 : 0;
-        for (const s of [-1, 1]) {                                      // wings
-          for (let i = 0; i < 12; i++) {
-            P.rect(ax + s * (6 + i), H2 - 26 + bob + i - flap, 1, Math.max(1, 12 - i), c3);
+        const flap = frame === 1 ? 3 : 0;
+        const memb = shade(c3, -0.15), bone = c2;
+        // membraned wings: a leading bone edge with the membrane hanging below
+        for (const sgn of [-1, 1]) {
+          const back = sgn < 0;
+          const face = back ? shade(memb, -0.28) : memb;
+          const WH = 15, WSPAN = 17;
+          for (let r = 0; r < WH; r++) {
+            const t = (r - (WH - 1) / 2) / ((WH - 1) / 2);
+            const span = Math.round(WSPAN * Math.sqrt(Math.max(0, 1 - t * t)));
+            if (span <= 0) continue;
+            const yy = H2 - 32 + bob - flap + r;
+            const x0 = sgn < 0 ? ax - 5 - span : ax + 5;
+            P.rect(x0, yy, span, 1, face);
+            if (r < 2) P.rect(x0, yy, span, 1, back ? shade(bone, -0.2) : bone);
+          }
+          for (let k = 1; k <= 3; k++) {                                // wing fingers
+            const wx = ax + sgn * (5 + k * 5);
+            P.rect(wx, H2 - 30 + bob - flap + k * 2, 1, 13 - k * 3, shade(bone, -0.4));
           }
         }
-        P.ellipse(ax, H2 - 14 + bob, w * 0.22, h * 0.24, c1);           // body
-        P.ellipse(ax, H2 - 17 + bob, w * 0.16, h * 0.14, c2);
-        P.rect(ax - 3, H2 - 30 + bob, 6, 8, c1);                        // neck
-        P.ellipse(ax + 2, H2 - 30 + bob, 6, 4, c1);                     // head
-        P.rect(ax + 5, H2 - 30 + bob, 4, 3, c2);                        // snout
-        P.px(ax + 2, H2 - 31 + bob, eye);
-        P.rect(ax - 4, H2 - 34 + bob, 2, 4, c3);                        // horn
-        for (let i = 0; i < 6; i++) P.px(ax - 7 - i, H2 - 10 + i, c3);  // tail
-        P.rect(ax - 6, H2 - 4, 4, 4, c3);
-        P.rect(ax + 2, H2 - 4, 4, 4, c3);
+        // tail, sweeping back and to the left
+        for (let i = 0; i < 9; i++) {
+          P.ellipse(ax - 8 - i, H2 - 12 + i * 1.1, Math.max(1, 4 - i * 0.35), 2, c3);
+        }
+        P.ellipse(ax, H2 - 13 + bob, w * 0.20, h * 0.24, c1);           // body
+        P.ellipse(ax - 2, H2 - 16 + bob, w * 0.13, h * 0.14, c2);
+        P.rect(ax - 5, H2 - 6, 5, 6, c3);                               // legs
+        P.rect(ax + 1, H2 - 6, 5, 6, shade(c3, -0.2));
+        // neck and head
+        for (let i = 0; i < 9; i++) P.rect(ax - 3 + Math.round(i * 0.3), H2 - 22 - i + bob, 6, 1, c1);
+        P.ellipse(ax + 3, H2 - 32 + bob, 7, 5, c1);
+        P.ellipse(ax + 2, H2 - 33 + bob, 4, 3, c2);
+        P.rect(ax + 7, H2 - 32 + bob, 5, 3, shade(c1, -0.15));          // snout
+        P.rect(ax + 9, H2 - 31 + bob, 3, 1, c3);
+        P.rect(ax + 1, H2 - 34 + bob, 2, 2, eye); P.px(ax + 2, H2 - 34 + bob, pupil);
+        P.mrect(ax + 1, 3, H2 - 39 + bob, 2, 5, c3);                    // horns
+        for (let i = 0; i < 5; i++) P.px(ax - 4 + i, H2 - 26 + bob + i, c3);  // spine ridge
         break;
       }
       default:
@@ -622,32 +726,86 @@ const TILE_DRAW = {
   },
   tree: (P) => {
     TILE_DRAW.grass(P);
-    P.rect(7, 11, 3, 4, '#4a3218');
-    P.rect(7, 11, 1, 4, '#63421f');
-    // canopy: three overlapping lobes, lit from the upper left
-    P.ellipse(8, 8, 6, 5, '#1e4a1c');
-    P.ellipse(6, 6, 5, 4, '#2e6428');
-    P.ellipse(9, 6, 4, 4, '#2e6428');
-    P.ellipse(6, 5, 4, 3, '#428a36');
-    P.dither(3, 3, 10, 6, '#5aa845', 0.4);
-    P.ellipse(5, 4, 2, 1, '#7cc45e');
-    P.dither(4, 9, 9, 4, '#173a16', 0.45);
+    // The canopy nearly fills the tile so a block of trees reads as one wood
+    // rather than as separate lollipops with grass showing between them.
+    P.rect(7, 12, 3, 4, '#3d2a14');
+    P.rect(7, 12, 1, 4, '#5c3d1c');
+    P.ellipse(8, 8, 7, 7, '#17400f');            // outer mass
+    P.ellipse(8, 7, 6, 6, '#245c1c');
+    P.ellipse(6, 6, 5, 4, '#33792a');            // lit lobe, upper left
+    P.ellipse(9, 5, 4, 3, '#2c6c24');
+    P.ellipse(5, 4, 3, 2, '#469a38');
+    P.speck([[4, 3], [6, 2], [3, 6], [8, 3]], '#63b84f');
+    P.speck([[11, 10], [9, 12], [5, 11], [12, 7]], '#123409');
   },
   mountain: (P) => {
     TILE_DRAW.grass(P);
-    // a rock mass with a lit left face, a shadowed right face and a snow cap
-    P.tri(0, 1, 16, 15, '#6e6252');
-    P.tri(0, 1, 16, 15, '#8a7c66');
-    for (let i = 0; i < 15; i++) {
-      const t = i / 15, ww = Math.round(16 * (1 - t));
-      const x0 = Math.round((16 - ww) / 2);
-      P.rect(x0 + Math.ceil(ww / 2), 1 + i, Math.floor(ww / 2), 1, '#584e42');
-      P.rect(x0, 1 + i, Math.ceil(ww / 2), 1, '#8a7c66');
+    // A peak: narrow at the top, full width at the base, lit on the left face
+    // and in shadow on the right, with a snow cap and a dark keyline so a
+    // range of them reads as a ridge.
+    for (let y = 0; y < TS; y++) {
+      const half = Math.max(1, Math.round((y + 1) / 2));
+      const x0 = 8 - half, x1 = 8 + half;
+      P.rect(x0, y, half, 1, '#93856d');                 // lit face
+      P.rect(8, y, x1 - 8, 1, '#5d5346');                // shadowed face
+      P.px(x0, y, '#332d26');                            // keyline
+      P.px(x1 - 1, y, '#332d26');
+      if (y < 5) {                                       // snow cap
+        P.rect(x0 + 1, y, Math.max(1, half - 1), 1, '#e4e8f2');
+        P.rect(8, y, Math.max(1, half - 1), 1, '#b8c0d4');
+      }
     }
-    P.dither(2, 4, 12, 10, '#a2947c', 0.3);
-    P.tri(5, 1, 6, 4, '#e8ecf4');
-    P.px(8, 2, '#ffffff');
-    P.rect(0, 15, TS, 1, '#3e372e');
+    P.speck([[5, 9], [10, 11], [4, 13], [11, 14], [7, 12]], '#7b6f5c');
+    P.speck([[9, 8], [12, 13], [6, 14]], '#4a4238');
+    P.rect(0, 15, TS, 1, '#332d26');
+  },
+  // Continuation variants, chosen by the field renderer from a tile's
+  // neighbours, so a run of mountains reads as one ridge and a block of trees
+  // as one wood instead of as repeated single objects.
+  ridge: (P) => {
+    TILE_DRAW.grass(P);
+    // Two peaks per tile with the profile returning to the same height at both
+    // edges, so neighbouring ridge tiles join into one continuous skyline.
+    const prof = [5, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4];
+    for (let x = 0; x < TS; x++) {
+      const top = prof[x];
+      const lit = (x % 8) < 4;                       // each peak lit on its left
+      for (let y = top; y < TS; y++) P.px(x, y, lit ? '#93856d' : '#5d5346');
+      P.px(x, top, '#332d26');                       // silhouette keyline
+      if (top <= 2) P.rect(x, top + 1, 1, 2, lit ? '#e4e8f2' : '#b8c0d4');
+    }
+    P.speck([[3, 9], [10, 11], [6, 13], [13, 10], [8, 14], [1, 12]], '#7b6f5c');
+    P.speck([[5, 11], [12, 14], [9, 9]], '#4a4238');
+    P.rect(0, 15, TS, 1, '#332d26');
+  },
+  rock: (P) => {
+    // the interior of a mountain mass: no sky, just stone
+    P.rect(0, 0, TS, TS, '#6f6455');
+    P.speck([[1, 2], [5, 1], [9, 3], [13, 2], [3, 6], [7, 5], [11, 7], [15, 6],
+      [2, 10], [6, 9], [10, 11], [14, 10], [4, 14], [8, 13], [12, 15]], '#8a7d68');
+    P.speck([[3, 3], [11, 1], [7, 8], [1, 7], [13, 12], [5, 12], [9, 15], [15, 3]], '#544a3e');
+    // short broken fissures rather than long strokes, which would repeat into
+    // a visible diagonal across a whole mountain mass
+    P.speck([[4, 1], [4, 2], [5, 3], [11, 5], [11, 6], [2, 10], [3, 11],
+      [8, 2], [14, 8], [14, 9], [6, 15]], '#413a30');
+  },
+  forest: (P) => {
+    // full canopy, no trunk: the interior of a wood
+    P.rect(0, 0, TS, TS, '#1c4a14');
+    P.ellipse(4, 4, 5, 4, '#245c1c');
+    P.ellipse(12, 5, 5, 4, '#245c1c');
+    P.ellipse(8, 11, 6, 5, '#245c1c');
+    P.ellipse(3, 3, 3, 2, '#33792a');
+    P.ellipse(11, 4, 3, 2, '#33792a');
+    P.ellipse(7, 10, 4, 3, '#33792a');
+    P.speck([[2, 2], [10, 3], [6, 9], [13, 12], [4, 13]], '#469a38');
+    P.speck([[7, 6], [1, 9], [14, 8], [9, 14], [0, 5]], '#123409');
+  },
+  shore: (P) => {
+    // a pale wet-sand lip, drawn over the land side of a water edge
+    P.rect(0, 0, TS, 3, '#c9b283');
+    P.rect(0, 0, TS, 1, '#ddc79a');
+    P.speck([[2, 2], [7, 2], [12, 2], [4, 1], [10, 1]], '#b09a6e');
   },
   wall: (P) => {
     // dressed stone: staggered courses with a lit top edge on each block

@@ -90,19 +90,19 @@ export class PromotionScene {
 
     const cls = CLASSES[ch.classId];
     const el = ELEMENT_BY_ID[ch.elementId];
-    scr.window(6, 24, W - 12, 34);
+    scr.window(6, 24, W - 12, 32);
     const cv = heroSprite({ classId: ch.classId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair, frame: Math.floor(this.t * 3) % 2 });
-    scr.ctx.drawImage(cv, 10, 26);
+    scr.ctx.drawImage(cv, 10, 25);
     scr.text(ch.name, 40, 28, PAL.gold);
-    scr.text(`Lv${ch.level}  ${cls.name}`, 40, 38, PAL.text);
-    scr.rect(40, 49, 4, 5, el.color);
-    scr.text(el.name, 47, 48, el.color);
+    scr.text(`Lv${ch.level} ${cls.name}`, 40, 39, PAL.text);
+    scr.rect(112, 40, 4, 5, el.color);
+    scr.text(el.name, 119, 39, el.color);
     scr.textRight(`${TIER_NAME[cls.tier]} → ${TIER_NAME[this.promo.tier]}`, W - 12, 28, PAL.magenta);
-    scr.textRight(`+${PROMOTION_BONUS[this.promo.tier].hp} HP on promotion`, W - 12, 40, PAL.green);
+    scr.textRight(`+${PROMOTION_BONUS[this.promo.tier].hp} HP`, W - 12, 39, PAL.green);
 
     const opts = this.promo.choices;
     const colW = branching ? (W - 18) / 2 : W - 12;
-    const boxY = 62, boxH = 138;
+    const boxY = 60, boxH = 142;
     opts.forEach((opt, i) => {
       const x = 6 + i * (colW + 6);
       const sel = this.choice.index === i;
@@ -111,58 +111,55 @@ export class PromotionScene {
       this.drawOption(scr, ch, opt, x + 6, boxY + 6, colW - 12, sel);
     });
 
-    scr.window(6, 202, W - 12, 18);
-    scr.textCenter(branching ? 'Arrows choose  ·  Z accept  ·  X decide later'
-      : 'Z accept  ·  X decide later', W / 2, 207, PAL.textDim);
+    scr.window(6, 204, W - 12, 16);
+    scr.textCenter(branching ? 'Arrows choose · Z accept · X later'
+      : 'Z accept · X later', W / 2, 208, PAL.textDim);
   }
 
   drawOption(scr, ch, opt, x, y, w, sel) {
     scr.text(opt.name, x, y, sel ? PAL.white : PAL.text);
-    y += 10;
-    y += scr.textWrap(opt.blurb, x, y, w, PAL.textDim, { lineHeight: 8, maxLines: 2 }) * 8 + 2;
+    y += 11;
+    y += scr.textWrap(opt.blurb, x, y, w, PAL.textDim, { lineHeight: 9, maxLines: 3 }) * 9 + 3;
 
-    // growth comparison against the class they hold now
+    // Growth deltas against the class they hold now, in two columns of four.
+    // The number is the information; a bar next to it would only cost height.
     const cur = CLASSES[ch.classId];
     const keys = ['hp', 'mp', 'str', 'vit', 'agi', 'int', 'spr', 'lck'];
-    const maxG = Math.max(...keys.map((k) => Math.max(opt.growth[k], cur.growth[k])));
-    for (const k of keys) {
-      const now = cur.growth[k], nxt = opt.growth[k];
-      scr.text(k.toUpperCase(), x, y, PAL.textDim, { size: 8 });
-      scr.bar(x + 22, y + 1, w - 54, 5, nxt / maxG, nxt >= now ? PAL.cyan : PAL.grey);
-      const d = Math.round((nxt - now) * 10) / 10;
-      scr.textRight(d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1), x + w, y,
-        d > 0 ? PAL.green : d < 0 ? PAL.red : PAL.textDim, { size: 8 });
-      y += 7;
-    }
-    y += 3;
+    scr.text('GROWTH / LEVEL', x, y, PAL.gold); y += 10;
+    const half = Math.floor(w / 2);
+    keys.forEach((k, i) => {
+      const cx = x + (i % 2) * half;
+      const cy = y + Math.floor(i / 2) * 10;
+      const d = Math.round((opt.growth[k] - cur.growth[k]) * 10) / 10;
+      scr.text(k.toUpperCase(), cx, cy, PAL.textDim);
+      scr.textRight(d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1), cx + half - 6, cy,
+        d > 0 ? PAL.green : d < 0 ? PAL.red : PAL.textDim);
+    });
+    y += 43;
 
-    // schools gained and lost, one line each
+    // schools gained and lost
     const gained = opt.schools.filter((s) => !cur.schools.includes(s));
     const lost = cur.schools.filter((s) => !opt.schools.includes(s));
     scr.text('+', x, y, PAL.green);
-    scr.textWrap(gained.length ? gained.map((s) => SCHOOLS[s].name).join(', ') : 'nothing new',
-      x + 8, y, w - 8, gained.length ? PAL.green : PAL.textDim, { size: 8, lineHeight: 8, maxLines: 1 });
-    y += 9;
+    y += scr.textWrap(gained.length ? gained.map((s) => SCHOOLS[s].name).join(', ') : 'nothing new',
+      x + 8, y, w - 8, gained.length ? PAL.green : PAL.textDim, { lineHeight: 9, maxLines: 1 }) * 9;
     if (lost.length) {
       scr.text('-', x, y, PAL.red);
-      scr.textWrap(lost.map((s) => SCHOOLS[s].name).join(', '), x + 8, y, w - 8, PAL.red,
-        { size: 8, lineHeight: 8, maxLines: 1 });
-      y += 9;
+      y += scr.textWrap(lost.map((s) => SCHOOLS[s].name).join(', '), x + 8, y, w - 8, PAL.red,
+        { lineHeight: 9, maxLines: 1 }) * 9;
     }
-    y += 2;
+    y += 3;
 
     // where this branch leads
-    scr.rect(x, y, w, 1, PAL.frame2); y += 4;
     if (opt.promotions.length) {
       const next = opt.promotions.map((p) => CLASSES[p]);
       const names = next.length > 1
         ? next.map((n) => n.name).join(' / ')
         : `${next[0].name} → ${next[0].promotions.map((p) => CLASSES[p].name).join(' / ')}`;
-      scr.text('LEADS TO', x, y, PAL.gold, { size: 8 }); y += 9;
-      scr.textWrap(names, x, y, w, PAL.cyan, { lineHeight: 8, maxLines: 3, size: 8 });
+      scr.textWrap(names, x, y, w, PAL.cyan, { lineHeight: 9, maxLines: 3 });
     } else {
-      scr.textWrap('A MASTERY — the end of the ladder.', x, y, w, PAL.magenta,
-        { lineHeight: 8, maxLines: 2, size: 8 });
+      scr.textWrap('A MASTERY — the ladder ends here.', x, y, w, PAL.magenta,
+        { lineHeight: 9, maxLines: 2 });
     }
   }
 

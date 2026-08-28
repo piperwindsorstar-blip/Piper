@@ -327,7 +327,9 @@ export class FieldScene {
       for (let x = x0; x <= x1; x++) {
         const t = tileAt(m, x, y);
         if (!t) continue;
-        scr.ctx.drawImage(tileSprite(t.tile), x * TS - cam.x, y * TS - cam.y);
+        const px = x * TS - cam.x, py = y * TS - cam.y;
+        scr.ctx.drawImage(tileSprite(tileVariant(m, x, y, t.tile)), px, py);
+        if (t.water) drawShore(scr, m, x, y, px, py);
       }
     }
 
@@ -362,17 +364,6 @@ export class FieldScene {
       frame: this.moving ? (Math.floor(this.animT * 8) % 2) : 0,
     });
     scr.ctx.drawImage(cv, Math.round(px.x - cam.x - (cv.width - TS) / 2), Math.round(px.y - cam.y - (cv.height - TS) - 2));
-
-    // followers trailing the leader
-    this.g.party.slice(1).forEach((ch, i) => {
-      const off = (i + 1) * 6;
-      const fx = px.x - cam.x - (DIRS[this.g.facing][0] * off);
-      const fy = px.y - cam.y - (DIRS[this.g.facing][1] * off);
-      const fc = heroSprite({ classId: ch.classId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair, frame: 0 });
-      scr.ctx.globalAlpha = 0.55;
-      scr.ctx.drawImage(fc, Math.round(fx - (fc.width - TS) / 2), Math.round(fy - (fc.height - TS) - 2));
-      scr.ctx.globalAlpha = 1;
-    });
 
     this.drawHud(scr);
     if (this.banner > 0) this.drawBanner(scr);
@@ -421,6 +412,46 @@ export class FieldScene {
       this.choiceMenu.draw(scr);
     }
   }
+}
+
+const charAt = (m, x, y) => (m.tiles[y]?.[x]) ?? null;
+
+/**
+ * Pick a continuation variant from a tile's neighbours: a mountain flanked by
+ * mountains becomes ridge, a tree with a tree above it becomes closed canopy.
+ */
+function tileVariant(m, x, y, name) {
+  if (name === 'mountain') {
+    const up = charAt(m, x, y - 1) === '^';
+    const l = charAt(m, x - 1, y) === '^', r = charAt(m, x + 1, y) === '^';
+    if (up) return 'rock';                 // buried inside the mass: no skyline
+    return l && r ? 'ridge' : 'mountain';
+  }
+  if (name === 'tree') {
+    return charAt(m, x, y - 1) === 'T' ? 'forest' : 'tree';
+  }
+  return name;
+}
+
+/** Lay a sand lip along each edge of a water tile that meets land. */
+function drawShore(scr, m, x, y, px, py) {
+  const isWater = (dx, dy) => {
+    const t = tileAt(m, x + dx, y + dy);
+    return !t || t.water;
+  };
+  const c = scr.ctx;
+  const lip = tileSprite('shore');
+  const put = (rot) => {
+    c.save();
+    c.translate(px + TS / 2, py + TS / 2);
+    c.rotate(rot);
+    c.drawImage(lip, -TS / 2, -TS / 2);
+    c.restore();
+  };
+  if (!isWater(0, -1)) put(0);
+  if (!isWater(1, 0)) put(Math.PI / 2);
+  if (!isWater(0, 1)) put(Math.PI);
+  if (!isWater(-1, 0)) put(-Math.PI / 2);
 }
 
 function drawNpc(scr, x, y, npc, t) {
