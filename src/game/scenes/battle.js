@@ -9,26 +9,27 @@
 
 import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, hpColor } from '../../engine/ui.js';
-import { heroSprite, monsterSprite } from '../../engine/sprites.js';
+import { actorSprite, monsterSprite } from '../../engine/sprites.js';
+import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion } from '../character.js';
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 
-const CELL_W = 30, CELL_H = 29;
-const GRID_Y = 20;
-const ENEMY_X = 92, PARTY_X = 148;
-// Rows are staggered rather than square: each row further from the centre is
-// pushed outward, so three ranks in one column read as depth instead of as a
-// totem pole of overlapping sprites. FFVI lines its party up the same way.
-const ROW_SHIFT = [-7, 0, 7];
+// Two facing grids on a 480x270 stage. Rows are staggered rather than square:
+// each row further from the centre is pushed outward, so three ranks in one
+// column read as depth instead of a totem pole of overlapping sprites.
+const CELL_W = 48, CELL_H = 40;
+const GRID_Y = 26;
+const ENEMY_X = 176, PARTY_X = 268;
+const ROW_SHIFT = [-14, 0, 14];
 
-// bottom bar geometry — a command box on the left, the party roster on the
-// right, and a message/target strip above both
-const BAR_Y = 152, BAR_H = 68;
-const PANEL_X = 100;
-const MSG_Y = 112, MSG_H = 34;
+// bottom bar — a command box on the left, the party roster on the right, and
+// a message/target strip above both
+const BAR_Y = 194, BAR_H = 66;
+const PANEL_X = 168;
+const MSG_Y = 148, MSG_H = 40;
 
 const MSG_TIME = 0.85;
 
@@ -53,8 +54,9 @@ export class BattleScene {
     this.targetPool = [];
     this.moveCursor = { row: 1, col: 0 };
     this.flash = 0;
-    this.cmdMenu = new Menu({ items: [], x: 20, y: 158, cellW: 62, cellH: 12, rows: 3, columns: 2 });
-    this.listMenu = new Menu({ items: [], x: 20, y: 152, cellW: 108, cellH: 11, rows: 5 });
+    this.cmdMenu = new Menu({ items: [], x: 34, y: BAR_Y + 10, cellW: 66, cellH: 14, rows: 3, columns: 2 });
+    this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
+    this.fxp = new Particles(360);
     this.result = null;
     this.introT = 1.1;
     this.flushLog();
@@ -70,13 +72,20 @@ export class BattleScene {
       const u = this.battle.units().find((x) => x.uid === fx.uid);
       if (!u) continue;
       const p = this.unitPos(u);
+      const cx = p.x + CELL_W / 2 - 8, cy = p.y + CELL_H - 26;
+      const col = fx.type === 'heal' ? PAL.green : (fx.element && fx.element !== 'none'
+        ? ELEMENT_BY_ID[fx.element]?.color ?? PAL.white : PAL.white);
       this.popups.push({
-        x: p.x + 12, y: p.y, life: 0.9,
-        text: fx.type === 'heal' ? `+${fx.amount}` : `${fx.amount}`,
-        color: fx.type === 'heal' ? PAL.green : (fx.element && fx.element !== 'none'
-          ? ELEMENT_BY_ID[fx.element]?.color ?? PAL.white : PAL.white),
+        x: cx, y: cy, life: 1.0,
+        text: fx.type === 'heal' ? `+${fx.amount}` : `${fx.amount}`, color: col,
       });
-      if (fx.type === 'damage') { this.flash = 0.12; this.app.screen.addShake(3); }
+      if (fx.type === 'damage') {
+        this.flash = 0.14;
+        this.app.screen.addShake(4);
+        this.fxp.burst(cx, cy + 10, col, 14, 80);
+      } else {
+        this.fxp.rise(cx, cy + 12, col, 12, 12);
+      }
     }
     this.battle.fx.length = 0;
   }
@@ -93,10 +102,11 @@ export class BattleScene {
   // --- update --------------------------------------------------------------
   update(dt, input) {
     this.t += dt;
+    this.fxp.update(dt);
     this.flash = Math.max(0, this.flash - dt);
     this.cmdMenu.update(dt);
     this.listMenu.update(dt);
-    for (const p of this.popups) { p.life -= dt; p.y -= dt * 14; }
+    for (const p of this.popups) { p.life -= dt; p.y -= dt * 22; }
     this.popups = this.popups.filter((p) => p.life > 0);
 
     if (this.state === 'intro') {
@@ -341,8 +351,14 @@ export class BattleScene {
     const all = [...b.enemies, ...b.party].sort((a, z) => z.grid.col - a.grid.col);
     for (const u of all) this.drawUnit(scr, u);
 
+    this.fxp.draw(scr);
     for (const p of this.popups) {
-      scr.textCenter(p.text, p.x, p.y, p.color, { size: 8 });
+      const a = Math.min(1, p.life / 0.35);
+      scr.ctx.save();
+      scr.ctx.globalAlpha = a;
+      const big = p.text.length <= 4 ? 12 : 8;
+      scr.textCenter(p.text, p.x, p.y, p.color, { size: big });
+      scr.ctx.restore();
     }
 
     if (this.flash > 0) scr.fade(this.flash * 1.4, '#ffffff');
@@ -364,13 +380,17 @@ export class BattleScene {
   drawBackdrop(scr) {
     const region = this.battle.formation.region;
     const T = {
-      greenfield: { sky0: '#2e4a86', sky1: '#7b93b8', far: '#2c4a34', ground: '#4a7a3e', gdark: '#3a6232', speck: '#568c48' },
-      caverns:    { sky0: '#141020', sky1: '#2a2238', far: '#241c30', ground: '#5a5040', gdark: '#443c30', speck: '#6a5e4a' },
-      ruins:      { sky0: '#1c1030', sky1: '#432a52', far: '#2a1a38', ground: '#4e4860', gdark: '#3a3448', speck: '#5e5870' },
-      boss:       { sky0: '#180c22', sky1: '#3c1c38', far: '#25122c', ground: '#403050', gdark: '#2e2240', speck: '#4e3c60' },
-    }[region] ?? { sky0: '#141428', sky1: '#2a2a48', far: '#20203a', ground: '#4a4458', gdark: '#38344a', speck: '#5a5468' };
+      greenfield: { sky0: '#27406f', sky1: '#86a2c4', far: '#2c4a34', ground: '#4a7a3e', gdark: '#2f5029', speck: '#568c48', grade: '#a8d0ff' },
+      caverns:    { sky0: '#0e0c18', sky1: '#241d34', far: '#1d1628', ground: '#5a5040', gdark: '#332d24', speck: '#6a5e4a', grade: '#7f9ad8' },
+      ruins:      { sky0: '#150c26', sky1: '#3c2450', far: '#241531', ground: '#4e4860', gdark: '#2d2839', speck: '#5e5870', grade: '#b088ff' },
+      abyss:      { sky0: '#0a0616', sky1: '#241040', far: '#170a28', ground: '#3a2c52', gdark: '#211838', speck: '#4e3c72', grade: '#a86cff' },
+      boss:       { sky0: '#120818', sky1: '#3a1834', far: '#200f26', ground: '#403050', gdark: '#241a34', speck: '#4e3c60', grade: '#ff8ad0' },
+    }[region] ?? { sky0: '#101020', sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', speck: '#5a5468', grade: '#9ab0e0' };
+    scr.setGrade(T.grade, region === 'greenfield' ? 0.08 : 0.18);
+    scr.vignette = region === 'greenfield' ? 0.48 : 0.68;
+    scr.bloom = region === 'greenfield' ? 0.3 : 0.6;
 
-    const HORIZON = 44;   // above the front rank's feet, so the ranks stand on it
+    const HORIZON = 60;   // above the front rank's feet, so the ranks stand on it
     scr.clear(T.gdark);
     scr.vgrad(0, 0, W, HORIZON, T.sky0, T.sky1);
     if (region === 'caverns' || region === 'ruins' || region === 'boss') {
@@ -395,7 +415,10 @@ export class BattleScene {
     }
     // receding scanlines: tight at the horizon, open at the front
     let sy = HORIZON + 3, step = 2;
-    while (sy < H) { scr.rect(0, sy, W, 1, 'rgba(0,0,0,0.12)'); sy += step; step += 0.5; }
+    while (sy < H) { scr.rect(0, sy, W, 1, 'rgba(0,0,0,0.13)'); sy += step; step += 0.42; }
+    // depth haze along the horizon, and a key light from the upper left
+    scr.vgrad(0, HORIZON - 26, W, 34, 'rgba(0,0,0,0)', `${T.far}bb`);
+    scr.light(W * 0.22, HORIZON - 30, 190, 'rgba(150,185,255,0.16)', 0.55);
   }
 
   drawGrid(scr, side) {
@@ -405,15 +428,13 @@ export class BattleScene {
         const front = col === this.battle.frontColumn(side);
         // an oval of shadow marking the cell, brighter on the reachable
         // front rank so the reach rule is visible at a glance
-        const cx = x + (CELL_W - 6) / 2, cy = y + CELL_H - 4;
-        scr.ctx.save();
-        scr.ctx.globalAlpha = front ? 0.5 : 0.28;
-        scr.rect(cx - 9, cy, 18, 1, '#000000');
-        scr.rect(cx - 7, cy - 1, 14, 1, '#000000');
-        scr.rect(cx - 7, cy + 1, 14, 1, '#000000');
-        scr.ctx.restore();
+        const cx = x + CELL_W / 2 - 4, cy = y + CELL_H - 4;
+        scr.shade(cx, cy, 17, front ? 0.34 : 0.2);
         if (front) {
-          scr.rect(cx - 9, cy - 2, 18, 1, 'rgba(170,190,250,0.30)');
+          scr.ctx.save();
+          scr.ctx.globalAlpha = 0.30;
+          scr.rect(cx - 14, cy - 3, 28, 1, '#9db4f0');
+          scr.ctx.restore();
         }
         if (this.state === 'move' && side === this.actor?.side
           && this.moveCursor.row === row && this.moveCursor.col === col) {
@@ -440,62 +461,71 @@ export class BattleScene {
     if (dead) scr.ctx.globalAlpha = 0.25;
     else if (dim) scr.ctx.globalAlpha = 0.4;
 
+    const breathe = Math.round(Math.sin(this.t * 2.2 + p.x * 0.1) * 0.5);
     if (u.isPC) {
       const ch = u.ref;
       const hurtFrame = ch.hp / stats(ch).maxHp < 0.25 ? 2 : 0;
-      const cv = heroSprite({
-        classId: ch.classId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair,
-        frame: isActor ? 3 : hurtFrame,
+      const cv = actorSprite({
+        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+        skin: ch.skin, hair: ch.hair,
+        frame: isActor ? 3 : (hurtFrame || (breathe ? 1 : 0)),
       });
-      scr.ctx.drawImage(cv, p.x, p.y + CELL_H - cv.height);
+      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H - cv.height));
     } else {
       const cv = monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
-      scr.ctx.drawImage(cv, Math.round(p.x + 13 - cv.width / 2), Math.round(p.y + CELL_H + 2 - cv.height));
+      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H + 3 - cv.height));
     }
     scr.ctx.restore();
 
     if (isTarget) {
-      const bob = Math.round(Math.sin(this.t * 8) * 1.5);
-      scr.text('◀', p.x + CELL_W - 8, p.y + CELL_H - 22 + bob, PAL.gold);
-      scr.outline(p.x - 1, p.y + CELL_H - 8, CELL_W - 4, 7, PAL.gold);
+      const bob = Math.round(Math.sin(this.t * 8) * 2);
+      scr.light(p.x + CELL_W / 2 - 4, p.y + CELL_H - 6, 22, 'rgba(240,180,76,0.55)', 0.5);
+      scr.text('▼', p.x + CELL_W / 2 - 6, p.y - 6 + bob, PAL.accent);
     }
-    if (isActor) scr.outline(p.x - 1, p.y + CELL_H - 8, CELL_W - 4, 7, PAL.cyan);
+    if (isActor) scr.light(p.x + CELL_W / 2 - 4, p.y + CELL_H - 6, 22, 'rgba(92,210,240,0.55)', 0.45);
 
     // enemy HP pip and status icons
     if (!u.isPC && u.alive) {
       const s = u.stats();
       const showHp = this.g.hasJob('appraiser') || this.battle.revealed;
-      if (showHp) scr.bar(p.x, p.y + CELL_H + 2, 24, 3, u.hp / s.maxHp, PAL.red);
+      if (showHp) scr.bar(p.x + CELL_W / 2 - 18, p.y + CELL_H + 4, 36, 3, u.hp / s.maxHp, PAL.red);
     }
     const st = Object.keys(u.statuses).filter((k) => STATUS[k]);
     st.slice(0, 3).forEach((k, i) => {
-      scr.rect(p.x + i * 5, p.y + 10, 4, 4, STATUS[k].kind === 'bad' ? PAL.magenta : PAL.cyan);
+      scr.rect(p.x + CELL_W / 2 - 10 + i * 7, p.y + 2, 5, 5, STATUS[k].kind === 'bad' ? PAL.magenta : PAL.cyan);
     });
   }
 
-  /** The party roster, stacked on the right the way FFVI lists it. */
+  /** The party roster, on the right: one card per member. */
   drawStatusBar(scr) {
     const b = this.battle;
-    scr.window(PANEL_X, BAR_Y, W - PANEL_X - 4, BAR_H);
+    const px = PANEL_X, pw = W - PANEL_X - 12;
+    scr.panel(px, BAR_Y, pw, BAR_H);
+    const cardW = Math.floor((pw - 16) / b.party.length);
     b.party.forEach((u, i) => {
-      const y = BAR_Y + 5 + i * 15;
+      const x = px + 8 + i * cardW;
       const ch = u.ref;
       const s = u.stats();
       const active = this.actor?.uid === u.uid;
       const ratio = ch.hp / s.maxHp;
-      if (active) scr.rect(PANEL_X + 3, y - 2, W - PANEL_X - 10, 13, 'rgba(120,150,230,0.28)');
-      scr.text(ch.name.slice(0, 7), PANEL_X + 6, y, !u.alive ? PAL.grey : active ? PAL.gold : PAL.text);
-      scr.textRight(`${ch.hp}`, W - 44, y, hpColor(ratio));
-      scr.bar(W - 40, y + 1, 34, 5, ratio, hpColor(ratio));
-      scr.bar(W - 40, y + 7, 34, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-      scr.bar(W - 40, y + 10, 34, 2, ch.ip / 100, PAL.magenta);
+      const y = BAR_Y + 9;
+      if (active) {
+        scr.rect(x - 3, y - 4, cardW - 4, BAR_H - 12, 'rgba(120,155,235,0.16)');
+        scr.rect(x - 3, y - 4, 2, BAR_H - 12, PAL.accent);
+      }
+      scr.text(ch.name.slice(0, 9), x, y, !u.alive ? PAL.grey : active ? PAL.accent : PAL.text);
+      scr.text(`${ch.hp}`, x, y + 13, hpColor(ratio));
+      scr.text(`/${s.maxHp}`, x + scr.textWidth(`${ch.hp}`) + 2, y + 13, PAL.textFaint);
+      scr.bar(x, y + 25, cardW - 12, 4, ratio, hpColor(ratio));
+      scr.bar(x, y + 31, cardW - 12, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      scr.bar(x, y + 36, cardW - 12, 3, ch.ip / 100, PAL.magenta);
     });
   }
 
   /** A message strip above the bottom bar; used by every transient line. */
   msgBox(scr, text, color = PAL.text) {
-    scr.window(4, MSG_Y, W - 8, MSG_H);
-    scr.textWrap(text, 12, MSG_Y + 7, W - 24, color, { maxLines: 2, lineHeight: 11 });
+    scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
+    scr.textWrap(text, 24, MSG_Y + 11, W - 48, color, { maxLines: 2, lineHeight: 12 });
   }
 
   drawUi(scr) {
@@ -510,68 +540,84 @@ export class BattleScene {
       return;
     }
 
-    if (this.state === 'command') {
-      scr.window(4, BAR_Y, PANEL_X - 8, BAR_H);
-      this.cmdMenu.x = 20; this.cmdMenu.y = BAR_Y + 6;
-      this.cmdMenu.cellW = 40; this.cmdMenu.cellH = 10;
+    const cmdBox = (inactive) => {
+      scr.panel(12, BAR_Y, PANEL_X - 24, BAR_H, { accent: !inactive });
+      scr.text(this.actor?.name ?? '', 24, BAR_Y + 8, inactive ? PAL.textDim : PAL.accent);
+      scr.rect(24, BAR_Y + 18, PANEL_X - 48, 1, PAL.line);
+      this.cmdMenu.x = 34; this.cmdMenu.y = BAR_Y + 24;
+      this.cmdMenu.cellW = 62; this.cmdMenu.cellH = 13;
       this.cmdMenu.columns = 2; this.cmdMenu.rows = 3;
-      this.cmdMenu.draw(scr);
+      this.cmdMenu.draw(scr, { inactive });
+    };
+
+    if (this.state === 'command') {
+      cmdBox(false);
       const ch = this.actor.ref;
-      scr.text('IP', 12, BAR_Y + 44, PAL.magenta);
-      scr.bar(28, BAR_Y + 45, 54, 4, ch.ip / 100, PAL.magenta);
-      scr.text(`reach ${this.actor.stats().reach}   col ${ch.grid.col}`, 12, BAR_Y + 54, PAL.textDim);
+      const s = this.actor.stats();
+      scr.panel(12, MSG_Y, W - 24, MSG_H);
+      scr.text('IP', 24, MSG_Y + 10, PAL.magenta);
+      scr.bar(40, MSG_Y + 11, 90, 5, ch.ip / 100, PAL.magenta);
+      scr.text(`${Math.floor(ch.ip)}`, 136, MSG_Y + 10, PAL.textDim);
+      scr.text(`reach ${s.reach}`, 176, MSG_Y + 10, PAL.textDim);
+      scr.text(`column ${ch.grid.col}`, 244, MSG_Y + 10, PAL.textDim);
+      scr.text(`row ${ch.grid.row}`, 330, MSG_Y + 10, PAL.textDim);
+      scr.textRight('Z select  ·  X back', W - 24, MSG_Y + 10, PAL.textFaint);
+      scr.text(ELEMENT_BY_ID[ch.elementId].name, 24, MSG_Y + 24, ELEMENT_BY_ID[ch.elementId].color);
+      scr.text(`${ch.hp}/${s.maxHp} HP    ${ch.mp}/${s.maxMp} MP`, 100, MSG_Y + 24, PAL.textDim);
     } else if (this.state === 'skill' || this.state === 'item') {
-      // the list takes the left column; the party roster stays readable
-      scr.window(4, 92, PANEL_X + 20, 126);
-      scr.text(this.state === 'skill' ? 'ARTS' : 'ITEMS', 12, 96, PAL.gold);
-      scr.textRight(this.actor.name, PANEL_X + 16, 96, PAL.textDim);
-      this.listMenu.x = 22; this.listMenu.y = 110;
-      this.listMenu.cellW = PANEL_X - 4; this.listMenu.rows = 8; this.listMenu.cellH = 11;
+      scr.panel(12, 104, 208, 152, { accent: true });
+      scr.heading(this.state === 'skill' ? 'ARTS' : 'ITEMS', 26, 114, 180);
+      scr.textRight(this.actor.name, 208, 114, PAL.textDim);
+      this.listMenu.x = 36; this.listMenu.y = 132;
+      this.listMenu.cellW = 172; this.listMenu.rows = 8; this.listMenu.cellH = 14;
       this.listMenu.draw(scr);
       if (this.listMenu.length) {
-        scr.window(PANEL_X + 28, 92, W - PANEL_X - 32, 54);
-        const bx = PANEL_X + 34, bw = W - PANEL_X - 44;
+        scr.panel(228, 104, W - 240, 92, { accent: true });
+        const bx = 242, bw = W - 268;
         if (this.state === 'skill') {
           const k = getSkill(this.listMenu.current.id);
-          scr.text(k.name, bx, 96, PAL.gold);
-          scr.textWrap(k.blurb ?? '', bx, 108, bw, PAL.textDim, { lineHeight: 9, maxLines: 2 });
+          scr.text(k.name, bx, 114, PAL.accent);
+          scr.rect(bx, 124, bw, 1, PAL.line);
+          scr.textWrap(k.blurb ?? '', bx, 132, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
           const el = k.element === 'attuned' ? this.actor.ref.elementId : k.element;
-          scr.text(`reach ${k.range}  ${k.target}`, bx, 128, PAL.text);
-          if (el && el !== 'none') scr.text(ELEMENT_BY_ID[el].name, bx, 137, ELEMENT_BY_ID[el].color);
+          scr.text(`reach ${k.range}`, bx, 170, PAL.text);
+          scr.text(k.target, bx + 76, 170, PAL.text);
+          if (el && el !== 'none') scr.textRight(ELEMENT_BY_ID[el].name, bx + bw, 170, ELEMENT_BY_ID[el].color);
         } else {
           const it = getItem(this.listMenu.current.id);
-          scr.text(it.name, bx, 96, PAL.gold);
+          scr.text(it.name, bx, 114, PAL.accent);
+          scr.rect(bx, 124, bw, 1, PAL.line);
           const d = it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
             : it.cures ? `Cures ${it.cures.join(', ')}.` : it.damage ? `${it.damage} damage.` : '';
-          scr.textWrap(d, bx, 108, bw, PAL.textDim, { lineHeight: 9, maxLines: 3 });
+          scr.textWrap(d, bx, 132, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
         }
       }
     } else if (this.state === 'target') {
       const t = this.targetPool[this.targetIndex];
-      scr.window(4, MSG_Y, W - 8, MSG_H);
-      scr.text('Choose a target', 12, MSG_Y + 6, PAL.gold);
+      scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
+      scr.text('CHOOSE A TARGET', 24, MSG_Y + 9, PAL.accent);
       if (t) {
-        scr.text(this.battle.label(t), 12, MSG_Y + 19, PAL.text);
+        scr.text(this.battle.label(t), 24, MSG_Y + 24, PAL.text);
         if (t.element && t.element !== 'none') {
-          scr.text(ELEMENT_BY_ID[t.element].name, 108, MSG_Y + 19, ELEMENT_BY_ID[t.element].color);
+          scr.rect(152, MSG_Y + 25, 4, 6, ELEMENT_BY_ID[t.element].color);
+          scr.text(ELEMENT_BY_ID[t.element].name, 160, MSG_Y + 24, ELEMENT_BY_ID[t.element].color);
         }
         if (t.side !== this.actor.side) {
           const dist = this.battle.distance(this.actor, t);
           const reach = this.targetSpec.reach ?? this.targetSpec.range ?? 9;
           const ok = dist <= reach;
-          scr.textRight(ok ? `range ${dist}/${reach}` : `range ${dist}/${reach} — half damage`,
-            W - 12, MSG_Y + 19, ok ? PAL.green : PAL.red);
+          scr.textRight(ok ? `range ${dist} / reach ${reach}`
+            : `range ${dist} / reach ${reach} — half damage`,
+            W - 24, MSG_Y + 24, ok ? PAL.green : PAL.red);
         }
       }
-      // keep the command box drawn so the layout does not jump
-      scr.window(4, BAR_Y, PANEL_X - 8, BAR_H);
-      this.cmdMenu.draw(scr, { inactive: true });
+      cmdBox(true);
     } else if (this.state === 'move') {
-      scr.window(4, MSG_Y, W - 8, MSG_H);
-      scr.text('Reposition — column 0 reaches, and is reached.', 12, MSG_Y + 6, PAL.gold);
-      scr.text(`row ${this.moveCursor.row}   column ${this.moveCursor.col}`, 12, MSG_Y + 19, PAL.text);
-      scr.window(4, BAR_Y, PANEL_X - 8, BAR_H);
-      this.cmdMenu.draw(scr, { inactive: true });
+      scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
+      scr.text('REPOSITION', 24, MSG_Y + 9, PAL.accent);
+      scr.text('Column 0 is the front rank: it reaches, and it is reached.', 24, MSG_Y + 24, PAL.textDim);
+      scr.textRight(`row ${this.moveCursor.row}   column ${this.moveCursor.col}`, W - 24, MSG_Y + 24, PAL.text);
+      cmdBox(true);
     }
   }
 }

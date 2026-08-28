@@ -4,7 +4,8 @@
 
 import { PAL, W, H } from '../../engine/screen.js';
 import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
-import { tileSprite, heroSprite, npcSprite, TS } from '../../engine/sprites.js';
+import { tileSprite, actorSprite, npcSprite, TS } from '../../engine/sprites.js';
+import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS,
 } from '../../data/maps.js';
@@ -23,6 +24,8 @@ export class FieldScene {
   enter(opts = {}) {
     this.g = this.app.game;
     this.dlg = new Dialogue();
+    this.fxp = new Particles(220);
+    this.ambientT = 0;
     this.moving = null;
     this.stepT = 0;
     this.animT = 0;
@@ -39,9 +42,34 @@ export class FieldScene {
 
   get map() { return this.g.map; }
 
+  /** Look for the current map, driving grade, lights and ambient particles. */
+  get look() {
+    const m = this.map;
+    if (m.town) return { grade: '#ffb46a', amount: 0.09, vignette: 0.40, motes: '#ffd9a0', warm: true };
+    if (m.outdoor) return { grade: '#9ecdff', amount: 0.07, vignette: 0.36, motes: '#dff2ff' };
+    if (m.encounter === 'abyss') return { grade: '#a06cff', amount: 0.22, vignette: 0.74, motes: '#c8a0ff', dark: true };
+    return { grade: '#5a7cc0', amount: 0.17, vignette: 0.68, motes: '#9ab4e0', dark: true };
+  }
+
+  spawnAmbient(dt) {
+    this.ambientT += dt;
+    const rate = this.map.outdoor ? 0.10 : 0.16;
+    while (this.ambientT > rate) {
+      this.ambientT -= rate;
+      const look = this.look;
+      this.fxp.spawn({
+        x: Math.random() * W, y: H * 0.15 + Math.random() * H * 0.8,
+        vx: (Math.random() - 0.4) * 7, vy: -3 - Math.random() * 7,
+        life: 2.4 + Math.random() * 2.4, color: look.motes, glow: true, size: 1,
+      });
+    }
+  }
+
   // --- update --------------------------------------------------------------
   update(dt, input) {
     this.animT += dt;
+    this.fxp.update(dt);
+    this.spawnAmbient(dt);
     this.banner = Math.max(0, this.banner - dt);
     this.g.playtime += dt;
     this.dlg.update(dt);
@@ -64,6 +92,9 @@ export class FieldScene {
     if (this.moving) {
       this.stepT += dt;
       if (this.stepT >= STEP_TIME) {
+        const cam = this.camera();
+        this.fxp.dust(this.g.x * TS + TS / 2 - cam.x, this.g.y * TS + TS - 2 - cam.y,
+          this.map.outdoor ? '#6a8a58' : '#7a7284', 3);
         this.g.x = this.moving.tx;
         this.g.y = this.moving.ty;
         this.moving = null;
@@ -240,7 +271,7 @@ export class FieldScene {
   updateChoice(input) {
     if (!this.choiceMenu) {
       this.choiceMenu = new Menu({
-        items: this.choice.options, x: 22, y: 0, cellW: 200, cellH: 12,
+        items: this.choice.options, x: 44, y: 0, cellW: W - 100, cellH: 14,
         rows: this.choice.options.length,
       });
     }
@@ -315,7 +346,11 @@ export class FieldScene {
 
   draw(scr) {
     const m = this.map;
-    scr.clear(m.bg ?? '#101018');
+    const look = this.look;
+    scr.setGrade(look.grade, look.amount);
+    scr.vignette = look.vignette;
+    scr.bloom = look.dark ? 0.62 : 0.22;
+    scr.clear(m.bg ?? '#0b0e18');
     const cam = this.camera();
     const { w, h } = mapSize(m);
 
@@ -353,18 +388,36 @@ export class FieldScene {
       if (!b || this.g.flag(`boss.${b.flag}`)) continue;
       const px = b.x * TS - cam.x, py = b.y * TS - cam.y;
       const pulse = 0.5 + 0.5 * Math.sin(this.animT * 3);
-      scr.rect(px + 3, py + 3, 10, 10, `rgba(200,40,60,${(0.35 + pulse * 0.4).toFixed(2)})`);
-      scr.outline(px + 2, py + 2, 12, 12, PAL.red);
+      scr.light(px + TS / 2, py + TS / 2, 18 + pulse * 6, 'rgba(255,70,90,0.6)', 0.35 + pulse * 0.25);
+      scr.outline(px + 5, py + 5, TS - 10, TS - 10, PAL.red);
     }
 
     // player
     const px = this.playerPixel();
-    const cv = heroSprite({
+    const cv = actorSprite({
       classId: this.g.leader.classId, elementId: this.g.leader.elementId,
       skin: this.g.leader.skin, hair: this.g.leader.hair,
       frame: this.moving ? (Math.floor(this.animT * 8) % 2) : 0,
     });
-    scr.ctx.drawImage(cv, Math.round(px.x - cam.x - (cv.width - TS) / 2), Math.round(px.y - cam.y - (cv.height - TS) - 2));
+    scr.ctx.drawImage(cv, Math.round(px.x - cam.x - (cv.width - TS) / 2), Math.round(px.y - cam.y - (cv.height - TS) - 4));
+
+    // lighting: a warm pool on the player, torches in the dark, ambient motes
+    const lx = Math.round(px.x - cam.x + TS / 2), ly = Math.round(px.y - cam.y + TS / 2);
+    if (look.dark) {
+      scr.ctx.save();
+      scr.ctx.globalCompositeOperation = 'multiply';
+      const g = scr.ctx.createRadialGradient(lx, ly, 20, lx, ly, 150);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(1, look.dark ? '#404058' : '#8890a8');
+      scr.ctx.fillStyle = g;
+      scr.ctx.fillRect(0, 0, W, H);
+      scr.ctx.restore();
+      const flick = 0.42 + Math.sin(this.animT * 9) * 0.05 + Math.sin(this.animT * 21) * 0.03;
+      scr.light(lx, ly, 74, 'rgba(255,190,110,0.55)', flick);
+    } else if (look.warm) {
+      scr.light(lx, ly - 6, 46, 'rgba(255,214,150,0.30)', 0.35);
+    }
+    this.fxp.draw(scr);
 
     this.drawHud(scr);
     if (this.banner > 0) this.drawBanner(scr);
@@ -376,40 +429,45 @@ export class FieldScene {
   drawHud(scr) {
     const g = this.g;
     const rows = g.party.length;
-    const hh = 10 + rows * 13;
-    scr.window(W - 88, 4, 84, hh, { alpha: 0.92 });
+    const pw = 116, ph = 12 + rows * 17;
+    scr.panel(W - pw - 8, 8, pw, ph, { alpha: 0.94 });
     g.party.forEach((ch, i) => {
-      const y = 9 + i * 13;
+      const y = 16 + i * 17;
       const s = stats(ch);
       const ratio = ch.hp / s.maxHp;
-      scr.text(ch.name.slice(0, 7), W - 82, y, ch.hp > 0 ? PAL.text : PAL.grey, { size: 8 });
-      scr.bar(W - 40, y + 1, 32, 5, ratio, hpColor(ratio));
-      scr.bar(W - 40, y + 7, 32, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      scr.text(ch.name.slice(0, 8), W - pw, y, ch.hp > 0 ? PAL.text : PAL.grey);
+      scr.textRight(`${ch.hp}`, W - 16, y, hpColor(ratio));
+      scr.bar(W - pw, y + 10, pw - 24, 3, ratio, hpColor(ratio));
+      scr.bar(W - pw, y + 14, pw - 24, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
     });
-    scr.window(4, H - 22, 92, 18, { alpha: 0.92 });
-    scr.text(`${g.gold}G`, 10, H - 17, PAL.gold);
-    scr.textRight(`Lv${g.leader.level}`, 92, H - 17, PAL.text);
+    scr.panel(8, H - 30, 118, 22, { alpha: 0.94 });
+    scr.text('G', 18, H - 23, PAL.accentDim);
+    scr.text(`${g.gold}`, 28, H - 23, PAL.accent);
+    scr.textRight(`Lv ${g.leader.level}`, 118, H - 23, PAL.text);
   }
 
   drawBanner(scr) {
     const a = Math.min(1, this.banner / 0.5);
-    scr.ctx.globalAlpha = a;
     const name = this.map.name;
-    const w = Math.max(90, name.length * 6 + 24);
-    scr.window(W / 2 - w / 2, 8, w, 20);
-    scr.textCenter(name, W / 2, 14, PAL.gold);
-    scr.ctx.globalAlpha = 1;
+    const w = Math.max(140, scr.textWidth(name) + 56);
+    scr.ctx.save();
+    scr.ctx.globalAlpha = a;
+    scr.panel(W / 2 - w / 2, 12, w, 26, { accent: true, accentWidth: 20 });
+    scr.textCenter(name, W / 2, 22, PAL.text);
+    scr.rect(W / 2 - w / 2 + 10, 32, w - 20, 1, 'rgba(240,180,76,0.30)');
+    scr.ctx.restore();
   }
 
   drawChoice(scr) {
     const opts = this.choice.options;
-    const h = 22 + opts.length * 12;
-    const y = H - h - 6;
-    scr.window(6, y - 30, W - 12, 30);
-    scr.textWrap(this.choice.title, 14, y - 23, W - 28, PAL.text, { maxLines: 2, lineHeight: 10 });
-    scr.window(6, y, W - 12, h);
+    const h = 20 + opts.length * 14;
+    const y = H - h - 12;
+    scr.panel(24, y - 40, W - 48, 36, { accent: true, accentWidth: 24 });
+    scr.textWrap(this.choice.title, 36, y - 31, W - 72, PAL.text, { maxLines: 2, lineHeight: 11 });
+    scr.panel(24, y, W - 48, h);
     if (this.choiceMenu) {
-      this.choiceMenu.x = 24; this.choiceMenu.y = y + 8;
+      this.choiceMenu.x = 44; this.choiceMenu.y = y + 10;
+      this.choiceMenu.cellW = W - 100; this.choiceMenu.cellH = 14;
       this.choiceMenu.draw(scr);
     }
   }

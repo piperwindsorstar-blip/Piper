@@ -2,37 +2,113 @@
 
 Reasoning behind the numbers, and the places where a rule was bent to make the
 game work. The reference material is Dragon Quest III (progression), Lufia: The
-Legend Returns (combat), and Final Fantasy VI (presentation).
+Legend Returns (combat), and the modern HD-2D presentation idiom — pixel art
+lit, bloomed and graded as if it were a diorama.
 
 ---
 
-## 1. The class ladder
+## 1. Races
+
+### Why race is the choice that touches everything
+
+Classes are chosen once and then re-chosen seven times; elements are a single
+permanent tag; jobs drift with play. Race is the only decision that is made once
+and then quietly present in every system for eighty levels, so it is the one
+worth wiring through all of them:
+
+| Layer | What race contributes |
+| --- | --- |
+| Stats | a flat `mod` at creation |
+| Levelling | a per-stat **growth multiplier**, applied at every level-up |
+| Defence | an elemental `resist` table, folded into the same multiplier as element affinity |
+| Rules | two traits with real mechanical hooks |
+| Jobs | `likes` — three elements that earn 20% faster job EXP |
+| Art | `look`: ears, muzzle, tail, wings, horns, build, palettes |
+
+The growth multiplier is the important one. A flat modifier is a rounding error
+by level 40; a multiplier on growth compounds. An Elf at 1.30× MP growth and
+0.86× HP growth is a visibly different character from a Dwarf at 0.86 and 1.22
+by the time both are Mythic, without either of them having a separate stat table.
+
+### Traits are rules, not adjectives
+
+Each race carries exactly two, and each is something the engine actually reads:
+Fairy Flight adds 18% evasion **and one column of reach**, which changes what a
+Fairy can hit on the battle grid. Automaton Clockwork grants immunity to five
+statuses, and its No Repair halves potions — a real cost that pushes the player
+toward an Artificer. Revenant Deathless survives a killing blow once per battle.
+Ogrekin trade in both directions: Giant's Frame adds 15% physical damage and
+stops two-handed weapons slowing them, while Thick Skull buys immunity to
+Confusion and Fear at the price of 10% more magic damage taken.
+
+The validator asserts that every race has both traits, a complete eight-stat
+growth table, and a `look` the sprite generator can consume.
+
+### Drawing twelve races from one figure
+
+The character sprite is assembled, not stored: base body at the race's `build`
+scale, then class kit (helm, body, cape, weapon), then race anatomy on top. The
+ordering is deliberate and was arrived at by getting it wrong first — with
+anatomy drawn before the kit, helmets swallowed elf ears and capes hid every
+tail, and all twelve races rendered as Humans in hats. Tails now sweep down and
+back rather than curling up into the cape, and ears, horns and muzzles are drawn
+after the headgear.
+
+---
+
+## 2. The class ladder
 
 ### Shape
 
-The brief is "promotion every 5 levels, with a branching promotion every 10".
-Read literally that gives branch points at 10, 20, 30, 40 … and a tree that
-doubles forever: by level 40 a single root would own 32 distinct capstones and
-the game would need 12 × 62 = 744 named classes nobody would ever see.
+The brief is "promotion every 5 levels, with branching promotions at 10, 20 and
+again at 40, 60 and 80". Read literally as a tree, that doubles forever: five
+branch points give 32 distinct capstones per root and 384 named classes per root
+that nobody would ever see, most of them unreachable in one playthrough.
 
-So the ladder **caps at level 20**, four promotions deep:
+The fix is to stop treating the late game as a tree. The first four promotions
+stay a tree; the last three are a **ring**.
 
-| Level | Tier | Kind | Nodes per root |
-| --- | --- | --- | --- |
-| 1 | 0 | start | 1 |
-| 5 | 1 | linear | 1 |
-| 10 | 2 | **branch** | 2 |
-| 15 | 3 | linear | 2 |
-| 20 | 4 | **branch** | 4 |
+| Level | Tier | Name | Kind | Nodes per root |
+| --- | --- | --- | --- | --- |
+| 1 | 0 | Novice | start | 1 |
+| 5 | 1 | Adept | linear | 1 |
+| 10 | 2 | Veteran | **branch** | 2 |
+| 15 | 3 | Elite | linear | 2 |
+| 20 | 4 | Master | **branch** | 4 |
+| 40 | 5 | Ascendant | **branch (ring)** | 4 |
+| 60 | 6 | Exalted | **branch (ring)** | 4 |
+| 80 | 7 | Mythic | **branch (ring)** | 4 |
 
-Ten nodes per root, 120 in total, four distinct masteries per class. Both branch
-points survive, every node is reachable, and every name is one a player can
-actually arrive at. Past level 20 a character keeps their mastery and continues
-growing through levels, job ranks and equipment.
+Twenty-two nodes per root, **264 in total**.
+
+### The ring
+
+Each root owns four Ascension *paths*, each of which has a name at all three
+ring tiers. Node *i* of a tier is offered by predecessors *i* and *i−1*:
+
+```
+Master 0 ──┬── Ascendant 0 ──┬── Exalted 0 ──┬── Mythic 0
+Master 1 ──┴─┬─ Ascendant 1 ─┴─┬─ Exalted 1 ─┴─┬─ Mythic 1
+Master 2 ────┴─ Ascendant 2 ───┴─ Exalted 2 ───┴─ Mythic 2
+Master 3 ──────┴ Ascendant 3 ────┴ Exalted 3 ────┴ Mythic 3
+        (and slot 3 wraps back to slot 0)
+```
+
+Every promotion is still a genuine choice between two named successors, every
+node is reachable from exactly two predecessors, and the total stays at four per
+tier instead of 4 → 8 → 16 → 32. The player gets branching; the content budget
+gets a constant. `npm test` asserts the ring shape directly: four nodes per tier
+per root, each with in-degree exactly 2, and every root reaching tier 7 by level
+80 whichever branch preference the simulated character follows.
+
+Because a ring node has two possible predecessors, a character's class *lineage*
+cannot be recomputed from their current class alone. `promotionPath()` walks the
+character's stored `classHistory` and only falls back to a derived lineage when
+no history exists.
 
 ### Why nodes carry a bias, not a stat table
 
-120 hand-written stat tables would drift: someone would eventually make a
+264 hand-written stat tables would drift: someone would eventually make a
 Berserker tankier than a Knight without noticing. Instead each root owns a
 growth *profile* (per-level gains for eight stats) and each node owns a *bias*
 multiplying it, scaled by a per-tier factor:
@@ -41,10 +117,18 @@ multiplying it, scaled by a per-tier factor:
 growth[stat] = PROFILE[root][stat] × TIER_FACTOR[tier] × bias[stat]
 ```
 
-`TIER_FACTOR` is `[1.00, 1.22, 1.48, 1.78, 2.12]`. A Berserker's bias is
-`{str: 1.3, hp: 1.1, vit: 0.8, spr: 0.7}` — it *cannot* accidentally out-defend
-its Knight sibling, because both are derived from the same Warrior profile.
-`npm test` asserts that every promotion is a net growth increase.
+`TIER_FACTOR` is `[1.00, 1.22, 1.48, 1.78, 2.12, 2.58, 3.10, 3.72]`. A
+Berserker's bias is `{str: 1.3, hp: 1.1, vit: 0.8, spr: 0.7}` — it *cannot*
+accidentally out-defend its Knight sibling, because both are derived from the
+same Warrior profile. `npm test` asserts that every promotion is a net growth
+increase.
+
+A finished character's stat is therefore the sum of six independent sources:
+
+```
+BASE + GROWTH(class bias × tier factor × race multiplier) + RACE mod
+     + ELEMENT bias + JOB bonus + EQUIPMENT
+```
 
 ### Growth accumulates as it is earned
 
@@ -54,21 +138,21 @@ schedule, which gives the temple visit real weight instead of making it a
 formality. There is a regression test for exactly this: a Warrior promoted at 5
 and levelled to 10 must end stronger than one who sat at Warrior to 10.
 
-Promotions also pay a one-time flat bonus (tier 4 is +120 HP, +48 MP, +9 to each
-main stat) and fully restore HP/MP, the way a Dragon Quest class change does.
+Promotions also pay a one-time flat bonus and fully restore HP/MP, the way a
+Dragon Quest class change does.
 
 ### Skills come from schools, not from nodes
 
 A node grants *schools*; a character knows every skill in their current schools
-whose learn level is at or below their level. This means 120 nodes cost 120 short
-school lists rather than 120 skill tables, and it makes the branch choice
+whose learn level is at or below their level. This means 264 nodes cost 264 short
+school lists rather than 264 skill tables, and it makes the branch choice
 legible: the promotion screen shows exactly which schools each option gains and
 which it loses. A Berserker really does forget how to hold a shield, because
-Bulwark Arts is not on its list.
+Bulwark Arts is not on its list. 25 schools cover all 264 nodes.
 
 ---
 
-## 2. The element wheel
+## 3. The element wheel
 
 ### Why nine and four rather than thirteen
 
@@ -112,10 +196,11 @@ trap. Each gives:
   grid reposition each battle
 - the element of `attuned` spells, so a Mage's whole offensive kit is coloured by
   the choice made at creation
+- a job-EXP bonus when it is one of the three elements the character's race likes
 
 ---
 
-## 3. Jobs
+## 4. Jobs
 
 Jobs answer a different question from classes. A class is a combat archetype; a
 job is a trade, and it pays in exploration, economy and utility.
@@ -133,15 +218,15 @@ Three payouts per job, always:
 Job rank rises with job *actions*, not with level, at thresholds
 `0 / 40 / 120 / 280 / 600`. Rank 1 gives the listed bonus; each further rank adds
 60% of it, so rank 5 is about 3.4×. A character whose element is one the job
-favours earns job EXP 25% faster — the one place the three systems are wired
-directly into each other.
+favours — or one their race favours — earns job EXP faster. That is the one place
+all four systems are wired directly into each other.
 
 This keeps jobs from being a second, redundant level-up track: a level 30
 character who never sold anything is still an Apprentice Merchant.
 
 ---
 
-## 4. Combat on two 3×3 grids
+## 5. Combat on two 3×3 grids
 
 ### Reach is the whole system
 
@@ -156,7 +241,7 @@ effCol(attacker) + effCol(target) + 1
 The "living" part is what makes it dynamic: killing the enemy front rank pulls
 the rank behind it into reach for everyone. Reach values are deliberately coarse
 so a player can reason about them without arithmetic — melee 2, polearm 3,
-ranged and magic 9.
+ranged and magic 9. A Fairy's Flight adds one to all of them.
 
 A skill out of range is not selectable. A *basic attack* out of range still
 lands, at half power, so a melee character is never left with literally nothing
@@ -177,15 +262,34 @@ starts everyone with bonus IP.
 ### Damage
 
 ```
-raw    = (power or magic) × skillPower × statusModifiers
-mitig  = 120 / (120 + armor)                    armor reduced by pierce
+raw    = (power or magic) × skillPower × spread × statusModifiers
+mitig  = K / (K + armor)          K = 110 + 13 × attackerLevel
 final  = raw × mitig × elementMult × reachPenalty × variance(0.92–1.08)
 ```
 
-Element multipliers are 1.5 / 1.0 / 0.5. Criticals are ×1.8. The `120 /
-(120 + armor)` curve is asymptotic rather than subtractive so defence never
-reaches immunity and low-level enemies stay relevant slightly longer than they
-would under flat reduction.
+Element multipliers are 1.5 / 1.0 / 0.5. Criticals are ×1.8. The `K / (K + armor)`
+curve is asymptotic rather than subtractive so defence never reaches immunity and
+low-level enemies stay relevant slightly longer than they would under flat
+reduction.
+
+Two of those terms were added when the ladder was extended to level 80, because
+extending the level cap broke both of them:
+
+**Level-scaled softening.** The original constant was a flat `120`. That is fine
+while armour values are two digits, but endgame armour approaches and then
+passes it, so mitigation asymptotes toward total immunity and every late fight
+becomes a stalemate — the final boss ran 237 turns and neither side could close.
+Making `K` grow with the attacker's level (`110 + 13 × level`) keeps the *ratio*
+of armour to softening roughly constant across the whole eighty-level span, so a
+Mythic-tier fight has the same damage texture as a Veteran one.
+
+**Spread penalty.** Multi-target actions were paying full per-target damage,
+which makes any party-wide spell strictly better than a single-target one as soon
+as there are two enemies — and made a boss with a group nuke able to end the
+fight on turn one. Damage is now scaled by how widely the action spreads: `0.55`
+for all-targets, `0.78` for a row or column, `0.70` for random multi-hits.
+Bosses still take two actions per round, but the second is restricted to a single
+target, so a boss opens hard without opening lethally.
 
 ### Balance, and how it is checked
 
@@ -193,42 +297,95 @@ would under flat reduction.
 (heals below 50%, otherwise casts the strongest reachable skill), gearing the
 party from a gold budget derived from actual encounter rewards.
 
-At the intended level per region: trash resolves in 1–8 turns at ~100%; bosses
-run 11–17 turns at 90–100%. Bosses sit high on purpose — the simulated party
-never wastes a turn, so 90% for the harness is a real fight for a person. The
-property that actually matters is that difficulty *responds*: at three levels
-under, the same party loses those fights outright.
+At the intended level per region, trash resolves in 0–8 turns at ~100%. Bosses
+run 68–100% over 12–42 turns, rising through the game: Volk 75% at Lv9, the Anvil
+68% at Lv16, and the Thirteenth 98% over 42 turns at Lv85. Bosses sit high on
+purpose — the simulated party never wastes a turn, so 70% for the harness is a
+real fight for a person. The property that actually matters is that difficulty
+*responds*: at three levels under, the same party loses those fights outright.
 
 Enemies have no equipment, so their raw attack is scaled harder than a player's
-(×3.0, ×3.4 for bosses) to land in the same damage band as a geared party
-member. Bosses take two turns per round rather than being given inflated stats,
-which keeps their damage numbers readable.
+to land in the same damage band as a geared party member.
 
 ---
 
-## 5. Presentation
+## 6. Presentation
 
-The look is Final Fantasy VI, reached with no image assets at all.
+The look is HD-2D — pixel figures treated as objects in a lit scene rather than
+as a flat tile grid — reached with no image assets at all.
 
-- **Font.** A hand-drawn 5×7 proportional bitmap font with a hard one-pixel drop
-  shadow. This is the single highest-impact detail: rendered system text reads as
-  a terminal no matter what else is on screen, and a real bitmap font reads as a
-  SNES immediately. Advance width is measured from each glyph's rightmost lit
-  column, so `I` is tight and `W` is wide.
-- **Windows.** Three rings — a near-black outer keyline with its four corner
-  pixels knocked out, a light periwinkle bevel brighter along the top and left,
-  and an inner rule — over a three-stop blue gradient.
-- **Sprites.** Everything is traced with a one-pixel dark outline and shaded in
-  three tones per material, lit from the upper left. Without the outline, pixel
-  figures read as flat blocks against a background instead of as figures in front
-  of it.
-- **Tiles.** Fixed 16×16 patterns (never randomised, so they tile seamlessly)
-  built from a 4–5 tone ramp. The field renderer picks continuation variants from
-  a tile's neighbours, so a run of mountains becomes a ridge with a continuous
-  skyline and its interior becomes solid rock, a block of trees becomes closed
-  canopy, and water grows a sand lip wherever it meets land.
-- **Battle.** A backdrop palette per region — sky gradient, ridge silhouette,
-  textured ground with scanlines that open up toward the viewer. Ranks are
-  staggered rather than square, because three sprites in one column on a strict
-  grid overlap into a totem pole; offsetting each row outward reads as depth,
-  which is how FFVI lines a party up.
+### The frame
+
+A **480×270** framebuffer, upscaled nearest-neighbour to fill the window. That is
+exactly quarter-scale 1080p, so every source pixel lands on an integer 4×4 block
+on a common display and nothing shimmers. Pixel work happens at 480×270; the
+compositing happens after.
+
+### The post pass
+
+Three stages run over the finished frame, per scene:
+
+1. **Bloom.** Highlights are isolated by multiplying the frame by itself twice —
+   cubing each channel, which crushes midtones toward zero and leaves only near-
+   white — then blurred and added back. The first attempt used a flat grey
+   multiply as a threshold, which kept about half of *every* pixel and washed the
+   whole frame out; a real threshold was the fix.
+2. **Colour grade.** A per-location tint composited in `overlay`: warm gold in
+   town, cold blue underground, sick green in the Hollow.
+3. **Vignette.** A radial darkening that closes the corners and puts the eye in
+   the middle of the frame.
+
+Scenes set `bloom`, `vignette` and `setGrade()` themselves, so the field can be
+warm and bright while a dungeon is dim and blue-shifted without either knowing
+about the other.
+
+### Sprites
+
+Every sprite is traced with a one-pixel dark outline, given cheap ambient
+occlusion where forms meet, and a rim light from the upper left, then shaded in
+three tones per material. Without the outline, pixel figures read as flat blocks
+against a background instead of as figures in front of it; without the rim light,
+they read as stickers rather than as objects under a lamp.
+
+Monsters come from eight body plans over a three-colour ramp. Two lessons are
+baked into that code: a `scale` argument must scale the *creature*, not just the
+canvas (bosses were rendering at trash-mob size), and wings have to be drawn as a
+lens widest through the middle rows or they read as paper darts.
+
+### Font
+
+A hand-drawn 5×7 proportional bitmap font with a hard one-pixel drop shadow.
+This is the single highest-impact detail in the whole renderer: system text
+rendered by the browser reads as a *terminal* no matter what else is on screen,
+and a real bitmap font reads as a game immediately. Advance width is measured
+from each glyph's rightmost lit column, so `I` is tight and `W` is wide.
+
+### Tiles
+
+Fixed 16×16 patterns (never randomised, so they tile seamlessly) built from a 4–5
+tone ramp. The field renderer picks continuation variants from a tile's
+neighbours, so a run of mountains becomes a ridge with a continuous skyline and
+its interior becomes solid rock, a block of trees becomes closed canopy, and
+water grows a sand lip wherever it meets land.
+
+### Particles
+
+Dust drifting across the overworld, embers over lava, motes in the Hollow, and a
+flickering torch radius underground that is both a light source for the grade and
+the reason a dungeon feels like a dungeon.
+
+### Battle
+
+A backdrop palette per region — sky gradient, ridge silhouette, textured ground
+with scanlines that open up toward the viewer. Ranks are staggered rather than
+square, because three sprites in one column on a strict grid overlap into a totem
+pole; offsetting each row outward reads as depth.
+
+### What static checks cannot catch
+
+Every layout bug in this project was found by screenshotting a real browser, not
+by a test. Moving from 256×224 to 480×270 broke the status page, the class
+ladder, the shop and the promotion screen in four different ways, and all four
+imported cleanly and passed all 80 data checks while doing it. The Playwright
+harnesses that drive the actual game and dump PNGs are the only tool that finds
+a panel overflowing its box.

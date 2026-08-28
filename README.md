@@ -1,12 +1,12 @@
 # Quest of the Thirteen
 
-A 16-bit turn-based RPG that borrows deliberately:
+An HD-2D turn-based RPG that borrows deliberately:
 
 | From | What |
 | --- | --- |
 | **Dragon Quest III** | vocation-style class promotion, a party you build yourself at the guild, front-view battles, a temple that witnesses your advancement |
 | **Lufia: The Legend Returns** | two facing 3×3 battle grids where your column decides what you can reach, and IP gauges that fill from damage |
-| **Final Fantasy VI** | the presentation — bitmap menu font, bevelled blue windows, outlined sprites, layered battle backdrops |
+| **HD-2D** | the presentation — pixel figures under real lighting, depth-of-field bloom, colour grading and vignette over a 480×270 framebuffer |
 
 ![Nine screens from the game](docs/screens.png)
 
@@ -14,7 +14,7 @@ Runs in any modern browser. No build step, no dependencies.
 
 ```bash
 npm start          # serves on http://localhost:8080
-npm test           # 66 data-integrity checks
+npm test           # 80 data-integrity checks
 npm run sim        # headless battle balance simulation
 npm run check      # both
 ```
@@ -23,28 +23,68 @@ npm run check      # both
 
 ---
 
-## The three systems
+## The four systems
 
-### 12 classes, promoting every 5 levels
+### 12 races
 
-Each of the twelve root classes grows a ten-node tree. Promotions land on levels
-5, 10, 15 and 20; **the ones at 10 and 20 are branch points where you choose
-between two successors**, and the choice at 10 determines which pair of
-masteries you can reach at 20.
+A race is picked once at creation and touches every layer of the game: flat
+stat modifiers, **per-level growth multipliers** (so the choice compounds over
+eighty levels rather than washing out), elemental resistances, two traits with
+real mechanical hooks, and the anatomy the sprite generator draws from — ears,
+muzzle, tail, wings, horns, build.
+
+| Race | Traits |
+| --- | --- |
+| Human | Adaptable · Resolve |
+| Elf | Arcane Blood · Longsight |
+| Dwarf | Forgeborn · Rooted |
+| Fairy | Flight · Glimmer |
+| Lizardfolk | Scaled Hide · Regrow |
+| Wolfkin | Keen Scent · Packborn |
+| Ogrekin | Giant's Frame · Thick Skull |
+| Gnome | Tinker · Small Frame |
+| Merfolk | Tidecall · Deep Lung |
+| Draconian | Wyrmblood · Breath |
+| Automaton | Clockwork · No Repair |
+| Revenant | Deathless · Cold Blood |
+
+Traits are not flavour text. Forgeborn gives 20% more defence from armour and
+shields; Arcane Blood cuts spell MP cost by 15%; an Automaton's Clockwork makes
+it immune to Poison, Burn, Sleep, Confusion and Charm, and its No Repair means
+potions restore only half — it wants an Artificer in the party instead.
+Races also favour elements: a Dwarf who took Earth ranks up jobs 20% faster.
+
+### 12 classes on an eight-tier ladder
+
+Each of the twelve root classes grows a **twenty-two node tree**. Promotions
+land on levels 5, 10, 15, 20, 40, 60 and 80, and **five of those seven are branch
+points** where you choose between two successors.
 
 ```
-Lv 1   Warrior
-Lv 5   └─ Vanguard
-Lv10      ├─ Knight ─────── Lv15 Paladin ─── Lv20 ┬ Sword Saint
-          │                                        └ Templar
-          └─ Berserker ──── Lv15 Warlord ─── Lv20 ┬ Ravager
-                                                   └ Warbringer
+Lv 1   Warrior                                    (Novice)
+Lv 5   └─ Vanguard                                (Adept)
+Lv10      ├─ Knight ──── Lv15 Paladin ─── Lv20 ┬ Sword Saint   (Master)
+          │                                     └ Templar
+          └─ Berserker ─ Lv15 Warlord ─── Lv20 ┬ Ravager
+                                                └ Warbringer
+
+Lv40/60/80   each Mastery opens onto two of four Ascension paths — a ring
 ```
 
-12 roots × 10 nodes = **120 class nodes**, all with distinct names, growth and
-skill schools. A class node does not carry a hand-written stat table; it carries
-a *bias* applied to its root's growth profile, scaled by tier. A Berserker is
-always a Warrior who traded defence for violence.
+12 roots × 22 nodes = **264 class nodes**, all with distinct names, growth and
+skill schools.
+
+Past the Mastery the tree would double three more times — 32 capstones per root,
+384 names nobody would ever see. So the three Ascension tiers are wired as a
+**ring** instead: four paths per root at each tier, where Mastery *i* opens onto
+Ascension *i* and Ascension *i+1*. Every node is reachable from exactly two
+predecessors, so every promotion is still a real two-way choice, but the tree
+reconverges instead of exploding. The eight tiers run
+Novice → Adept → Veteran → Elite → Master → Ascendant → Exalted → **Mythic**.
+
+A class node does not carry a hand-written stat table; it carries a *bias*
+applied to its root's growth profile, scaled by tier. A Berserker is always a
+Warrior who traded defence for violence.
 
 Growth accumulates **as it is earned**, so promoting late permanently costs you
 the levels you spent growing at the lower rate. The validator asserts this.
@@ -76,7 +116,7 @@ rule.
 
 Jobs rank 1→5 **by use, not by level.** Sell things as a Merchant and your
 prices improve; open chests as a Locksmith and traps start revealing themselves.
-A character whose element is one the job favours ranks up 25% faster.
+A character whose element or race favours the job ranks up faster.
 
 Blacksmith · Armorer · Alchemist · Herbalist · Merchant · Appraiser · Chef ·
 Provisioner · Miner · Fisher · Hunter · Scout · Cartographer · Locksmith ·
@@ -103,7 +143,8 @@ targeting toward whatever is in front.
 **IP** fills from damage dealt and taken. Some Arts cost IP instead of MP, which
 is what lets a Berserker out of MP still do something frightening.
 
-Bosses take two turns per round.
+Bosses take two turns per round; the second is restricted to a single target, so
+a boss cannot open with two party-wide nukes.
 
 ---
 
@@ -114,24 +155,30 @@ index.html            entry point
 src/
   main.js             scene stack + fixed-step loop
   engine/
-    screen.js         256x224 framebuffer, FFVI window chrome, bars, fades
+    screen.js         480x270 framebuffer, panels, bloom/grade/vignette post pass
     font.js           hand-drawn 5x7 proportional bitmap font
-    sprites.js        ALL art, generated: characters, monsters, NPCs, tiles
+    pixel.js          the shared pixel primitives: outline, AO, rim light
+    actor.js          character sprites, assembled per race + class + element
+    monsters.js       monster body plans
+    tiles.js          neighbour-aware terrain tiles
+    particles.js      dust, embers, motes, torch flicker
+    sprites.js        facade re-exporting the art modules
     input.js  ui.js  rng.js  save.js
   data/
+    races.js          12 races: mods, growth multipliers, resists, traits, anatomy
     elements.js       13 elements; the wheel builds its own affinity table
-    classes.js        12 trees flattened to 120 nodes
+    classes.js        12 trees flattened to 264 nodes across 8 tiers
     jobs.js           20 jobs
-    skills.js         23 schools, 137 skills, 23 status effects
-    items.js          96 items      enemies.js  30 enemies, 23 formations
-    maps.js           overworld, 2 towns, 4 dungeon floors
+    skills.js         25 schools, 148 skills, 23 status effects
+    items.js          113 items     enemies.js  41 enemies, 33 formations
+    maps.js           overworld, 2 towns, 5 dungeon floors
   game/
-    character.js      stats, levelling, promotion, jobs, equipment, status
+    character.js      stats, levelling, promotion, races, jobs, equipment, status
     battle.js         the grid combat engine
     state.js          party, inventory, flags, save/load
     scenes/           title creation field battle menu shop promotion gameover
 tools/
-  validate.js         66 data-integrity checks
+  validate.js         80 data-integrity checks
   simulate.js         headless battle balance harness
   serve.js            zero-dependency static server
   spritesheet.html    contact sheet of every generated sprite and tile
@@ -140,11 +187,16 @@ tools/
 ### There are no image assets
 
 Every sprite and tile is drawn procedurally at load. A party sprite is assembled
-from a class *kit* (helm, body, cape, weapon) tinted by the character's element,
-with promoted tiers gaining an element-tinted aura; monsters come from eight
-body plans and a three-colour ramp. Everything is traced with a one-pixel
-outline and shaded in three tones per material, lit from the upper left, which
-is what makes it sit in the SNES idiom.
+from a race *anatomy* and a class *kit* (helm, body, cape, weapon) tinted by the
+character's element, with promoted tiers gaining an element-tinted aura; monsters
+come from eight body plans and a three-colour ramp. Everything is traced with a
+one-pixel outline, given cheap ambient occlusion and a rim light from the upper
+left, and shaded in three tones per material.
+
+The frame is then composited: a bloom pass isolates highlights and adds them
+back, a colour grade tints the scene per location, and a radial vignette closes
+the corners. That last stage is what separates this from the flat 16-bit build it
+grew out of.
 
 `tools/spritesheet.html` renders the whole set on one page for review.
 
@@ -153,13 +205,17 @@ is what makes it sit in the SNES idiom.
 ## Testing
 
 `npm test` checks every claim this README makes: that there are exactly 13
-elements and the affinity table is symmetric, that the class tree is 12/12/24/24/48
-across its tiers with branch points only at tiers 1 and 3, that all 20 jobs have
-a field ability and a passive, that no skill, item, drop, shop entry or map warp
-points at something that does not exist, and that every NPC, chest and boss on
-every map is reachable by flood fill from that map's entrance.
+elements and the affinity table is symmetric, that there are 12 races each with
+two traits and a full growth table, that the class tree is 12/12/24/24/48/48/48/48
+across its eight tiers with branch points only at tiers 2, 4, 5, 6 and 7, that
+each Ascension tier is a ring of four per root with every node reachable from
+exactly two predecessors, that every root reaches tier 7 by level 80 on either
+branch preference, that all 20 jobs have a field ability and a passive, that no
+skill, item, drop, shop entry or map warp points at something that does not
+exist, and that every NPC, chest and boss on every map is reachable by flood fill
+from that map's entrance.
 
 `npm run sim` drives the real battle engine headless. At the intended level for
-each region, trash encounters resolve in 1–8 turns and bosses run 11–17 turns at
-90–100% against a near-optimal AI; an under-levelled party reliably loses, which
-is the property that matters.
+each region, trash encounters resolve in 0–8 turns and bosses run 68–100% over
+12–42 turns against a near-optimal AI; an under-levelled party reliably loses,
+which is the property that matters.

@@ -86,11 +86,12 @@ export class Menu {
       let color = obj.color ?? PAL.text;
       if (obj.disabled) color = PAL.grey;
       if (i === this.index && !opts.inactive) {
-        // a solid bar behind the row, so the selection is legible even on the
-        // off phase of the cursor blink
-        scr.rect(cx - 9, cy - 2, this.cellW - 2, (opts.size ?? 8) + 3, 'rgba(120,150,230,0.30)');
+        // a selection slab with a bright accent edge, rather than a caret that
+        // disappears on the off phase of a blink
+        const hh = (opts.size ?? 8) + 5;
+        scr.rect(cx - 8, cy - 3, this.cellW - 4, hh, 'rgba(120,155,235,0.20)');
+        scr.rect(cx - 8, cy - 3, 2, hh, PAL.accent);
         color = obj.disabled ? PAL.grey : (obj.color ?? PAL.white);
-        if (this.blink < 0.6) scr.text('>', cx - 8, cy, PAL.gold);
       }
       scr.text(obj.label ?? '', cx, cy, color, { size: opts.size ?? 8 });
       if (obj.note !== undefined) {
@@ -99,8 +100,8 @@ export class Menu {
     }
     // scroll indicators, pinned to the right edge of the list
     const rx = this.x + this.cellW * this.columns - 8;
-    if (this.scroll > 0) scr.text('▲', rx, this.y - 9, PAL.gold);
-    if (end < this.items.length) scr.text('▼', rx, this.y + this.rows * this.cellH - 3, PAL.gold);
+    if (this.scroll > 0) scr.text('▲', rx, this.y - 10, PAL.accentDim);
+    if (end < this.items.length) scr.text('▼', rx, this.y + this.rows * this.cellH - 2, PAL.accentDim);
   }
 }
 
@@ -148,21 +149,22 @@ export class Dialogue {
 
   draw(scr, opts = {}) {
     if (this.done && !this.queue.length) return;
-    const h = opts.h ?? 52;
-    const y = opts.y ?? (H - h - 6);
-    const x = opts.x ?? 6;
-    const w = opts.w ?? (W - 12);
-    scr.window(x, y, w, h);
-    let ty = y + 7;
+    const h = opts.h ?? 56;
+    const y = opts.y ?? (H - h - 10);
+    const x = opts.x ?? 24;
+    const w = opts.w ?? (W - 48);
+    scr.panel(x, y, w, h, { accent: true, accentWidth: 24 });
+    let ty = y + 9;
     if (this.speaker) {
-      scr.text(this.speaker, x + 8, ty, PAL.gold);
-      ty += 11;
+      scr.text(this.speaker, x + 12, ty, PAL.accent);
+      scr.rect(x + 12, ty + 10, scr.textWidth(this.speaker), 1, 'rgba(240,180,76,0.35)');
+      ty += 15;
     }
-    scr.textWrap(this.text.slice(0, Math.floor(this.shown)), x + 8, ty, w - 16, PAL.text,
-      { maxLines: Math.floor((h - (ty - y) - 6) / 10), lineHeight: 10 });
+    scr.textWrap(this.text.slice(0, Math.floor(this.shown)), x + 12, ty, w - 24, PAL.text,
+      { maxLines: Math.floor((h - (ty - y) - 8) / 11), lineHeight: 11 });
     if (this.revealed) {
       const t = Math.floor(performance.now() / 350) % 2;
-      scr.text('▼', x + w - 14, y + h - 12 + t, PAL.gold);
+      scr.text('▼', x + w - 16, y + h - 13 + t, PAL.accent);
     }
   }
 }
@@ -182,7 +184,19 @@ export function hpColor(ratio) {
 
 /** Header bar used at the top of full-screen menus. */
 export function header(scr, title, right = null) {
-  scr.window(0, 0, W, 20);
-  scr.text(title, 8, 6, PAL.gold);
-  if (right) scr.textRight(right, W - 8, 6, PAL.text);
+  scr.rect(0, 0, W, 26, 'rgba(10,13,22,0.92)');
+  scr.rect(0, 26, W, 1, PAL.line);
+  scr.rect(0, 0, W, 1, 'rgba(180,205,255,0.18)');
+  scr.rect(14, 8, 2, 10, PAL.accent);
+  scr.text(title, 22, 9, PAL.text, { size: 8 });
+  if (right) scr.textRight(right, W - 16, 9, PAL.textDim);
+}
+
+/** A key/value row with a dotted leader, for stat blocks. */
+export function statRow(scr, label, value, x, y, w, opts = {}) {
+  scr.text(label, x, y, opts.labelColor ?? PAL.textDim);
+  const vw = scr.textWidth(String(value));
+  const lw = scr.textWidth(label);
+  for (let i = x + lw + 3; i < x + w - vw - 3; i += 3) scr.px(i, y + 5, 'rgba(148,162,192,0.28)');
+  scr.textRight(String(value), x + w, y, opts.color ?? PAL.text);
 }

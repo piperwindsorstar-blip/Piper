@@ -11,6 +11,7 @@ import {
   CLASSES, CLASS_IDS, ROOT_CLASSES, PROMOTION_LEVELS, MAX_TIER, STAT_KEYS,
   ASCENT_TIERS, classLineage, classesAtTier, pendingPromotion,
 } from '../src/data/classes.js';
+import { RACES, RACE_IDS, RACE_BY_ID, raceJobAffinity } from '../src/data/races.js';
 import { JOBS, JOB_IDS, jobBonus, jobRankFromExp, MAX_JOB_RANK } from '../src/data/jobs.js';
 import { SKILLS, SKILL_BY_ID, SCHOOLS, SCHOOL_IDS, STATUS } from '../src/data/skills.js';
 import { ITEMS, ITEM_BY_ID, canEquip, WEAPON_TYPES } from '../src/data/items.js';
@@ -61,6 +62,40 @@ report('multipliers resolve to 1.5 / 1.0 / 0.5',
   elementMultiplier('fire', 'light') === 1);
 report('void ignores resistance in both directions',
   elementMultiplier('void', 'light') === 1 && elementMultiplier('light', 'void') === 1);
+
+// --- races ------------------------------------------------------------------
+group('RACES');
+report('12 races exist', RACES.length === 12, `got ${RACES.length}`);
+report('race ids and names are unique',
+  new Set(RACE_IDS).size === 12 && new Set(RACES.map((r) => r.name)).size === 12);
+report('every race has exactly two named traits',
+  RACES.every((r) => r.traits.length === 2 && r.traits.every((t) => t.id && t.name && t.text)));
+report('every race has a complete eight-stat growth table',
+  RACES.every((r) => STAT_KEYS.every((k) => typeof r.growth[k] === 'number' && r.growth[k] > 0)));
+report('no race grows faster at everything',
+  RACES.every((r) => STAT_KEYS.some((k) => r.growth[k] < 1) || r.id === 'human'));
+report('race resistances name real elements (0 = immune)',
+  RACES.every((r) => Object.entries(r.resist ?? {})
+    .every(([id, v]) => ELEMENT_BY_ID[id] && v >= 0 && v < 2)));
+report('race element affinities name real elements',
+  RACES.every((r) => r.likes.length && r.likes.every((id) => ELEMENT_BY_ID[id])));
+report('every race carries anatomy the sprite generator can draw',
+  RACES.every((r) => r.look && r.look.ears && r.look.build > 0
+    && r.look.skins.length && r.look.hairs.length && r.look.eye));
+report('race element affinity pays out',
+  raceJobAffinity('dwarf', 'earth') > 1 && raceJobAffinity('dwarf', 'void') === 1);
+{
+  const mk = (raceId) => createCharacter({ name: raceId, raceId, classId: 'mage', elementId: 'fire', jobId: 'scribe' });
+  const elf = mk('elf'), dwarf = mk('dwarf');
+  report('race choice changes the stat line at level 1',
+    stats(elf).mp !== stats(dwarf).mp && stats(elf).hp !== stats(dwarf).hp);
+  // growth is a multiplier, so the gap must widen with levels rather than stay flat
+  const gap1 = stats(elf).mp - stats(dwarf).mp;
+  while (elf.level < 40) awardExp(elf, 5000);
+  while (dwarf.level < 40) awardExp(dwarf, 5000);
+  report('race growth compounds over levels', stats(elf).mp - stats(dwarf).mp > gap1 * 2,
+    `gap ${gap1} at Lv1 vs ${stats(elf).mp - stats(dwarf).mp} at Lv40`);
+}
 
 // --- classes ----------------------------------------------------------------
 group('CLASSES');

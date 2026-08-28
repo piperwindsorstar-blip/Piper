@@ -1,18 +1,21 @@
 // ============================================================================
-//  PARTY MENU — status, arts, items, equipment, formation, jobs, class ladder,
-//  and saving. The LADDER page is the one that matters most: it draws the whole
-//  promotion tree for a character, marks the path they actually took, and shows
-//  which of the two branch choices is still ahead of them.
+//  PARTY MENU — status, arts, items, equipment, formation, jobs, class ladder
+//  and saving.
+//
+//  Two pages carry the weight. STATUS is the only place a player can read what
+//  their RACE actually does once creation is behind them, so it spells out both
+//  traits and every resistance. LADDER draws the whole eight-tier promotion
+//  tree, marks the path actually walked, and names the branch still ahead.
 // ============================================================================
 
 import { PAL, W, H } from '../../engine/screen.js';
-import { Menu, header, hpColor, stat as statLine } from '../../engine/ui.js';
-import { heroSprite } from '../../engine/sprites.js';
+import { Menu, header, hpColor, statRow } from '../../engine/ui.js';
+import { actorSprite } from '../../engine/sprites.js';
 import {
   stats, knownSkills, upcomingSkills, jobInfo, jobProgress, equipItem, unequipSlot,
-  promotionPath, refreshPromotion, expForLevel, MAX_LEVEL,
+  promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL,
 } from '../character.js';
-import { CLASSES, STAT_KEYS, TIER_NAME, PROMOTION_LEVELS } from '../../data/classes.js';
+import { CLASSES, TIER_NAME, PROMOTION_LEVELS } from '../../data/classes.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { SCHOOLS, STATUS } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
@@ -32,6 +35,13 @@ const PAGES = [
   { id: 'close', label: 'Close' },
 ];
 
+// layout
+const NAV_X = 12, NAV_W = 88;
+const BX = 110, BW = W - BX - 12;          // body panel
+const TOP = 34, BODY_H = H - TOP - 32;
+const IX = BX + 14, IW = BW - 28;         // body inner
+const CW = Math.floor((IW - 16) / 2);     // two-column width
+
 export class MenuScene {
   constructor(app) { this.app = app; }
 
@@ -44,15 +54,20 @@ export class MenuScene {
     this.msgT = 0;
     this.root = new Menu({
       items: PAGES.map((p) => ({ label: p.label, id: p.id })),
-      x: 16, y: 32, cellW: 70, cellH: 13, rows: PAGES.length,
+      x: NAV_X + 20, y: TOP + 12, cellW: NAV_W - 30, cellH: 17, rows: PAGES.length,
     });
-    this.list = new Menu({ items: [], x: 100, y: 34, cellW: 148, cellH: 11, rows: 14 });
+    this.list = new Menu({ items: [], x: IX + 12, y: TOP + 30, cellW: IW - 24, cellH: 13, rows: 13 });
     this.equipSlot = 0;
     this.formCursor = { row: 1, col: 0 };
     this.formPicked = null;
   }
 
-  say(m) { this.msg = m; this.msgT = 2.4; }
+  say(m) { this.msg = m; this.msgT = 2.6; }
+
+  colX(i) { return IX + i * (CW + 16); }
+  /** Half of a column, for pages that need four columns of numbers. */
+  subX(col, i) { return this.colX(col) + i * Math.floor((CW + 8) / 2); }
+  get subW() { return Math.floor((CW + 8) / 2) - 10; }
 
   update(dt, input) {
     this.t += dt;
@@ -93,12 +108,14 @@ export class MenuScene {
     if (id === 'save') {
       this.list.setItems(SLOTS.map((s) => {
         const sum = saveSummary(s);
-        return { label: `Slot ${s}`, id: s, note: sum ? `${sum.leader} Lv${sum.level} ${formatTime(sum.playtime)}` : 'empty' };
+        return {
+          label: `Slot ${s}`, id: s,
+          note: sum ? `${sum.leader} Lv${sum.level}   ${formatTime(sum.playtime)}` : 'empty',
+        };
       }));
     }
     if (id === 'formation') {
-      const c = this.g.party[0];
-      this.formCursor = { ...c.grid };
+      this.formCursor = { ...this.g.party[0].grid };
       this.formPicked = null;
     }
   }
@@ -106,39 +123,39 @@ export class MenuScene {
   get ch() { return this.g.party[this.who]; }
 
   cycleChar(input) {
-    if (input.tap('left')) this.who = (this.who + this.g.party.length - 1) % this.g.party.length;
-    if (input.tap('right')) this.who = (this.who + 1) % this.g.party.length;
-    if (input.tap('up')) this.who = (this.who + this.g.party.length - 1) % this.g.party.length;
-    if (input.tap('down')) this.who = (this.who + 1) % this.g.party.length;
+    const n = this.g.party.length;
+    if (input.tap('left') || input.tap('up')) this.who = (this.who + n - 1) % n;
+    if (input.tap('right') || input.tap('down')) this.who = (this.who + 1) % n;
   }
 
-  // --- arts ----------------------------------------------------------------
+  // --- arts ------------------------------------------------------------------
   refreshArts() {
     const ch = this.ch;
-    const known = knownSkills(ch);
-    const soon = upcomingSkills(ch, 8);
     this.list.setItems([
-      ...known.map((k) => ({
-        label: k.name, note: k.ip ? `${k.ip}IP` : `${k.mp}MP`, skill: k,
+      ...knownSkills(ch).map((k) => ({
+        label: k.name, note: k.ip ? `${k.ip} IP` : `${k.mp} MP`, skill: k,
       })),
-      ...soon.map((k) => ({
-        label: `${k.name}`, note: `Lv${k.lv}`, skill: k, disabled: true,
+      ...upcomingSkills(ch, 10).map((k) => ({
+        label: k.name, note: `Lv${k.lv}`, skill: k, disabled: true,
       })),
     ]);
   }
 
   updateArts(input) {
     this.list.handle(input);
-    if (input.tap('shift')) { this.who = (this.who + 1) % this.g.party.length; this.refreshArts(); }
+    if (input.tap('shift')) {
+      this.who = (this.who + 1) % this.g.party.length;
+      this.refreshArts();
+    }
   }
 
-  // --- items ---------------------------------------------------------------
+  // --- items -----------------------------------------------------------------
   refreshItems() {
     this.list.setItems(this.g.inventory.map((s) => {
       const it = getItem(s.id);
       return { label: it.name, note: `x${s.count}`, id: s.id, item: it };
     }), true);
-    if (!this.list.length) this.list.setItems([{ label: '— nothing —', disabled: true }]);
+    if (!this.list.length) this.list.setItems([{ label: '— nothing carried —', disabled: true }]);
   }
 
   updateItems(input) {
@@ -185,14 +202,15 @@ export class MenuScene {
     }
   }
 
-  // --- equipment -----------------------------------------------------------
+  // --- equipment -------------------------------------------------------------
   updateEquip(input) {
-    this.cycleChar({ tap: (b) => (b === 'left' || b === 'right') && input.tap(b) });
+    const n = this.g.party.length;
+    if (input.tap('left')) this.who = (this.who + n - 1) % n;
+    if (input.tap('right')) this.who = (this.who + 1) % n;
     if (input.tap('up')) this.equipSlot = (this.equipSlot + EQUIP_SLOTS.length - 1) % EQUIP_SLOTS.length;
     if (input.tap('down')) this.equipSlot = (this.equipSlot + 1) % EQUIP_SLOTS.length;
     if (input.tap('shift')) {
-      const slot = EQUIP_SLOTS[this.equipSlot];
-      const removed = unequipSlot(this.ch, slot);
+      const removed = unequipSlot(this.ch, EQUIP_SLOTS[this.equipSlot]);
       if (removed) { this.g.addItem(removed); this.say(`Removed ${getItem(removed).name}.`); }
       return;
     }
@@ -205,7 +223,10 @@ export class MenuScene {
       this.list.setItems(options.map((s) => {
         const it = getItem(s.id);
         const delta = previewDelta(this.ch, slot, it, before);
-        return { label: it.name, note: delta, id: s.id, item: it, noteColor: delta.startsWith('+') ? PAL.green : delta.startsWith('-') ? PAL.red : PAL.textDim };
+        return {
+          label: it.name, note: delta, id: s.id, item: it,
+          noteColor: delta.startsWith('+') ? PAL.green : delta.startsWith('-') ? PAL.red : PAL.textDim,
+        };
       }));
       this.mode = 'equipList';
     }
@@ -225,7 +246,7 @@ export class MenuScene {
     }
   }
 
-  // --- formation -----------------------------------------------------------
+  // --- formation -------------------------------------------------------------
   updateFormation(input) {
     const d = input.dir();
     if (d.y) this.formCursor.row = Math.max(0, Math.min(2, this.formCursor.row + d.y));
@@ -242,10 +263,14 @@ export class MenuScene {
         this.formPicked = here;
       }
     }
-    if (input.tap('shift')) { this.g.autoFormation(); this.formPicked = null; this.say('Formation reset to defaults.'); }
+    if (input.tap('shift')) {
+      this.g.autoFormation();
+      this.formPicked = null;
+      this.say('Formation reset to defaults.');
+    }
   }
 
-  // --- save ----------------------------------------------------------------
+  // --- save ------------------------------------------------------------------
   updateSave(input) {
     this.list.handle(input);
     if (input.tap('confirm')) {
@@ -256,19 +281,23 @@ export class MenuScene {
     }
   }
 
-  // --- draw ----------------------------------------------------------------
+  // --- draw ------------------------------------------------------------------
   draw(scr) {
-    scr.clear('#0b0e1c');
-    for (let y = 0; y < H; y += 4) scr.rect(0, y, W, 1, '#0d1122');
-    header(scr, 'PARTY', `${this.g.gold}G   ${formatTime(this.g.playtime)}`);
+    scr.setGrade('#6a86d0', 0.09);
+    scr.bloom = 0.36;
+    scr.vignette = 0.54;
+    scr.clear('#080b14');
+    for (let y = 0; y < H; y += 3) scr.rect(0, y, W, 1, 'rgba(255,255,255,0.012)');
+    scr.light(W * 0.15, -30, 220, 'rgba(90,130,255,0.22)', 0.5);
 
-    scr.window(6, 24, 84, H - 30);
-    this.root.x = 22; this.root.y = 32;
+    header(scr, 'PARTY', `${this.g.gold} G     ${formatTime(this.g.playtime)}`);
+
+    scr.panel(NAV_X, TOP, NAV_W, BODY_H, { accent: true });
     this.root.draw(scr, { inactive: this.mode !== 'root' });
 
+    scr.panel(BX, TOP, BW, BODY_H, { accent: this.mode !== 'root' });
     if (this.mode === 'root') this.drawRoster(scr);
     else {
-      scr.window(94, 24, W - 100, H - 30);
       switch (this.mode) {
         case 'status': this.drawStatus(scr); break;
         case 'arts': this.drawArts(scr); break;
@@ -282,284 +311,398 @@ export class MenuScene {
       }
     }
 
-    if (this.msg) {
-      scr.window(6, H - 24, W - 12, 20);
-      scr.text(this.msg, 14, H - 18, PAL.gold);
-    }
+    scr.panel(NAV_X, H - 26, W - NAV_X * 2, 20, this.msg ? { accent: true } : {});
+    scr.text(this.msg ?? 'Z select   ·   X back   ·   arrows move',
+      NAV_X + 14, H - 20, this.msg ? PAL.accent : PAL.textFaint);
   }
 
+  // --- roster ----------------------------------------------------------------
   drawRoster(scr) {
-    scr.window(94, 24, W - 100, H - 30);
+    const rowH = Math.floor((BODY_H - 16) / Math.max(1, this.g.party.length));
     this.g.party.forEach((ch, i) => {
-      const y = 30 + i * 46;
+      const y = TOP + 10 + i * rowH;
       const s = stats(ch);
       const cls = CLASSES[ch.classId];
       const el = ELEMENT_BY_ID[ch.elementId];
-      const cv = heroSprite({ classId: ch.classId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair, frame: Math.floor(this.t * 3 + i) % 2 });
-      scr.ctx.drawImage(cv, 100, y);
-      scr.text(ch.name, 128, y + 2, PAL.text);
-      scr.text(`Lv${ch.level} ${cls.name}`, 128, y + 12, PAL.textDim);
-      scr.rect(128, y + 22, 4, 5, el.color);
-      scr.text(`${el.name} · ${jobInfo(ch).name} ${jobInfo(ch).rank}`, 135, y + 21, PAL.textDim);
-      scr.bar(128, y + 30, 60, 4, ch.hp / s.maxHp, hpColor(ch.hp / s.maxHp));
-      scr.bar(128, y + 36, 60, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-      scr.textRight(`${ch.hp}/${s.maxHp}`, W - 10, y + 2, PAL.text);
-      if (refreshPromotion(ch)) scr.textRight('PROMOTION READY', W - 10, y + 14, PAL.gold);
+      const race = raceInfo(ch);
+      const cv = actorSprite({
+        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+        skin: ch.skin, hair: ch.hair, frame: Math.floor(this.t * 3 + i) % 2,
+      });
+      scr.light(IX + 22, y + 24, 26, el.color, 0.14);
+      scr.ctx.drawImage(cv, IX, y - 2);
+      scr.text(ch.name, IX + 44, y + 2, PAL.text);
+      scr.text(`Lv ${ch.level}   ${race.name} ${cls.name}`, IX + 44, y + 15, PAL.textDim);
+      scr.rect(IX + 44, y + 29, 4, 6, el.color);
+      scr.text(`${el.name}  ·  ${jobInfo(ch).name} ${jobInfo(ch).rank}`, IX + 52, y + 28, PAL.textFaint);
+
+      const bx = IX + IW - 150;
+      scr.text(`${ch.hp}`, bx, y + 2, hpColor(ch.hp / s.maxHp));
+      scr.text(`/${s.maxHp}`, bx + scr.textWidth(`${ch.hp}`) + 2, y + 2, PAL.textFaint);
+      scr.bar(bx, y + 15, 140, 4, ch.hp / s.maxHp, hpColor(ch.hp / s.maxHp));
+      scr.bar(bx, y + 22, 140, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      if (refreshPromotion(ch)) scr.textRight('PROMOTION READY', IX + IW, y + 28, PAL.accent);
+      if (i < this.g.party.length - 1) scr.rect(IX, y + rowH - 6, IW, 1, 'rgba(150,175,235,0.10)');
     });
   }
 
+  /** Portrait + identity strip every per-character page shares. */
   charHeader(scr) {
     const ch = this.ch;
     const cls = CLASSES[ch.classId];
     const el = ELEMENT_BY_ID[ch.elementId];
-    const cv = heroSprite({ classId: ch.classId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair, frame: 0 });
-    scr.ctx.drawImage(cv, 100, 28);
-    scr.text(ch.name, 128, 30, PAL.gold);
-    scr.text(`Lv${ch.level} ${cls.name}`, 128, 40, PAL.text);
-    scr.rect(128, 51, 4, 5, el.color);
-    scr.text(el.name, 135, 50, el.color);
-    scr.textRight('< > switch', W - 10, 30, PAL.textDim);
-    return 64;
+    const race = raceInfo(ch);
+    const cv = actorSprite({
+      classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+      skin: ch.skin, hair: ch.hair, frame: 0,
+    });
+    scr.light(IX + 20, TOP + 32, 28, el.color, 0.16);
+    scr.ctx.drawImage(cv, IX, TOP + 6);
+    scr.text(ch.name, IX + 44, TOP + 8, PAL.accent);
+    scr.text(`Lv ${ch.level}   ${race.name} ${cls.name}`, IX + 44, TOP + 22, PAL.text);
+    scr.rect(IX + 44, TOP + 36, 4, 6, el.color);
+    scr.text(el.name, IX + 52, TOP + 35, el.color);
+    scr.textRight(`${TIER_NAME[cls.tier]} · tier ${cls.tier}/7`, IX + IW, TOP + 8, PAL.magenta);
+    scr.textRight('← → switch member', IX + IW, TOP + 34, PAL.textFaint);
+    scr.rect(IX, TOP + 44, IW, 1, PAL.line);
+    return TOP + 50;
   }
 
+  // --- status ----------------------------------------------------------------
   drawStatus(scr) {
     const ch = this.ch;
-    let y = this.charHeader(scr);
+    const top = this.charHeader(scr);
     const s = stats(ch);
-    const cls = CLASSES[ch.classId];
+    const race = raceInfo(ch);
     const el = ELEMENT_BY_ID[ch.elementId];
-    const job = jobInfo(ch);
 
-    scr.text(`${TIER_NAME[cls.tier]} tier ${cls.tier}`, 100, y, PAL.magenta);
-    scr.textRight(`${job.name} rank ${job.rank}`, W - 10, y, PAL.cyan);
-    y += 12;
+    // left: the sheet, as two narrow columns so it fits the panel
+    let y = top;
+    scr.text('ATTRIBUTES', this.subX(0, 0), y, PAL.accent);
+    scr.text('DERIVED', this.subX(0, 1), y, PAL.accent);
+    y += 13;
+    const attrs = [
+      ['HP', `${ch.hp}/${s.maxHp}`], ['MP', `${ch.mp}/${s.maxMp}`],
+      ['STR', s.str], ['VIT', s.vit], ['AGI', s.agi],
+      ['INT', s.int], ['SPR', s.spr], ['LCK', s.lck],
+    ];
+    const derived = [
+      ['ATK', s.power], ['DEF', s.armor], ['WRD', s.ward], ['RCH', s.reach],
+      ['CRT', `${(s.crit * 100).toFixed(0)}%`], ['EVA', `${(s.evade * 100).toFixed(0)}%`],
+    ];
+    attrs.forEach(([k, v], i) => statRow(scr, k, v, this.subX(0, 0), y + i * 10, this.subW));
+    derived.forEach(([k, v], i) => statRow(scr, k, v, this.subX(0, 1), y + i * 10, this.subW));
+    y += 8 * 10 + 8;
 
-    const left = [['HP', `${ch.hp}/${s.maxHp}`], ['MP', `${ch.mp}/${s.maxMp}`],
-      ['STR', s.str], ['VIT', s.vit], ['AGI', s.agi]];
-    const right = [['INT', s.int], ['SPR', s.spr], ['LCK', s.lck],
-      ['ATK', s.power], ['DEF', s.armor]];
-    left.forEach(([k, v], i) => statLine(scr, k, v, 100, y + i * 10, { w: 60 }));
-    right.forEach(([k, v], i) => statLine(scr, k, v, 172, y + i * 10, { w: 66 }));
-    y += 54;
-
-    scr.rect(100, y, W - 110, 1, PAL.frame1); y += 5;
-    statLine(scr, 'Reach', s.reach, 100, y, { w: 60 });
-    statLine(scr, 'Crit', `${(s.crit * 100).toFixed(0)}%`, 172, y, { w: 66 }); y += 10;
-    statLine(scr, 'Evade', `${(s.evade * 100).toFixed(0)}%`, 100, y, { w: 60 });
-    statLine(scr, 'Grid', `r${ch.grid.row} c${ch.grid.col}`, 172, y, { w: 66 }); y += 12;
-
+    scr.rect(this.colX(0), y, CW, 1, PAL.line); y += 8;
     const next = ch.level >= MAX_LEVEL ? null : expForLevel(ch.level + 1) - ch.exp;
-    scr.text(next === null ? 'EXP  —  maximum level' : `EXP to next  ${next}`, 100, y, PAL.textDim); y += 10;
+    statRow(scr, 'EXP to next', next === null ? 'max' : next, this.colX(0), y, CW); y += 13;
     const promo = refreshPromotion(ch);
     if (promo) {
-      scr.text(promo.branching ? 'PROMOTION READY — a choice of two' : 'PROMOTION READY', 100, y, PAL.gold);
+      scr.textWrap(promo.branching ? 'PROMOTION READY — a choice of two' : 'PROMOTION READY',
+        this.colX(0), y, CW, PAL.accent, { lineHeight: 10, maxLines: 2 });
     } else {
       const nextLv = PROMOTION_LEVELS.find((l) => l > ch.level);
-      scr.text(nextLv ? `Next promotion at level ${nextLv}` : 'Class ladder complete', 100, y, PAL.textDim);
+      scr.textWrap(nextLv ? `Next promotion at level ${nextLv}` : 'Class ladder complete',
+        this.colX(0), y, CW, PAL.textFaint, { lineHeight: 10, maxLines: 2 });
     }
-    y += 12;
-    scr.text(`Perk — ${el.perk}`, 100, y, PAL.gold); y += 9;
-    y += scr.textWrap(el.perkText, 100, y, W - 112, PAL.textDim, { lineHeight: 9 }) * 9 + 2;
+    y += 22;
     const st = Object.keys(ch.statuses).filter((k) => STATUS[k]);
-    if (st.length) scr.text(`Status: ${st.map((k) => STATUS[k].name).join(', ')}`, 100, y, PAL.magenta);
+    if (st.length) {
+      scr.textWrap(`Status: ${st.map((k) => STATUS[k].name).join(', ')}`,
+        this.colX(0), y, CW, PAL.magenta, { lineHeight: 10, maxLines: 2 });
+    }
+
+    // right: what the race and element actually do
+    let ry = top;
+    scr.text(`RACE — ${race.name.toUpperCase()}`, this.colX(1), ry, PAL.accent); ry += 12;
+    for (const t of race.traits) {
+      scr.text(t.name, this.colX(1), ry, PAL.cyan); ry += 10;
+      ry += scr.textWrap(t.text, this.colX(1), ry, CW, PAL.textDim, { lineHeight: 10, maxLines: 3 }) * 10 + 2;
+    }
+    const res = Object.entries(race.resist);
+    if (res.length) {
+      let cx = this.colX(1);
+      for (const [e, m] of res) {
+        const ee = ELEMENT_BY_ID[e];
+        const label = `${ee.name} ${Math.round(m * 100)}%`;
+        const wdt = scr.textWidth(label) + 8;
+        if (cx + wdt > this.colX(1) + CW) { cx = this.colX(1); ry += 11; }
+        scr.rect(cx, ry + 1, 3, 6, ee.color);
+        scr.text(label, cx + 6, ry, m < 1 ? PAL.green : PAL.red);
+        cx += wdt + 6;
+      }
+      ry += 14;
+    }
+    scr.text(`ELEMENT — ${el.perk.toUpperCase()}`, this.colX(1), ry, PAL.accent); ry += 11;
+    scr.textWrap(el.perkText, this.colX(1), ry, CW, PAL.textDim, { lineHeight: 10, maxLines: 3 });
   }
 
+  // --- arts ------------------------------------------------------------------
   drawArts(scr) {
-    const y = this.charHeader(scr);
+    const top = this.charHeader(scr);
     const cls = CLASSES[this.ch.classId];
-    scr.text(cls.schools.map((s) => SCHOOLS[s].name).join(' · '), 100, y, PAL.cyan);
-    this.list.x = 110; this.list.y = y + 12; this.list.cellW = 138; this.list.rows = 9;
+    scr.text(cls.schools.map((s) => SCHOOLS[s].name).join('  ·  '), IX, top, PAL.cyan);
+    this.list.x = IX + 12; this.list.y = top + 16;
+    this.list.cellW = CW + 4; this.list.rows = 11; this.list.cellH = 13;
     this.list.draw(scr);
+
     const k = this.list.current?.skill;
     if (k) {
-      scr.rect(100, H - 46, W - 110, 1, PAL.frame1);
-      scr.textWrap(k.blurb ?? '', 100, H - 42, W - 112, PAL.textDim, { lineHeight: 9, maxLines: 2 });
-      scr.text(`${SCHOOLS[k.school].name} · reach ${k.range} · ${k.target}`, 100, H - 22, PAL.text);
+      const x = this.colX(1) + 8;
+      scr.panel(x - 8, top + 12, CW + 8, 128, { alpha: 0.9 });
+      scr.text(k.name, x, top + 22, PAL.accent);
+      scr.rect(x, top + 34, CW - 8, 1, PAL.line);
+      scr.textWrap(k.blurb ?? '', x, top + 42, CW - 8, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+      let yy = top + 82;
+      statRow(scr, 'School', SCHOOLS[k.school].name, x, yy, CW - 8); yy += 12;
+      statRow(scr, 'Cost', k.ip ? `${k.ip} IP` : `${k.mp} MP`, x, yy, CW - 8); yy += 12;
+      statRow(scr, 'Reach', k.range, x, yy, CW - 8); yy += 12;
+      statRow(scr, 'Targets', k.target, x, yy, CW - 8);
     }
-    scr.textRight('SHIFT next member', W - 10, H - 12, PAL.textDim);
+    scr.textRight('SHIFT next member', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
   }
 
+  // --- items -----------------------------------------------------------------
   drawItems(scr) {
-    scr.text(`ITEMS  ${this.g.inventory.length}/${this.g.carryLimit()}`, 100, 30, PAL.gold);
-    this.list.x = 112; this.list.y = 44; this.list.cellW = 132; this.list.rows = 9;
+    scr.text('ITEMS', IX, TOP + 10, PAL.accent);
+    scr.textRight(`${this.g.inventory.length} / ${this.g.carryLimit()} stacks`, IX + IW, TOP + 10, PAL.textDim);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+    this.list.x = IX + 12; this.list.y = TOP + 32;
+    this.list.cellW = CW + 4; this.list.rows = 12; this.list.cellH = 13;
     this.list.draw(scr, { inactive: this.mode === 'itemTarget' });
+
     const it = this.list.current?.item;
     if (it) {
-      scr.rect(100, H - 60, W - 110, 1, PAL.frame1);
-      scr.text(it.name, 100, H - 56, PAL.gold);
+      const x = this.colX(1) + 8;
+      scr.panel(x - 8, TOP + 28, CW + 8, 92, { alpha: 0.9 });
+      scr.text(it.name, x, TOP + 38, PAL.accent);
+      scr.rect(x, TOP + 50, CW - 8, 1, PAL.line);
       const desc = it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
         : it.cures ? `Cures ${it.cures.join(', ')}.` : it.camp ? 'Rest anywhere.'
-          : it.kind === 'material' ? 'A crafting material.' : `Value ${it.price}G.`;
-      scr.textWrap(desc, 100, H - 46, W - 112, PAL.textDim, { lineHeight: 9, maxLines: 2 });
+          : it.kind === 'material' ? 'A crafting material.' : `Worth ${it.price} gold.`;
+      scr.textWrap(desc, x, TOP + 58, CW - 8, PAL.textDim, { lineHeight: 11, maxLines: 3 });
     }
+
     if (this.mode === 'itemTarget') {
-      scr.window(96, H - 34, W - 102, 30);
-      scr.text('Use on:', 102, H - 28, PAL.gold);
+      const py = TOP + BODY_H - 62;
+      scr.panel(IX, py, IW, 54, { accent: true });
+      scr.text('USE ON', IX + 12, py + 8, PAL.accent);
       this.g.party.forEach((ch, i) => {
-        const x = 140 + i * 28;
-        scr.text(ch.name.slice(0, 4), x, H - 28, i === this.who ? PAL.white : PAL.textDim);
-        scr.bar(x, H - 18, 24, 3, ch.hp / stats(ch).maxHp, hpColor(ch.hp / stats(ch).maxHp));
+        const x = IX + 12 + i * Math.floor((IW - 24) / this.g.party.length);
+        const s = stats(ch);
+        const sel = i === this.who;
+        if (sel) scr.rect(x - 4, py + 20, 84, 26, 'rgba(120,155,235,0.20)');
+        scr.text(ch.name.slice(0, 9), x, py + 24, sel ? PAL.white : PAL.textDim);
+        scr.text(`${ch.hp}/${s.maxHp}`, x, py + 35, hpColor(ch.hp / s.maxHp));
       });
     }
   }
 
+  // --- equipment -------------------------------------------------------------
   drawEquip(scr) {
     const ch = this.ch;
-    const y = this.charHeader(scr);
+    const top = this.charHeader(scr);
     const s = stats(ch);
+
+    let y = top;
     EQUIP_SLOTS.forEach((slot, i) => {
       const id = ch.equip[slot];
       const sel = i === this.equipSlot && this.mode === 'equip';
-      const yy = y + i * 12;
-      if (sel) scr.text('>', 100, yy, PAL.gold);
-      scr.text(slot.toUpperCase(), 108, yy, PAL.textDim);
-      scr.text(id ? getItem(id).name : '—', 158, yy, id ? PAL.text : PAL.grey);
+      if (sel) {
+        scr.rect(this.colX(0) - 6, y - 3, CW + 12, 15, 'rgba(120,155,235,0.20)');
+        scr.rect(this.colX(0) - 6, y - 3, 2, 15, PAL.accent);
+      }
+      scr.text(slot.toUpperCase(), this.colX(0), y, PAL.textDim);
+      scr.text(id ? getItem(id).name : '—', this.colX(0) + 62, y, id ? PAL.text : PAL.grey);
+      y += 15;
     });
-    let yy = y + 66;
-    scr.rect(100, yy, W - 110, 1, PAL.frame1); yy += 5;
-    statLine(scr, 'ATK', s.power, 100, yy, { w: 60 });
-    statLine(scr, 'DEF', s.armor, 172, yy, { w: 66 }); yy += 10;
-    statLine(scr, 'WARD', s.ward, 100, yy, { w: 60 });
-    statLine(scr, 'REACH', s.reach, 172, yy, { w: 66 });
+    y += 6;
+    scr.rect(this.colX(0), y, CW, 1, PAL.line); y += 8;
+    for (const [k, v] of [['Attack', s.power], ['Defence', s.armor], ['Ward', s.ward], ['Reach', s.reach]]) {
+      statRow(scr, k, v, this.colX(0), y, CW); y += 12;
+    }
 
     if (this.mode === 'equipList') {
-      scr.window(96, y + 88, W - 102, H - y - 96);
-      this.list.x = 112; this.list.y = y + 96; this.list.cellW = 130; this.list.rows = 5;
+      const x = this.colX(1);
+      scr.panel(x - 8, top - 6, CW + 16, BODY_H - (top - TOP) - 8, { accent: true });
+      scr.text('FITS THIS SLOT', x, top + 4, PAL.accent);
+      this.list.x = x + 12; this.list.y = top + 20;
+      this.list.cellW = CW - 8; this.list.rows = 9; this.list.cellH = 13;
       this.list.draw(scr);
     } else {
-      scr.textRight('SHIFT unequip', W - 10, H - 12, PAL.textDim);
+      scr.textRight('SHIFT unequip', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
     }
   }
 
+  // --- formation -------------------------------------------------------------
   drawFormation(scr) {
-    scr.text('FORMATION', 100, 30, PAL.gold);
-    scr.text('Column 0 is the front rank.', 100, 42, PAL.textDim);
-    const ox = 118, oy = 58, cw = 34, chh = 30;
+    scr.text('FORMATION', IX, TOP + 10, PAL.accent);
+    scr.textRight('column 0 is the front rank', IX + IW, TOP + 10, PAL.textDim);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+
+    const ox = IX + 30, oy = TOP + 46, cw = 56, chh = 50;
+    for (let c = 0; c < 3; c++) {
+      scr.textCenter(`col ${c}`, ox + c * cw + 24, oy - 12, c === 0 ? PAL.accent : PAL.textFaint);
+    }
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
-        const x = ox + c * cw, yy = oy + r * chh;
+        const x = ox + c * cw, y = oy + r * chh;
         const sel = this.formCursor.row === r && this.formCursor.col === c;
-        scr.rect(x, yy, cw - 4, chh - 4, c === 0 ? '#1d2a52' : c === 1 ? '#18233f' : '#141c30');
-        scr.outline(x, yy, cw - 4, chh - 4, sel ? PAL.gold : PAL.frame2);
+        scr.rect(x, y, cw - 6, chh - 6, c === 0 ? 'rgba(40,58,110,0.55)'
+          : c === 1 ? 'rgba(28,38,72,0.5)' : 'rgba(20,26,50,0.45)');
+        scr.outline(x, y, cw - 6, chh - 6, sel ? PAL.accent : 'rgba(150,175,235,0.16)');
         const occ = this.g.party.find((ch) => ch.grid.row === r && ch.grid.col === c);
         if (occ) {
-          const cv = heroSprite({ classId: occ.classId, elementId: occ.elementId, skin: occ.skin, hair: occ.hair, frame: 0 });
+          const cv = actorSprite({
+            classId: occ.classId, raceId: occ.raceId, elementId: occ.elementId,
+            skin: occ.skin, hair: occ.hair, frame: 0,
+          });
           scr.ctx.save();
-          if (this.formPicked === occ) scr.ctx.globalAlpha = 0.5 + 0.5 * Math.sin(this.t * 8);
-          scr.ctx.drawImage(cv, x + 3, yy - 6);
+          if (this.formPicked === occ) scr.ctx.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7));
+          scr.ctx.drawImage(cv, x + 7, y - 6);
           scr.ctx.restore();
-          scr.text(occ.name.slice(0, 5), x + 1, yy + chh - 12, PAL.text, { size: 8 });
+          scr.textCenter(occ.name.slice(0, 7), x + (cw - 6) / 2, y + chh - 17, PAL.text);
         }
       }
     }
-    for (let c = 0; c < 3; c++) scr.textCenter(`col ${c}`, ox + c * cw + 15, oy - 10, PAL.textDim);
-    let y = oy + 3 * chh + 4;
+
     const occ = this.g.party.find((ch) => ch.grid.row === this.formCursor.row && ch.grid.col === this.formCursor.col);
+    const x = this.colX(1) + 24;
     if (occ) {
       const s = stats(occ);
-      scr.text(`${occ.name} — reach ${s.reach}`, 100, y, PAL.text); y += 10;
+      scr.text(occ.name, x, TOP + 46, PAL.accent);
+      scr.rect(x, TOP + 58, CW - 16, 1, PAL.line);
+      statRow(scr, 'Reach', s.reach, x, TOP + 66, CW - 16);
+      statRow(scr, 'Position', `row ${occ.grid.row}, col ${occ.grid.col}`, x, TOP + 78, CW - 16);
       scr.textWrap(s.reach >= 9 ? 'Reaches any cell from anywhere. Safe at the back.'
-        : s.reach === 3 ? 'Reaches one column deeper than a sword.'
-          : 'Strikes the enemy front rank only.', 100, y, W - 112, PAL.textDim, { lineHeight: 9 });
+        : s.reach === 3 ? 'Reaches one column deeper than a sword does.'
+          : 'Strikes the enemy front rank only.',
+        x, TOP + 96, CW - 16, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+    } else {
+      scr.text('Empty cell', x, TOP + 46, PAL.textFaint);
     }
-    scr.textRight(this.formPicked ? 'Z place / swap' : 'Z pick   SHIFT auto', W - 10, H - 12, PAL.textDim);
+    scr.textRight(this.formPicked ? 'Z place / swap' : 'Z pick   ·   SHIFT auto',
+      IX + IW, TOP + BODY_H - 22, PAL.textFaint);
   }
 
+  // --- jobs ------------------------------------------------------------------
   drawJobs(scr) {
     const ch = this.ch;
-    let y = this.charHeader(scr);
+    const top = this.charHeader(scr);
     const job = jobInfo(ch);
     const prog = jobProgress(ch);
-    scr.text(job.name.toUpperCase(), 100, y, PAL.gold);
-    scr.textRight(`${RANK_TITLES[job.rank - 1]} (${job.rank}/${MAX_JOB_RANK})`, W - 10, y, PAL.cyan);
-    y += 11;
-    scr.bar(100, y, W - 112, 5, prog.ratio, PAL.cyan);
-    y += 8;
+
+    let y = top;
+    scr.text(job.name.toUpperCase(), this.colX(0), y, PAL.accent);
+    scr.textRight(`${RANK_TITLES[job.rank - 1]}  ${job.rank}/${MAX_JOB_RANK}`,
+      this.colX(0) + CW, y, PAL.cyan);
+    y += 14;
+    scr.bar(this.colX(0), y, CW, 5, prog.ratio, PAL.cyan); y += 11;
     scr.text(prog.next === null ? 'Mastered.' : `${prog.next} more job actions to rank ${job.rank + 1}.`,
-      100, y, PAL.textDim);
-    y += 12;
-    y += scr.textWrap(job.blurb, 100, y, W - 112, PAL.textDim, { lineHeight: 9 }) * 9 + 4;
-
-    scr.text('BONUS AT THIS RANK', 100, y, PAL.gold); y += 10;
-    const parts = Object.entries(job.bonus).map(([k, v]) => `${k.toUpperCase()} +${v}`);
-    y += scr.textWrap(parts.join('   '), 100, y, W - 112, PAL.green, { lineHeight: 9 }) * 9 + 4;
-
-    scr.text(`FIELD — ${job.field.name}`, 100, y, PAL.gold); y += 10;
-    y += scr.textWrap(job.field.text, 100, y, W - 112, PAL.text, { lineHeight: 9 }) * 9 + 4;
-    scr.text('PASSIVE', 100, y, PAL.gold); y += 10;
-    scr.textWrap(job.passive.text, 100, y, W - 112, PAL.text, { lineHeight: 9 });
-  }
-
-  drawLadder(scr) {
-    const ch = this.ch;
-    this.charHeader(scr);
-    const path = promotionPath(ch);
-    const root = path[0];
-    let y = 62;
-    scr.text('CLASS LADDER', 100, y, PAL.gold);
-    scr.textRight(`tier ${CLASSES[ch.classId].tier}/4`, W - 10, y, PAL.textDim);
-    y += 12;
-
-    // walk the tree down the line the character actually took, showing the
-    // branch they rejected in grey so the choice stays visible
-    let node = root;
-    let tier = 0;
-    while (node) {
-      const taken = node.id === ch.classId;
-      const isPast = path.some((p) => p.id === node.id);
-      const lvl = tier === 0 ? 1 : PROMOTION_LEVELS[tier - 1];
-      const color = taken ? PAL.gold : isPast ? PAL.text : PAL.grey;
-      scr.text(`${String(lvl).padStart(2)}`, 100, y, PAL.textDim);
-      scr.text(node.name, 116, y, color);
-      if (taken) scr.textRight('◀ here', W - 10, y, PAL.gold);
-      y += 10;
-
-      const next = path[tier + 1];
-      if (!next) {
-        // show what is still ahead
-        if (node.promotions.length) {
-          const opts = node.promotions.map((p) => CLASSES[p]);
-          const at = PROMOTION_LEVELS[tier];
-          scr.text(`${String(at).padStart(2)}`, 100, y, PAL.textDim);
-          if (opts.length > 1) {
-            scr.text(`${opts[0].name}`, 116, y, PAL.cyan);
-            scr.text('or', 116, y + 9, PAL.textDim);
-            scr.text(`${opts[1].name}`, 132, y + 9, PAL.cyan);
-            y += 20;
-          } else { scr.text(opts[0].name, 116, y, PAL.cyan); y += 10; }
-          scr.text(ch.level >= at ? 'Ready — visit a temple.' : `At level ${at}.`,
-            116, y, ch.level >= at ? PAL.gold : PAL.textDim);
-          y += 12;
-        } else {
-          scr.text('Ladder complete.', 116, y, PAL.magenta);
-          y += 12;
-        }
-        break;
-      }
-      // the sibling not taken
-      const sibs = node.promotions.map((p) => CLASSES[p]).filter((p) => p.id !== next.id);
-      for (const s of sibs) {
-        scr.text('  ', 100, y, PAL.textDim);
-        scr.text(`(${s.name})`, 116, y, PAL.grey);
-        y += 10;
-      }
-      node = next;
-      tier++;
+      this.colX(0), y, PAL.textFaint);
+    y += 16;
+    y += scr.textWrap(job.blurb, this.colX(0), y, CW, PAL.textDim, { lineHeight: 11, maxLines: 3 }) * 11 + 8;
+    scr.text('BONUS AT THIS RANK', this.colX(0), y, PAL.accent); y += 13;
+    for (const [k, v] of Object.entries(job.bonus)) {
+      statRow(scr, k.toUpperCase(), `+${v}`, this.colX(0), y, CW, { color: PAL.green });
+      y += 11;
     }
 
-    const cls = CLASSES[ch.classId];
-    scr.rect(100, H - 44, W - 110, 1, PAL.frame1);
-    scr.textWrap(cls.blurb, 100, H - 40, W - 112, PAL.textDim, { lineHeight: 9, maxLines: 2 });
-    scr.textWrap(cls.schools.map((s) => SCHOOLS[s].name).join(' · '), 100, H - 20, W - 112,
-      PAL.cyan, { size: 8, lineHeight: 9, maxLines: 1 });
+    let ry = top;
+    scr.text(`FIELD — ${job.field.name.toUpperCase()}`, this.colX(1), ry, PAL.accent); ry += 13;
+    ry += scr.textWrap(job.field.text, this.colX(1), ry, CW, PAL.text, { lineHeight: 11, maxLines: 4 }) * 11 + 8;
+    scr.text('PASSIVE', this.colX(1), ry, PAL.accent); ry += 13;
+    ry += scr.textWrap(job.passive.text, this.colX(1), ry, CW, PAL.text, { lineHeight: 11, maxLines: 4 }) * 11 + 8;
+    scr.text('RANKS UP FASTER AS', this.colX(1), ry, PAL.accent); ry += 13;
+    let cx = this.colX(1);
+    for (const e of job.likes) {
+      const el = ELEMENT_BY_ID[e];
+      scr.rect(cx, ry + 1, 3, 6, el.color);
+      scr.text(el.name, cx + 6, ry, el.color);
+      cx += scr.textWidth(el.name) + 18;
+    }
   }
 
+  // --- ladder ----------------------------------------------------------------
+  drawLadder(scr) {
+    const ch = this.ch;
+    const top = this.charHeader(scr);
+    const path = promotionPath(ch);
+    const cls = CLASSES[ch.classId];
+
+    scr.text('CLASS LADDER', this.colX(0), top, PAL.accent);
+    scr.textRight(`${path.length} of 8 tiers`, this.colX(0) + CW, top, PAL.textFaint);
+    let y = top + 14;
+
+    // One row per tier — eight at most, so the whole ladder fits without
+    // scrolling. Rejected branches are collected on the right rather than
+    // interleaved, which used to collide with the names beside them.
+    const rejected = [];
+    path.forEach((node, i) => {
+      const taken = node.id === ch.classId;
+      const lv = i === 0 ? 1 : PROMOTION_LEVELS[i - 1];
+      if (taken) scr.rect(this.colX(0) - 6, y - 3, CW + 12, 13, 'rgba(240,180,76,0.12)');
+      scr.text(String(lv).padStart(2), this.colX(0), y, PAL.textFaint);
+      scr.rect(this.colX(0) + 20, y + 3, 3, 3, taken ? PAL.accent : 'rgba(148,162,192,0.45)');
+      scr.text(node.name, this.colX(0) + 30, y, taken ? PAL.accent : PAL.text);
+      scr.textRight(TIER_NAME[node.tier], this.colX(0) + CW, y,
+        taken ? PAL.accent : PAL.textFaint);
+      y += 13;
+      const next = path[i + 1];
+      if (next) {
+        node.promotions.map((p) => CLASSES[p])
+          .filter((p) => p.id !== next.id)
+          .forEach((p) => rejected.push(p.name));
+      }
+    });
+
+    // what is still ahead
+    let ry = top;
+    scr.text('AHEAD', this.colX(1), ry, PAL.accent); ry += 14;
+    if (cls.promotions.length) {
+      const at = cls.promoteLevel;
+      const opts = cls.promotions.map((p) => CLASSES[p]);
+      const ready = ch.level >= at;
+      scr.text(`LEVEL ${at}`, this.colX(1), ry, ready ? PAL.accent : PAL.textDim); ry += 12;
+      for (const o of opts) {
+        scr.rect(this.colX(1), ry + 2, 3, 5, PAL.cyan);
+        ry += scr.textWrap(o.name, this.colX(1) + 8, ry, CW - 8, PAL.cyan,
+          { lineHeight: 11, maxLines: 1 }) * 11 + 1;
+      }
+      ry += 4;
+      scr.textWrap(ready ? 'Ready now — visit a temple.' : `Reach level ${at} to choose.`,
+        this.colX(1), ry, CW, ready ? PAL.green : PAL.textFaint, { lineHeight: 10, maxLines: 2 });
+      ry += 22;
+      const later = PROMOTION_LEVELS.filter((l) => l > at);
+      if (later.length) {
+        scr.text('BRANCHES AFTER THAT', this.colX(1), ry, PAL.accent); ry += 12;
+        scr.text(later.join(',  '), this.colX(1), ry, PAL.magenta);
+        ry += 18;
+      }
+    } else {
+      scr.textWrap('The summit. This class has no further promotion.',
+        this.colX(1), ry, CW, PAL.magenta, { lineHeight: 10, maxLines: 2 });
+      ry += 26;
+    }
+
+    if (rejected.length) {
+      scr.rect(this.colX(1), ry, CW, 1, PAL.line); ry += 8;
+      scr.text('PATHS NOT TAKEN', this.colX(1), ry, PAL.accent); ry += 12;
+      scr.textWrap(rejected.slice(-4).join(',  '), this.colX(1), ry, CW, PAL.grey,
+        { lineHeight: 10, maxLines: 3 });
+    }
+  }
+
+  // --- save ------------------------------------------------------------------
   drawSave(scr) {
-    scr.text('SAVE', 100, 30, PAL.gold);
-    this.list.x = 116; this.list.y = 48; this.list.cellW = 128; this.list.rows = 3; this.list.cellH = 22;
+    scr.text('SAVE', IX, TOP + 10, PAL.accent);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+    this.list.x = IX + 24; this.list.y = TOP + 40;
+    this.list.cellW = IW - 48; this.list.rows = 3; this.list.cellH = 26;
     this.list.draw(scr);
     scr.textWrap('Saves live in this browser. Clearing site data clears them.',
-      100, H - 40, W - 112, PAL.textDim, { lineHeight: 9 });
+      IX, TOP + BODY_H - 30, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
   }
 }
 

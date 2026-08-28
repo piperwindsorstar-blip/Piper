@@ -1,58 +1,78 @@
 <!doctype html><meta charset="utf-8"><title>sprite sheet</title>
-<style>body{margin:0;background:#1a1a28}canvas{image-rendering:pixelated;display:block;margin:0 auto}</style>
-<canvas id="c" width="720" height="620"></canvas>
+<style>body{margin:0;background:#0b0e18}canvas{image-rendering:pixelated;display:block;margin:0 auto}</style>
+<canvas id="c" width="1000" height="900"></canvas>
 <script type="module">
 // Contact sheet of every generated sprite, for reviewing the art in one pass.
-import { monsterSprite, heroSprite, npcSprite, tileSprite, TILE_NAMES } from '../src/engine/sprites.js';
+import { monsterSprite, actorSprite, npcSprite, tileSprite, TILE_NAMES, TS } from '../src/engine/sprites.js';
 import { ENEMIES } from '../src/data/enemies.js';
 import { ROOT_CLASSES } from '../src/data/classes.js';
+import { RACES } from '../src/data/races.js';
 const c = document.getElementById('c').getContext('2d');
 c.imageSmoothingEnabled = false;
-c.fillStyle = '#1a1a28'; c.fillRect(0, 0, 720, 620);
-c.font = '9px monospace'; c.textBaseline = 'top';
-const label = (t, x, y) => { c.fillStyle = '#8fa'; c.fillText(t, x, y); };
+c.fillStyle = '#0b0e18'; c.fillRect(0, 0, 1000, 900);
+c.font = '10px ui-monospace, monospace'; c.textBaseline = 'top';
+const label = (t, x, y, col = '#8fa8d8') => { c.fillStyle = col; c.fillText(t, x, y); };
+const head = (t, y) => { c.fillStyle = '#f0b44c'; c.font = 'bold 11px ui-monospace, monospace'; c.fillText(t, 8, y); c.font = '10px ui-monospace, monospace'; };
 
-// one of each monster body plan
-const seen = new Set();
-let i = 0;
+let y = 8;
+// --- one of each monster body plan -----------------------------------------
+head('MONSTERS — eight body plans', y); y += 16;
+const seen = new Set(); let i = 0;
 for (const e of ENEMIES) {
-  if (seen.has(e.sprite.plan + e.family)) continue;
-  seen.add(e.sprite.plan + e.family);
-  const x = 10 + (i % 8) * 88, y = 14 + Math.floor(i / 8) * 82;
+  const k = e.sprite.plan + e.family;
+  if (seen.has(k)) continue; seen.add(k);
+  const x = 8 + (i % 10) * 98, yy = y + Math.floor(i / 10) * 84;
   const cv = monsterSprite(e.sprite, 0);
-  c.drawImage(cv, x + 40 - cv.width / 2, y + 62 - cv.height);
-  label(e.name.slice(0, 13), x, y + 64);
+  c.drawImage(cv, x + 48 - cv.width / 2, yy + 60 - cv.height);
+  label(e.name.slice(0, 14), x, yy + 62);
   i++;
 }
-// every root class
-const base = 14 + Math.ceil(i / 8) * 82;
+y += Math.ceil(i / 10) * 84 + 16;
+
+// --- every race, one class -------------------------------------------------
+head('RACES — 12, same class and element', y); y += 16;
+RACES.forEach((r, k) => {
+  const x = 8 + (k % 12) * 80, yy = y + Math.floor(k / 12) * 70;
+  c.drawImage(actorSprite({ classId: 'warrior', raceId: r.id, elementId: 'fire', skin: k % 3, hair: k % 4 }), x + 16, yy);
+  label(r.name.slice(0, 10), x, yy + 50);
+});
+y += 70 + 16;
+
+// --- every root class, mixed races -----------------------------------------
+head('CLASSES — 12 roots', y); y += 16;
 ROOT_CLASSES.forEach((cl, k) => {
-  const x = 10 + (k % 12) * 58, y = base + Math.floor(k / 12) * 62;
-  c.drawImage(heroSprite({ classId: cl.id, elementId: 'fire', skin: k % 4, hair: k % 6 }), x + 6, y);
-  label(cl.name.slice(0, 8), x, y + 34);
+  const x = 8 + (k % 12) * 80, yy = y + Math.floor(k / 12) * 70;
+  c.drawImage(actorSprite({ classId: cl.id, raceId: RACES[k % RACES.length].id, elementId: 'lightning', skin: k % 3, hair: k % 5 }), x + 16, yy);
+  label(cl.name.slice(0, 10), x, yy + 50);
 });
-// tier-4 sprites, to check the promoted look
-const t4 = ['swordsaint', 'bastion', 'dragonfist', 'skylancer', 'ninja', 'deadeye',
-  'tempestdancer', 'sage', 'archmage', 'hierophant', 'espercaller', 'seer'];
-const b2 = base + 68;
-t4.forEach((id, k) => {
-  const x = 10 + (k % 12) * 58, y = b2 + Math.floor(k / 12) * 62;
-  c.drawImage(heroSprite({ classId: id, elementId: ['fire','earth','light','dark','wind','ice'][k % 6], skin: k % 4, hair: k % 6 }), x + 6, y);
-  label(id.slice(0, 9), x, y + 34);
+y += 70 + 16;
+
+// --- ascension tiers, to check the promoted look ---------------------------
+head('ASCENSIONS — Lv40 / 60 / 80 tiers', y); y += 16;
+const asc = ['bladesovereign', 'dawnedge', 'swordeternal', 'rampartlord', 'citadel',
+  'magusprime', 'grandmagus', 'theabsolute', 'archprelate', 'pontifex', 'gatekeeper', 'nameless'];
+asc.forEach((id, k) => {
+  const x = 8 + (k % 12) * 80, yy = y + Math.floor(k / 12) * 70;
+  c.drawImage(actorSprite({ classId: id, raceId: RACES[(k + 4) % RACES.length].id, elementId: ['light','dark','void','spirit'][k % 4], skin: k % 3, hair: k % 5 }), x + 16, yy);
+  label(id.slice(0, 11), x, yy + 50);
 });
-// npcs
-const b3 = b2 + 68;
+y += 70 + 16;
+
+// --- npcs and tiles --------------------------------------------------------
+head('TOWNSFOLK & TILES', y); y += 16;
 ['shop', 'inn', 'temple', 'guild', 'talk'].forEach((k, n) => {
-  const x = 10 + n * 58;
-  c.drawImage(npcSprite(k, n, 0), x + 8, b3);
-  label(k, x, b3 + 24);
+  const x = 8 + n * 60;
+  c.drawImage(npcSprite(k, n, 0), x + 8, y);
+  label(k, x, y + 34);
 });
-// tiles
-const b4 = b3 + 42;
+y += 50;
 TILE_NAMES.forEach((n, k) => {
-  const x = 10 + (k % 20) * 34, y = b4 + Math.floor(k / 20) * 42;
-  c.drawImage(tileSprite(n), x, y); c.drawImage(tileSprite(n), x + 16, y);
-  label(n.slice(0, 5), x, y + 18);
+  const x = 8 + (k % 12) * 82, yy = y + Math.floor(k / 12) * 62;
+  c.drawImage(tileSprite(n), x, yy);
+  c.drawImage(tileSprite(n), x + TS, yy);
+  c.drawImage(tileSprite(n), x, yy + TS);
+  c.drawImage(tileSprite(n), x + TS, yy + TS);
+  label(n.slice(0, 8), x, yy + TS * 2 + 1);
 });
 document.title = 'ready';
 </script>
