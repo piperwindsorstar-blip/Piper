@@ -422,7 +422,9 @@ export class CreationScene {
     scr.text('X  backspace', LX + 130, H - 48, PAL.textDim);
     scr.text('SHIFT  random', LX + 244, H - 48, PAL.textDim);
     const ok = this.draft.name.trim().length > 0;
-    scr.text(ok ? 'TAB  continue →' : 'Give this one a name.', LX + 356, H - 48, ok ? PAL.accent : PAL.grey);
+    // right-aligned: the prompt is longer than the hint and overran the panel
+    scr.textRight(ok ? 'TAB  continue →' : 'Give this one a name.',
+      W - LX - 16, H - 48, ok ? PAL.accent : PAL.grey);
   }
 
   drawRace(scr) {

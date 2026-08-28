@@ -12,12 +12,23 @@ An HD-2D turn-based RPG that borrows deliberately:
 
 Runs in any modern browser. No build step, no dependencies.
 
+**To just play it:** download **`docs/play.html`** and double-click it. That one
+file is the entire game — every sprite, map and system inlined, nothing to
+install, no server, works offline. Saves live in that browser's local storage.
+
+**To work on it**, run it from source (needs [Node](https://nodejs.org) 18+):
+
 ```bash
 npm start          # serves on http://localhost:8080
 npm test           # 80 data-integrity checks
 npm run sim        # headless battle balance simulation
 npm run check      # both
+npm run bundle     # regenerate docs/play.html from src/
 ```
+
+Opening `index.html` directly does *not* work — browsers refuse to load ES
+modules over `file://`. That restriction is the only reason the single-file
+build exists.
 
 **Controls** — arrows/WASD walk · `Z`/Enter confirm · `X`/Esc cancel · `C`/Tab party menu · `Shift` context action (random name, unequip, auto-formation, delete save). Touch controls appear automatically on touch devices.
 
@@ -178,6 +189,7 @@ src/
     state.js          party, inventory, flags, save/load
     scenes/           title creation field battle menu shop promotion gameover
 tools/
+  bundle.js           builds docs/play.html, the one-file playable build
   validate.js         80 data-integrity checks
   simulate.js         headless battle balance harness
   serve.js            zero-dependency static server

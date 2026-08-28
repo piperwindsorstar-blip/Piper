@@ -1,0 +1,211 @@
+<title>Quest of the Thirteen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  /* One committed visual world: an arcade cabinet in a dark room. The game
+     owns the colour on screen, so the frame stays near-black and lets the
+     canvas be the only lit thing. Every colour is painted explicitly. */
+  :root {
+    --void:    #05060c;
+    --cabinet: #0b0f1e;
+    --bevel:   #1c2440;
+    --rule:    #141c34;
+    --gold:    #f8d048;
+    --ice:     #c8d0e8;
+    --dim:     #6f7fa8;
+    --violet:  #9a7ad6;
+    --cap:     #111a30;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--void);
+    color: var(--ice);
+    font-family: "DM Mono", ui-monospace, "Courier New", monospace;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;
+  }
+
+  #cabinet {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px;
+    padding: 12px;
+  }
+
+  /* --- wordmark ----------------------------------------------------------- */
+  #plate {
+    display: flex; align-items: baseline; gap: 12px;
+    font-family: Silkscreen, "DM Mono", monospace;
+    line-height: 1;
+  }
+  #plate .mark {
+    font-size: 13px; font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+  }
+  #plate .sub {
+    font-family: "DM Mono", monospace;
+    font-size: 11px; color: var(--dim);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+
+  /* --- the screen --------------------------------------------------------- */
+  #stage {
+    position: relative;
+    line-height: 0;
+    outline: none;
+  }
+  #screen {
+    display: block;
+    image-rendering: pixelated;
+    background: #000;
+    border: 2px solid var(--bevel);
+    box-shadow: 0 0 0 1px #000, 0 18px 60px rgba(0, 0, 0, 0.9),
+                0 0 90px rgba(60, 90, 200, 0.10);
+  }
+  /* the game already grades and vignettes its own frame; this is only the
+     faint glass in front of it */
+  #glass {
+    position: absolute; inset: 2px;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(to bottom,
+        rgba(0,0,0,0.16) 0 1px, rgba(0,0,0,0) 1px 3px);
+    opacity: 0.25;
+  }
+
+  /* --- click-to-focus veil ------------------------------------------------ */
+  #veil {
+    position: absolute; inset: 2px;
+    display: grid; place-items: center;
+    background: rgba(5, 6, 12, 0.90);
+    cursor: pointer;
+    text-align: center;
+    padding: 20px;
+  }
+  #veil.gone { display: none; }
+  #veil .panel {
+    border: 1px solid var(--bevel);
+    border-left: 3px solid var(--gold);
+    background: linear-gradient(180deg, #131c36 0%, #0b1226 100%);
+    padding: 18px 26px;
+    max-width: 34ch;
+  }
+  #veil .go {
+    font-family: Silkscreen, monospace;
+    font-size: 15px; color: var(--gold);
+    letter-spacing: 0.04em;
+    margin: 0 0 8px;
+  }
+  #veil .why {
+    margin: 0;
+    font-size: 11.5px; line-height: 1.55; color: var(--dim);
+  }
+
+  /* --- control rail ------------------------------------------------------- */
+  #rail {
+    display: flex; flex-wrap: wrap;
+    align-items: center; justify-content: center;
+    gap: 6px 14px;
+    font-size: 11px; color: var(--dim);
+  }
+  .bind { display: flex; align-items: center; gap: 6px; }
+  .bind .keys { display: flex; gap: 3px; }
+  kbd {
+    font-family: "DM Mono", monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--ice);
+    background: var(--cap);
+    border: 1px solid var(--bevel);
+    border-bottom: 2px solid #070c18;
+    border-radius: 3px;
+    padding: 2px 5px;
+    min-width: 18px; text-align: center;
+    line-height: 1.2;
+  }
+  .bind .what { letter-spacing: 0.09em; text-transform: uppercase; }
+  #rail .sep { color: var(--rule); }
+  #full {
+    font: inherit; font-size: 10px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--dim);
+    background: transparent;
+    border: 1px solid var(--bevel);
+    border-radius: 3px;
+    padding: 4px 9px;
+    cursor: pointer;
+  }
+  #full:hover, #full:focus-visible { color: var(--gold); border-color: var(--gold); outline: none; }
+
+  /* --- touch pad (phones and tablets only) -------------------------------- */
+  #touch { position: fixed; inset: 0; pointer-events: none; display: none; }
+  #touch.visible { display: block; }
+  #touch .btn {
+    position: absolute; pointer-events: auto;
+    display: grid; place-items: center;
+    background: rgba(28, 36, 64, 0.62);
+    border: 2px solid rgba(160, 190, 255, 0.3);
+    border-radius: 10px;
+    color: var(--ice);
+    font-family: "DM Mono", monospace;
+    font-size: 15px; font-weight: 500;
+  }
+  #touch .btn.on { background: rgba(248, 208, 72, 0.35); border-color: var(--gold); }
+  #touch .dpad { position: absolute; left: 16px; bottom: 20px; width: 160px; height: 160px; }
+  #touch .dpad .btn { width: 52px; height: 52px; }
+  #touch [data-btn="up"]      { left: 54px; top: 0; }
+  #touch [data-btn="down"]    { left: 54px; top: 106px; }
+  #touch [data-btn="left"]    { left: 0; top: 53px; }
+  #touch [data-btn="right"]   { left: 108px; top: 53px; }
+  #touch [data-btn="confirm"] { right: 20px; bottom: 76px; width: 66px; height: 66px; }
+  #touch [data-btn="cancel"]  { right: 92px; bottom: 26px; width: 58px; height: 58px; }
+  #touch [data-btn="menu"]    { right: 20px; top: 20px; width: 62px; height: 38px; font-size: 11px; }
+  #touch [data-btn="shift"]   { right: 90px; top: 20px; width: 62px; height: 38px; font-size: 11px; }
+  @media (pointer: coarse) { #rail .bind, #plate .sub { display: none; } }
+</style>
+
+<div id="cabinet">
+  <div id="plate">
+    <span class="mark">QUEST OF THE THIRTEEN</span>
+    <span class="sub">save is kept in this browser</span>
+  </div>
+
+  <div id="stage" tabindex="0">
+    <canvas id="screen" width="480" height="270"></canvas>
+    <div id="glass"></div>
+    <div id="veil">
+      <div class="panel">
+        <p class="go">CLICK TO PLAY</p>
+        <p class="why">The game reads the keyboard, so it needs focus first. Click anywhere on the screen.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="rail">
+    <span class="bind"><span class="keys"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></span><span class="what">move</span></span>
+    <span class="bind"><span class="keys"><kbd>Z</kbd></span><span class="what">confirm</span></span>
+    <span class="bind"><span class="keys"><kbd>X</kbd></span><span class="what">back</span></span>
+    <span class="bind"><span class="keys"><kbd>C</kbd></span><span class="what">party</span></span>
+    <span class="bind"><span class="keys"><kbd>Shift</kbd></span><span class="what">random / auto</span></span>
+    <button id="full" type="button" hidden>Fullscreen</button>
+  </div>
+</div>
+
+<div id="touch">
+  <div class="dpad">
+    <div class="btn" data-btn="up">&#9650;</div>
+    <div class="btn" data-btn="down">&#9660;</div>
+    <div class="btn" data-btn="left">&#9664;</div>
+    <div class="btn" data-btn="right">&#9654;</div>
+  </div>
+  <div class="btn" data-btn="confirm">Z</div>
+  <div class="btn" data-btn="cancel">X</div>
+  <div class="btn" data-btn="menu">MENU</div>
+  <div class="btn" data-btn="shift">SHIFT</div>
+</div>
+
+<script>

@@ -1,0 +1,55 @@
+</script>
+
+<script>
+(function () {
+  const W = 480, H = 270;
+  const stage  = document.getElementById('stage');
+  const veil   = document.getElementById('veil');
+  const rail   = document.getElementById('rail');
+  const plate  = document.getElementById('plate');
+  const canvas = document.getElementById('screen');
+  const app    = window.app;
+
+  // The engine scales to the whole window. Here the game shares the page with
+  // a wordmark and a control rail, so measure those and fit to what is left.
+  if (app && app.screen) {
+    const scr = app.screen;
+    scr.resize = function () {
+      const chrome = plate.offsetHeight + rail.offsetHeight + 68;
+      const raw = Math.min((window.innerWidth - 28) / W, (window.innerHeight - chrome) / H);
+      this.scale = raw >= 1 ? Math.max(1, Math.floor(raw)) : Math.max(0.35, raw);
+      canvas.width  = Math.round(W * this.scale);
+      canvas.height = Math.round(H * this.scale);
+      canvas.style.width  = Math.round(W * this.scale) + 'px';
+      canvas.style.height = Math.round(H * this.scale) + 'px';
+      this.out.imageSmoothingEnabled = false;
+    };
+    scr.resize();
+    addEventListener('resize', () => scr.resize());
+  }
+
+  // Keyboard events only reach this frame once it has focus.
+  const start = () => { veil.classList.add('gone'); stage.focus(); };
+  veil.addEventListener('pointerdown', start);
+  addEventListener('keydown', (e) => {
+    if (!veil.classList.contains('gone')) start();
+    // don't let the arrow keys scroll the page out from under the game
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab'].includes(e.key)) e.preventDefault();
+  }, { capture: true });
+  if (matchMedia('(pointer: coarse)').matches) start();
+
+  // Offer fullscreen only where this frame is actually allowed to enter it.
+  const full = document.getElementById('full');
+  if (document.fullscreenEnabled) {
+    full.hidden = false;
+    full.addEventListener('click', () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(() => { full.hidden = true; });
+    });
+    document.addEventListener('fullscreenchange', () => {
+      full.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
+      if (app && app.screen) app.screen.resize();
+    });
+  }
+})();
+</script>

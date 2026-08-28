@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A 16-bit turn-based RPG: Dragon Quest III class promotion, Lufia: The Legend Returns grid combat, Final Fantasy VI presentation.",
+  "description": "An HD-2D turn-based RPG: Dragon Quest III class promotion, Lufia: The Legend Returns grid combat, twelve playable races.",
   "scripts": {
     "start": "node tools/serve.js",
     "test": "node tools/validate.js",
     "sim": "node tools/simulate.js",
-    "check": "node tools/validate.js && node tools/simulate.js --runs 12"
+    "check": "node tools/validate.js && node tools/simulate.js --runs 12",
+    "bundle": "node tools/bundle.js"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }
