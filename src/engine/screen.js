@@ -2,34 +2,50 @@
 //  SCREEN — a 256x224 framebuffer (SNES resolution) scaled up with
 //  nearest-neighbour sampling, so everything drawn into it reads as pixel art.
 //
-//  The palette and window chrome are tuned to the Final Fantasy VI look:
-//  a deep indigo-to-blue gradient window with a light bevelled border, drop
-//  shadowed text, and a restrained 16-bit palette.
+//  Text is drawn from the 5x7 bitmap font in font.js rather than from a system
+//  typeface, and windows use the Final Fantasy VI frame: a near-black outer
+//  keyline with the corner pixels knocked out, a light periwinkle bevel, a
+//  mid-blue inner rule, and a steep blue gradient behind it.
 // ============================================================================
+
+import { drawText, measure, wrap, glyph, GLYPH_H } from './font.js';
 
 export const W = 256;
 export const H = 224;
 
+// A 16-bit palette pulled toward the FFVI menu ROM: the window blues, the
+// off-white body text with its near-black shadow, and the amber highlight.
 export const PAL = {
   black:    '#000000',
-  night:    '#101024',
-  ink:      '#181830',
-  win0:     '#1c2f7a',   // window gradient top
-  win1:     '#0e1640',   // window gradient bottom
-  frame0:   '#c8d8f8',   // window bevel light
-  frame1:   '#5878c8',   // window bevel mid
-  frame2:   '#203060',   // window bevel dark
+  night:    '#08081a',
+  ink:      '#101028',
+  win0:     '#3050c0',   // window gradient top
+  win1:     '#101862',   // window gradient middle
+  win2:     '#080c38',   // window gradient bottom
+  frame0:   '#b8c8f8',   // bright bevel
+  frame1:   '#7088d8',   // mid bevel
+  frame2:   '#283878',   // inner rule
+  frame3:   '#000010',   // outer keyline
   text:     '#f8f8f8',
-  textDim:  '#a8b0c8',
+  textDim:  '#a0b0d0',
   textShade:'#101020',
   gold:     '#f8d048',
-  green:    '#68d868',
-  red:      '#f85858',
-  cyan:     '#68d8f8',
-  magenta:  '#e878d8',
-  grey:     '#808898',
+  goldDim:  '#c89820',
+  green:    '#68e068',
+  red:      '#f86060',
+  cyan:     '#70d8f8',
+  magenta:  '#e880e0',
+  grey:     '#7880a0',
   white:    '#ffffff',
 };
+
+/** size (in px, as callers request it) -> integer bitmap scale */
+export function fontScale(size = 8) {
+  if (size >= 20) return 3;
+  if (size >= 12) return 2;
+  return 1;
+}
+export const LINE = GLYPH_H + 3;
 
 export class Screen {
   constructor(canvas) {
@@ -105,88 +121,75 @@ export class Screen {
     c.fillRect(x | 0, y | 0, w | 0, h | 0);
   }
 
-  /** FF6-style bevelled message window. */
+  /**
+   * The Final Fantasy VI menu window: a three-stop blue gradient behind a
+   * three-ring frame, with the four extreme corner pixels knocked out so the
+   * box reads as rounded at 1:1.
+   */
   window(x, y, w, h, opts = {}) {
     x |= 0; y |= 0; w |= 0; h |= 0;
-    const alpha = opts.alpha ?? 1;
     const c = this.ctx;
     c.save();
-    c.globalAlpha = alpha;
-    this.vgrad(x + 2, y + 2, w - 4, h - 4, opts.top ?? PAL.win0, opts.bottom ?? PAL.win1);
-    // outer dark edge
-    this.outline(x, y, w, h, PAL.frame2);
-    // bevel: light on top/left, mid on bottom/right
+    c.globalAlpha = opts.alpha ?? 1;
+
+    // body: bright at the top, falling away steeply, as the SNES gradient does
+    const g = c.createLinearGradient(0, y + 3, 0, y + h - 3);
+    g.addColorStop(0, opts.top ?? PAL.win0);
+    g.addColorStop(0.45, opts.mid ?? PAL.win1);
+    g.addColorStop(1, opts.bottom ?? PAL.win2);
+    c.fillStyle = g;
+    c.fillRect(x + 3, y + 3, w - 6, h - 6);
+
+    // ring 3 — inner rule
+    this.outline(x + 2, y + 2, w - 4, h - 4, PAL.frame2);
+    // ring 2 — the bright bevel, brighter along the top and left
     this.rect(x + 1, y + 1, w - 2, 1, PAL.frame0);
     this.rect(x + 1, y + 1, 1, h - 2, PAL.frame0);
     this.rect(x + 1, y + h - 2, w - 2, 1, PAL.frame1);
     this.rect(x + w - 2, y + 1, 1, h - 2, PAL.frame1);
-    // corner studs
+    // ring 1 — outer keyline
+    this.outline(x, y, w, h, PAL.frame3);
+
+    // knock the extreme corners out to round the box
+    for (const [cx, cy] of [[x, y], [x + w - 1, y], [x, y + h - 1], [x + w - 1, y + h - 1]]) {
+      c.clearRect(cx, cy, 1, 1);
+    }
+    // and dot the bevel corners so the rounding reads
     for (const [cx, cy] of [[x + 1, y + 1], [x + w - 2, y + 1], [x + 1, y + h - 2], [x + w - 2, y + h - 2]]) {
-      this.px(cx, cy, PAL.frame0);
+      this.px(cx, cy, PAL.frame1);
     }
     c.restore();
   }
 
-  // --- text ----------------------------------------------------------------
-  setFont(size = 8, bold = false) {
-    this.ctx.font = `${bold ? 'bold ' : ''}${size}px "Courier New", ui-monospace, monospace`;
-    this.ctx.textBaseline = 'top';
-    this._fs = size;
-  }
+  // --- text (bitmap font) --------------------------------------------------
+  /** Average advance, for callers that lay out on a rough character grid. */
+  charW(size = 8) { return 6 * fontScale(size); }
 
-  /** Character advance for the current font size. */
-  charW(size = this._fs ?? 8) { return Math.round(size * 0.6); }
+  textWidth(str, size = 8) { return measure(str, fontScale(size)); }
 
-  textWidth(str, size = 8) { return str.length * this.charW(size); }
+  lineHeight(size = 8) { return GLYPH_H * fontScale(size) + 3; }
 
-  /**
-   * Draw text with a hard drop shadow, one character at a time on an integer
-   * grid so the spacing stays pixel-stable at any scale.
-   */
   text(str, x, y, color = PAL.text, opts = {}) {
-    const size = opts.size ?? 8;
-    const bold = opts.bold ?? false;
-    this.setFont(size, bold);
-    const c = this.ctx;
-    const adv = this.charW(size);
-    let cx = Math.round(x);
-    const cy = Math.round(y);
-    const shadow = opts.shadow ?? PAL.textShade;
-    for (const ch of String(str)) {
-      if (ch !== ' ') {
-        if (shadow) { c.fillStyle = shadow; c.fillText(ch, cx + 1, cy + 1); }
-        c.fillStyle = color;
-        c.fillText(ch, cx, cy);
-      }
-      cx += adv;
-    }
-    return cx - x;
+    const scale = fontScale(opts.size ?? 8);
+    return drawText(this.ctx, str, x, y, color, {
+      scale, shadow: opts.shadow === null ? null : (opts.shadow ?? PAL.textShade),
+    });
   }
 
   textRight(str, x, y, color, opts = {}) {
-    const w = this.textWidth(str, opts.size ?? 8);
-    return this.text(str, x - w, y, color, opts);
+    return this.text(str, x - this.textWidth(str, opts.size ?? 8), y, color, opts);
   }
 
   textCenter(str, cx, y, color, opts = {}) {
-    const w = this.textWidth(str, opts.size ?? 8);
-    return this.text(str, Math.round(cx - w / 2), y, color, opts);
+    return this.text(str, Math.round(cx - this.textWidth(str, opts.size ?? 8) / 2), y, color, opts);
   }
 
   /** Word-wrap into a box; returns the number of lines drawn. */
   textWrap(str, x, y, maxW, color = PAL.text, opts = {}) {
     const size = opts.size ?? 8;
-    const lh = opts.lineHeight ?? size + 2;
-    const perLine = Math.max(1, Math.floor(maxW / this.charW(size)));
-    const words = String(str).split(/\s+/);
-    const lines = [];
-    let line = '';
-    for (const wd of words) {
-      if (!line.length) { line = wd; continue; }
-      if (line.length + 1 + wd.length <= perLine) line += ' ' + wd;
-      else { lines.push(line); line = wd; }
-    }
-    if (line.length) lines.push(line);
+    const scale = fontScale(size);
+    const lh = opts.lineHeight ?? (GLYPH_H * scale + 3);
+    const lines = wrap(str, maxW, scale);
     const limit = opts.maxLines ?? lines.length;
     lines.slice(0, limit).forEach((l, i) => this.text(l, x, y + i * lh, color, opts));
     return Math.min(lines.length, limit);

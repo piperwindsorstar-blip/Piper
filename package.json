@@ -1,0 +1,14 @@
+{
+  "name": "quest-of-the-thirteen",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A 16-bit turn-based RPG: Dragon Quest III class promotion, Lufia: The Legend Returns grid combat, Final Fantasy VI presentation.",
+  "scripts": {
+    "start": "node tools/serve.js",
+    "test": "node tools/validate.js",
+    "sim": "node tools/simulate.js",
+    "check": "node tools/validate.js && node tools/simulate.js --runs 12"
+  },
+  "engines": { "node": ">=18" }
+}

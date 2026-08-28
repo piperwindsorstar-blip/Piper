@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Quest of the Thirteen</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230e1640'/><path d='M7 2h2v9H7z' fill='%23f8d048'/><path d='M5 11h6v2H5z' fill='%23c8d8f8'/></svg>">
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; background: #05060c; overflow: hidden;
+    font-family: ui-monospace, "Courier New", monospace; color: #c8d0e8;
+    -webkit-user-select: none; user-select: none; touch-action: none;
+  }
+  #wrap { position: fixed; inset: 0; display: grid; place-items: center; }
+  canvas {
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    background: #000; box-shadow: 0 0 0 2px #1c2440, 0 12px 48px rgba(0,0,0,.8);
+  }
+  #touch { position: fixed; inset: 0; pointer-events: none; display: none; }
+  #touch.visible { display: block; }
+  #touch .btn {
+    position: absolute; pointer-events: auto;
+    display: grid; place-items: center;
+    background: rgba(40,56,110,.5); border: 2px solid rgba(160,190,255,.35);
+    border-radius: 10px; color: #dfe8ff; font-size: 15px; font-weight: 700;
+  }
+  #touch .btn.on { background: rgba(90,130,230,.7); }
+  #touch .dpad .btn { width: 52px; height: 52px; }
+  #touch .dpad { position: absolute; left: 16px; bottom: 20px; width: 160px; height: 160px; }
+  #touch [data-btn="up"]    { left: 54px; top: 0; }
+  #touch [data-btn="down"]  { left: 54px; top: 106px; }
+  #touch [data-btn="left"]  { left: 0; top: 53px; }
+  #touch [data-btn="right"] { left: 108px; top: 53px; }
+  #touch [data-btn="confirm"] { right: 20px; bottom: 76px; width: 66px; height: 66px; }
+  #touch [data-btn="cancel"]  { right: 92px; bottom: 26px; width: 58px; height: 58px; }
+  #touch [data-btn="menu"]    { right: 20px; top: 20px; width: 62px; height: 38px; font-size: 12px; }
+  #touch [data-btn="shift"]   { right: 90px; top: 20px; width: 62px; height: 38px; font-size: 12px; }
+  #hint { position: fixed; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 11px; opacity: .45; }
+  @media (pointer: coarse) { #hint { display: none; } }
+</style>
+</head>
+<body>
+  <div id="wrap"><canvas id="screen" width="256" height="224"></canvas></div>
+  <div id="touch">
+    <div class="dpad">
+      <div class="btn" data-btn="up">▲</div>
+      <div class="btn" data-btn="down">▼</div>
+      <div class="btn" data-btn="left">◀</div>
+      <div class="btn" data-btn="right">▶</div>
+    </div>
+    <div class="btn" data-btn="confirm">Z</div>
+    <div class="btn" data-btn="cancel">X</div>
+    <div class="btn" data-btn="menu">MENU</div>
+    <div class="btn" data-btn="shift">SHIFT</div>
+  </div>
+  <div id="hint">arrows / WASD · Z confirm · X cancel · C or TAB menu</div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
