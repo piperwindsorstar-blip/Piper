@@ -64,6 +64,8 @@ export const SCHOOLS = {
   hex:      { name: 'Hexcraft',        kind: 'mag',  blurb: 'Makes the enemy worse at existing.' },
   spirit:   { name: 'Spirit Arts',     kind: 'mag',  blurb: 'Negotiations with the invisible.' },
   arcane:   { name: 'High Arcana',     kind: 'mag',  blurb: 'Reserved for those who reached the top of a tree.' },
+  transcend:{ name: 'Transcendent',      kind: 'hyb',  blurb: 'Opens at the Exalted tier. The rules start bending.' },
+  apex:     { name: 'Apex',              kind: 'hyb',  blurb: 'Opens at the Mythic tier. The rules stop applying.' },
 };
 export const SCHOOL_IDS = Object.keys(SCHOOLS);
 
@@ -118,7 +120,7 @@ export const SKILLS = [
   s('mendspirit', 'Mend Spirit', 'ki', 9, 8, 'heal', 0.3, 'ally', 9, { blurb: 'Someone else\'s wounds, closed by will.' }),
   s('inneriron', 'Inner Iron', 'ki', 12, 10, 'buff', 0, 'self', 0, { status: 'shell', blurb: 'Turns thought into armour.' }),
   s('chakra', 'Open Chakra', 'ki', 17, 14, 'heal', 0.25, 'allies', 0, { cleanse: true, blurb: 'Clears every ailment on the line.' }),
-  s('transcend', 'Transcend', 'ki', 24, 26, 'buff', 0, 'self', 0, { status: 'haste', extraStatus: 'regen', blurb: 'Stops arguing with the body.' }),
+  s('kitranscend', 'Transcend', 'ki', 24, 26, 'buff', 0, 'self', 0, { status: 'haste', extraStatus: 'regen', blurb: 'Stops arguing with the body.' }),
 
   // --- Shadow Arts ---------------------------------------------------------
   s('backstab', 'Backstab', 'shadow', 1, 0, 'phys', 1.4, 'one', 2, { ip: 10, crit: 0.25, blurb: 'Prefers a target that is looking elsewhere.' }),
@@ -254,6 +256,21 @@ export const SKILLS = [
   s('grandsigil', 'Grand Sigil', 'arcane', 22, 30, 'mag', 2.4, 'all', 9, { element: 'attuned', blurb: 'A circle drawn a very long time ago.' }),
   s('apotheosis', 'Apotheosis', 'arcane', 26, 40, 'buff', 0, 'self', 0, { status: 'haste', extraStatus: 'might', blurb: 'Briefly, more than the sum of the sheet.' }),
   s('finalhour', 'Final Hour', 'arcane', 30, 55, 'mag', 3.8, 'all', 9, { element: 'attuned', blurb: 'The last thing on the list.' }),
+
+  // --- Transcendent (Lv60 ascension school) --------------------------------
+  s('sunder', 'Sunder Fate', 'transcend', 60, 30, 'phys', 3.2, 'one', 9, { pierce: 0.6, blurb: 'Cuts the outcome, not the target.' }),
+  s('starfall', 'Starfall', 'transcend', 60, 42, 'mag', 2.6, 'all', 9, { element: 'attuned', blurb: 'Called down, and it comes.' }),
+  s('mendworld', 'Mend the World', 'transcend', 62, 46, 'heal', 0.7, 'allies', 0, { cleanse: true, blurb: 'Everyone, everything, all at once.' }),
+  s('timeslip', 'Timeslip', 'transcend', 65, 38, 'buff', 0, 'allies', 0, { status: 'haste', extraStatus: 'protect', blurb: 'The party gets a head start on the next few seconds.' }),
+  s('unmaking', 'Unmaking', 'transcend', 68, 50, 'debuff', 0, 'all', 9, { dispel: true, sunder: 0.5, status: 'curse', blurb: 'Argues every blessing in the room out of existence.' }),
+  s('ascendant', 'Ascendant Form', 'transcend', 70, 0, 'buff', 0, 'self', 0, { ip: 90, status: 'might', extraStatus: 'focus', blurb: 'Spends the whole gauge to stop being merely a person.' }),
+
+  // --- Apex (Lv80 ascension school) ----------------------------------------
+  s('lastword', 'Last Word', 'apex', 80, 60, 'mag', 4.2, 'all', 9, { element: 'attuned', pierce: 0.4, blurb: 'There is no reply to it.' }),
+  s('perfectcut', 'Perfect Cut', 'apex', 80, 40, 'phys', 4.6, 'one', 9, { pierce: 0.7, crit: 0.4, blurb: 'One motion. It was decided years ago.' }),
+  s('everguard', 'Everguard', 'apex', 82, 55, 'buff', 0, 'allies', 0, { status: 'barrier', extraStatus: 'shell', blurb: 'Nothing gets through while it holds.' }),
+  s('rebirth', 'Rebirth', 'apex', 85, 70, 'heal', 1.0, 'allies', 0, { revives: true, cleanse: true, blurb: 'Everyone stands up. Everyone is whole.' }),
+  s('worldsend', "World's End", 'apex', 90, 90, 'mag', 4.6, 'all', 9, { element: 'attuned', status: 'doom', blurb: 'The name is not a metaphor.' }),
 ];
 
 export const SKILL_BY_ID = Object.fromEntries(SKILLS.map((k) => [k.id, k]));

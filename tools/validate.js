@@ -9,13 +9,13 @@ import { ELEMENTS, ELEMENT_BY_ID, PRIME_WHEEL, ARCANE_CYCLE, elementMultiplier }
   from '../src/data/elements.js';
 import {
   CLASSES, CLASS_IDS, ROOT_CLASSES, PROMOTION_LEVELS, MAX_TIER, STAT_KEYS,
-  classLineage, pendingPromotion,
+  ASCENT_TIERS, classLineage, classesAtTier, pendingPromotion,
 } from '../src/data/classes.js';
 import { JOBS, JOB_IDS, jobBonus, jobRankFromExp, MAX_JOB_RANK } from '../src/data/jobs.js';
 import { SKILLS, SKILL_BY_ID, SCHOOLS, SCHOOL_IDS, STATUS } from '../src/data/skills.js';
 import { ITEMS, ITEM_BY_ID, canEquip, WEAPON_TYPES } from '../src/data/items.js';
 import { ENEMIES, ENEMY_BY_ID, FORMATIONS } from '../src/data/enemies.js';
-import { MAPS, LEGEND, SHOPS, isSolid, mapSize } from '../src/data/maps.js';
+import { MAPS, LEGEND, SHOPS, BOSS_SLOTS, isSolid, mapSize } from '../src/data/maps.js';
 import { createCharacter, awardExp, promote, refreshPromotion, stats, knownSkills, expForLevel }
   from '../src/game/character.js';
 
@@ -65,27 +65,47 @@ report('void ignores resistance in both directions',
 // --- classes ----------------------------------------------------------------
 group('CLASSES');
 report('12 root classes', ROOT_CLASSES.length === 12, `got ${ROOT_CLASSES.length}`);
-report('120 class nodes in total', CLASS_IDS.length === 120, `got ${CLASS_IDS.length}`);
+report('264 class nodes in total', CLASS_IDS.length === 264, `got ${CLASS_IDS.length}`);
 report('class ids are unique', new Set(CLASS_IDS).size === CLASS_IDS.length);
 report('class names are unique',
-  new Set(CLASS_IDS.map((id) => CLASSES[id].name)).size === 120);
+  new Set(CLASS_IDS.map((id) => CLASSES[id].name)).size === CLASS_IDS.length);
 {
   const perTier = {};
   for (const id of CLASS_IDS) perTier[CLASSES[id].tier] = (perTier[CLASSES[id].tier] ?? 0) + 1;
-  report('tier shape is 12/12/24/24/48',
-    perTier[0] === 12 && perTier[1] === 12 && perTier[2] === 24 && perTier[3] === 24 && perTier[4] === 48,
-    JSON.stringify(perTier));
+  const want = [12, 12, 24, 24, 48, 48, 48, 48];
+  report('tier shape is 12/12/24/24/48/48/48/48',
+    want.every((n, t) => perTier[t] === n), JSON.stringify(perTier));
 }
-report('promotions happen at levels 5, 10, 15, 20',
-  PROMOTION_LEVELS.join() === '5,10,15,20');
+report('promotions happen at 5, 10, 15, 20, 40, 60, 80',
+  PROMOTION_LEVELS.join() === '5,10,15,20,40,60,80');
 {
+  // tiers 0 and 2 are linear; every other non-terminal tier offers a choice
   const bad = [];
   for (const id of CLASS_IDS) {
     const c = CLASSES[id];
-    const expect = c.tier === MAX_TIER ? 0 : (c.tier === 1 || c.tier === 3) ? 2 : 1;
-    if (c.promotions.length !== expect) bad.push(`${id}:${c.promotions.length}!=${expect}`);
+    const expect = c.tier === MAX_TIER ? 0 : (c.tier === 0 || c.tier === 2) ? 1 : 2;
+    if (c.promotions.length !== expect) bad.push(`${id}:t${c.tier}:${c.promotions.length}!=${expect}`);
   }
-  report('tiers 1 and 3 branch into 2; tiers 0 and 2 are linear; tier 4 is terminal',
+  report('linear at tiers 0 and 2, a two-way branch at 1, 3, 4, 5 and 6, terminal at 7',
+    bad.length === 0, bad.slice(0, 4).join(','));
+}
+{
+  // each ascension tier is a ring of four per root: four nodes, each offered by
+  // exactly two predecessors
+  const bad = [];
+  for (const tier of ASCENT_TIERS) {
+    const nodes = classesAtTier(tier);
+    if (nodes.length !== 48) { bad.push(`tier${tier}:${nodes.length}`); continue; }
+    for (const root of ROOT_CLASSES) {
+      const ring = nodes.filter((n) => n.root === root.id);
+      if (ring.length !== 4) { bad.push(`${root.id}@${tier}:${ring.length}`); continue; }
+      for (const n of ring) {
+        const preds = CLASS_IDS.filter((id) => CLASSES[id].promotions.includes(n.id));
+        if (preds.length !== 2) bad.push(`${n.id}:preds=${preds.length}`);
+      }
+    }
+  }
+  report('each ascension tier is a ring of 4 per root, every node reachable from exactly 2',
     bad.length === 0, bad.slice(0, 4).join(','));
 }
 report('every promotion target exists',
@@ -111,19 +131,19 @@ report('growth is positive for every stat on every node',
     notGrowing.slice(0, 3).join(','));
 }
 {
-  // every root must reach exactly four distinct tier-4 masteries
+  // every root must own exactly four distinct tier-4 Masteries
   const bad = [];
   for (const root of ROOT_CLASSES) {
-    const leaves = [];
-    const walk = (id) => {
-      const c = CLASSES[id];
-      if (!c.promotions.length) { leaves.push(id); return; }
-      c.promotions.forEach(walk);
-    };
-    walk(root.id);
-    if (leaves.length !== 4 || new Set(leaves).size !== 4) bad.push(`${root.id}:${leaves.length}`);
+    const m = classesAtTier(4).filter((c) => c.root === root.id);
+    if (m.length !== 4 || new Set(m.map((c) => c.id)).size !== 4) bad.push(`${root.id}:${m.length}`);
   }
   report('every root class reaches 4 distinct masteries', bad.length === 0, bad.join(','));
+}
+{
+  // and every node must stay inside its own root's family
+  const bad = CLASS_IDS.filter((id) =>
+    CLASSES[id].promotions.some((p) => CLASSES[p].root !== CLASSES[id].root));
+  report('no promotion ever crosses into another root class', bad.length === 0, bad.slice(0, 3).join(','));
 }
 
 // --- jobs -------------------------------------------------------------------
@@ -159,7 +179,21 @@ report('every referenced status exists',
 report('every skill has a sane range and target',
   SKILLS.every((s) => s.range >= 0 && s.range <= 9 &&
     ['one', 'row', 'col', 'all', 'self', 'ally', 'allies', 'random'].includes(s.target)));
-report('no skill costs more MP than a caster could ever have', SKILLS.every((s) => s.mp <= 80));
+{
+  // no skill may cost more MP than a caster at its learn level can actually
+  // hold — checked against a real character of the class that grants it
+  const bad = [];
+  for (const k of SKILLS) {
+    if (!k.mp) continue;
+    const owner = CLASS_IDS.find((id) => CLASSES[id].schools.includes(k.school) && CLASSES[id].tier >= 1);
+    if (!owner) continue;
+    const ch = createCharacter({
+      name: 'T', classId: owner, elementId: 'spirit', jobId: 'scribe', level: Math.max(2, k.lv),
+    });
+    if (k.mp > stats(ch).maxMp) bad.push(`${k.id}:${k.mp}>${stats(ch).maxMp}`);
+  }
+  report('every skill is affordable by a caster at its learn level', bad.length === 0, bad.slice(0, 4).join(','));
+}
 report('damaging skills have positive power',
   SKILLS.filter((s) => s.type === 'phys' || s.type === 'mag').every((s) => s.power > 0));
 
@@ -192,7 +226,7 @@ report('every formation places real enemies inside the 3x3 grid',
 report('no formation puts two enemies in the same cell',
   FORMATIONS.every((f) => new Set(f.cells.map((c) => `${c.row},${c.col}`)).size === f.cells.length));
 report('every region has at least 4 normal formations',
-  ['greenfield', 'caverns', 'ruins'].every((r) =>
+  ['greenfield', 'caverns', 'ruins', 'abyss'].every((r) =>
     FORMATIONS.filter((f) => f.region === r && !f.boss && !f.rare).length >= 4));
 
 // --- maps -------------------------------------------------------------------
@@ -237,33 +271,41 @@ group('MAPS');
     (m.npcs ?? []).forEach((p) => at(`npc ${p.name}`, p.x, p.y));
     (m.chests ?? []).forEach((p) => at(`chest ${p.id}`, p.x, p.y));
     (m.signs ?? []).forEach((p) => at('sign', p.x, p.y));
-    for (const k of ['boss', 'boss2']) if (m[k]) at(`boss ${m[k].flag}`, m[k].x, m[k].y);
+    for (const k of BOSS_SLOTS) if (m[k]) at(`boss ${m[k].flag}`, m[k].x, m[k].y);
   }
   report('every npc, chest, sign, boss and exit is reachable', bad.length === 0, bad.join(','));
 }
 report('every shop referenced by an npc exists',
   Object.values(MAPS).every((m) => (m.npcs ?? []).every((n) => n.kind !== 'shop' || SHOPS[n.shop])));
 report('every boss references a real formation',
-  Object.values(MAPS).every((m) => ['boss', 'boss2'].every((k) => !m[k] || FORMATIONS.some((f) => f.id === m[k].formation))));
+  Object.values(MAPS).every((m) => BOSS_SLOTS.every((k) => !m[k] || FORMATIONS.some((f) => f.id === m[k].formation))));
+report('every gated boss names a flag another boss actually sets',
+  Object.values(MAPS).every((m) => BOSS_SLOTS.every((k) => {
+    const b = m[k];
+    if (!b?.requires) return true;
+    return Object.values(MAPS).some((o) => BOSS_SLOTS.some((j) => o[j]?.flag === b.requires));
+  })));
 
 // --- the systems working together -------------------------------------------
 group('INTEGRATION');
 {
-  // every root class must be able to walk the full ladder to a mastery
+  // every root class must be able to walk the full ladder to the summit on
+  // either branch preference, all the way to the Lv80 Mythic tier
   const bad = [];
   for (const root of ROOT_CLASSES) {
     for (const branchSeed of [0, 1]) {
       const ch = createCharacter({ name: 'T', classId: root.id, elementId: 'fire', jobId: 'blacksmith' });
       let guard = 0;
-      while (ch.level < 20 && guard++ < 400) {
-        awardExp(ch, 500);
+      while (ch.level < 80 && guard++ < 4000) {
+        awardExp(ch, 30000);
         const p = refreshPromotion(ch);
         if (p) promote(ch, p.choices[Math.min(branchSeed, p.choices.length - 1)].id);
       }
-      if (CLASSES[ch.classId].tier !== MAX_TIER) bad.push(`${root.id}/${branchSeed}:tier${CLASSES[ch.classId].tier}`);
+      const c = CLASSES[ch.classId];
+      if (c.tier !== MAX_TIER) bad.push(`${root.id}/${branchSeed}:tier${c.tier}@Lv${ch.level}`);
     }
   }
-  report('every root class reaches tier 4 by level 20 on both branches',
+  report('every root reaches tier 7 by level 80 on both branch preferences',
     bad.length === 0, bad.join(','));
 }
 {

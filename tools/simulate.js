@@ -21,10 +21,10 @@ const ONLY = arg('--formation', null);
 
 function buildParty(level, rng) {
   const roster = [
-    { name: 'Piper', classId: 'warrior', elementId: 'fire', jobId: 'blacksmith', row: 1, col: 0 },
-    { name: 'Bram', classId: 'guardian', elementId: 'earth', jobId: 'armorer', row: 0, col: 0 },
-    { name: 'Iris', classId: 'mage', elementId: 'lightning', jobId: 'scribe', row: 1, col: 2 },
-    { name: 'Sela', classId: 'cleric', elementId: 'light', jobId: 'herbalist', row: 2, col: 1 },
+    { name: 'Piper', classId: 'warrior', raceId: 'human', elementId: 'fire', jobId: 'blacksmith', row: 1, col: 0 },
+    { name: 'Bram', classId: 'guardian', raceId: 'dwarf', elementId: 'earth', jobId: 'armorer', row: 0, col: 0 },
+    { name: 'Iris', classId: 'mage', raceId: 'elf', elementId: 'lightning', jobId: 'scribe', row: 1, col: 2 },
+    { name: 'Sela', classId: 'cleric', raceId: 'merfolk', elementId: 'light', jobId: 'herbalist', row: 2, col: 1 },
   ];
   return roster.map((r) => {
     const ch = createCharacter(r);
@@ -115,8 +115,11 @@ const groups = ONLY ? FORMATIONS.filter((f) => f.id === ONLY) : FORMATIONS;
 const byRegion = {};
 for (const f of groups) (byRegion[f.region] ??= []).push(f);
 
-const REGION_LEVEL = { greenfield: 4, caverns: 11, ruins: 20, boss: 0 };
-const BOSS_LEVEL = { boss_volk: 9, boss_anvil: 16, boss_choir: 24, boss_aurelith: 30 };
+const REGION_LEVEL = { greenfield: 4, caverns: 11, ruins: 20, abyss: 55, boss: 0 };
+const BOSS_LEVEL = {
+  boss_volk: 9, boss_anvil: 16, boss_choir: 24, boss_aurelith: 30,
+  boss_gate: 45, boss_worldheart: 65, boss_thirteenth: 85,
+};
 
 console.log(`\n  QUEST OF THE THIRTEEN — battle simulation (${RUNS} runs each)\n`);
 let fails = 0;

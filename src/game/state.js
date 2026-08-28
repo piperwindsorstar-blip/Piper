@@ -214,7 +214,8 @@ export class GameState {
   toJSON() {
     return {
       party: this.party.map((c) => ({
-        id: c.id, name: c.name, classId: c.classId, elementId: c.elementId, jobId: c.jobId,
+        id: c.id, name: c.name, classId: c.classId, raceId: c.raceId,
+        elementId: c.elementId, jobId: c.jobId,
         level: c.level, exp: c.exp, acc: c.acc, jobExp: c.jobExp, equip: c.equip,
         grid: c.grid, ip: c.ip, statuses: c.statuses, hp: c.hp, mp: c.mp,
         classHistory: c.classHistory, skin: c.skin, hair: c.hair, alive: c.hp > 0,
@@ -236,7 +237,7 @@ export class GameState {
     const g = new GameState();
     g.party = (d.party ?? []).map((c) => {
       const ch = createCharacter({
-        id: c.id, name: c.name, classId: c.classId,
+        id: c.id, name: c.name, classId: c.classId, raceId: c.raceId ?? 'human',
         elementId: c.elementId, jobId: c.jobId, skin: c.skin, hair: c.hair,
       });
       ch.level = c.level ?? 1;

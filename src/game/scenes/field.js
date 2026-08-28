@@ -6,7 +6,7 @@ import { PAL, W, H } from '../../engine/screen.js';
 import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
 import { tileSprite, heroSprite, npcSprite, TS } from '../../engine/sprites.js';
 import {
-  getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, SHOPS,
+  getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS,
 } from '../../data/maps.js';
 import { formationsForRegion } from '../../data/enemies.js';
 import { getItem } from '../../data/items.js';
@@ -130,8 +130,9 @@ export class FieldScene {
     if (!pool.length) return;
     const f = rng.pick(pool);
     const scout = this.g.jobRankOf('scout');
-    const preemptive = rng.chance(Math.min(0.5, 0.06 + 0.08 * scout));
-    const ambushed = !preemptive && scout < 5 && rng.chance(0.06);
+    const keenScent = this.g.party.some((c) => c.raceId === 'lupine');
+    const preemptive = rng.chance(Math.min(0.5, 0.06 + 0.08 * scout + (keenScent ? 0.08 : 0)));
+    const ambushed = !preemptive && scout < 5 && !keenScent && rng.chance(0.06);
     this.g.stepsSinceBattle = 0;
     this.app.push('battle', { formationId: f.id, preemptive, ambushed });
   }
@@ -347,7 +348,7 @@ export class FieldScene {
     }
 
     // boss markers
-    for (const key of ['boss', 'boss2']) {
+    for (const key of BOSS_SLOTS) {
       const b = m[key];
       if (!b || this.g.flag(`boss.${b.flag}`)) continue;
       const px = b.x * TS - cam.x, py = b.y * TS - cam.y;

@@ -17,8 +17,10 @@
 //  Turn order is straight AGI, Dragon Quest style — no ATB.
 // ============================================================================
 
-import { stats, canAct, tickStatuses, applyStatus, clearBadStatuses, revive, skillElement, jobRank }
-  from './character.js';
+import {
+  stats, canAct, tickStatuses, applyStatus, clearBadStatuses, revive, skillElement, jobRank,
+  characterHasTrait, elementalResistance,
+} from './character.js';
 import { getSkill, STATUS } from '../data/skills.js';
 import { elementMultiplier, ELEMENT_BY_ID } from '../data/elements.js';
 import { getEnemy, FORMATION_BY_ID } from '../data/enemies.js';
@@ -31,6 +33,33 @@ export const PHASE = {
 };
 
 let uidCounter = 0;
+
+/** True when a PC unit's race carries `trait`. Enemies never have races. */
+const trait = (u, id) => !!(u?.isPC && characterHasTrait(u.ref, id));
+
+/** A unit's level, from either side of the field. */
+const levelOf = (u) => (u.isPC ? u.ref.level : u.def.lv);
+
+/**
+ * Armour softening constant. A fixed constant makes mitigation collapse as the
+ * numbers grow: by level 80 both sides have so much armour that nobody can hurt
+ * anybody and fights stall out. Scaling it with the attacker's level keeps the
+ * mitigation band roughly constant from level 1 to 99.
+ */
+const softening = (attackerLevel) => 110 + 13 * attackerLevel;
+
+/**
+ * Damage multiplier for how widely an action spreads. Without this a
+ * whole-party nuke is strictly better than a single target at the same power:
+ * trash dies before it acts, and a boss's group attack wipes the party in one
+ * cast. Applies to both sides.
+ */
+function spread(target) {
+  if (target === 'all') return 0.55;
+  if (target === 'row' || target === 'col') return 0.78;
+  if (target === 'random') return 0.7;
+  return 1;
+}
 
 // ---------------------------------------------------------------------------
 //  UNITS
@@ -183,21 +212,30 @@ export class Battle {
   buildOrder() {
     const all = this.units().filter((u) => u.alive);
     // A boss is a whole encounter on its own, so it takes two turns a round.
-    const withBosses = all.flatMap((u) => (u.def?.ai === 'boss' ? [u, u] : [u]));
+    // The second is a FOLLOW-UP: single-target only, so a boss cannot open a
+    // round by casting a party-wide nuke twice.
+    const withBosses = all.flatMap((u) => (u.def?.ai === 'boss'
+      ? [{ u, extra: false }, { u, extra: true }]
+      : [{ u, extra: false }]));
     this.order = withBosses
-      .map((u) => {
+      .map(({ u, extra }) => {
         let sp = u.stats().speed;
         if (u.statuses.haste) sp *= 1.5;
         if (u.statuses.slow) sp *= 0.6;
-        return { u, sp: sp + this.rng.float(0, sp * 0.15) };
+        return { u, extra, sp: sp + this.rng.float(0, sp * 0.15) };
       })
-      .sort((a, b) => b.sp - a.sp)
-      .map((x) => x.u);
+      .sort((a, b) => b.sp - a.sp);
     if (this.preemptive && this.round === 0) {
-      this.order = [...this.party.filter((u) => u.alive), ...this.enemies.filter((u) => u.alive)];
+      this.order = [
+        ...this.party.filter((u) => u.alive).map((u) => ({ u, extra: false })),
+        ...this.enemies.filter((u) => u.alive).map((u) => ({ u, extra: false })),
+      ];
     }
     if (this.ambushed && this.round === 0) {
-      this.order = [...this.enemies.filter((u) => u.alive), ...this.party.filter((u) => u.alive)];
+      this.order = [
+        ...this.enemies.filter((u) => u.alive).map((u) => ({ u, extra: false })),
+        ...this.party.filter((u) => u.alive).map((u) => ({ u, extra: false })),
+      ];
     }
     this.turnIndex = 0;
     this.round++;
@@ -205,11 +243,16 @@ export class Battle {
 
   current() {
     while (this.turnIndex < this.order.length) {
-      const u = this.order[this.turnIndex];
+      const { u } = this.order[this.turnIndex];
       if (u.alive && canAct(u.ref ?? u)) return u;
       this.turnIndex++;
     }
     return null;
+  }
+
+  /** True when the current slot is a boss's single-target follow-up. */
+  isFollowUp() {
+    return !!this.order[this.turnIndex]?.extra;
   }
 
   /** Advance to the next actor, ticking statuses and rebuilding the order. */
@@ -221,9 +264,12 @@ export class Battle {
         u.defending = false;
         const lines = u.isPC ? tickStatuses(u.ref) : tickEnemyStatuses(u, this);
         lines.forEach((l) => this.say(l));
-        // Verdant / Communion element perks
+        // element and racial regeneration
         if (u.isPC) {
-          if (u.element === 'spirit') u.mp = Math.min(u.stats().maxMp, u.mp + 3);
+          const us = u.stats();
+          if (u.element === 'spirit') u.mp = Math.min(us.maxMp, u.mp + 3);
+          if (trait(u, 'glimmer')) u.mp = Math.min(us.maxMp, u.mp + 4);
+          if (trait(u, 'regrow')) u.hp = Math.min(us.maxHp, u.hp + Math.max(1, Math.floor(us.maxHp * 0.03)));
         }
       }
       this.checkEnd();
@@ -258,8 +304,17 @@ export class Battle {
     if (actor.statuses.burn && !magical) base *= 0.85;
     if (actor.statuses.fear) base *= 0.75;
 
+    // racial offence
+    if (magical && trait(actor, 'arcaneblood')) base *= 1.1;
+    if (!magical && trait(actor, 'giant')) base *= 1.15;
+    if (!magical && trait(actor, 'packborn')) {
+      const side = actor.side === 'party' ? this.livingParty() : this.livingEnemies();
+      if (side.some((u) => u.uid !== actor.uid && u.grid.row === actor.grid.row)) base *= 1.12;
+    }
+
     // accuracy
     let evade = d.evade;
+    if (trait(actor, 'longsight') && (opts.reach ?? 9) >= 9) evade = Math.max(0, evade - 0.05);
     if (target.statuses.evade) evade += 0.35;
     if (actor.statuses.blind && !magical) evade += 0.5;
     if (target.statuses.sleep || target.statuses.stone || target.statuses.paralyze) evade = 0;
@@ -280,7 +335,8 @@ export class Battle {
     if (target.statuses.protect && !magical) armor *= 1.45;
     if (target.statuses.shell && magical) armor *= 1.45;
     if (target.element === 'earth' && this.effCol(target) === 0) armor *= 1.11;   // Bedrock
-    const mitig = 120 / (120 + Math.max(0, armor));
+    const K = softening(levelOf(actor));
+    const mitig = K / (K + Math.max(0, armor));
 
     // elemental wheel
     let mult = 1;
@@ -288,6 +344,8 @@ export class Battle {
     if (atkEl !== 'none') {
       const nullify = (actor.isPC && actor.ref.equip.accessory === 'voidring') || atkEl === 'void';
       mult = nullify ? 1 : elementMultiplier(atkEl, target.element);
+      // a defender's RACE resists on top of the elemental wheel
+      if (!nullify && target.isPC) mult *= elementalResistance(target.ref, atkEl);
       if (opts.undeadBonus && target.def?.family === 'undead') mult *= opts.undeadBonus;
       if (actor.isPC && actor.element === 'light' && target.def?.family === 'undead') mult *= 1.25;
     }
@@ -298,6 +356,12 @@ export class Battle {
       mult *= 1 + 0.10 * jobRank(actor.ref);
     }
     if (target.statuses.curse) mult *= 1.2;
+    if (trait(actor, 'wyrmblood') && target.def?.family === 'dragon') mult *= 1.2;
+    if (trait(actor, 'tinker') && target.def?.family === 'construct') mult *= 1.25;
+
+    // racial defence
+    if (!magical && trait(target, 'scaled')) mult *= 0.88;
+    if (magical && trait(target, 'thickskull')) mult *= 1.1;
 
     // crit
     let critRate = (opts.crit ?? 0) + a.crit;
@@ -326,6 +390,12 @@ export class Battle {
       target.hp = 0;
       if (target.isPC) {
         target.ref.alive = false;
+        if (trait(target, 'deathless') && !target.usedDeathless) {
+          target.usedDeathless = true;
+          revive(target.ref, 0.25);
+          this.say(`${target.name} will not stay down.`);
+          return amount;
+        }
         if (target.ref.equip.accessory === 'phoenixdown') {
           target.ref.equip.accessory = null;
           revive(target.ref, 1);
@@ -345,8 +415,11 @@ export class Battle {
   healUnit(target, amount) {
     const s = target.stats();
     let amt = amount;
-    if (target.isPC && target.element === 'water') amt = Math.round(amt * 1.15);   // Tidal
-    if (target.statuses.curse) amt = Math.round(amt * 0.5);
+    if (target.isPC && target.element === 'water') amt *= 1.15;            // Tidal
+    if (trait(target, 'tidecall')) amt *= 1.2;                             // Merfolk
+    if (trait(target, 'coldblood')) amt *= 0.8;                            // Revenant
+    if (target.statuses.curse) amt *= 0.6;
+    amt = Math.round(amt);
     const before = target.hp;
     target.hp = Math.min(s.maxHp, target.hp + amt);
     this.fx.push({ type: 'heal', uid: target.uid, amount: target.hp - before });
@@ -449,11 +522,20 @@ export class Battle {
     return true;
   }
 
+  /** MP this actor pays for `skill` after racial discounts. */
+  mpCost(actor, skill) {
+    if (!skill.mp) return 0;
+    const magical = ['mag', 'heal', 'buff', 'debuff'].includes(skill.type);
+    return magical && trait(actor, 'arcaneblood')
+      ? Math.max(1, Math.round(skill.mp * 0.85)) : skill.mp;
+  }
+
   useSkill(actor, skill, chosen) {
     const s = actor.stats();
-    if (skill.mp > actor.mp) return this.say(`${this.label(actor)} lacks the MP.`);
+    const cost = this.mpCost(actor, skill);
+    if (cost > actor.mp) return this.say(`${this.label(actor)} lacks the MP.`);
     if (skill.ip && actor.ip < skill.ip) return this.say(`${this.label(actor)} lacks the IP.`);
-    actor.mp -= skill.mp;
+    actor.mp -= cost;
     if (skill.ip) actor.ip -= skill.ip;
     if (skill.hpCost) {
       const cost = Math.max(1, Math.floor(s.maxHp * skill.hpCost));
@@ -475,7 +557,8 @@ export class Battle {
             let el = element;
             if (skill.adaptive) el = this.weakestElementFor(t) ?? element;
             const r = this.computeDamage(actor, t, {
-              power: skill.power, element: el, magical: skill.type === 'mag',
+              power: skill.power * spread(skill.target),
+              element: el, magical: skill.type === 'mag',
               pierce: skill.pierce, crit: skill.crit, missChance: skill.missChance,
               undeadBonus: skill.undeadBonus,
               reachCheck: skill.type === 'phys', reach: skill.range,
@@ -634,7 +717,8 @@ export class Battle {
   useItem(actor, itemId, chosen) {
     const it = getItem(itemId);
     this.say(`${this.label(actor)} uses ${it.name}.`);
-    const alch = actor.isPC && actor.ref.jobId === 'alchemist' ? 1.5 : 1;
+    let alch = actor.isPC && actor.ref.jobId === 'alchemist' ? 1.5 : 1;
+    if (trait(actor, 'tinker')) alch *= 1.3;
     const targets = it.target === 'allies'
       ? (actor.side === 'party' ? this.party : this.enemies)
       : it.target === 'row'
@@ -643,7 +727,11 @@ export class Battle {
     for (const t of targets) {
       if (it.revives && !t.alive) { if (t.isPC) revive(t.ref, 0.5); this.healUnit(t, Math.round((it.heal ?? 0) * alch)); continue; }
       if (!t.alive) continue;
-      if (it.heal) this.say(`  ${this.label(t)} recovers ${this.healUnit(t, Math.round(it.heal * alch))}.`);
+      if (it.heal) {
+        // an Automaton is not repaired by drinking things
+        const potency = alch * (trait(t, 'norepair') ? 0.5 : 1);
+        this.say(`  ${this.label(t)} recovers ${this.healUnit(t, Math.round(it.heal * potency))}.`);
+      }
       if (it.healMp) { t.mp = Math.min(t.stats().maxMp, t.mp + it.healMp); this.say(`  ${this.label(t)} recovers MP.`); }
       if (it.cures) for (const c of it.cures) { if (t.isPC) delete t.ref.statuses[c]; else delete t.statuses[c]; }
       if (it.damage) {
@@ -673,7 +761,7 @@ export class Battle {
   }
 
   // --- enemy AI ------------------------------------------------------------
-  enemyAction(unit) {
+  enemyAction(unit, followUp = this.isFollowUp()) {
     const foes = this.livingParty();
     if (!foes.length) return { kind: 'defend' };
     const skills = (unit.def.skills ?? []).map(getSkill).filter((k) => k.mp <= unit.mp);
@@ -686,6 +774,8 @@ export class Battle {
       if (f.statuses.taunted) w *= 4;
       if (f.hp / f.stats().maxHp < 0.3) w *= 1.6;      // finish the wounded
       if (f.statuses.vanished) w *= 0.05;
+      // a Gnome is hard to notice while somebody larger stands in front
+      if (trait(f, 'smallframe') && foes.some((o) => this.effCol(o) < this.effCol(f))) w *= 0.6;
       return [f, w];
     });
     const target = this.rng.weighted(weights);
@@ -696,9 +786,12 @@ export class Battle {
       ai === 'defensive' ? 0.4 : 0.28;
 
     if (skills.length && this.rng.chance(wantsSkill)) {
-      let pool = skills;
+      // a follow-up may not reach the whole party
+      let pool = followUp ? skills.filter((k) => k.target !== 'all') : skills;
+      if (!pool.length) pool = skills.filter((k) => k.target !== 'all');
+      if (!pool.length) return { kind: 'attack', target };
       if (ai === 'defensive' && hpRatio < 0.5) {
-        const def = skills.filter((k) => k.type === 'buff' || k.type === 'heal');
+        const def = pool.filter((k) => k.type === 'buff' || k.type === 'heal');
         if (def.length) pool = def;
       }
       const skill = this.rng.pick(pool);

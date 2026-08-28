@@ -77,11 +77,26 @@ export const ITEMS = [
   W('runestaff', 'Rune Staff', 'staff', 22, 640, { bonus: { int: 8, mp: 12 } }),
   W('stormrod', 'Storm Rod', 'staff', 38, 2300, { element: 'lightning', bonus: { int: 14 } }),
   W('worldstaff', 'Worldroot Staff', 'staff', 55, 9000, { bonus: { int: 22, spr: 12, mp: 40 } }),
+  // --- endgame arms, dropped in the Hollow Between rather than sold ---------
+  W('ruinblade', 'Ruinblade', 'sword', 124, 34000, { element: 'dark', bonus: { str: 14 } }),
+  W('worldedge', 'Worldedge', 'sword', 168, 90000, { bonus: { str: 22, agi: 10 } }),
+  W('titanmaul', 'Titan Maul', 'mace', 152, 62000, { bonus: { str: 26, agi: -6 } }),
+  W('voidfang', 'Voidfang', 'dagger', 108, 48000, { element: 'void', bonus: { agi: 18, lck: 12 } }),
+  W('godsfist', "God's Fist", 'fist', 138, 56000, { bonus: { str: 18, agi: 12 } }),
+  W('aeonlance', 'Aeon Lance', 'spear', 146, 68000, { element: 'spirit', bonus: { agi: 12, int: 10 } }),
+  W('starbow', 'Starfall Bow', 'bow', 132, 64000, { element: 'light', bonus: { lck: 20, agi: 12 } }),
+  W('nullstaff', 'Null Staff', 'staff', 96, 88000, { element: 'void', bonus: { int: 40, spr: 22, mp: 90 } }),
+  W('bulwarkshield', 'Bulwark of Ages', 'shield', 0, 52000, { slot: 'offhand', def: 62, bonus: { vit: 14, spr: 12 } }),
   W('woodshield', 'Wooden Shield', 'shield', 0, 120, { slot: 'offhand', def: 6 }),
   W('ironshield', 'Iron Shield', 'shield', 0, 520, { slot: 'offhand', def: 14 }),
   W('aegisshield', 'Aegis', 'shield', 0, 3800, { slot: 'offhand', def: 30, bonus: { spr: 6, vit: 4 } }),
 
   // --- armour --------------------------------------------------------------
+  A('voidweave', 'Voidweave Robe', 'body', 'cloth', 62, 58000, { bonus: { int: 26, spr: 20, mp: 70 } }),
+  A('dragonmail', 'Dragonscale Mail', 'body', 'medium', 86, 66000, { bonus: { vit: 18, spr: 14 } }),
+  A('titanplate', 'Titanplate', 'body', 'heavy', 124, 82000, { bonus: { vit: 30, agi: -4 } }),
+  A('crownvoid', 'Circlet of the Hollow', 'head', 'cloth', 34, 54000, { bonus: { int: 22, spr: 22, mp: 40 } }),
+  A('titanhelm', 'Titan Helm', 'head', 'heavy', 48, 46000, { bonus: { vit: 16, str: 8 } }),
   A('clothrobe', 'Traveller\'s Robe', 'body', 'cloth', 5, 90),
   A('silkrobe', 'Silk Robe', 'body', 'cloth', 14, 480, { bonus: { int: 4, mp: 10 } }),
   A('magerobe', 'Archmage Robe', 'body', 'cloth', 28, 3200, { bonus: { int: 12, spr: 8, mp: 30 } }),
@@ -110,6 +125,9 @@ export const ITEMS = [
   ACC('elemcharm', 'Element Charm', 2600, { resist: 'attuned', resistAmount: 0.35 }),
   ACC('voidring', 'Void Ring', 5000, { nullify: true, bonus: { lck: 6 } }),
   ACC('phoenixdown', 'Phoenix Pendant', 6000, { autoRevive: true }),
+  ACC('titanring', 'Titan Ring', 40000, { bonus: { str: 28, vit: 20 } }),
+  ACC('aeonpendant', 'Aeon Pendant', 44000, { bonus: { int: 24, spr: 24, mp: 60 } }),
+  ACC('quicksilver', 'Quicksilver Band', 38000, { bonus: { agi: 30, lck: 14 } }),
   ACC('ipband', 'Resonance Band', 3200, { ipGain: 1.5 }),
 
   // --- consumables ---------------------------------------------------------

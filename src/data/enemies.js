@@ -173,30 +173,99 @@ export const ENEMIES = [
     blurb: 'Resistances do not apply. Nothing applies.',
   }),
 
+  // --- The Hollow Between / endgame (Lv30-80) ------------------------------
+  e('frostcolossus', 'Frost Colossus', 'construct', 'ice', 32, [1862, 60, 147, 104, 71, 74, 20], {
+    sprite: sp('construct', '#8fc4e0', '#d8f0ff', '#4a7a9a', 1.5),
+    skills: ['primebolt', 'ironwall', 'shieldbash'], ai: 'defensive',
+    drops: [['adamantite', 0.4], ['spiritglass', 0.3], ['titanhelm', 0.06]],
+    blurb: 'Walked out of a glacier and kept walking.',
+  }),
+  e('abyssalmaw', 'Abyssal Maw', 'aberration', 'void', 36, [1672, 120, 161, 82, 133, 88, 44], {
+    sprite: sp('blob', '#3a2a52', '#7a5a9a', '#180f28', 1.4),
+    skills: ['unmake', 'phantasm', 'drain'], ai: 'caster', reach: 9,
+    drops: [['spiritglass', 0.5], ['voidring', 0.08], ['voidfang', 0.05]],
+    blurb: 'Resistance is a property of things that exist.',
+  }),
+  e('stormdjinn', 'Storm Djinn', 'spirit', 'lightning', 40, [1938, 200, 174, 88, 170, 96, 62], {
+    sprite: sp('flyer', '#e8dc6a', '#fffcc8', '#8a7a10', 1.4),
+    skills: ['cataclysm', 'primeforce', 'elemward'], ai: 'caster', reach: 9,
+    drops: [['stormrod', 0.12], ['spiritglass', 0.4], ['quicksilver', 0.05]],
+  }),
+  e('bonedragon', 'Bone Dragon', 'undead', 'dark', 46, [3135, 180, 213, 122, 174, 112, 52], {
+    sprite: sp('dragon', '#d8d0b8', '#f4eeda', '#6a6250', 1.6),
+    skills: ['oblivion', 'bonespear', 'dragondive'], ai: 'aggressive', reach: 9,
+    drops: [['dragonscale', 0.7], ['holywater', 0.6], ['dragonmail', 0.08]],
+    blurb: 'Died a very long time ago and has not slowed down much.',
+  }),
+  e('seraph', 'Fallen Seraph', 'spirit', 'light', 54, [3610, 300, 227, 134, 220, 148, 70], {
+    sprite: sp('flyer', '#f8f0c8', '#ffffff', '#c8a860', 1.7),
+    skills: ['exalt', 'judgement', 'consecration', 'fullrestore'], ai: 'caster', reach: 9,
+    drops: [['crownofstars', 0.1], ['sunpetal', 0.6], ['starbow', 0.06]],
+    blurb: 'Still following an order nobody remembers giving.',
+  }),
+  e('deepwarden', 'Warden of the Deep', 'aberration', 'water', 60, [4560, 260, 250, 156, 213, 162, 58], {
+    sprite: sp('serpent', '#2a6a8a', '#6ab0c8', '#12384a', 1.7),
+    skills: ['leviathan', 'soulbind', 'rot'], ai: 'boss', reach: 9,
+    drops: [['riverpearl', 0.8], ['aegisshield', 0.15], ['aeonlance', 0.07]],
+  }),
+  e('ashtitan', 'Titan of Ash', 'construct', 'fire', 66, [6080, 160, 289, 190, 193, 158, 40], {
+    sprite: sp('construct', '#a04030', '#e07850', '#4a1a10', 1.9),
+    skills: ['cataclysm', 'stampede', 'primalroar'], ai: 'aggressive',
+    drops: [['adamantite', 0.8], ['ruinaxe', 0.12], ['titanmaul', 0.07]],
+    blurb: 'What is left standing after a city stops.',
+  }),
+  e('nullweaver', 'Null Weaver', 'aberration', 'void', 72, [6840, 420, 308, 178, 299, 208, 84], {
+    sprite: sp('serpent', '#4a4a5c', '#9a9ab4', '#1a1a26', 1.8),
+    skills: ['unmaking', 'starfall', 'timeslip', 'soulbind'], ai: 'caster', reach: 9,
+    drops: [['voidring', 0.3], ['spiritglass', 0.9], ['nullstaff', 0.07]],
+    blurb: 'Pulls the thread and watches what unravels.',
+  }),
+
   // --- Bosses --------------------------------------------------------------
-  e('boss_brigand', 'Brigand Chief Volk', 'humanoid', 'fire', 9, [520, 40, 46, 28, 18, 16, 20], {
+  e('boss_brigand', 'Brigand Chief Volk', 'humanoid', 'fire', 9, [760, 40, 52, 30, 20, 18, 20], {
     sprite: sp('humanoid', '#a04a2c', '#d88a5a', '#5a240e', 1.3),
     skills: ['crossslash', 'warcry', 'recklessblow'], ai: 'boss', gold: 1200, exp: 900,
     drops: [['battleaxe', 1.0]], steal: 'hipotion',
     blurb: 'Runs the road between here and anywhere.',
   }),
-  e('boss_golemking', 'The Anvil King', 'construct', 'earth', 16, [1400, 0, 84, 76, 20, 44, 10], {
+  e('boss_golemking', 'The Anvil King', 'construct', 'earth', 16, [2400, 0, 96, 80, 24, 48, 12], {
     sprite: sp('construct', '#9a7042', '#c9a06a', '#5a4020', 1.7),
     skills: ['shieldbash', 'ironwall', 'stampede'], ai: 'boss', gold: 3000, exp: 3200,
     drops: [['adamantite', 1.0], ['ironshield', 1.0]],
     blurb: 'Was a mountain. Got up.',
   }),
-  e('boss_shadow', 'The Hollow Choir', 'spirit', 'dark', 23, [2400, 300, 104, 62, 96, 68, 36], {
+  e('boss_shadow', 'The Hollow Choir', 'spirit', 'dark', 23, [4200, 300, 132, 68, 122, 74, 38], {
     sprite: sp('flyer', '#4a2a5c', '#9a6ab4', '#22122e', 1.7),
     skills: ['oblivion', 'anathemahex', 'phantasm', 'drain'], ai: 'boss', gold: 8000, exp: 12000,
     drops: [['crownofstars', 1.0]],
     blurb: 'Sings with every voice it has collected.',
   }),
-  e('boss_wyrm', 'Aurelith, the Last Wyrm', 'dragon', 'light', 28, [4200, 400, 132, 88, 118, 84, 46], {
+  e('boss_wyrm', 'Aurelith, the Last Wyrm', 'dragon', 'light', 28, [7000, 400, 148, 96, 130, 92, 48], {
     sprite: sp('dragon', '#d8b850', '#f8e8a0', '#8a6a18', 2.0),
     skills: ['exalt', 'dragondive', 'primeforce', 'consecration'], ai: 'boss', gold: 20000, exp: 40000,
     drops: [['sunblade', 1.0], ['dragonscale', 1.0]],
     blurb: 'Remembers the wheel being made.',
+  }),
+  e('boss_gate', 'The Gatekeeper', 'construct', 'metal', 46, [13000, 400, 268, 178, 232, 168, 56], {
+    sprite: sp('construct', '#b8bcc8', '#eef2fa', '#5a606c', 2.2),
+    skills: ['unyielding', 'breakpoint', 'grandsigil', 'shieldbash'], ai: 'boss',
+    gold: 40000, exp: 120000,
+    drops: [['titanplate', 1.0], ['bulwarkshield', 1.0], ['titanring', 1.0]],
+    blurb: 'Was told to let nobody through. Nobody has been through.',
+  }),
+  e('boss_worldheart', 'The World Heart', 'spirit', 'nature', 66, [18000, 900, 330, 220, 325, 238, 68], {
+    sprite: sp('plant', '#4a9a4a', '#9ae07a', '#1e4a1c', 2.4),
+    skills: ['worldvoice', 'finalhour', 'mendworld', 'anathemahex', 'stampede'], ai: 'boss',
+    gold: 90000, exp: 380000,
+    drops: [['voidweave', 1.0], ['aeonpendant', 1.0], ['godsfist', 1.0]],
+    blurb: 'Everything green has been waiting for you to arrive.',
+  }),
+  e('boss_thirteenth', 'The Thirteenth', 'aberration', 'void', 88, [22000, 1600, 345, 262, 320, 288, 92], {
+    sprite: sp('humanoid', '#3a3450', '#8a82ac', '#16121f', 2.6),
+    skills: ['worldsend', 'lastword', 'unmaking', 'everguard', 'rebirth', 'soulbind'], ai: 'boss',
+    gold: 250000, exp: 1400000,
+    drops: [['worldedge', 1.0], ['nullstaff', 1.0], ['crownvoid', 1.0]],
+    blurb: 'The element that was left off the wheel, and has not forgiven it.',
   }),
 ];
 
@@ -236,10 +305,21 @@ export const FORMATIONS = [
   f('rn6', 'ruins', [at('lich', 1, 2), at('ironsentinel', 1, 0), at('wraith', 0, 1), at('wraith', 2, 1)]),
   f('rn7', 'ruins', [at('wyvern', 1, 1), at('voidspawn', 0, 2), at('voidspawn', 2, 2)]),
 
+  f('ab1', 'abyss', [at('frostcolossus', 1, 0), at('abyssalmaw', 0, 2), at('abyssalmaw', 2, 2)]),
+  f('ab2', 'abyss', [at('stormdjinn', 1, 2), at('frostcolossus', 0, 0), at('frostcolossus', 2, 0)]),
+  f('ab3', 'abyss', [at('bonedragon', 1, 1), at('abyssalmaw', 0, 0), at('abyssalmaw', 2, 0)]),
+  f('ab4', 'abyss', [at('seraph', 1, 2), at('bonedragon', 1, 0), at('stormdjinn', 0, 1)]),
+  f('ab5', 'abyss', [at('deepwarden', 1, 1), at('nullweaver', 0, 2), at('seraph', 2, 2)]),
+  f('ab6', 'abyss', [at('ashtitan', 1, 0), at('nullweaver', 1, 2), at('bonedragon', 0, 1), at('bonedragon', 2, 1)]),
+  f('ab7', 'abyss', [at('nullweaver', 1, 2), at('ashtitan', 0, 0), at('ashtitan', 2, 0), at('seraph', 1, 1)]),
+
   f('boss_volk', 'boss', [at('boss_brigand', 1, 0), at('bandit', 0, 0), at('bandit', 2, 0)], { boss: true }),
   f('boss_anvil', 'boss', [at('boss_golemking', 1, 0), at('golemshard', 0, 1), at('golemshard', 2, 1)], { boss: true }),
   f('boss_choir', 'boss', [at('boss_shadow', 1, 1), at('wraith', 0, 0), at('wraith', 2, 0)], { boss: true }),
   f('boss_aurelith', 'boss', [at('boss_wyrm', 1, 1)], { boss: true }),
+  f('boss_gate', 'boss', [at('boss_gate', 1, 1)], { boss: true }),
+  f('boss_worldheart', 'boss', [at('boss_worldheart', 1, 1), at('seraph', 0, 2), at('seraph', 2, 2)], { boss: true }),
+  f('boss_thirteenth', 'boss', [at('boss_thirteenth', 1, 1), at('nullweaver', 0, 0), at('nullweaver', 2, 0)], { boss: true }),
 ];
 
 export const FORMATION_BY_ID = Object.fromEntries(FORMATIONS.map((x) => [x.id, x]));

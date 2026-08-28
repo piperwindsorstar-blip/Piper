@@ -1,25 +1,36 @@
 // ============================================================================
 //  CLASSES — 12 roots, each growing a 10-node promotion tree.
 //
-//  Promotion happens every 5 levels:
+//  Promotion happens every 5 levels to the Mastery, then at each of the three
+//  ASCENSION levels:
 //
-//     Lv  5  Tier 1   linear    (1 successor)
-//     Lv 10  Tier 2   BRANCH    (choose 1 of 2)
-//     Lv 15  Tier 3   linear    (1 successor)
-//     Lv 20  Tier 4   BRANCH    (choose 1 of 2)  <- capstone
+//     Lv  5  Tier 1  Adept      linear    (1 successor)
+//     Lv 10  Tier 2  Veteran    BRANCH    (choose 1 of 2)
+//     Lv 15  Tier 3  Elite      linear    (1 successor)
+//     Lv 20  Tier 4  Master     BRANCH    (choose 1 of 2)
+//     Lv 40  Tier 5  Ascendant  BRANCH    (choose 1 of 2)
+//     Lv 60  Tier 6  Exalted    BRANCH    (choose 1 of 2)
+//     Lv 80  Tier 7  Mythic     BRANCH    (choose 1 of 2)  <- the summit
 //
-//  So every root reaches one of four distinct capstones, and there are
-//  12 x 10 = 120 class nodes in total. Past Lv20 a character keeps their
-//  capstone class and continues growing through levels, jobs and gear.
+//  Tiers 0-4 are a strict binary tree: 10 nodes per root, four Masteries.
+//  Past the Mastery the tree would double to 32 leaves per root, so the three
+//  ascension tiers instead form a RING of four per root. Each node offers two
+//  successors and every successor is reachable from exactly two predecessors:
+//
+//     M(i) -> { A(i), A(i+1) }      A(i) -> { B(i), B(i+1) }      and so on
+//
+//  Every promotion stays a real two-way choice, but paths reconverge at the
+//  summit instead of exploding. 22 nodes per root, 264 in total.
 //
 //  A node does not carry its own stat table. It carries a BIAS applied to its
 //  root's growth profile, scaled by TIER_FACTOR. That keeps 120 nodes honest:
 //  a Berserker is always a Warrior who traded defence for violence.
 // ============================================================================
 
-export const PROMOTION_LEVELS = [5, 10, 15, 20];
-export const BRANCH_TIERS = [2, 4];          // tiers reached at Lv10 and Lv20
-export const MAX_TIER = 4;
+export const PROMOTION_LEVELS = [5, 10, 15, 20, 40, 60, 80];
+export const BRANCH_TIERS = [2, 4, 5, 6, 7];   // every tier reached by a choice
+export const MAX_TIER = 7;
+export const ASCENT_TIERS = [5, 6, 7];         // the ring tiers, past the Mastery
 
 export const STAT_KEYS = ['hp', 'mp', 'str', 'vit', 'agi', 'int', 'spr', 'lck'];
 
@@ -39,8 +50,10 @@ const PROFILES = {
   spiritist: [5.0, 3.4, 1.4, 1.6, 2.0, 3.0, 3.0, 2.2],
 };
 
-export const TIER_FACTOR = [1.0, 1.22, 1.48, 1.78, 2.12];
-export const TIER_NAME = ['Novice', 'Adept', 'Veteran', 'Elite', 'Master'];
+export const TIER_FACTOR = [1.0, 1.22, 1.48, 1.78, 2.12, 2.58, 3.10, 3.72];
+export const TIER_NAME = [
+  'Novice', 'Adept', 'Veteran', 'Elite', 'Master', 'Ascendant', 'Exalted', 'Mythic',
+];
 
 // One-time stat award granted the moment a promotion is accepted.
 export const PROMOTION_BONUS = [
@@ -49,6 +62,9 @@ export const PROMOTION_BONUS = [
   { hp: 45, mp: 18, str: 4, vit: 4, agi: 3, int: 4, spr: 4, lck: 2 },
   { hp: 75, mp: 30, str: 6, vit: 6, agi: 5, int: 6, spr: 6, lck: 3 },
   { hp: 120, mp: 48, str: 9, vit: 9, agi: 8, int: 9, spr: 9, lck: 5 },
+  { hp: 260, mp: 95, str: 16, vit: 16, agi: 14, int: 16, spr: 16, lck: 9 },
+  { hp: 460, mp: 165, str: 26, vit: 26, agi: 23, int: 26, spr: 26, lck: 15 },
+  { hp: 780, mp: 270, str: 40, vit: 40, agi: 36, int: 40, spr: 40, lck: 24 },
 ];
 
 // bias shorthand: { str: 1.3, vit: 0.8 } — anything unlisted is 1.0
@@ -449,6 +465,141 @@ const TREES = [
 ];
 
 // ---------------------------------------------------------------------------
+//  ASCENSIONS — the three ring tiers past the Mastery (Lv40 / 60 / 80).
+//
+//  Four slots per root. A slot names the same path at each of the three tiers
+//  and owns one bias and one school list; TIER_FACTOR does the escalating. The
+//  ring wiring (slot i is offered by masteries i and i-1) is applied in the
+//  flatten step below, so each of the twelve roots gets twelve more nodes.
+//
+//  a = Lv40 Ascendant · b = Lv60 Exalted · c = Lv80 Mythic
+// ---------------------------------------------------------------------------
+const A = (a, b, c, bias, schools, blurb) => ({ a, b, c, bias, schools, blurb });
+
+const ASCENT = {
+  warrior: [
+    A('Blade Sovereign', 'Dawnedge', 'Sword Eternal', b({ str: 1.5, agi: 1.25 }), ['sword', 'holy'],
+      'The sword stopped being a tool somewhere around the thousandth morning.'),
+    A('Oathbound', 'Everward', 'Final Ward', b({ vit: 1.4, spr: 1.45, hp: 1.25 }), ['sword', 'guard', 'holy'],
+      'Swore something once. Has not put it down since.'),
+    A('Bloodcrown', 'Red Tyrant', 'Ruin Incarnate', b({ str: 1.75, hp: 1.3, spr: 0.7 }), ['rage', 'sword'],
+      'Wears the war the way other men wear a coat.'),
+    A('Warmarshal', 'Iron Sovereign', 'Worldbreaker', b({ str: 1.45, vit: 1.35, hp: 1.35 }), ['sword', 'rage', 'guard'],
+      'Armies are a unit of measurement to him.'),
+  ],
+  guardian: [
+    A('Rampart Lord', 'Citadel', 'The Last Wall', b({ vit: 1.7, hp: 1.5, agi: 0.7 }), ['guard'],
+      'Sieges are named after the people who failed to take him.'),
+    A('Hallowed Wall', 'Sanctum Eternal', 'Refuge', b({ spr: 1.65, vit: 1.35, mp: 1.5 }), ['guard', 'holy', 'white'],
+      'Where he stops walking, the wounded are safe.'),
+    A('Titan', 'Mountainheart', 'Worldpillar', b({ hp: 1.75, str: 1.4, vit: 1.45, agi: 0.65 }), ['guard', 'rage'],
+      'Geology, but it has opinions.'),
+    A('Unyielding', 'Everadamant', 'Immovable', b({ vit: 1.6, spr: 1.5, hp: 1.35 }), ['guard', 'holy'],
+      'Has never once been described as flexible.'),
+  ],
+  monk: [
+    A('Dragon Ascendant', 'Thunder Palm', 'Fist of Heaven', b({ str: 1.65, agi: 1.4 }), ['fist', 'ki'],
+      'The strike lands in a tense that has not been invented.'),
+    A('Diamond Body', 'Adamant Soul', 'Living Statue', b({ vit: 1.55, hp: 1.5, str: 1.3 }), ['fist', 'ki', 'guard'],
+      'Breaks weapons by being hit with them.'),
+    A('Bodhi', 'Awakened', 'Perfected', b({ spr: 1.7, mp: 1.7, int: 1.3 }), ['ki', 'white', 'holy'],
+      'Stopped counting the breaths. There was no need.'),
+    A('Null Fist', 'Hollow Sage', 'Empty Throne', b({ str: 1.45, spr: 1.5, agi: 1.35 }), ['fist', 'ki', 'spirit'],
+      'Strikes at what a thing is, not where it stands.'),
+  ],
+  lancer: [
+    A("Heaven's Spear", 'Cloudpiercer', 'Dawnspear', b({ agi: 1.6, str: 1.45 }), ['lance', 'wild'],
+      'Comes down out of the light, on purpose, every time.'),
+    A('Wyrmlord', 'Dragon Regent', 'Wyrm Eternal', b({ str: 1.45, int: 1.5, mp: 1.5 }), ['lance', 'beast', 'summon'],
+      'Old things answer. They have stopped pretending otherwise.'),
+    A('Gravemaker', 'Silent Field', 'Endless Field', b({ str: 1.7, vit: 1.25, agi: 1.2 }), ['lance', 'rage'],
+      'Reach measured in regrets, and he has a long arm.'),
+    A('Tempest Lance', 'Stormcrown', 'Skyfall', b({ agi: 1.5, int: 1.4, str: 1.35 }), ['lance', 'elem'],
+      'The weather takes instruction now.'),
+  ],
+  thief: [
+    A('Shadowmaster', 'Silent King', 'Nameless', b({ agi: 1.7, lck: 1.4, str: 1.3 }), ['shadow', 'steal'],
+      'There is no record of him. That took work.'),
+    A('Duskblade', 'Night Sovereign', 'Endless Night', b({ str: 1.5, agi: 1.5, lck: 1.4 }), ['shadow', 'dark'],
+      'The dark stopped being cover and started being staff.'),
+    A('Umbral Dancer', 'Eclipse', 'Total Eclipse', b({ agi: 1.75, lck: 1.35, spr: 1.2 }), ['shadow', 'dance'],
+      'Fights in the gaps between one torch and the next.'),
+    A('Fata Morgana', 'Unseen', 'Never Was', b({ agi: 1.5, int: 1.5, mp: 1.5 }), ['shadow', 'illusion'],
+      'You have been fighting a rumour for eleven turns.'),
+  ],
+  archer: [
+    A('Truesight', "Storm's Eye", 'One Arrow', b({ lck: 1.8, str: 1.45, agi: 1.35 }), ['bow'],
+      'Only ever needs the one. Carries more out of politeness.'),
+    A('Siegebreaker', 'Ballistarch', 'Worldpiercer', b({ str: 1.7, vit: 1.3, agi: 1.05 }), ['bow', 'guard'],
+      'Carries something that used to require a crew and a permit.'),
+    A('Thicketlord', 'Wildking', 'Forest Eternal', b({ agi: 1.5, vit: 1.4, spr: 1.4 }), ['bow', 'wild', 'beast'],
+      'Arrives with company nobody can negotiate with.'),
+    A('Galestrider', 'Zephyr', 'Windborn', b({ agi: 1.8, lck: 1.35, str: 1.25 }), ['bow', 'wild', 'elem'],
+      'Outruns the arrow more often than not.'),
+  ],
+  dancer: [
+    A('Cyclone', 'Maelstrom', 'The Last Dance', b({ agi: 1.7, str: 1.45, lck: 1.3 }), ['dance', 'elem'],
+      'Everything inside the circle is part of the finale.'),
+    A('Steel Aria', 'Perfect Measure', 'Final Movement', b({ str: 1.5, spr: 1.45, mp: 1.4 }), ['dance', 'song', 'sword'],
+      'The blade keeps time. The song keeps everyone alive.'),
+    A('Songbinder', 'Abyssal Song', 'Endless Song', b({ spr: 1.7, mp: 1.65, int: 1.4 }), ['song', 'hex'],
+      'Nobody remembers agreeing. Everybody agreed.'),
+    A('Oneiromancer', 'Dreamlord', 'Waking Dream', b({ int: 1.65, mp: 1.6, lck: 1.4 }), ['song', 'illusion', 'spirit'],
+      'Fights are shorter when the other side is asleep.'),
+  ],
+  jester: [
+    A("Fortune's Own", 'Luck Incarnate', 'Long Odds', b({ lck: 2.1, agi: 1.4, str: 1.25 }), ['luck'],
+      'The odds are a suggestion and he is declining it.'),
+    A('Crownbroker', 'Throneshaper', 'Crownless', b({ lck: 1.8, spr: 1.45, mp: 1.4 }), ['luck', 'song'],
+      'Never wins. Decides who does.'),
+    A('Grand Sage', 'Omniscient', 'All-Knowing', b({ int: 1.7, mp: 1.75, spr: 1.65 }), ['elem', 'white', 'illusion'],
+      'The old joke, told all the way to its end.'),
+    A('Marionettist', 'Stringlord', 'Fatespinner', b({ int: 1.6, mp: 1.55, lck: 1.55 }), ['illusion', 'hex'],
+      'Strings you cannot see, on choices you thought were yours.'),
+  ],
+  mage: [
+    A('Magus Prime', 'Grand Magus', 'The Absolute', b({ int: 1.95, mp: 1.75, spr: 1.3 }), ['elem'],
+      'The ceiling of what one mind can hold, and then some.'),
+    A('Wheelwarden', 'Prime Sovereign', 'Wheel Incarnate', b({ int: 1.7, mp: 1.6, vit: 1.35, hp: 1.35 }), ['elem', 'spirit'],
+      'Does not cast the element. Is on loan from it.'),
+    A('Necrarch', 'Bone Emperor', 'Deathless', b({ int: 1.8, mp: 1.65, hp: 1.35 }), ['dark', 'hex'],
+      'Death is a staffing problem and he is well staffed.'),
+    A('Cataclyst', 'Worldsbane', 'Final Word', b({ int: 2.0, mp: 1.7, spr: 0.85, hp: 0.95 }), ['dark', 'elem'],
+      'One spell. Everyone in the room is included.'),
+  ],
+  cleric: [
+    A('Archprelate', 'Pontifex', "Heaven's Voice", b({ spr: 1.95, mp: 1.75, int: 1.4 }), ['white', 'holy'],
+      'Heals the whole line without looking up from the book.'),
+    A('Beatified', 'Ascended', 'Sanctified', b({ spr: 1.8, mp: 1.6, vit: 1.4, hp: 1.4 }), ['white', 'holy', 'guard'],
+      'Death has been asked to wait, and it is waiting.'),
+    A('Flamekeeper', 'Purelight', 'Purefire', b({ int: 1.7, spr: 1.6, mp: 1.55 }), ['holy', 'white', 'elem'],
+      'Burns the curse out, and most of the surroundings.'),
+    A('Witchbane', 'Namebane', 'Last Inquisitor', b({ str: 1.6, agi: 1.45, spr: 1.45 }), ['holy', 'hex', 'bow'],
+      'Specialises in things that believed they were safe.'),
+  ],
+  summoner: [
+    A('Esperlord', 'Pact Sovereign', 'Gatekeeper', b({ int: 1.9, mp: 1.9, spr: 1.45 }), ['summon', 'elem'],
+      'The old powers come when called, and stay for the winter.'),
+    A('Aeonwright', 'Timebinder', 'Aeon Eternal', b({ int: 1.75, mp: 1.75, vit: 1.35, hp: 1.35 }), ['summon', 'spirit'],
+      'What is summoned does not leave until the work is finished.'),
+    A('Chimerarch', 'Fleshsmith', 'Legion', b({ str: 1.6, int: 1.6, hp: 1.45 }), ['beast', 'hex'],
+      'Builds the monster the situation calls for, from what is lying around.'),
+    A('Wildwarden', 'Primeval', 'Worldbeast', b({ vit: 1.55, spr: 1.55, hp: 1.5, int: 1.4 }), ['beast', 'spirit', 'wild'],
+      'Speaks for things that were old before speech.'),
+  ],
+  spiritist: [
+    A('Maledictor', 'Blightcrown', 'Namebreaker', b({ int: 1.8, mp: 1.6, lck: 1.5 }), ['hex', 'dark'],
+      'To be named by her is itself a status effect.'),
+    A('Threadmaster', 'Soul Sovereign', 'Endweaver', b({ int: 1.7, spr: 1.65, mp: 1.7 }), ['hex', 'spirit'],
+      'Holds the thread, and decides the hour it is let go.'),
+    A('Farseer', 'Prophet', 'Foreseen', b({ spr: 1.75, int: 1.55, lck: 1.65 }), ['spirit', 'white'],
+      'Acts on information that has not happened yet.'),
+    A('Worldsinger', 'Wheelvoice', 'World Eternal', b({ spr: 1.8, int: 1.7, mp: 1.75, hp: 1.3 }), ['spirit', 'elem'],
+      'The wheel itself leans in to listen.'),
+  ],
+};
+
+// ---------------------------------------------------------------------------
 //  FLATTEN
 // ---------------------------------------------------------------------------
 const CLASS_MAP = {};
@@ -469,7 +620,7 @@ function walk(node, tree, tier, parent) {
     parent,
     promotions: node.children.map((c) => c.id),
     isBranch: node.children.length > 1,
-    promoteLevel: tier < MAX_TIER ? PROMOTION_LEVELS[tier] : null,
+    promoteLevel: PROMOTION_LEVELS[tier] ?? null,
     role: tree.role,
     blurb: node.blurb || tree.blurb,
     schools: node.schools.slice(),
@@ -487,6 +638,79 @@ for (const tree of TREES) {
   ROOTS.push(walk(tree.tree, tree, 0, null));
 }
 
+// ---------------------------------------------------------------------------
+//  Build the three ascension rings on top of each root's four Masteries.
+// ---------------------------------------------------------------------------
+const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** The four Mastery ids under `rootId`, in tree order. */
+function masteriesOf(rootId) {
+  const out = [];
+  const walkLeaves = (id) => {
+    const c = CLASS_MAP[id];
+    if (!c.promotions.length) { out.push(id); return; }
+    c.promotions.forEach(walkLeaves);
+  };
+  walkLeaves(rootId);
+  return out;
+}
+
+for (const tree of TREES) {
+  const rootId = tree.root;
+  const slots = ASCENT[rootId];
+  if (!slots) continue;
+  const profile = PROFILES[tree.profile];
+  const masteries = masteriesOf(rootId);
+
+  // one row of four nodes per ascension tier
+  const rows = ASCENT_TIERS.map((tier, ti) => slots.map((slot, i) => {
+    const name = [slot.a, slot.b, slot.c][ti];
+    const growth = {};
+    STAT_KEYS.forEach((k, si) => {
+      growth[k] = +(profile[si] * TIER_FACTOR[tier] * (slot.bias[k] ?? 1)).toFixed(3);
+    });
+    // the top two tiers open schools nobody below the Mastery can reach
+    const schools = slot.schools.concat(
+      ['arcane'],
+      tier >= 6 ? ['transcend'] : [],
+      tier >= 7 ? ['apex'] : [],
+    );
+    const entry = {
+      id: slug(name), name, tier,
+      tierName: TIER_NAME[tier],
+      root: rootId,
+      parent: null,           // filled in below; ring nodes have two predecessors
+      promotions: [],
+      isBranch: true,
+      promoteLevel: PROMOTION_LEVELS[tier] ?? null,
+      role: tree.role,
+      blurb: slot.blurb,
+      schools,
+      weapons: tree.weapons.slice(),
+      armor: tree.armor.slice(),
+      growth,
+      bias: slot.bias,
+      slot: i,
+    };
+    CLASS_MAP[entry.id] = entry;
+    return entry;
+  }));
+
+  // wire the ring: node i is offered by predecessors i and i-1
+  const link = (fromIds, toRow) => {
+    fromIds.forEach((fromId, i) => {
+      const a = toRow[i], bNode = toRow[(i + 1) % toRow.length];
+      CLASS_MAP[fromId].promotions = [a.id, bNode.id];
+      CLASS_MAP[fromId].isBranch = true;
+      if (!a.parent) a.parent = fromId;
+    });
+  };
+  link(masteries, rows[0]);
+  link(rows[0].map((n) => n.id), rows[1]);
+  link(rows[1].map((n) => n.id), rows[2]);
+  rows[2].forEach((n) => { n.promotions = []; n.isBranch = false; });
+}
+
 export const CLASSES = CLASS_MAP;
 export const ROOT_CLASSES = ROOTS;
 export const CLASS_IDS = Object.keys(CLASS_MAP);
@@ -497,15 +721,26 @@ export function getClass(id) {
   return c;
 }
 
-/** Class ids from root down to `id`, inclusive. */
+/**
+ * Class ids from root down to `id`, inclusive. Past the Mastery a node has two
+ * possible predecessors, so this returns the canonical chain; when you have a
+ * character, `promotionPath` in character.js uses their real history instead.
+ */
 export function classLineage(id) {
   const line = [];
   let cur = CLASS_MAP[id];
-  while (cur) {
+  const guard = new Set();
+  while (cur && !guard.has(cur.id)) {
+    guard.add(cur.id);
     line.unshift(cur.id);
     cur = cur.parent ? CLASS_MAP[cur.parent] : null;
   }
   return line;
+}
+
+/** Every class node at a given tier. */
+export function classesAtTier(tier) {
+  return CLASS_IDS.map((id) => CLASS_MAP[id]).filter((c) => c.tier === tier);
 }
 
 /** The promotion a character at `level` in class `id` is owed, or null. */

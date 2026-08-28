@@ -1,11 +1,13 @@
 // ============================================================================
 //  CHARACTER — the point where class, element and job meet.
 //
-//  A character's stats are the sum of four independent contributions:
+//  A character's stats are the sum of five independent contributions:
 //
 //    BASE      a flat starting allowance, identical for everyone
 //    GROWTH    accumulated per-level gains from whichever class node they held
-//              at the time (so a promotion changes future levels, not past ones)
+//              at the time (so a promotion changes future levels, not past ones),
+//              each gain scaled by the RACE's growth multiplier
+//    RACE      a flat modifier, plus resistances and traits
 //    ELEMENT   a permanent bias chosen at creation, never changes
 //    JOB       a rank-scaled bonus that grows with job use, not level
 //    EQUIP     gear
@@ -19,9 +21,11 @@ import { ELEMENT_BY_ID } from '../data/elements.js';
 import { getJob, jobBonus, jobRankFromExp, jobAffinityBonus, JOB_RANK_EXP, MAX_JOB_RANK } from '../data/jobs.js';
 import { skillsForSchools, getSkill, STATUS } from '../data/skills.js';
 import { getItem, canEquip, WEAPON_TYPES } from '../data/items.js';
+import { getRace, hasTrait, raceResist, raceJobAffinity } from '../data/races.js';
 
 export const BASE_STATS = { hp: 34, mp: 8, str: 8, vit: 8, agi: 8, int: 8, spr: 8, lck: 8 };
-export const MAX_LEVEL = 60;
+// The class ladder tops out at the Lv80 Mythic tier; 99 leaves room past it.
+export const MAX_LEVEL = 99;
 
 /** Cumulative EXP required to reach `level`. */
 export function expForLevel(level) {
@@ -33,10 +37,12 @@ export function expForLevel(level) {
 
 export function createCharacter(o) {
   const cls = getClass(o.classId);
+  const race = getRace(o.raceId ?? 'human');
   const ch = {
     id: o.id ?? `pc_${Math.random().toString(36).slice(2, 9)}`,
     name: o.name ?? 'Hero',
     classId: o.classId,
+    raceId: race.id,
     elementId: o.elementId,
     jobId: o.jobId,
     level: 1,
@@ -55,7 +61,7 @@ export function createCharacter(o) {
     alive: true,
   };
   // level 1 already banks one application of growth so classes differ from the start
-  for (const k of STAT_KEYS) ch.acc[k] = cls.growth[k];
+  for (const k of STAT_KEYS) ch.acc[k] = cls.growth[k] * (race.growth[k] ?? 1);
   if (o.level && o.level > 1) grantLevels(ch, o.level - 1);
   const s = stats(ch);
   ch.hp = s.maxHp;
@@ -69,10 +75,12 @@ export function createCharacter(o) {
 export function stats(ch) {
   const out = {};
   const el = ELEMENT_BY_ID[ch.elementId];
+  const race = getRace(ch.raceId ?? 'human');
   const jb = jobBonus(ch.jobId, jobRank(ch));
 
   for (const k of STAT_KEYS) {
-    out[k] = BASE_STATS[k] + Math.floor(ch.acc[k]) + (el?.bias?.[k] ?? 0) + (jb[k] ?? 0);
+    out[k] = BASE_STATS[k] + Math.floor(ch.acc[k])
+      + (race.mod[k] ?? 0) + (el?.bias?.[k] ?? 0) + (jb[k] ?? 0);
   }
 
   // equipment
@@ -89,11 +97,17 @@ export function stats(ch) {
 
   for (const k of STAT_KEYS) out[k] = Math.max(1, out[k]);
 
+  // race traits that reshape the sheet rather than a single number
+  if (hasTrait(race.id, 'forgeborn')) def = Math.round(def * 1.2);
+  if (hasTrait(race.id, 'flight')) reach = Math.min(9, reach + 1);
+  if (hasTrait(race.id, 'wyrmblood')) out.hp = Math.round(out.hp * 1.1);
+
   out.maxHp = Math.max(1, out.hp);
   out.maxMp = Math.max(0, out.mp);
   out.atk = atk;
   out.def = def;
   out.reach = reach;
+  out.race = race.id;
 
   // derived combat numbers
   const w = ch.equip.weapon ? getItem(ch.equip.weapon) : null;
@@ -103,8 +117,10 @@ export function stats(ch) {
   out.armor = Math.floor(out.vit * 1.1 + def * 1.8);             // physical mitigation
   out.ward = Math.floor(out.spr * 1.2 + def * 0.8);              // magical mitigation
   out.speed = out.agi;
-  out.crit = Math.min(0.5, 0.03 + out.lck * 0.0035 + (el?.id === 'metal' ? 0.05 : 0));
-  out.evade = Math.min(0.45, 0.02 + out.agi * 0.0025 + (el?.id === 'wind' ? 0.10 : 0));
+  out.crit = Math.min(0.6, 0.03 + out.lck * 0.0035
+    + (el?.id === 'metal' ? 0.05 : 0) + (hasTrait(race.id, 'keenscent') ? 0.08 : 0));
+  out.evade = Math.min(0.55, 0.02 + out.agi * 0.0025
+    + (el?.id === 'wind' ? 0.10 : 0) + (hasTrait(race.id, 'flight') ? 0.18 : 0));
   out.element = ch.elementId;
   return out;
 }
@@ -118,15 +134,20 @@ export function statSummary(ch) {
 //  LEVELLING & PROMOTION
 // ---------------------------------------------------------------------------
 
-/** Apply `n` level-ups using the CURRENT class's growth. Returns the gains. */
+/**
+ * Apply `n` level-ups using the CURRENT class's growth, scaled by the race's
+ * per-stat multiplier. Race therefore compounds across eighty levels rather
+ * than washing out behind a one-time modifier. Returns the gains.
+ */
 export function grantLevels(ch, n) {
   const cls = getClass(ch.classId);
+  const race = getRace(ch.raceId ?? 'human');
   const gained = Object.fromEntries(STAT_KEYS.map((k) => [k, 0]));
   for (let i = 0; i < n && ch.level < MAX_LEVEL; i++) {
     ch.level++;
     for (const k of STAT_KEYS) {
       const before = Math.floor(ch.acc[k]);
-      ch.acc[k] += cls.growth[k];
+      ch.acc[k] += cls.growth[k] * (race.growth[k] ?? 1);
       gained[k] += Math.floor(ch.acc[k]) - before;
     }
   }
@@ -188,12 +209,18 @@ export function promote(ch, toId = null) {
   return { to: getClass(target), bonus, tier: promo.tier };
 }
 
-/** The full ladder from root to here, with which nodes were actually taken. */
+/**
+ * The ladder this character actually walked. Past the Mastery a node has two
+ * possible predecessors, so the canonical lineage can name a class they never
+ * held — their own history is the truth, and is used whenever it reaches the
+ * current class.
+ */
 export function promotionPath(ch) {
-  return classLineage(ch.classId).map((id) => ({
-    ...getClass(id),
-    taken: ch.classHistory.includes(id),
-  }));
+  const history = ch.classHistory ?? [];
+  const ids = history.length && history[history.length - 1] === ch.classId
+    ? history
+    : classLineage(ch.classId);
+  return ids.map((id) => ({ ...getClass(id), taken: history.includes(id) }));
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +264,11 @@ export function jobRank(ch) { return jobRankFromExp(ch.jobExp); }
 
 export function awardJobExp(ch, amount) {
   const before = jobRank(ch);
-  ch.jobExp += Math.round(amount * jobAffinityBonus(ch.jobId, ch.elementId));
+  const human = hasTrait(ch.raceId ?? 'human', 'adaptable') ? 1.35 : 1;
+  ch.jobExp += Math.round(amount
+    * jobAffinityBonus(ch.jobId, ch.elementId)
+    * raceJobAffinity(ch.raceId ?? 'human', ch.elementId)
+    * human);
   const after = jobRank(ch);
   return after > before ? { rankUp: true, rank: after } : { rankUp: false, rank: after };
 }
@@ -288,17 +319,44 @@ export function clampVitals(ch) {
 // ---------------------------------------------------------------------------
 //  STATUS
 // ---------------------------------------------------------------------------
+// statuses a race simply cannot be given
+const RACE_IMMUNITIES = {
+  automaton: ['poison', 'burn', 'sleep', 'confuse', 'charm'],
+  saurian: ['poison'],
+  ogrekin: ['confuse', 'fear'],
+  revenant: ['doom'],
+};
+
+export function statusImmune(ch, id) {
+  const race = ch.raceId ?? 'human';
+  return (RACE_IMMUNITIES[race] ?? []).includes(id);
+}
+
 export function applyStatus(ch, id, turns = null) {
   const def = STATUS[id];
   if (!def) return false;
   if (id === 'poison' && ch.elementId === 'poison') return false;   // Virulence
+  if (statusImmune(ch, id)) return false;
   let t = turns ?? def.turns;
+  // Human Resolve: every ailment burns off a turn sooner
+  if (def.kind === 'bad' && hasTrait(race_(ch), 'resolve')) t = Math.max(1, t - 1);
   if (def.kind === 'bad' && ch.elementId === 'poison' && ['poison', 'burn'].includes(id)) t += 2;
   ch.statuses[id] = Math.max(ch.statuses[id] ?? 0, t);
   return true;
 }
 
+const race_ = (ch) => ch.raceId ?? 'human';
+
 export function clearStatus(ch, id) { delete ch.statuses[id]; }
+
+/** Damage multiplier this character takes from `element`, from their race. */
+export function elementalResistance(ch, element) {
+  return raceResist(race_(ch), element);
+}
+
+export function raceInfo(ch) { return getRace(race_(ch)); }
+
+export function characterHasTrait(ch, traitId) { return hasTrait(race_(ch), traitId); }
 
 export function clearBadStatuses(ch) {
   for (const id of Object.keys(ch.statuses)) {
