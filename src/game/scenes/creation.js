@@ -33,8 +33,8 @@ const NAME_POOL = [
 const STAGES = ['name', 'class', 'element', 'job'];
 
 // detail-panel origin and inner width
-const PX = 128;
-const PW = W - PX - 12;
+const PX = 140;
+const PW = W - PX - 10;
 
 export class CreationScene {
   constructor(app) { this.app = app; }
@@ -55,17 +55,19 @@ export class CreationScene {
   }
 
   buildMenus() {
+    // two columns so all 12 classes, 13 elements and 20 jobs are visible at
+    // once — a list you have to scroll hides the choice you are making
     this.classMenu = new Menu({
       items: ROOT_CLASSES.map((c) => ({ label: c.name, id: c.id })),
-      x: 24, y: 34, cellW: 88, cellH: 11, rows: 11, columns: 1,
+      x: 20, y: 34, cellW: 52, cellH: 11, rows: 6, columns: 2,
     });
     this.elemMenu = new Menu({
       items: ELEMENTS.map((e) => ({ label: e.name, id: e.id, color: e.color })),
-      x: 24, y: 34, cellW: 88, cellH: 11, rows: 11, columns: 1,
+      x: 20, y: 34, cellW: 52, cellH: 11, rows: 7, columns: 2,
     });
     this.jobMenu = new Menu({
       items: JOBS.map((j) => ({ label: j.name, id: j.id })),
-      x: 24, y: 34, cellW: 88, cellH: 11, rows: 11, columns: 1,
+      x: 20, y: 34, cellW: 52, cellH: 11, rows: 10, columns: 2,
     });
     this.rosterMenu = new Menu({
       items: [], x: 20, y: 40, cellW: 200, cellH: 24, rows: 5,
@@ -220,7 +222,7 @@ export class CreationScene {
 
   /** The live sprite, in its own box under the list rather than over the text. */
   drawPreview(scr) {
-    scr.window(6, 172, 112, 46);
+    scr.window(6, 172, 122, 46);
     const cv = heroSprite({
       classId: this.draft.classId, elementId: this.draft.elementId,
       skin: this.draft.skin, hair: this.draft.hair,
@@ -264,7 +266,7 @@ export class CreationScene {
 
   // right-hand detail panel geometry
   panel(scr, title) {
-    scr.window(PX - 6, 26, W - PX, 192);
+    scr.window(PX - 8, 26, W - PX + 2, 192);
     scr.text(title, PX, 32, PAL.gold);
     scr.rect(PX, 42, PW, 1, PAL.frame1);
     return 46;
@@ -277,29 +279,29 @@ export class CreationScene {
   }
 
   drawClass(scr) {
-    scr.window(6, 26, 112, 142);
+    scr.window(6, 26, 122, 142);
     this.classMenu.draw(scr);
     this.drawPreview(scr);
 
     const cls = CLASSES[this.draft.classId];
     let y = this.panel(scr, cls.name.toUpperCase());
-    y = this.para(scr, cls.role, y, PAL.cyan, { maxLines: 1 });
-    y = this.para(scr, cls.blurb, y, PAL.textDim, { maxLines: 2, gap: 4 });
+    y = this.para(scr, cls.role, y, PAL.cyan, { maxLines: 2 });
+    y = this.para(scr, cls.blurb, y, PAL.textDim, { maxLines: 3, gap: 4 });
 
     scr.text('GROWTH / LEVEL', PX, y, PAL.gold); y += 10;
-    const maxG = Math.max(...STAT_KEYS.map((k) => cls.growth[k]));
-    for (const k of ['hp', 'mp', 'str', 'vit', 'agi', 'int', 'spr', 'lck']) {
-      scr.text(k.toUpperCase(), PX, y, PAL.textDim);
-      scr.bar(PX + 26, y + 1, PW - 52, 5, cls.growth[k] / maxG, PAL.cyan);
-      scr.textRight(cls.growth[k].toFixed(1), PX + PW, y, PAL.text);
-      y += 8;
-    }
-    y += 3;
-    scr.text('SCHOOLS', PX, y, PAL.gold); y += 10;
-    y = this.para(scr, cls.schools.map((s) => SCHOOLS[s].name).join(', '), y, PAL.text, { maxLines: 2, gap: 4 });
+    const half = Math.floor(PW / 2);
+    ['hp', 'mp', 'str', 'vit', 'agi', 'int', 'spr', 'lck'].forEach((k, i) => {
+      const cx = PX + (i % 2) * half;
+      const cy = y + Math.floor(i / 2) * 10;
+      scr.text(k.toUpperCase(), cx, cy, PAL.textDim);
+      scr.textRight(cls.growth[k].toFixed(1), cx + half - 6, cy, PAL.text);
+    });
+    y += 43;
+    y = this.para(scr, `Schools: ${cls.schools.map((s) => SCHOOLS[s].name).join(', ')}`,
+      y, PAL.cyan, { maxLines: 2, gap: 4 });
 
     // the ladder, showing both branch points
-    scr.text('PROMOTION LADDER', PX, y, PAL.gold); y += 10;
+    scr.text('PROMOTION LADDER', PX, y, PAL.gold); y += 9;
     const t1 = CLASSES[cls.promotions[0]];
     const [a, b] = t1.promotions.map((p) => CLASSES[p]);
     scr.text('5', PX, y, PAL.textDim); scr.text(t1.name, PX + 14, y, PAL.text); y += 9;
@@ -309,7 +311,7 @@ export class CreationScene {
   }
 
   drawElement(scr) {
-    scr.window(6, 26, 112, 142);
+    scr.window(6, 26, 122, 142);
     this.elemMenu.draw(scr);
     this.drawPreview(scr);
 
@@ -341,7 +343,7 @@ export class CreationScene {
   }
 
   drawJob(scr) {
-    scr.window(6, 26, 112, 142);
+    scr.window(6, 26, 122, 142);
     this.jobMenu.draw(scr);
     this.drawPreview(scr);
 

@@ -8,6 +8,8 @@ A 16-bit turn-based RPG that borrows deliberately:
 | **Lufia: The Legend Returns** | two facing 3×3 battle grids where your column decides what you can reach, and IP gauges that fill from damage |
 | **Final Fantasy VI** | the presentation — bitmap menu font, bevelled blue windows, outlined sprites, layered battle backdrops |
 
+![Nine screens from the game](docs/screens.png)
+
 Runs in any modern browser. No build step, no dependencies.
 
 ```bash
