@@ -7,6 +7,7 @@ import { Menu } from '../../engine/ui.js';
 import { SLOTS, saveSummary, deleteSave } from '../../engine/save.js';
 import { GameState, formatTime } from '../state.js';
 import { monsterSprite } from '../../engine/sprites.js';
+import { getTouchMode, cycleTouchMode, TOUCH_LABEL } from '../../engine/settings.js';
 
 const STARS = Array.from({ length: 120 }, (_, i) => ({
   x: (i * 97) % W, y: (i * 53) % 150, s: (i % 3) * 0.4 + 0.3, p: (i % 7) / 7,
@@ -28,8 +29,9 @@ export class TitleScene {
         { label: 'NEW GAME' },
         { label: 'CONTINUE', disabled: !any },
         { label: 'HOW TO PLAY' },
+        { label: this.touchLabel() },
       ],
-      x: W / 2 - 46, y: 178, cellW: 104, cellH: 17, rows: 3,
+      x: W / 2 - 84, y: 174, cellW: 168, cellH: 17, rows: 4,
     });
     this.slotMenu = new Menu({
       items: SLOTS.map((s) => {
@@ -42,6 +44,8 @@ export class TitleScene {
     });
   }
 
+  touchLabel() { return `TOUCH CONTROLS: ${TOUCH_LABEL[getTouchMode()].toUpperCase()}`; }
+
   update(dt, input) {
     this.t += dt;
     this.menu.update(dt);
@@ -50,11 +54,17 @@ export class TitleScene {
     if (this.mode === 'main') {
       this.menu.handle(input);
       if (input.tap('confirm')) {
+        const i = this.menu.index;
         const pick = this.menu.current.label;
         if (this.menu.disabled()) return;
         if (pick === 'NEW GAME') this.app.push('creation');
         else if (pick === 'CONTINUE') this.mode = 'slots';
-        else this.mode = 'help';
+        else if (pick.startsWith('TOUCH CONTROLS')) {
+          // cycle and rewrite this one label in place, so the cursor stays
+          // put instead of jumping back to NEW GAME on a full rebuild
+          cycleTouchMode();
+          this.menu.items[i].label = this.touchLabel();
+        } else this.mode = 'help';
       }
     } else if (this.mode === 'slots') {
       this.slotMenu.handle(input);
@@ -119,8 +129,8 @@ export class TitleScene {
     scr.textCenter('a wheel of nine, and four beside it', W / 2, 96 + bob, PAL.textDim);
 
     if (this.mode === 'main') {
-      scr.panel(W / 2 - 74, 168, 148, 62, { accent: true, accentWidth: 28 });
-      this.menu.x = W / 2 - 46; this.menu.y = 178;
+      scr.panel(W / 2 - 100, 164, 200, 84, { accent: true, accentWidth: 28 });
+      this.menu.x = W / 2 - 84; this.menu.y = 174;
       this.menu.draw(scr);
       scr.textCenter('Z confirm  ·  X back', W / 2, H - 14, PAL.textFaint);
     } else if (this.mode === 'slots') {

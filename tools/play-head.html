@@ -166,6 +166,25 @@
   #touch [data-btn="menu"]    { right: 20px; top: 20px; width: 62px; height: 38px; font-size: 11px; }
   #touch [data-btn="shift"]   { right: 90px; top: 20px; width: 62px; height: 38px; font-size: 11px; }
   @media (pointer: coarse) { #rail .bind, #plate .sub { display: none; } }
+
+  /* The world is 480x270 — landscape. On a touch device held portrait the
+     canvas shrinks to a thin centred strip with the on-screen pad's corner
+     anchors far from it, since that pad is tuned for a canvas that fills
+     most of the screen. Asking for landscape is simpler and more robust
+     than reworking the pad's layout math for every possible aspect ratio. */
+  #rotate {
+    display: none; position: fixed; inset: 0; z-index: 50;
+    background: var(--void); color: var(--ice);
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center; padding: 24px;
+  }
+  #rotate .glyph { font-size: 40px; animation: tilt 1.6s ease-in-out infinite; }
+  @keyframes tilt { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
+  @media (prefers-reduced-motion: reduce) { #rotate .glyph { animation: none; } }
+  @media (pointer: coarse) and (orientation: portrait) {
+    #rotate { display: flex; }
+    #cabinet, #touch { display: none !important; }
+  }
 </style>
 
 <div id="cabinet">
@@ -206,6 +225,12 @@
   <div class="btn" data-btn="cancel">X</div>
   <div class="btn" data-btn="menu">MENU</div>
   <div class="btn" data-btn="shift">SHIFT</div>
+</div>
+
+<div id="rotate">
+  <div class="glyph">📱</div>
+  <div>Turn your device sideways</div>
+  <div style="opacity:.6; font-size:12px;">This game plays in landscape.</div>
 </div>
 
 <script>

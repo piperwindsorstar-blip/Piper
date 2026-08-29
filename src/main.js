@@ -12,6 +12,7 @@ import { MenuScene } from './game/scenes/menu.js';
 import { ShopScene } from './game/scenes/shop.js';
 import { PromotionScene } from './game/scenes/promotion.js';
 import { GameOverScene } from './game/scenes/gameover.js';
+import { applyTouchVisibility } from './engine/settings.js';
 
 const SCENES = {
   title: TitleScene,
@@ -113,8 +114,9 @@ class App {
     for (const b of ['up', 'down', 'left', 'right', 'confirm', 'cancel', 'menu', 'shift']) {
       bind(pad.querySelector(`[data-btn="${b}"]`), b);
     }
-    // show the pad only where touch is the primary input
-    if (matchMedia('(pointer: coarse)').matches) pad.classList.add('visible');
+    // 'auto' (the default) shows the pad only where touch is the primary
+    // input; a player can force it on or off from the title or party menu
+    applyTouchVisibility();
   }
 }
 

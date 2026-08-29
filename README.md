@@ -30,7 +30,7 @@ Opening `index.html` directly does *not* work — browsers refuse to load ES
 modules over `file://`. That restriction is the only reason the single-file
 build exists.
 
-**Controls** — arrows/WASD walk · `Z`/Enter confirm · `X`/Esc cancel · `C`/Tab party menu · `Shift` context action (random name, unequip, auto-formation, delete save). Touch controls appear automatically on touch devices.
+**Controls** — arrows/WASD walk · `Z`/Enter confirm · `X`/Esc cancel · `C`/Tab party menu · `Shift` context action (random name, unequip, auto-formation, delete save). Touch controls appear automatically on touch devices, or can be forced on or off from **TOUCH CONTROLS** on the title screen or **Controls** in the party menu. The game plays in landscape; a touch device held portrait is asked to rotate rather than trying to squeeze a 480×270 world into a tall, narrow screen.
 
 ---
 

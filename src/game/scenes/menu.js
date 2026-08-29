@@ -22,6 +22,7 @@ import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
 import { SLOTS, saveSummary } from '../../engine/save.js';
+import { getTouchMode, cycleTouchMode, TOUCH_LABEL } from '../../engine/settings.js';
 
 const PAGES = [
   { id: 'status', label: 'Status' },
@@ -32,6 +33,7 @@ const PAGES = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'ladder', label: 'Ladder' },
   { id: 'save', label: 'Save' },
+  { id: 'controls', label: 'Controls' },
   { id: 'close', label: 'Close' },
 ];
 
@@ -96,6 +98,7 @@ export class MenuScene {
       case 'equipList': return this.updateEquipList(input);
       case 'formation': return this.updateFormation(input);
       case 'save': return this.updateSave(input);
+      case 'controls': return this.updateControls(input);
       default: break;
     }
   }
@@ -281,6 +284,11 @@ export class MenuScene {
     }
   }
 
+  // --- controls ----------------------------------------------------------
+  updateControls(input) {
+    if (input.tap('confirm')) cycleTouchMode();
+  }
+
   // --- draw ------------------------------------------------------------------
   draw(scr) {
     scr.setGrade('#6a86d0', 0.09);
@@ -307,6 +315,7 @@ export class MenuScene {
         case 'jobs': this.drawJobs(scr); break;
         case 'ladder': this.drawLadder(scr); break;
         case 'save': this.drawSave(scr); break;
+        case 'controls': this.drawControls(scr); break;
         default: break;
       }
     }
@@ -702,6 +711,24 @@ export class MenuScene {
     this.list.cellW = IW - 48; this.list.rows = 3; this.list.cellH = 26;
     this.list.draw(scr);
     scr.textWrap('Saves live in this browser. Clearing site data clears them.',
+      IX, TOP + BODY_H - 30, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
+  }
+
+  // --- controls ----------------------------------------------------------
+  drawControls(scr) {
+    scr.text('CONTROLS', IX, TOP + 10, PAL.accent);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+    const mode = getTouchMode();
+    scr.text('Touch controls', IX, TOP + 40, PAL.text);
+    scr.textRight(TOUCH_LABEL[mode].toUpperCase(), IX + IW, TOP + 40, PAL.accent);
+    scr.rect(IX, TOP + 52, IW, 1, PAL.line);
+    const desc = {
+      auto: 'Shown automatically on a touchscreen, hidden otherwise.',
+      on: 'Always shown — even with a mouse or keyboard attached.',
+      off: "Always hidden. Use this on a touchscreen you'd rather drive with a keyboard.",
+    }[mode];
+    scr.textWrap(desc, IX, TOP + 64, IW, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+    scr.textWrap('Z cycles Auto / On / Off and takes effect immediately.',
       IX, TOP + BODY_H - 30, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
   }
 }
