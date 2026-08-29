@@ -1,0 +1,15 @@
+<?php
+
+/*
+ * Where the reports go, and what proves they are allowed to.
+ *
+ * The token is the same PIPER_IMPORT_TOKEN the CRM's other import endpoints
+ * use. This file is readable by the web server, so it is chmod 640 and owned
+ * by root:www-data — a token in a world-readable file under a webroot is a
+ * token in somebody's browser.
+ */
+$config['piper_report_endpoint'] = 'https://crm.djpynxpro.com/api/reports/email';
+$config['piper_report_token'] = '';
+
+/* How many messages one press may send. */
+$config['piper_report_max_batch'] = 20;

@@ -1,0 +1,17 @@
+/*
+ * The button's icon.
+ *
+ * 'Icons' is the font Elastic loads Font Awesome under, and \f56f is
+ * file-import — checked against the font the skin actually ships rather than
+ * assumed, because a codepoint outside the set renders as an empty box.
+ */
+a.button.piperfile:before {
+    content: "\f56f";
+    font-family: 'Icons';
+    font-weight: 900;
+}
+
+/* Elastic hides toolbar labels on narrow screens; the icon carries it there. */
+a.button.piperfile.disabled:before {
+    opacity: 0.4;
+}
