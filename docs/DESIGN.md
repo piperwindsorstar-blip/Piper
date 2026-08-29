@@ -360,13 +360,48 @@ rendered by the browser reads as a *terminal* no matter what else is on screen,
 and a real bitmap font reads as a game immediately. Advance width is measured
 from each glyph's rightmost lit column, so `I` is tight and `W` is wide.
 
-### Tiles
+### Terrain, and why the first two attempts looked blocky
 
-Fixed 16×16 patterns (never randomised, so they tile seamlessly) built from a 4–5
-tone ramp. The field renderer picks continuation variants from a tile's
-neighbours, so a run of mountains becomes a ridge with a continuous skyline and
-its interior becomes solid rock, a block of trees becomes closed canopy, and
-water grows a sand lip wherever it meets land.
+Interiors — walls, floors, roofs, doors — are per-cell 24×24 stamps, and that is
+correct: architecture *is* square.
+
+Outdoor terrain is not, and drawing it that way was the mistake behind two
+rejected art passes. A stamp cached by name cannot know what it borders, so every
+coastline came out a staircase, every mountain range came out a row of identical
+triangles, and a forest came out a grid of identical blobs. Adding detail to the
+stamps could never have fixed it, because the blockiness was in the *structure*.
+
+`src/engine/terrain.js` replaces them with two layers, both computed in world
+space rather than tile space:
+
+- **Ground** is a priority ladder — water < sand < grass < road. A cell fills
+  with its own material, then every higher-priority material in its
+  neighbourhood bleeds in wherever a distance field says it is close enough,
+  with the threshold wobbled a few pixels by value noise. Distance does all the
+  work: an orthogonal neighbour yields a soft edge, a diagonal one yields a
+  rounded corner, and a concave corner fills itself — no 47-tile blob set, no
+  case analysis. Where land meets water a sand beach is laid slightly proud of
+  the land, so a shore reads as a shore.
+- **Masses** — mountains and forest — are signed fields: negative inside,
+  positive outside, measured to an *inset* square so the outline can cut into a
+  cell as well as bulge out of it. Every cell draws every mass that touches it,
+  clipped to its own bounds, so a peak rises into the sky above it and a canopy
+  closes over a cell border.
+
+Two numbers in that second layer are load-bearing and were wrong at first. For
+neighbouring cells to join into one mass rather than a bead necklace of
+per-tile lumps, the bridge between their inset squares has to stay covered at
+its narrowest: `reach - |wobble|max > inset`. Break it and a range falls apart
+into exactly the blockiness the module exists to remove.
+
+Relief comes from overlapping forms, not from noise — a mass filled with noise
+is flat grey paint however good the noise is. Peaks and treetop crowns are
+placed on a jittered grid in *world* space, so the texture never lines up with
+the cells beneath it.
+
+Because every material is a colour as a function of world position, nothing
+repeats: a field of grass is one continuous field rather than the same stamp
+four hundred times. The cost is 0.68 ms per newly seen cell, cached after.
 
 ### Particles
 

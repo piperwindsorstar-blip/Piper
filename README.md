@@ -171,7 +171,8 @@ src/
     pixel.js          the shared pixel primitives: outline, AO, rim light
     actor.js          character sprites, assembled per race + class + element
     monsters.js       monster body plans
-    tiles.js          neighbour-aware terrain tiles
+    terrain.js        outdoor ground and landmasses, drawn across cells
+    tiles.js          per-cell stamps for interiors and buildings
     particles.js      dust, embers, motes, torch flicker
     sprites.js        facade re-exporting the art modules
     input.js  ui.js  rng.js  save.js

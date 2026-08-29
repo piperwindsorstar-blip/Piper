@@ -319,7 +319,6 @@ export class BattleScene {
     }
     this.result = {
       outcome: b.result,
-      messages: msgs,
       bossFlag: this.opts.bossFlag ?? null,
     };
     this.doneMsgs = msgs;

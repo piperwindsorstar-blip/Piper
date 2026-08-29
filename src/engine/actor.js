@@ -66,7 +66,7 @@ export function actorSprite(o) {
     const bodyH = Math.round(14 * build);
     const headH = Math.round(13 * build);
     const headW = Math.round(6 * build);      // half-width
-    const bodyW = Math.round(7 * build);      // half-width
+    const bodyW = Math.round(6 * build);      // half-width, narrower than the head
 
     const legY = ground - legH + bob;
     const bodyY = legY - bodyH;
@@ -160,68 +160,102 @@ export function actorSprite(o) {
     }
 
     // --- torso --------------------------------------------------------------
+    //
+    //  Sloped shoulders narrowing to a waist. Drawing the body as one rectangle
+    //  is what made these figures read as stacked boxes; every row now carries
+    //  its own width, and the trim rides that width instead of a fixed one.
     const bY = bodyY;
-    P.rect(ax - bodyW, bY, bodyW * 2, bodyH, cloth);
-    P.rect(ax - bodyW, bY, 3, bodyH, clothL);                        // lit side
-    P.rect(ax + bodyW - 3, bY, 3, bodyH, clothD);                    // shadow side
+    const torsoHalf = (i) => {
+      const t = i / Math.max(1, bodyH - 1);
+      if (i === 0) return bodyW - 2.4;                               // shoulder slope
+      if (i === 1) return bodyW - 0.7;
+      return bodyW - bodyW * 0.30 * Math.min(1, (t - 0.08) / 0.92);
+    };
+    const tw = (i) => Math.max(1, Math.round(torsoHalf(i)));
+    /** A band of trim that follows the taper. */
+    const band = (i, col, h = 1) => {
+      for (let k = 0; k < h; k++) {
+        const w = tw(i + k);
+        P.rect(ax - w, bY + i + k, w * 2, 1, col);
+      }
+    };
+
+    P.profile(ax, bY, bodyH, cloth, torsoHalf);
+    for (let i = 0; i < bodyH; i++) {                                // lit and shadow sides
+      const w = tw(i);
+      P.rect(ax - w, bY + i, 3, 1, clothL);
+      P.rect(ax + w - 3, bY + i, 3, 1, clothD);
+    }
     switch (kit.body) {
       case 'plate':
-        P.rect(ax - bodyW, bY, bodyW * 2, 2, trimL);                 // gorget
-        P.rect(ax - bodyW, bY + 6, bodyW * 2, 1, trim);              // belt
-        P.rect(ax - bodyW, bY + 7, bodyW * 2, 1, trimD);
-        P.mrect(ax, bodyW - 3, bY + 1, 4, 4, trimL);                 // pauldrons
-        P.mrect(ax, bodyW - 3, bY + 5, 4, 1, trimD);
+        band(0, trimL, 2);                                           // gorget
+        band(6, trim); band(7, trimD);                               // belt
+        P.mrect(ax, tw(1) - 3, bY + 1, 4, 4, trimL);                 // pauldrons
+        P.mrect(ax, tw(5) - 3, bY + 5, 4, 1, trimD);
         break;
       case 'robe':
         P.rect(ax - 2, bY, 4, bodyH, trim);                          // stole
         P.rect(ax - 2, bY, 1, bodyH, trimL);
-        P.rect(ax - bodyW, bY + bodyH - 2, bodyW * 2, 2, clothD);
+        band(bodyH - 2, clothD, 2);
         break;
       case 'gi':
         P.rect(ax - 5, bY, 5, bodyH - 2, clothL);                    // lapel
         P.rect(ax - 1, bY, 1, bodyH - 2, clothD);
-        P.rect(ax - bodyW, bY + 7, bodyW * 2, 2, trim);              // sash
-        P.rect(ax - bodyW, bY + 8, bodyW * 2, 1, trimD);
+        band(7, trim); band(8, trimD);                               // sash
         break;
       case 'motley':
         for (let i = 0; i < bodyH; i++) {
-          P.rect(ax - bodyW, bY + i, bodyW, 1, i % 2 ? cloth : trim);
-          P.rect(ax, bY + i, bodyW, 1, i % 2 ? trim : cloth);
+          const w = tw(i);
+          P.rect(ax - w, bY + i, w, 1, i % 2 ? cloth : trim);
+          P.rect(ax, bY + i, w, 1, i % 2 ? trim : cloth);
         }
-        P.rect(ax - bodyW, bY, bodyW * 2, 1, trimL);
+        band(0, trimL);
         break;
       case 'dress':
-        P.rect(ax - bodyW, bY + 4, bodyW * 2, 1, trimL);
+        band(4, trimL);
         break;
       default:
-        P.rect(ax - bodyW, bY + 7, bodyW * 2, 1, trim);
-        P.rect(ax - bodyW, bY + 8, bodyW * 2, 1, trimD);
+        band(7, trim); band(8, trimD);
     }
     if (L.plates) {                                                  // Automaton
-      P.rect(ax - bodyW, bY + 3, bodyW * 2, 1, shade(cloth, -0.55));
-      P.rect(ax - bodyW, bY + 10, bodyW * 2, 1, shade(cloth, -0.55));
+      band(3, shade(cloth, -0.55));
+      band(10, shade(cloth, -0.55));
       P.rect(ax - 2, bY + 4, 4, 4, L.glow ?? '#f06040');             // core
       P.rect(ax - 1, bY + 5, 2, 2, '#fff0d0');
     }
     if (L.fins) {                                                    // Merfolk
-      P.mrect(ax, bodyW - 1, bY + 3, 4, 2, mix(skin, '#7fe0ff', 0.5));
-      P.mrect(ax, bodyW - 1, bY + 6, 3, 2, mix(skin, '#7fe0ff', 0.35));
+      P.mrect(ax, tw(3) - 1, bY + 3, 4, 2, mix(skin, '#7fe0ff', 0.5));
+      P.mrect(ax, tw(6) - 1, bY + 6, 3, 2, mix(skin, '#7fe0ff', 0.35));
     }
 
     // --- arms ---------------------------------------------------------------
     const armY = bY + 2;
     const armH = bodyH - 3;
-    P.rect(ax - bodyW - 3, armY, 3, armH, clothD);                   // back arm
-    P.rect(ax - bodyW - 3, armY + armH - 2, 3, 3, skinD);
-    P.rect(ax + bodyW + lean, armY - lean, 3, armH, clothL);         // front arm
-    P.rect(ax + bodyW + lean, armY + armH - 2 - lean, 3, 3, skin);
+    P.rect(ax - tw(2) - 3, armY, 3, armH, clothD);                   // back arm
+    P.rect(ax - tw(2) - 3, armY + armH - 2, 3, 3, skinD);
+    P.rect(ax + tw(2) + lean, armY - lean, 3, armH, clothL);         // front arm
+    P.rect(ax + tw(2) + lean, armY + armH - 2 - lean, 3, 3, skin);
 
     // --- head ---------------------------------------------------------------
+    //
+    //  Rounded at the crown and again at the jaw. Most classes wear something
+    //  that covers the crown, so the jaw is where this actually shows.
     const hY = headY;
-    P.rect(ax - headW, hY, headW * 2, headH - 1, skin);
-    P.rect(ax - headW, hY + 1, 2, headH - 3, skinL);                 // lit cheek
-    P.rect(ax + headW - 2, hY, 2, headH - 1, skinD);                 // shadow cheek
-    P.rect(ax - headW, hY + headH - 2, headW * 2, 1, skinD);         // jaw
+    const hRows = headH - 1;
+    // an oval: widest at the cheekbones, drawn in at the crown and again at the
+    // jaw. A 2px chamfer is not enough to stop a head reading as a block.
+    const headHalf = (i) => {
+      const t = (i + 0.5) / hRows;
+      const s = Math.sin(Math.PI * (0.14 + 0.78 * t));
+      return headW * (0.52 + 0.48 * s);
+    };
+    const hw = (i) => Math.max(1, Math.round(headHalf(i)));
+    P.profile(ax, hY, hRows, skin, headHalf);
+    for (let i = 1; i < hRows - 1; i++) {                            // cheeks
+      P.rect(ax - hw(i), hY + i, 2, 1, skinL);
+      P.rect(ax + hw(i) - 2, hY + i, 2, 1, skinD);
+    }
+    P.rect(ax - hw(hRows - 2), hY + headH - 2, hw(hRows - 2) * 2, 1, skinD);   // jaw
     if (L.scaled) {
       for (let i = 0; i < 5; i++) P.px(ax - 3 + (i % 3) * 3, hY + 2 + i, shade(skin, -0.2));
     }
@@ -243,26 +277,33 @@ export function actorSprite(o) {
     if (!L.muzzle) P.rect(ax - 1, hY + 9, 2, 1, skinD);              // mouth
 
     // --- headgear -----------------------------------------------------------
+    //  Whatever sits on the head IS the silhouette the player sees, so rounding
+    //  the skull alone changes nothing — a full-width hat squares it straight
+    //  back off. Every cap pulls its top two rows in instead.
+    const capHalf = (half) => (i) => (i === 0 ? half - 2 : i === 1 ? half - 1 : half);
+    const cap = (yTop, rows, half, col) => P.profile(ax, yTop, rows, col, capHalf(half));
+    const capLit = (yTop, half, col) => P.profile(ax, yTop, 1, col, capHalf(half));
+
     const hairTop = () => {
       if (L.muzzle || L.plates) return;
-      P.rect(ax - headW, hY - 2, headW * 2, 4, hair);
-      P.rect(ax - headW, hY - 2, headW - 1, 1, hairL);
+      cap(hY - 2, 4, headW, hair);
+      P.rect(ax - headW + 2, hY - 2, headW - 1, 1, hairL);
       P.mrect(ax, headW - 1, hY + 1, 1, 5, hair);
     };
     switch (kit.head) {
       case 'helm':
-        P.rect(ax - headW - 1, hY - 3, headW * 2 + 2, 6, trim);
-        P.rect(ax - headW - 1, hY - 3, headW * 2 + 2, 1, trimL);
+        cap(hY - 3, 6, headW + 1, trim);
+        capLit(hY - 3, headW + 1, trimL);
         P.rect(ax - 1, hY + 3, 2, 6, trimD);                          // nasal bar
         break;
       case 'greathelm':
-        P.rect(ax - headW - 1, hY - 4, headW * 2 + 2, headH + 2, trim);
-        P.rect(ax - headW - 1, hY - 4, headW * 2 + 2, 1, trimL);
+        cap(hY - 4, headH + 2, headW + 1, trim);
+        capLit(hY - 4, headW + 1, trimL);
         P.rect(ax - headW + 1, hY + 4, headW * 2 - 2, 2, '#0d0d16');  // visor
         P.rect(ax - 1, hY - 8, 2, 5, el.color);                        // crest
         break;
       case 'horned':
-        P.rect(ax - headW - 1, hY - 3, headW * 2 + 2, 5, trim);
+        cap(hY - 3, 5, headW + 1, trim);
         P.mrect(ax, headW - 1, hY - 7, 2, 5, el.color);
         break;
       case 'horns':
@@ -276,20 +317,20 @@ export function actorSprite(o) {
         P.rect(ax - 3, hY - 5, 6, 3, trim);
         break;
       case 'mitre':
-        P.rect(ax - headW, hY - 8, headW * 2, 9, cloth);
+        cap(hY - 8, 9, headW, cloth);
         P.tri(ax - headW, hY - 12, headW * 2, 5, cloth);
         P.rect(ax - 1, hY - 7, 3, 6, trim);
         break;
       case 'hood':
-        P.rect(ax - headW - 1, hY - 3, headW * 2 + 2, 7, cloth);
+        cap(hY - 3, 7, headW + 1, cloth);
         P.mrect(ax, headW - 1, hY + 4, 2, 6, cloth);
-        P.rect(ax - headW - 1, hY - 3, headW * 2 + 2, 1, clothL);
+        capLit(hY - 3, headW + 1, clothL);
         P.rect(ax - headW, hY + 4, headW * 2, 1, shade(cloth, -0.45));
         break;
       case 'cap':
         hairTop();
-        P.rect(ax - headW, hY - 4, headW * 2, 4, cloth);
-        P.rect(ax - headW, hY - 4, headW * 2, 1, clothL);
+        cap(hY - 4, 4, headW, cloth);
+        capLit(hY - 4, headW, clothL);
         P.rect(ax + 2, hY - 8, 4, 5, el.color);                        // feather
         break;
       case 'band':
@@ -298,7 +339,7 @@ export function actorSprite(o) {
         P.rect(ax - headW - 4, hY + 2, 4, 1, trim);
         break;
       case 'jester':
-        P.rect(ax - headW, hY - 3, headW * 2, 4, cloth);
+        cap(hY - 3, 4, headW, cloth);
         for (let i = 0; i < 4; i++) {
           P.rect(ax - headW - 2 - i, hY - 5 - i, 2, 2, i % 2 ? trim : cloth);
           P.rect(ax + headW + i, hY - 5 - i, 2, 2, i % 2 ? cloth : trim);
@@ -458,7 +499,7 @@ export function actorSprite(o) {
         break;
       default: break;
     }
-  }, { outline: OUTLINE, ao: 0.26, rim: RIM, rimAlpha: 0.34 });
+  }, { round: true, outline: OUTLINE, ao: 0.26, rim: RIM, rimAlpha: 0.34 });
 }
 
 // ---------------------------------------------------------------------------
@@ -515,5 +556,5 @@ export function npcSprite(kind, variant = 0, frame = 0) {
       P.rect(ax - 4, headY - 3, 5, 1, shade(kit.hair, 0.4));
       P.mrect(ax, 3, headY + 1, 1, 4, kit.hair);
     }
-  }, { outline: OUTLINE, ao: 0.24, rim: RIM, rimAlpha: 0.3 });
+  }, { round: true, outline: OUTLINE, ao: 0.24, rim: RIM, rimAlpha: 0.3 });
 }

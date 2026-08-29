@@ -121,8 +121,6 @@ export class Dialogue {
     if (this.done) this.next();
   }
 
-  sayAll(lines, speaker = null) { for (const l of lines) this.say(l, speaker); }
-
   next() {
     const n = this.queue.shift();
     if (!n) { this.done = true; this.text = ''; this.speaker = null; return false; }

@@ -46,6 +46,7 @@ export function make(key, w, h, draw, opts = {}) {
   const c = cv.getContext('2d');
   c.imageSmoothingEnabled = false;
   draw(painter(c), c);
+  if (opts.round) roundCorners(c, cv.width, cv.height);
   if (opts.ao) ambientOcclusion(c, cv.width, cv.height, opts.ao);
   if (opts.rim) rimLight(c, cv.width, cv.height, opts.rim, opts.rimAlpha ?? 0.5);
   if (opts.outline) addOutline(c, cv.width, cv.height, opts.outline);
@@ -105,7 +106,48 @@ export function painter(c) {
       }
     },
     speck: (pts, col) => { c.fillStyle = col; for (const [x, y] of pts) c.fillRect(x, y, 1, 1); },
+    /**
+     * Fill a silhouette from a per-row half-width, mirrored about `ax`. Stacking
+     * rectangles is what makes a pixel figure read as a stack of boxes; giving
+     * every row its own width is what makes it read as a body.
+     */
+    profile: (ax, y, rows, col, halfAt) => {
+      c.fillStyle = col;
+      for (let i = 0; i < rows; i++) {
+        const hw = Math.round(halfAt(i));
+        if (hw > 0) c.fillRect((ax - hw) | 0, (y + i) | 0, hw * 2, 1);
+      }
+    },
   };
+}
+
+/**
+ * Knock the sharp convex corners off a silhouette.
+ *
+ * A pixel figure assembled from rectangles is full of hard 90-degree corners,
+ * and those corners are what the eye reads as "blocky" — a head becomes a box
+ * however well it is shaded. Clearing any pixel whose only two orthogonal
+ * neighbours are perpendicular rounds every convex corner by one pixel, which
+ * is what a pixel artist does by hand. Opposite neighbours are left alone, so
+ * one-pixel bars and antennae survive; tips have a single neighbour and survive
+ * too. Run before the outline pass, so the keyline traces the rounded shape.
+ */
+export function roundCorners(c, w, h) {
+  const img = c.getImageData(0, 0, w, h);
+  const a = img.data;
+  const solid = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? false : a[(y * w + x) * 4 + 3] > 8;
+  const cut = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!solid(x, y)) continue;
+      const l = solid(x - 1, y), r = solid(x + 1, y);
+      const u = solid(x, y - 1), d = solid(x, y + 1);
+      if (l + r + u + d !== 2) continue;
+      if ((l && r) || (u && d)) continue;         // a bar, not a corner
+      cut.push([x, y]);
+    }
+  }
+  for (const [x, y] of cut) c.clearRect(x, y, 1, 1);
 }
 
 /** Trace a one-pixel keyline around everything opaque. */
