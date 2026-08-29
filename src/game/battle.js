@@ -64,7 +64,38 @@ function spread(target) {
 // ---------------------------------------------------------------------------
 //  UNITS
 // ---------------------------------------------------------------------------
-function pcUnit(ch) {
+// A fraction of a grid-adjacent ally's own element bias bleeds onto you —
+// the Lufia: The Legend Returns "Spiritual Force" idea, folded into this
+// game's own 13-element wheel instead of a second, disconnected stat
+// system. The grid's center slot ends up strongest with no special-casing:
+// it has up to 4 orthogonal neighbours where an edge has 3 and a corner
+// has 2, so "the center is a battery" falls out of plain adjacency
+// counting. Party-side only — extending this to enemies would multiply
+// the rebalancing surface across every hand-tuned formation.
+const GRID_SHARE = 0.3;
+
+export function gridNeighbors(unit, battle) {
+  if (!battle) return [];
+  const allies = battle.party;
+  return allies.filter((a) => {
+    if (a === unit || !a.alive) return false;
+    const dr = Math.abs(a.grid.row - unit.grid.row);
+    const dc = Math.abs(a.grid.col - unit.grid.col);
+    return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+  });
+}
+
+function gridBonus(unit, battle) {
+  const out = {};
+  for (const n of gridNeighbors(unit, battle)) {
+    const el = ELEMENT_BY_ID[n.element];
+    if (!el?.bias) continue;
+    for (const [k, v] of Object.entries(el.bias)) out[k] = (out[k] ?? 0) + v * GRID_SHARE;
+  }
+  return out;
+}
+
+function pcUnit(ch, battle) {
   return {
     uid: `u${++uidCounter}`, side: 'party', ref: ch, name: ch.name,
     get hp() { return ch.hp; }, set hp(v) { ch.hp = v; },
@@ -76,7 +107,7 @@ function pcUnit(ch) {
     element: ch.elementId,
     isPC: true,
     defending: false,
-    stats() { return stats(ch); },
+    stats() { return stats(ch, gridBonus(this, battle)); },
   };
 }
 
@@ -113,7 +144,7 @@ export class Battle {
     this.formation = FORMATION_BY_ID[formationId];
     if (!this.formation) throw new Error(`unknown formation: ${formationId}`);
     this.isBoss = !!this.formation.boss;
-    this.party = party.filter(Boolean).map(pcUnit);
+    this.party = party.filter(Boolean).map((c) => pcUnit(c, this));
 
     // name duplicate enemies "Slime A", "Slime B"
     const counts = {};

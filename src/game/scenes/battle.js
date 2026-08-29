@@ -11,7 +11,7 @@ import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, actorPortraitSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
-import { Battle, PHASE } from '../battle.js';
+import { Battle, PHASE, gridNeighbors } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion } from '../character.js';
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
@@ -522,6 +522,13 @@ export class BattleScene {
       if (active) {
         scr.rect(x - 3, y - 4, cardW - 4, ph - 12, 'rgba(120,155,235,0.16)');
         scr.rect(x - 3, y - 4, 2, ph - 12, PAL.accent);
+      }
+      // a grid-adjacent ally shares a fraction of its own element bias with
+      // this unit — a thin tint names which element is currently helping
+      const boosters = tall ? gridNeighbors(u, b) : [];
+      if (boosters.length) {
+        const tint = ELEMENT_BY_ID[boosters[0].element]?.color ?? PAL.accent;
+        scr.rect(x - 3, y - 4, cardW - 4, 2, tint);
       }
       let ty = y;
       if (tall) {

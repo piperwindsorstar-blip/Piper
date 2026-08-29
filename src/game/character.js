@@ -72,7 +72,15 @@ export function createCharacter(o) {
 // ---------------------------------------------------------------------------
 //  STATS
 // ---------------------------------------------------------------------------
-export function stats(ch) {
+/**
+ * @param {object} ch
+ * @param {object} [extraBias] additional raw-stat bias layered in before
+ *   derived combat numbers are computed — e.g. a fraction of a grid-adjacent
+ *   ally's own element bias (see battle.js's `gridBonus`). Empty by default,
+ *   so every call site outside battle (menu, shop, creation preview) is
+ *   unaffected.
+ */
+export function stats(ch, extraBias = {}) {
   const out = {};
   const el = ELEMENT_BY_ID[ch.elementId];
   const race = getRace(ch.raceId ?? 'human');
@@ -80,7 +88,7 @@ export function stats(ch) {
 
   for (const k of STAT_KEYS) {
     out[k] = BASE_STATS[k] + Math.floor(ch.acc[k])
-      + (race.mod[k] ?? 0) + (el?.bias?.[k] ?? 0) + (jb[k] ?? 0);
+      + (race.mod[k] ?? 0) + (el?.bias?.[k] ?? 0) + (jb[k] ?? 0) + (extraBias[k] ?? 0);
   }
 
   // equipment
