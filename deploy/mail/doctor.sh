@@ -93,5 +93,55 @@ for f in /var/log/nginx/error.log /var/www/roundcube/logs/errors.log /var/log/ro
   fi
 done
 
+hr "verdict"
+
+# The three questions that actually decide whether you can sign in, answered
+# together. Each of the sections above tells you one fact; it is the
+# combination that says what to do next, and working that out by eye across
+# forty lines is how an install that succeeded gets read as one that failed.
+WEBMAIL_UP=no
+[[ "$(curl -sS -o /dev/null -m 15 -w '%{http_code}' "https://$DOMAIN/" 2>/dev/null)" == "200" ]] && WEBMAIL_UP=yes
+
+STACK_IS_PIPERS=no
+[[ -f /etc/dovecot/conf.d/99-piper.conf && -f /etc/dovecot/users ]] && STACK_IS_PIPERS=yes
+
+MAILBOXES=0
+[[ -f /etc/dovecot/users ]] && MAILBOXES="$(grep -c ':' /etc/dovecot/users 2>/dev/null || echo 0)"
+
+kv "webmail over https" "$WEBMAIL_UP"
+kv "mail stack is Piper's" "$STACK_IS_PIPERS"
+kv "mailboxes that exist" "$MAILBOXES"
+
+echo ""
+if [[ "$WEBMAIL_UP" == yes && "$STACK_IS_PIPERS" == yes && "$MAILBOXES" -gt 0 ]]; then
+  echo "  Everything is in place. Sign in at https://$DOMAIN/ using the FULL"
+  echo "  address as the username — one of the mailboxes listed above."
+elif [[ "$WEBMAIL_UP" == yes && "$STACK_IS_PIPERS" == no ]]; then
+  cat <<EOF
+  Webmail is up, but the mail server underneath it is not the one these
+  scripts configure — so there are no virtual mailboxes to sign in as, and
+  piper-mailbox was deliberately not installed. That is why a login fails.
+
+  Note the username has to be a mailbox ON THIS SERVER. A Google Workspace
+  address will never work here, whatever the password.
+
+  To hand mail over to Piper's configuration:
+
+    PIPER_FORCE_MAIL_STACK=yes bash /opt/piper-mail/install-webmail.sh $DOMAIN
+    piper-mailbox add you@$DOMAIN --generate
+
+  That switches Dovecot to virtual users and Maildir. Mail already sitting in
+  the old mbox files under /var/mail/ stops being visible to IMAP — on a
+  droplet that is usually just root's cron mail, but look before you run it.
+EOF
+elif [[ "$WEBMAIL_UP" == yes && "$MAILBOXES" -eq 0 ]]; then
+  echo "  Webmail is up and the mail stack is Piper's, but no mailbox exists yet:"
+  echo "    piper-mailbox add you@$DOMAIN --generate"
+else
+  echo "  Webmail is not answering on https. Do not sign in over http — the"
+  echo "  password would cross the network in the clear. Start with:"
+  echo "    nginx -t   and   tail -30 /var/log/nginx/error.log"
+fi
+
 echo ""
 echo "──────── end. paste all of the above."
