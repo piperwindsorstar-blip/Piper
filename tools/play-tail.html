@@ -15,7 +15,13 @@
   if (app && app.screen) {
     const scr = app.screen;
     scr.resize = function () {
-      const chrome = plate.offsetHeight + rail.offsetHeight + 68;
+      // The touch pad is anchored to the viewport's corners, not the canvas,
+      // so it needs the same top/bottom gutters reserved here that the
+      // #cabinet padding rule reserves in CSS (see the stylesheet) — otherwise
+      // this override would size the canvas back over the pad's buttons.
+      const touchOn = document.getElementById('touch')?.classList.contains('visible') ?? false;
+      const touchGutter = touchOn ? 58 + 170 : 0;
+      const chrome = plate.offsetHeight + rail.offsetHeight + 68 + touchGutter;
       const raw = Math.min((window.innerWidth - 28) / W, (window.innerHeight - chrome) / H);
       this.scale = raw >= 1 ? Math.max(1, Math.floor(raw)) : Math.max(0.35, raw);
       canvas.width  = Math.round(W * this.scale);

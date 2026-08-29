@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Quest of the Thirteen</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=DM+Mono:wght@400;500&display=swap">
 <style>
@@ -155,17 +157,24 @@
     font-size: 15px; font-weight: 500;
   }
   #touch .btn.on { background: rgba(248, 208, 72, 0.35); border-color: var(--gold); }
-  #touch .dpad { position: absolute; left: 16px; bottom: 20px; width: 160px; height: 160px; }
-  #touch .dpad .btn { width: 52px; height: 52px; }
-  #touch [data-btn="up"]      { left: 54px; top: 0; }
-  #touch [data-btn="down"]    { left: 54px; top: 106px; }
-  #touch [data-btn="left"]    { left: 0; top: 53px; }
-  #touch [data-btn="right"]   { left: 108px; top: 53px; }
-  #touch [data-btn="confirm"] { right: 20px; bottom: 76px; width: 66px; height: 66px; }
-  #touch [data-btn="cancel"]  { right: 92px; bottom: 26px; width: 58px; height: 58px; }
-  #touch [data-btn="menu"]    { right: 20px; top: 20px; width: 62px; height: 38px; font-size: 11px; }
-  #touch [data-btn="shift"]   { right: 90px; top: 20px; width: 62px; height: 38px; font-size: 11px; }
+  #touch .dpad { position: absolute; left: 14px; bottom: 18px; width: 140px; height: 140px; }
+  #touch .dpad .btn { width: 46px; height: 46px; }
+  #touch [data-btn="up"]      { left: 47px; top: 0; }
+  #touch [data-btn="down"]    { left: 47px; top: 94px; }
+  #touch [data-btn="left"]    { left: 0; top: 47px; }
+  #touch [data-btn="right"]   { left: 94px; top: 47px; }
+  #touch [data-btn="confirm"] { right: 16px; bottom: 66px; width: 56px; height: 56px; }
+  #touch [data-btn="cancel"]  { right: 82px; bottom: 20px; width: 50px; height: 50px; }
+  #touch [data-btn="menu"]    { right: 16px; top: 14px; width: 56px; height: 34px; font-size: 11px; }
+  #touch [data-btn="shift"]   { right: 78px; top: 14px; width: 56px; height: 34px; font-size: 11px; }
   @media (pointer: coarse) { #rail .bind, #plate .sub { display: none; } }
+  /* On a touch device in landscape the pad replaces the keyboard rail and
+     the wordmark just eats vertical space, so both go away entirely and
+     #cabinet reserves the pad's own top/bottom bands as padding — the same
+     fix as index.html's #wrap, so a tap on menu text never also lands on a
+     pad button sitting on top of it. */
+  @media (pointer: coarse) and (orientation: landscape) { #plate, #rail { display: none; } }
+  body:has(#touch.visible) #cabinet { padding: 58px 12px 170px; }
 
   /* The world is 480x270 — landscape. On a touch device held portrait the
      canvas shrinks to a thin centred strip with the on-screen pad's corner

@@ -42,4 +42,7 @@ export function applyTouchVisibility() {
   const mode = getTouchMode();
   const show = mode === 'on' || (mode === 'auto' && matchMedia('(pointer: coarse)').matches);
   pad.classList.toggle('visible', show);
+  // the pad reserves screen gutters so it never overlaps canvas content;
+  // toggling it mid-session must resize the canvas to match immediately
+  window.app?.screen?.resize();
 }

@@ -26,18 +26,25 @@
     border-radius: 10px; color: #dfe8ff; font-size: 15px; font-weight: 700;
   }
   #touch .btn.on { background: rgba(90,130,230,.7); }
-  #touch .dpad .btn { width: 52px; height: 52px; }
-  #touch .dpad { position: absolute; left: 16px; bottom: 20px; width: 160px; height: 160px; }
-  #touch [data-btn="up"]    { left: 54px; top: 0; }
-  #touch [data-btn="down"]  { left: 54px; top: 106px; }
-  #touch [data-btn="left"]  { left: 0; top: 53px; }
-  #touch [data-btn="right"] { left: 108px; top: 53px; }
-  #touch [data-btn="confirm"] { right: 20px; bottom: 76px; width: 66px; height: 66px; }
-  #touch [data-btn="cancel"]  { right: 92px; bottom: 26px; width: 58px; height: 58px; }
-  #touch [data-btn="menu"]    { right: 20px; top: 20px; width: 62px; height: 38px; font-size: 12px; }
-  #touch [data-btn="shift"]   { right: 90px; top: 20px; width: 62px; height: 38px; font-size: 12px; }
+  #touch .dpad .btn { width: 46px; height: 46px; }
+  #touch .dpad { position: absolute; left: 14px; bottom: 18px; width: 140px; height: 140px; }
+  #touch [data-btn="up"]    { left: 47px; top: 0; }
+  #touch [data-btn="down"]  { left: 47px; top: 94px; }
+  #touch [data-btn="left"]  { left: 0; top: 47px; }
+  #touch [data-btn="right"] { left: 94px; top: 47px; }
+  #touch [data-btn="confirm"] { right: 16px; bottom: 66px; width: 56px; height: 56px; }
+  #touch [data-btn="cancel"]  { right: 82px; bottom: 20px; width: 50px; height: 50px; }
+  #touch [data-btn="menu"]    { right: 16px; top: 14px; width: 56px; height: 34px; font-size: 12px; }
+  #touch [data-btn="shift"]   { right: 78px; top: 14px; width: 56px; height: 34px; font-size: 12px; }
   #hint { position: fixed; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 11px; opacity: .45; }
   @media (pointer: coarse) { #hint { display: none; } }
+  /* #touch's buttons live in a top band (0-58px) and a bottom band
+     (0-170px, the dpad's own reach) measured from the viewport edges —
+     never in the sides. Reserving exactly those bands as padding keeps the
+     canvas from ever rendering underneath a button, so a tap on menu text
+     never doubles as a tap on Cancel. screen.js's resize() sizes the canvas
+     to match the moment #touch gains .visible. */
+  body:has(#touch.visible) #wrap { padding: 58px 0 170px; }
 
   /* The world is 480x270 — landscape. On a touch device held portrait the
      canvas shrinks to a thin centred strip with the on-screen pad's corner

@@ -12,6 +12,15 @@ import { drawText, measure, wrap, GLYPH_H } from './font.js';
 export const W = 480;
 export const H = 270;
 
+// The on-screen touch pad is anchored to the viewport's corners, not the
+// canvas — so on a canvas that fills most of a small phone screen, pad
+// buttons sit on top of real menu content instead of beside it (a tap meant
+// for a menu word lands on Cancel instead). These gutters keep the canvas
+// entirely clear of the pad's footprint; #wrap/#cabinet apply matching
+// padding via CSS the moment #touch gains .visible.
+const TOUCH_TOP_GUTTER = 58;
+const TOUCH_BOTTOM_GUTTER = 170;
+
 // A modern dark-UI palette: near-black grounds, cool desaturated blues for
 // surfaces, and a warm amber accent that never appears in the world art.
 export const PAL = {
@@ -85,8 +94,11 @@ export class Screen {
 
   resize() {
     const pad = 8;
+    const touchOn = document.getElementById('touch')?.classList.contains('visible') ?? false;
+    const topGutter = touchOn ? TOUCH_TOP_GUTTER : 0;
+    const bottomGutter = touchOn ? TOUCH_BOTTOM_GUTTER : 0;
     const sx = (window.innerWidth - pad) / W;
-    const sy = (window.innerHeight - pad) / H;
+    const sy = (window.innerHeight - pad - topGutter - bottomGutter) / H;
     // integer scale where it fits, so pixels stay square
     const raw = Math.min(sx, sy);
     this.scale = raw >= 1 ? Math.max(1, Math.floor(raw)) : raw;

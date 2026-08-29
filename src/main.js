@@ -115,8 +115,12 @@ class App {
       bind(pad.querySelector(`[data-btn="${b}"]`), b);
     }
     // 'auto' (the default) shows the pad only where touch is the primary
-    // input; a player can force it on or off from the title or party menu
+    // input; a player can force it on or off from the title or party menu.
+    // Resize right after: the pad reserves gutters so it never sits on top
+    // of canvas content, and the very first resize() ran before #touch had
+    // its 'visible' class, so it didn't know to reserve them yet.
     applyTouchVisibility();
+    this.screen.resize();
   }
 }
 
