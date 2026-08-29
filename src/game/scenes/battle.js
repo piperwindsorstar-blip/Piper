@@ -298,8 +298,9 @@ export class BattleScene {
     const msgs = [];
     if (b.result === 'victory') {
       const spoils = b.spoils();
-      msgs.push(`Victory! ${spoils.exp} EXP and ${spoils.gold} gold.`);
+      msgs.push(`Victory! ${spoils.exp} EXP, ${spoils.gold} gold and ${spoils.lp} LP.`);
       this.g.earn(spoils.gold);
+      this.g.lp += spoils.lp;
       for (const id of spoils.items) {
         if (this.g.addItem(id)) msgs.push(`Found ${getItem(id).name}.`);
       }

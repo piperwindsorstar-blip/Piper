@@ -876,11 +876,14 @@ export class Battle {
     const hunter = this.party.filter((u) => u.isPC && u.ref.jobId === 'hunter')
       .reduce((m, u) => Math.max(m, jobRank(u.ref)), 0);
 
-    let exp = 0, gold = 0;
+    let exp = 0, gold = 0, lp = 0;
     const items = [...(this.stolen ?? [])];
     for (const e of defeated) {
       exp += e.def.exp;
       gold += e.def.gold;
+      // Learning Points: no per-enemy data to author, so this rides on the
+      // EXP an enemy already carries rather than a whole new 41-entry field.
+      lp += Math.max(1, Math.round(e.def.exp * 0.1));
       for (const [id, chance] of e.def.drops) {
         let c = chance;
         if (hunter && e.def.family === 'beast') c += 0.05 * hunter;
@@ -890,7 +893,7 @@ export class Battle {
     }
     exp = Math.round(exp * (1 + 0.05 * scribe));
     gold = Math.round(gold * (1 + 0.15 * merchant)) + (this.stolenGold ?? 0);
-    return { exp, gold, items };
+    return { exp, gold, items, lp };
   }
 }
 

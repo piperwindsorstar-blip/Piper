@@ -186,6 +186,23 @@ export function awardExp(ch, amount) {
   return { levels, gained, promo: ch.pendingPromo };
 }
 
+export const TRAIN_COST = 20;
+export const TRAIN_AMOUNT = 2;
+
+/**
+ * Spend the party's Learning Points to permanently raise one of a
+ * character's raw stats — the same accumulator EXP-driven growth writes
+ * to (`ch.acc`), so it composes with everything else `stats()` already
+ * does (race mods, element bias, job bonus, equipment) with no separate
+ * bookkeeping. Returns false (and spends nothing) if `g.lp` can't cover it.
+ */
+export function trainStat(g, ch, statKey) {
+  if (g.lp < TRAIN_COST) return false;
+  g.lp -= TRAIN_COST;
+  ch.acc[statKey] += TRAIN_AMOUNT;
+  return true;
+}
+
 export function refreshPromotion(ch) {
   ch.pendingPromo = pendingPromotion(ch.classId, ch.level);
   return ch.pendingPromo;

@@ -13,9 +13,9 @@ import { Menu, header, hpColor, statRow } from '../../engine/ui.js';
 import { actorSprite } from '../../engine/sprites.js';
 import {
   stats, knownSkills, upcomingSkills, jobInfo, jobProgress, equipItem, unequipSlot,
-  promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL,
+  promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL, trainStat, TRAIN_COST,
 } from '../character.js';
-import { CLASSES, TIER_NAME, PROMOTION_LEVELS } from '../../data/classes.js';
+import { CLASSES, TIER_NAME, PROMOTION_LEVELS, STAT_KEYS } from '../../data/classes.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { SCHOOLS, STATUS } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
@@ -30,6 +30,7 @@ const PAGES = [
   { id: 'items', label: 'Items' },
   { id: 'equip', label: 'Equip' },
   { id: 'formation', label: 'Formation' },
+  { id: 'train', label: 'Train' },
   { id: 'jobs', label: 'Jobs' },
   { id: 'ladder', label: 'Ladder' },
   { id: 'save', label: 'Save' },
@@ -64,6 +65,7 @@ export class MenuScene {
     this.formPicked = null;
     this.formSide = 'grid';
     this.benchCursor = 0;
+    this.trainIdx = 0;
   }
 
   say(m) { this.msg = m; this.msgT = 2.6; }
@@ -99,6 +101,7 @@ export class MenuScene {
       case 'equip': return this.updateEquip(input);
       case 'equipList': return this.updateEquipList(input);
       case 'formation': return this.updateFormation(input);
+      case 'train': return this.updateTrain(input);
       case 'save': return this.updateSave(input);
       case 'controls': return this.updateControls(input);
       default: break;
@@ -298,6 +301,20 @@ export class MenuScene {
     }
   }
 
+  // --- train (Learning Points) ------------------------------------------------
+  updateTrain(input) {
+    const n = this.g.party.length;
+    if (input.tap('left')) this.who = (this.who + n - 1) % n;
+    if (input.tap('right')) this.who = (this.who + 1) % n;
+    if (input.tap('up')) this.trainIdx = (this.trainIdx + STAT_KEYS.length - 1) % STAT_KEYS.length;
+    if (input.tap('down')) this.trainIdx = (this.trainIdx + 1) % STAT_KEYS.length;
+    if (input.tap('confirm')) {
+      const key = STAT_KEYS[this.trainIdx];
+      if (trainStat(this.g, this.ch, key)) this.say(`${this.ch.name}'s ${key.toUpperCase()} rises.`);
+      else this.say(`Needs ${TRAIN_COST} LP.`);
+    }
+  }
+
   // --- save ------------------------------------------------------------------
   updateSave(input) {
     this.list.handle(input);
@@ -337,6 +354,7 @@ export class MenuScene {
         case 'items': case 'itemTarget': this.drawItems(scr); break;
         case 'equip': case 'equipList': this.drawEquip(scr); break;
         case 'formation': this.drawFormation(scr); break;
+        case 'train': this.drawTrain(scr); break;
         case 'jobs': this.drawJobs(scr); break;
         case 'ladder': this.drawLadder(scr); break;
         case 'save': this.drawSave(scr); break;
@@ -641,6 +659,25 @@ export class MenuScene {
       scr.textRight(this.formPicked ? 'Z place / swap'
         : 'Z pick · SHIFT auto · MENU bench', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
     }
+  }
+
+  // --- train (Learning Points) -------------------------------------------------
+  drawTrain(scr) {
+    const top = this.charHeader(scr);
+    const ch = this.ch;
+    const s = stats(ch);
+    scr.text('LEARNING POINTS', IX, top, PAL.textDim);
+    scr.textRight(`${this.g.lp} LP`, IX + IW, top, PAL.cyan);
+    scr.rect(IX, top + 12, IW, 1, PAL.line);
+    STAT_KEYS.forEach((k, i) => {
+      const y = top + 22 + i * 13;
+      const sel = this.trainIdx === i;
+      if (sel) scr.rect(IX - 4, y - 2, IW + 8, 12, 'rgba(120,155,235,0.16)');
+      scr.text(k.toUpperCase(), IX, y, sel ? PAL.accent : PAL.textDim);
+      scr.text(`${s[k]}`, IX + 60, y, PAL.text);
+      scr.textRight(`${TRAIN_COST} LP`, IX + IW, y, this.g.lp >= TRAIN_COST ? PAL.cyan : PAL.textFaint);
+    });
+    scr.textRight('Z train · ▲▼ choose stat', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
   }
 
   // --- jobs ------------------------------------------------------------------
