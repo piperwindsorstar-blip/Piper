@@ -9,7 +9,7 @@
 
 import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
-import { actorSprite, monsterSprite } from '../../engine/sprites.js';
+import { actorSprite, actorPortraitSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion } from '../character.js';
@@ -525,17 +525,16 @@ export class BattleScene {
       }
       let ty = y;
       if (tall) {
-        const spr = actorSprite({
+        const bust = actorPortraitSprite({
           classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-          skin: ch.skin, hair: ch.hair, frame: 0,
+          skin: ch.skin, hair: ch.hair,
         });
-        // head and shoulders only — the legs add height without adding a face
-        const sy = spr.height * 0.08, sh = spr.height * 0.58;
-        const dw = Math.min(cardW - 16, sh * 0.9 * 2);
-        const dh = sh * 2;
+        const dh = Math.min(ph - 40, bust.height * 2);
+        const dw = Math.min(cardW - 16, bust.width * (dh / bust.height));
         scr.ctx.save();
         if (!u.alive) scr.ctx.globalAlpha = 0.35;
-        scr.ctx.drawImage(spr, 0, sy, spr.width, sh, x + (cardW - 12 - dw) / 2, ty, dw, dh);
+        scr.ctx.drawImage(bust, 0, 0, bust.width, bust.height,
+          x + (cardW - 12 - dw) / 2, ty, dw, dh);
         scr.ctx.restore();
         ty += dh + 3;
       }

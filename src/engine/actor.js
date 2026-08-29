@@ -15,8 +15,183 @@ import { getClass } from '../data/classes.js';
 import { getRace } from '../data/races.js';
 
 export const AW = 36, AH = 48;      // actor canvas
+export const PW = 40, PH = 44;      // portrait bust canvas
 const OUTLINE = '#0a0812';
 const RIM = '#8fa8d8';
+
+/** Cheap, stable per-string number — picks a hair style deterministically
+ *  from race + hair-index without adding a new data field. */
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h += s.charCodeAt(i);
+  return h;
+}
+
+/**
+ * The head-and-shoulders "face": silhouette, cheeks, jaw, eyes, eyebrows,
+ * mouth. Shared by the full body sprite and the battle portrait bust so
+ * both read as the same character.
+ */
+function paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt, L }) {
+  const hRows = headH - 1;
+  // an oval: widest at the cheekbones, drawn in at the crown and again at the
+  // jaw. A 2px chamfer is not enough to stop a head reading as a block.
+  const headHalf = (i) => {
+    const t = (i + 0.5) / hRows;
+    const s = Math.sin(Math.PI * (0.14 + 0.78 * t));
+    return headW * (0.52 + 0.48 * s);
+  };
+  const hw = (i) => Math.max(1, Math.round(headHalf(i)));
+  P.profile(ax, hY, hRows, skin, headHalf);
+  for (let i = 1; i < hRows - 1; i++) {                            // cheeks
+    P.rect(ax - hw(i), hY + i, 2, 1, skinL);
+    P.rect(ax + hw(i) - 2, hY + i, 2, 1, skinD);
+  }
+  P.rect(ax - hw(hRows - 2), hY + headH - 2, hw(hRows - 2) * 2, 1, skinD);   // jaw
+  P.px(ax, hY + headH - 3, skinL);                                 // chin highlight
+  if (L.scaled) {
+    for (let i = 0; i < 5; i++) P.px(ax - 3 + (i % 3) * 3, hY + 2 + i, shade(skin, -0.2));
+  }
+  if (L.gaunt) {                                                   // Revenant
+    P.rect(ax - headW + 1, hY + 5, 2, 3, skinD);
+    P.rect(ax + headW - 3, hY + 5, 2, 3, skinD);
+  }
+  // eyebrows, pupil/eyes
+  if (!hurt) {
+    P.rect(ax - 4, hY + 4, 3, 1, hairD);
+    P.rect(ax + 1, hY + 4, 3, 1, hairD);
+    P.rect(ax - 4, hY + 5, 3, 2, eye);
+    P.rect(ax + 1, hY + 5, 3, 2, eye);
+    P.px(ax - 4, hY + 5, '#f4f4ff');
+    P.px(ax + 1, hY + 5, '#f4f4ff');
+    if (L.glow) {
+      P.px(ax - 3, hY + 6, L.glow); P.px(ax + 2, hY + 6, L.glow);
+    } else {
+      P.px(ax - 3, hY + 6, shade(eye, -0.45)); P.px(ax + 2, hY + 6, shade(eye, -0.45));
+    }
+  } else {
+    P.px(ax - 3, hY + 4, hairD);
+    P.px(ax + 2, hY + 4, hairD);
+    P.rect(ax - 4, hY + 6, 3, 1, eye);
+    P.rect(ax + 1, hY + 6, 3, 1, eye);
+  }
+  if (!L.muzzle) P.rect(ax - 1, hY + 9, 2, 1, skinD);              // mouth
+}
+
+/** The flat-color hair cap, with a handful of cheap shape variants layered
+ *  on top so hair reads as more than a solid-color hat. Purely a function
+ *  of race + hair-index (both already in the sprite cache key), so no new
+ *  cache-key field is needed. */
+function paintHairCap(P, { ax, hY, headW, hair, hairL, hairD, styleIdx }) {
+  const capHalf = (half) => (i) => (i === 0 ? half - 2 : i === 1 ? half - 1 : half);
+  const cap = (yTop, rows, half, col) => P.profile(ax, yTop, rows, col, capHalf(half));
+  cap(hY - 2, 4, headW, hair);
+  P.rect(ax - headW + 2, hY - 2, headW - 1, 1, hairL);
+  switch (styleIdx) {
+    case 1:                                                        // parted
+      P.rect(ax, hY - 2, 1, 4, hairD);
+      break;
+    case 2:                                                        // fringe
+      P.rect(ax - headW + 1, hY + 2, headW * 2 - 2, 1, hair);
+      P.px(ax - headW + 2, hY + 3, hair);
+      P.px(ax + headW - 3, hY + 3, hair);
+      break;
+    case 3:                                                        // swept
+      P.rect(ax - headW - 1, hY - 4, 3, 3, hair);
+      P.rect(ax + headW - 2, hY - 5, 3, 3, hair);
+      break;
+    default: break;                                                // plain cap
+  }
+  P.mrect(ax, headW - 1, hY + 1, 1, 5, hair);
+}
+
+/**
+ * Race anatomy drawn OVER the headgear (or, for the portrait bust, straight
+ * over the hair): ears, horns, a muzzle, tusks, a beard, goggles. The race
+ * has to read at a glance, or twelve of them look like twelve of the same
+ * person.
+ */
+function paintRaceAnatomy(P, { ax, hY, headW, headH, skin, skinL, skinD, hair, hairL, hairD, L }) {
+  switch (L.ears) {
+    case 'long': {                                     // Elf, Fairy, Gnome
+      for (let i = 0; i < 9; i++) {
+        const dx = Math.floor(i * 0.55);
+        const yy = hY + 6 - i;
+        P.px(ax - headW - 1 - dx, yy, i > 5 ? skinL : skin);
+        P.px(ax - headW - 2 - dx, yy, skinD);
+        P.px(ax + headW + dx, yy, i > 5 ? skin : skinD);
+        P.px(ax + headW + 1 + dx, yy, skinD);
+      }
+      P.px(ax - headW - 5, hY - 2, skinL);
+      break;
+    }
+    case 'wolf': {                                     // Wolfkin
+      for (const sgn of [-1, 1]) {
+        const base = sgn < 0 ? ax - headW + 1 : ax + headW - 6;
+        for (let i = 0; i < 8; i++) {
+          const wdt = Math.max(1, 6 - Math.floor(i * 0.8));
+          const xx = base + sgn * Math.floor(i * 0.4) + (sgn < 0 ? 0 : 6 - wdt);
+          P.rect(xx, hY - 7 + i, wdt, 1, sgn < 0 ? hair : hairD);
+        }
+        P.rect(sgn < 0 ? ax - headW + 2 : ax + headW - 4, hY - 4, 2, 3, shade(skin, 0.12));
+      }
+      break;
+    }
+    case 'fin':                                        // Merfolk
+      for (const sgn of [-1, 1]) {
+        for (let i = 0; i < 3; i++) {
+          const len = 5 - i;
+          P.rect(sgn < 0 ? ax - headW - len : ax + headW, hY + 2 + i * 3, len, 2,
+            mix(skin, '#7fe0ff', 0.65 - i * 0.12));
+        }
+      }
+      break;
+    default: break;
+  }
+  if (L.horns === 'small') {                            // Lizardfolk, Ogrekin
+    P.mrect(ax, headW - 4, hY - 5, 3, 6, '#ded1b6');
+    P.mrect(ax, headW - 4, hY - 5, 1, 6, '#f4ecd8');
+  } else if (L.horns === 'dragon') {                    // Draconian
+    for (let i = 0; i < 9; i++) {
+      const dx = Math.floor(i * 0.5);
+      P.rect(ax - headW + 1 - dx, hY - 1 - i, 2, 1, '#e8dcc0');
+      P.rect(ax + headW - 2 + dx, hY - 1 - i, 2, 1, '#c8bc9c');
+    }
+  }
+  if (L.muzzle) {                                       // Wolfkin, Lizardfolk, Draconian
+    const my = hY + headH - 7;
+    P.rect(ax - 4, my, 8, 8, skin);
+    P.rect(ax - 4, my, 8, 1, skinL);
+    P.rect(ax - 4, my, 2, 7, skinL);
+    P.rect(ax + 2, my, 2, 7, skinD);
+    P.rect(ax - 3, my + 5, 6, 3, skinD);                // jaw
+    P.rect(ax - 2, my + 3, 4, 3, '#241820');            // nose
+    P.px(ax - 1, my + 3, '#4a3a40');
+    P.rect(ax - 3, my + 7, 6, 1, shade(skin, -0.34));
+    if (L.tusks || L.scaled) {                          // small fangs
+      P.rect(ax - 3, my + 7, 1, 2, '#f0ece0');
+      P.rect(ax + 2, my + 7, 1, 2, '#f0ece0');
+    }
+  }
+  if (L.tusks && !L.muzzle) {                           // Ogrekin
+    P.rect(ax - 5, hY + headH - 5, 2, 5, '#f0ece0');
+    P.rect(ax + 3, hY + headH - 5, 2, 5, '#f0ece0');
+    P.rect(ax - 5, hY + headH - 5, 2, 1, '#ffffff');
+  }
+  if (L.beard) {                                        // Dwarf
+    P.rect(ax - headW, hY + headH - 4, headW * 2, 7, hair);
+    P.rect(ax - headW, hY + headH - 4, 3, 6, hairL);
+    P.rect(ax - 3, hY + headH + 2, 6, 3, hairD);
+    P.rect(ax - headW, hY + headH - 4, headW * 2, 1, hairL);
+  }
+  if (L.goggles) {                                      // Gnome
+    P.rect(ax - headW - 1, hY + 3, headW * 2 + 2, 4, '#4a3c2c');
+    P.rect(ax - headW - 1, hY + 3, headW * 2 + 2, 1, '#6a5842');
+    P.rect(ax - 5, hY + 4, 4, 2, '#8fd8f0');
+    P.rect(ax + 1, hY + 4, 4, 2, '#6ab0c8');
+    P.px(ax - 5, hY + 4, '#dff4ff');
+  }
+}
 
 // ---------------------------------------------------------------------------
 //  CLASS KITS — silhouette rules per root class
@@ -84,6 +259,11 @@ export function actorSprite(o) {
     const hairL = shade(hair, 0.34);
     const hairD = shade(hair, -0.34);
     const eye = L.glow ?? L.eye ?? '#2b1f2e';
+    const hairStyle = (hashStr(race.id) + (o.hair ?? 0)) % 4;
+    // The torso and cape are the largest flat-color regions on the sprite —
+    // big enough for a light dither to read as cloth texture rather than
+    // noise, unlike hair/trim/limbs, which are too thin for it.
+    const USE_DITHER = true;
 
     // --- contact shadow, tinted once promoted ------------------------------
     P.ellipse(ax, ground + 1, Math.round(9 * build), 2,
@@ -139,8 +319,10 @@ export function actorSprite(o) {
 
     // --- cape ---------------------------------------------------------------
     if (kit.cape) {
-      P.rect(ax - bodyW + 1 - lean, bodyY + 1, bodyW * 2 - 2, bodyH + legH - 4, clothD);
-      P.rect(ax - bodyW + 1 - lean, bodyY + 1, bodyW * 2 - 2, 2, shade(cloth, -0.2));
+      const capeW = bodyW * 2 - 2, capeH = bodyH + legH - 4;
+      P.rect(ax - bodyW + 1 - lean, bodyY + 1, capeW, capeH, clothD);
+      if (USE_DITHER) P.dither(ax - bodyW + 1 - lean, bodyY + 1, capeW, 3, cloth, 0.35);
+      else P.rect(ax - bodyW + 1 - lean, bodyY + 1, capeW, 2, shade(cloth, -0.2));
       P.mrect(ax, bodyW - 2 + lean, bodyY + bodyH + legH - 7, 2, 3, shade(clothD, -0.2));
     }
 
@@ -185,6 +367,10 @@ export function actorSprite(o) {
       const w = tw(i);
       P.rect(ax - w, bY + i, 3, 1, clothL);
       P.rect(ax + w - 3, bY + i, 3, 1, clothD);
+      if (USE_DITHER) {                                              // soften the hard edge
+        P.dither(ax - w + 1, bY + i, 2, 1, cloth, 0.4);
+        P.dither(ax + w - 3, bY + i, 2, 1, cloth, 0.4);
+      }
     }
     switch (kit.body) {
       case 'plate':
@@ -241,40 +427,7 @@ export function actorSprite(o) {
     //  Rounded at the crown and again at the jaw. Most classes wear something
     //  that covers the crown, so the jaw is where this actually shows.
     const hY = headY;
-    const hRows = headH - 1;
-    // an oval: widest at the cheekbones, drawn in at the crown and again at the
-    // jaw. A 2px chamfer is not enough to stop a head reading as a block.
-    const headHalf = (i) => {
-      const t = (i + 0.5) / hRows;
-      const s = Math.sin(Math.PI * (0.14 + 0.78 * t));
-      return headW * (0.52 + 0.48 * s);
-    };
-    const hw = (i) => Math.max(1, Math.round(headHalf(i)));
-    P.profile(ax, hY, hRows, skin, headHalf);
-    for (let i = 1; i < hRows - 1; i++) {                            // cheeks
-      P.rect(ax - hw(i), hY + i, 2, 1, skinL);
-      P.rect(ax + hw(i) - 2, hY + i, 2, 1, skinD);
-    }
-    P.rect(ax - hw(hRows - 2), hY + headH - 2, hw(hRows - 2) * 2, 1, skinD);   // jaw
-    if (L.scaled) {
-      for (let i = 0; i < 5; i++) P.px(ax - 3 + (i % 3) * 3, hY + 2 + i, shade(skin, -0.2));
-    }
-    if (L.gaunt) {                                                   // Revenant
-      P.rect(ax - headW + 1, hY + 5, 2, 3, skinD);
-      P.rect(ax + headW - 3, hY + 5, 2, 3, skinD);
-    }
-    // eyes
-    if (!hurt) {
-      P.rect(ax - 4, hY + 5, 3, 2, eye);
-      P.rect(ax + 1, hY + 5, 3, 2, eye);
-      P.px(ax - 4, hY + 5, '#f4f4ff');
-      P.px(ax + 1, hY + 5, '#f4f4ff');
-      if (L.glow) { P.px(ax - 3, hY + 6, L.glow); P.px(ax + 2, hY + 6, L.glow); }
-    } else {
-      P.rect(ax - 4, hY + 6, 3, 1, eye);
-      P.rect(ax + 1, hY + 6, 3, 1, eye);
-    }
-    if (!L.muzzle) P.rect(ax - 1, hY + 9, 2, 1, skinD);              // mouth
+    paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt, L });
 
     // --- headgear -----------------------------------------------------------
     //  Whatever sits on the head IS the silhouette the player sees, so rounding
@@ -286,9 +439,7 @@ export function actorSprite(o) {
 
     const hairTop = () => {
       if (L.muzzle || L.plates) return;
-      cap(hY - 2, 4, headW, hair);
-      P.rect(ax - headW + 2, hY - 2, headW - 1, 1, hairL);
-      P.mrect(ax, headW - 1, hY + 1, 1, 5, hair);
+      paintHairCap(P, { ax, hY, headW, hair, hairL, hairD, styleIdx: hairStyle });
     };
     switch (kit.head) {
       case 'helm':
@@ -364,85 +515,7 @@ export function actorSprite(o) {
     // --- race anatomy, drawn OVER the headgear ------------------------------
     // A helm has ear holes and does not cover a muzzle: the race has to read
     // at a glance, or twelve of them look like twelve of the same person.
-    switch (L.ears) {
-      case 'long': {                                     // Elf, Fairy, Gnome
-        for (let i = 0; i < 9; i++) {
-          const dx = Math.floor(i * 0.55);
-          const yy = hY + 6 - i;
-          P.px(ax - headW - 1 - dx, yy, i > 5 ? skinL : skin);
-          P.px(ax - headW - 2 - dx, yy, skinD);
-          P.px(ax + headW + dx, yy, i > 5 ? skin : skinD);
-          P.px(ax + headW + 1 + dx, yy, skinD);
-        }
-        P.px(ax - headW - 5, hY - 2, skinL);
-        break;
-      }
-      case 'wolf': {                                     // Wolfkin
-        for (const sgn of [-1, 1]) {
-          const base = sgn < 0 ? ax - headW + 1 : ax + headW - 6;
-          for (let i = 0; i < 8; i++) {
-            const wdt = Math.max(1, 6 - Math.floor(i * 0.8));
-            const xx = base + sgn * Math.floor(i * 0.4) + (sgn < 0 ? 0 : 6 - wdt);
-            P.rect(xx, hY - 7 + i, wdt, 1, sgn < 0 ? hair : hairD);
-          }
-          P.rect(sgn < 0 ? ax - headW + 2 : ax + headW - 4, hY - 4, 2, 3, shade(skin, 0.12));
-        }
-        break;
-      }
-      case 'fin':                                        // Merfolk
-        for (const sgn of [-1, 1]) {
-          for (let i = 0; i < 3; i++) {
-            const len = 5 - i;
-            P.rect(sgn < 0 ? ax - headW - len : ax + headW, hY + 2 + i * 3, len, 2,
-              mix(skin, '#7fe0ff', 0.65 - i * 0.12));
-          }
-        }
-        break;
-      default: break;
-    }
-    if (L.horns === 'small') {                            // Lizardfolk, Ogrekin
-      P.mrect(ax, headW - 4, hY - 5, 3, 6, '#ded1b6');
-      P.mrect(ax, headW - 4, hY - 5, 1, 6, '#f4ecd8');
-    } else if (L.horns === 'dragon') {                    // Draconian
-      for (let i = 0; i < 9; i++) {
-        const dx = Math.floor(i * 0.5);
-        P.rect(ax - headW + 1 - dx, hY - 1 - i, 2, 1, '#e8dcc0');
-        P.rect(ax + headW - 2 + dx, hY - 1 - i, 2, 1, '#c8bc9c');
-      }
-    }
-    if (L.muzzle) {                                       // Wolfkin, Lizardfolk, Draconian
-      const my = hY + headH - 7;
-      P.rect(ax - 4, my, 8, 8, skin);
-      P.rect(ax - 4, my, 8, 1, skinL);
-      P.rect(ax - 4, my, 2, 7, skinL);
-      P.rect(ax + 2, my, 2, 7, skinD);
-      P.rect(ax - 3, my + 5, 6, 3, skinD);                // jaw
-      P.rect(ax - 2, my + 3, 4, 3, '#241820');            // nose
-      P.px(ax - 1, my + 3, '#4a3a40');
-      P.rect(ax - 3, my + 7, 6, 1, shade(skin, -0.34));
-      if (L.tusks || L.scaled) {                          // small fangs
-        P.rect(ax - 3, my + 7, 1, 2, '#f0ece0');
-        P.rect(ax + 2, my + 7, 1, 2, '#f0ece0');
-      }
-    }
-    if (L.tusks && !L.muzzle) {                           // Ogrekin
-      P.rect(ax - 5, hY + headH - 5, 2, 5, '#f0ece0');
-      P.rect(ax + 3, hY + headH - 5, 2, 5, '#f0ece0');
-      P.rect(ax - 5, hY + headH - 5, 2, 1, '#ffffff');
-    }
-    if (L.beard) {                                        // Dwarf
-      P.rect(ax - headW, hY + headH - 4, headW * 2, 7, hair);
-      P.rect(ax - headW, hY + headH - 4, 3, 6, hairL);
-      P.rect(ax - 3, hY + headH + 2, 6, 3, hairD);
-      P.rect(ax - headW, hY + headH - 4, headW * 2, 1, hairL);
-    }
-    if (L.goggles) {                                      // Gnome
-      P.rect(ax - headW - 1, hY + 3, headW * 2 + 2, 4, '#4a3c2c');
-      P.rect(ax - headW - 1, hY + 3, headW * 2 + 2, 1, '#6a5842');
-      P.rect(ax - 5, hY + 4, 4, 2, '#8fd8f0');
-      P.rect(ax + 1, hY + 4, 4, 2, '#6ab0c8');
-      P.px(ax - 5, hY + 4, '#dff4ff');
-    }
+    paintRaceAnatomy(P, { ax, hY, headW, headH, skin, skinL, skinD, hair, hairL, hairD, L });
 
     // --- weapon (in front) ---------------------------------------------------
     const wx = ax + bodyW + 4 + lean;
@@ -500,6 +573,71 @@ export function actorSprite(o) {
       default: break;
     }
   }, { round: true, outline: OUTLINE, ao: 0.26, rim: RIM, rimAlpha: 0.34 });
+}
+
+/**
+ * A close-up bust for the battle status card — a bigger head-to-frame ratio
+ * than the full-body sprite can ever give a percentage crop, since the
+ * head's absolute size doesn't change no matter what's cropped. Deliberately
+ * skips the class headgear switch: several of its cases (the mage's 'hat',
+ * for one) use pixel offsets sized for the body sprite's headW and would
+ * misalign against a head this much bigger. Showing the bare face is also
+ * the convention the reference art itself uses — portraits reveal the face
+ * even for helmeted classes.
+ *
+ * @param {object} o {classId, raceId, elementId, skin, hair}
+ */
+export function actorPortraitSprite(o) {
+  const cls = getClass(o.classId);
+  const race = getRace(o.raceId ?? 'human');
+  const kit = KITS[cls.root];
+  const el = ELEMENT_BY_ID[o.elementId] ?? { color: '#c8c8d8', color2: '#ffffff' };
+  const L = race.look;
+  const tier = cls.tier;
+
+  const skin = L.skins[(o.skin ?? 0) % L.skins.length];
+  const hair = L.hairs[(o.hair ?? 0) % L.hairs.length];
+  const key = `bust|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}`;
+
+  return make(key, PW, PH, (P) => {
+    const ax = PW / 2;
+    const build = L.build ?? 1;
+
+    const cloth = tier >= 3 ? shade(kit.cloth, 0.14) : kit.cloth;
+    const clothL = shade(cloth, 0.32);
+    const trim = tier >= 2 ? mix(kit.trim, el.color, 0.55) : kit.trim;
+    const trimL = shade(trim, 0.38);
+    const skinL = shade(skin, 0.2);
+    const skinD = shade(skin, -0.26);
+    const hairL = shade(hair, 0.34);
+    const hairD = shade(hair, -0.34);
+    const eye = L.glow ?? L.eye ?? '#2b1f2e';
+    const hairStyle = (hashStr(race.id) + (o.hair ?? 0)) % 4;
+
+    const headW = Math.round(6 * build * 1.4);
+    const headH = Math.round(13 * build * 1.25);
+    const hY = 4;
+
+    // --- shoulders/collar (drawn first, the head silhouette sits on top) ---
+    const maxHalf = PW / 2 - 2;
+    const shoulderY = hY + headH - 2;
+    const shoulderH = Math.max(4, PH - shoulderY - 2);
+    const shoulderHalf = (i) => Math.min(maxHalf, headW + 3 + i * 0.8);
+    P.profile(ax, shoulderY, shoulderH, cloth, shoulderHalf);
+    for (let i = 0; i < shoulderH; i++) {
+      const w = Math.max(1, Math.round(shoulderHalf(i)));
+      P.rect(ax - w, shoulderY + i, 3, 1, clothL);
+      P.dither(ax - w + 2, shoulderY + i, 2, 1, cloth, 0.35);
+    }
+    P.rect(ax - headW, shoulderY, headW * 2, 2, trim);              // collar
+    P.rect(ax - headW, shoulderY, headW * 2, 1, trimL);
+
+    paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt: false, L });
+    if (!L.muzzle && !L.plates) {
+      paintHairCap(P, { ax, hY, headW, hair, hairL, hairD, styleIdx: hairStyle });
+    }
+    paintRaceAnatomy(P, { ax, hY, headW, headH, skin, skinL, skinD, hair, hairL, hairD, L });
+  }, { round: true, outline: OUTLINE, ao: 0.3, rim: RIM, rimAlpha: 0.42 });
 }
 
 // ---------------------------------------------------------------------------

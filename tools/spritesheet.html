@@ -1,15 +1,15 @@
 <!doctype html><meta charset="utf-8"><title>sprite sheet</title>
 <style>body{margin:0;background:#0b0e18}canvas{image-rendering:pixelated;display:block;margin:0 auto}</style>
-<canvas id="c" width="1000" height="900"></canvas>
+<canvas id="c" width="1000" height="990"></canvas>
 <script type="module">
 // Contact sheet of every generated sprite, for reviewing the art in one pass.
-import { monsterSprite, actorSprite, npcSprite, tileSprite, TILE_NAMES, TS } from '../src/engine/sprites.js';
+import { monsterSprite, actorSprite, actorPortraitSprite, npcSprite, tileSprite, TILE_NAMES, TS } from '../src/engine/sprites.js';
 import { ENEMIES } from '../src/data/enemies.js';
 import { ROOT_CLASSES } from '../src/data/classes.js';
 import { RACES } from '../src/data/races.js';
 const c = document.getElementById('c').getContext('2d');
 c.imageSmoothingEnabled = false;
-c.fillStyle = '#0b0e18'; c.fillRect(0, 0, 1000, 900);
+c.fillStyle = '#0b0e18'; c.fillRect(0, 0, 1000, 990);
 c.font = '10px ui-monospace, monospace'; c.textBaseline = 'top';
 const label = (t, x, y, col = '#8fa8d8') => { c.fillStyle = col; c.fillText(t, x, y); };
 const head = (t, y) => { c.fillStyle = '#f0b44c'; c.font = 'bold 11px ui-monospace, monospace'; c.fillText(t, 8, y); c.font = '10px ui-monospace, monospace'; };
@@ -46,6 +46,15 @@ ROOT_CLASSES.forEach((cl, k) => {
   label(cl.name.slice(0, 10), x, yy + 50);
 });
 y += 70 + 16;
+
+// --- battle portrait bust, every race --------------------------------------
+head('PORTRAITS — the battle status card bust, 12 races', y); y += 16;
+RACES.forEach((r, k) => {
+  const x = 8 + (k % 12) * 80, yy = y + Math.floor(k / 12) * 60;
+  c.drawImage(actorPortraitSprite({ classId: 'warrior', raceId: r.id, elementId: 'fire', skin: k % 3, hair: k % 4 }), x + 16, yy);
+  label(r.name.slice(0, 10), x, yy + 46);
+});
+y += 60 + 16;
 
 // --- ascension tiers, to check the promoted look ---------------------------
 head('ASCENSIONS — Lv40 / 60 / 80 tiers', y); y += 16;
