@@ -4,11 +4,31 @@ Roundcube behind nginx, with one extra button: **File in Piper** sends the
 message you are reading to the CRM's crew-report intake and tells you what it
 made of it.
 
-Two scripts. The first is the one you run.
+## Start here, on the mail droplet
+
+The mail server is **not** the machine Piper runs on, so there is no checkout
+of this repository there and nothing to run. Fetch it and go, in one command,
+over ssh to that box:
 
 ```
+curl -fsSL https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo/deploy/mail/bootstrap.sh \
+  | sudo PIPER_IMPORT_TOKEN=<the token> bash -s -- mail.djpynxpro.com
+```
+
+That drops the installer at `/opt/piper-mail` and runs it. Re-running is safe,
+and is also how you pick up a newer version of any of this.
+
+If you would rather look before you run:
+
+```
+sudo apt-get install -y git
+sudo git clone -b claude/wedding-dj-crm-sltogo \
+  https://github.com/piperwindsorstar-blip/Piper.git /opt/piper
+cd /opt/piper/deploy/mail
 sudo PIPER_IMPORT_TOKEN=<the token> bash install-webmail.sh mail.djpynxpro.com
 ```
+
+## What the scripts do
 
 `install-webmail.sh` installs Roundcube, PHP-FPM, the nginx site and the
 plugin. If the box has no mail server of its own it calls
