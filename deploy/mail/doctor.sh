@@ -40,9 +40,13 @@ kv "99-piper.conf" "$(yn /etc/dovecot/conf.d/99-piper.conf)"
 
 hr "packages"
 for p in nginx dovecot-core postfix roundcube-core opendkim; do
-  kv "$p" "$(dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'ok installed' && echo installed || echo '-')"
+  # Captured, not piped: a SIGPIPE'd dpkg-query under pipefail would report an
+  # installed package as absent, which is the one thing a diagnostic must not do.
+  st="$(dpkg-query -W -f='${Status}' "$p" 2>/dev/null || true)"
+  case "$st" in *"ok installed") kv "$p" "installed" ;; *) kv "$p" "-" ;; esac
 done
-kv "php-fpm service" "$(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' | head -1 || echo '-')"
+FPM_UNITS="$(systemctl list-units --type=service --state=running 2>/dev/null || true)"
+kv "php-fpm service" "$(grep -oE 'php[0-9.]*-fpm' <<<"$FPM_UNITS" | sort -u | tr '\n' ' ' || echo '-')"
 kv "php-fpm sockets" "$(ls /run/php/*.sock 2>/dev/null | tr '\n' ' ' || echo 'none')"
 
 hr "what is listening"

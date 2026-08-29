@@ -334,8 +334,14 @@ opt="${3:-}"
 # Exact, whole-field, fixed-string. An address is full of regex metacharacters
 # — the dots alone match anything — so "^$addr:" would report a.b@x.com as
 # already existing because of axb@x.com.
+# Here-string, not a pipe. Under pipefail a match early in the list kills cut
+# with SIGPIPE and the pipeline reports failure — which here is wrong in both
+# directions at once: "add" would let a duplicate through, and "passwd" and
+# "remove" would refuse an address that plainly exists.
 mailbox_exists() {
-  cut -d: -f1 "$USERS" 2>/dev/null | grep -qxF "$1"
+  local known
+  known="$(cut -d: -f1 "$USERS" 2>/dev/null || true)"
+  grep -qxF "$1" <<<"$known"
 }
 
 # ARGON2ID, matching the scheme the passdb declares. A hash written under one
@@ -450,7 +456,11 @@ chmod 755 /usr/local/sbin/piper-mailbox
 # The firewall, and the DNS that is left
 ###############################################################################
 
-if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
+# "Status: active" is the first line ufw prints, so grep -q exits immediately
+# while ufw is still writing the rules — SIGPIPE, and under pipefail the ports
+# silently never get opened.
+UFW_STATUS="$(command -v ufw >/dev/null && ufw status 2>/dev/null || true)"
+if grep -q "Status: active" <<<"$UFW_STATUS"; then
   say "Opening the mail ports on the firewall"
   for p in 25 587 993; do ufw allow "$p"/tcp >/dev/null 2>&1 || true; done
   note "25, 587, 993"

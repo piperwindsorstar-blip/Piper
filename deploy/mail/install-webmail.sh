@@ -70,7 +70,9 @@ command -v dovecot >/dev/null 2>&1 && HAS_DOVECOT=yes
 [[ -f /etc/dovecot/conf.d/99-piper.conf ]] && MAIL_STACK_IS_OURS=yes
 
 HAS_APT_ROUNDCUBE=no
-dpkg-query -W -f='${Status}' roundcube-core 2>/dev/null | grep -q "^install ok installed" && HAS_APT_ROUNDCUBE=yes
+case "$(dpkg-query -W -f='${Status}' roundcube-core 2>/dev/null || true)" in
+  "install ok installed") HAS_APT_ROUNDCUBE=yes ;;
+esac
 
 note "nginx      : $(command -v nginx >/dev/null && nginx -v 2>&1 | cut -d/ -f2 || echo 'not installed')"
 note "postfix    : $HAS_POSTFIX"
@@ -157,9 +159,26 @@ apt-get install -y -qq \
 
 # Said out loud rather than discovered at the login screen: a missing
 # extension here is a blank page later.
+#
+# Read once into a variable and matched with a here-string, NOT piped.
+#
+# "php -m | grep -qix" is wrong under pipefail: grep -q exits the moment it
+# matches, php still has output buffered, php dies of SIGPIPE with status 141,
+# and pipefail reports the whole pipeline as failed — so an extension that IS
+# present gets recorded as missing. It depends on timing, so it passed here and
+# failed on the droplet, claiming pcre and session were absent. They are
+# compiled into every PHP ever built.
+PHP_MODULES="$(php -m 2>/dev/null || true)"
+
+if [[ -z "$PHP_MODULES" ]]; then
+  echo "    php is installed but 'php -m' printed nothing, so the CLI is broken." >&2
+  echo "    Try: php -v   and   php -m" >&2
+  exit 1
+fi
+
 MISSING=""
 for ext in pcre dom json session sockets openssl mbstring filter ctype intl pdo_sqlite; do
-  php -m 2>/dev/null | grep -qix "$ext" || MISSING="$MISSING $ext"
+  grep -qix "$ext" <<<"$PHP_MODULES" || MISSING="$MISSING $ext"
 done
 if [[ -n "$MISSING" ]]; then
   echo "    PHP is missing extensions Roundcube needs:$MISSING" >&2
@@ -219,7 +238,11 @@ chown -R www-data:www-data "$RC_DIR/logs" "$RC_DIR/temp"
 say "Configuring Roundcube"
 
 if [[ ! -f "$RC_DIR/config/config.inc.php" ]]; then
-  DES_KEY="$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 24)"
+  # pipefail off inside the subshell: the trailing head closes the pipe, the
+  # producer dies of SIGPIPE, and the substitution would fail — aborting the
+  # whole install, at random, depending on how many characters tr happened to
+  # strip. Twenty-four characters is what Roundcube wants.
+  DES_KEY="$( set +o pipefail; LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24 )"
 
   cat > "$RC_DIR/config/config.inc.php" <<EOF
 <?php

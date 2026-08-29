@@ -35,7 +35,11 @@ IFS= read -r newpass  || fail "no new password on stdin"
 [[ "$username" != *:* ]] || fail "illegal character in username"
 [[ ${#newpass} -ge 10 ]] || fail "new password must be at least 10 characters"
 
-cut -d: -f1 "$USERS" 2>/dev/null | grep -qxF "$username" || fail "no such mailbox"
+# Here-string rather than a pipe: under pipefail a match early in a long user
+# list kills cut with SIGPIPE, the pipeline reports failure, and this refuses a
+# perfectly valid password change with "no such mailbox".
+KNOWN="$(cut -d: -f1 "$USERS" 2>/dev/null || true)"
+grep -qxF "$username" <<<"$KNOWN" || fail "no such mailbox"
 
 # Dovecot decides whether the current password is right, because Dovecot owns
 # what a correct password means — the scheme, the salt, all of it.
