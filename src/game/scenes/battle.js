@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { PAL, W, H } from '../../engine/screen.js';
-import { Menu, hpColor } from '../../engine/ui.js';
+import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE } from '../battle.js';
@@ -54,7 +54,7 @@ export class BattleScene {
     this.targetPool = [];
     this.moveCursor = { row: 1, col: 0 };
     this.flash = 0;
-    this.cmdMenu = new Menu({ items: [], x: 34, y: BAR_Y + 10, cellW: 66, cellH: 14, rows: 3, columns: 2 });
+    this.cmdWheel = new CommandWheel({ x: 34, y: BAR_Y + 10, cell: 22 });
     this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
     this.fxp = new Particles(360);
     this.result = null;
@@ -104,7 +104,7 @@ export class BattleScene {
     this.t += dt;
     this.fxp.update(dt);
     this.flash = Math.max(0, this.flash - dt);
-    this.cmdMenu.update(dt);
+    this.cmdWheel.update(dt);
     this.listMenu.update(dt);
     for (const p of this.popups) { p.life -= dt; p.y -= dt * 22; }
     this.popups = this.popups.filter((p) => p.life > 0);
@@ -167,21 +167,23 @@ export class BattleScene {
   openCommand() {
     const ch = this.actor.ref;
     const skills = usableSkills(ch);
-    this.cmdMenu.setItems([
-      { label: 'Attack', id: 'attack' },
-      { label: 'Arts', id: 'skill', disabled: skills.length === 0 },
-      { label: 'Item', id: 'item', disabled: this.g.usableInBattle().length === 0 },
-      { label: 'Move', id: 'move' },
-      { label: 'Guard', id: 'defend' },
-      { label: 'Flee', id: 'flee', disabled: this.battle.isBoss },
-    ]);
+    // A plus of five, Attack at centre where the cursor starts, with Move
+    // filling the one corner a cross shape leaves spare.
+    this.cmdWheel.setItems([
+      { id: 'skill', label: 'Arts', icon: 'book', pos: [1, 0], disabled: skills.length === 0 },
+      { id: 'defend', label: 'Guard', icon: 'shield', pos: [0, 1] },
+      { id: 'attack', label: 'Attack', icon: 'sword', pos: [1, 1] },
+      { id: 'item', label: 'Item', icon: 'bag', pos: [2, 1], disabled: this.g.usableInBattle().length === 0 },
+      { id: 'flee', label: 'Flee', icon: 'boot', pos: [1, 2], disabled: this.battle.isBoss },
+      { id: 'move', label: 'Move', icon: 'move', pos: [2, 2] },
+    ], { defaultId: 'attack' });
     this.state = 'command';
   }
 
   updateCommand(input) {
-    this.cmdMenu.handle(input);
-    if (input.tap('confirm') && !this.cmdMenu.disabled()) {
-      const id = this.cmdMenu.current.id;
+    this.cmdWheel.handle(input);
+    if (input.tap('confirm') && !this.cmdWheel.disabled()) {
+      const id = this.cmdWheel.current.id;
       if (id === 'attack') {
         const a = this.actor.stats();
         this.beginTarget({ target: 'one', range: 9 }, (t) => this.perform({ kind: 'attack', target: t }),
@@ -495,11 +497,20 @@ export class BattleScene {
     });
   }
 
-  /** The party roster, on the right: one card per member. */
+  /**
+   * The party roster, on the right: one card per member. During 'command' —
+   * the state a player actually spends time reading this in — the panel
+   * grows upward to make room for a small bust portrait per card, the same
+   * sprite the field and menu scenes already generate, cropped to head and
+   * shoulders and drawn at 2x rather than shown as plain text rows.
+   */
   drawStatusBar(scr) {
     const b = this.battle;
+    const tall = this.state === 'command';
     const px = PANEL_X, pw = W - PANEL_X - 12;
-    scr.panel(px, BAR_Y, pw, BAR_H);
+    const py = tall ? MSG_Y : BAR_Y;
+    const ph = tall ? BAR_Y + BAR_H - MSG_Y : BAR_H;
+    scr.panel(px, py, pw, ph);
     const cardW = Math.floor((pw - 16) / b.party.length);
     b.party.forEach((u, i) => {
       const x = px + 8 + i * cardW;
@@ -507,17 +518,33 @@ export class BattleScene {
       const s = u.stats();
       const active = this.actor?.uid === u.uid;
       const ratio = ch.hp / s.maxHp;
-      const y = BAR_Y + 9;
+      const y = py + 9;
       if (active) {
-        scr.rect(x - 3, y - 4, cardW - 4, BAR_H - 12, 'rgba(120,155,235,0.16)');
-        scr.rect(x - 3, y - 4, 2, BAR_H - 12, PAL.accent);
+        scr.rect(x - 3, y - 4, cardW - 4, ph - 12, 'rgba(120,155,235,0.16)');
+        scr.rect(x - 3, y - 4, 2, ph - 12, PAL.accent);
       }
-      scr.text(ch.name.slice(0, 9), x, y, !u.alive ? PAL.grey : active ? PAL.accent : PAL.text);
-      scr.text(`${ch.hp}`, x, y + 13, hpColor(ratio));
-      scr.text(`/${s.maxHp}`, x + scr.textWidth(`${ch.hp}`) + 2, y + 13, PAL.textFaint);
-      scr.bar(x, y + 25, cardW - 12, 4, ratio, hpColor(ratio));
-      scr.bar(x, y + 31, cardW - 12, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-      scr.bar(x, y + 36, cardW - 12, 3, ch.ip / 100, PAL.magenta);
+      let ty = y;
+      if (tall) {
+        const spr = actorSprite({
+          classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+          skin: ch.skin, hair: ch.hair, frame: 0,
+        });
+        // head and shoulders only — the legs add height without adding a face
+        const sy = spr.height * 0.08, sh = spr.height * 0.58;
+        const dw = Math.min(cardW - 16, sh * 0.9 * 2);
+        const dh = sh * 2;
+        scr.ctx.save();
+        if (!u.alive) scr.ctx.globalAlpha = 0.35;
+        scr.ctx.drawImage(spr, 0, sy, spr.width, sh, x + (cardW - 12 - dw) / 2, ty, dw, dh);
+        scr.ctx.restore();
+        ty += dh + 3;
+      }
+      scr.text(ch.name.slice(0, 9), x, ty, !u.alive ? PAL.grey : active ? PAL.accent : PAL.text);
+      scr.text(`${ch.hp}`, x, ty + 13, hpColor(ratio));
+      scr.text(`/${s.maxHp}`, x + scr.textWidth(`${ch.hp}`) + 2, ty + 13, PAL.textFaint);
+      scr.bar(x, ty + 25, cardW - 12, 4, ratio, hpColor(ratio));
+      scr.bar(x, ty + 31, cardW - 12, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      scr.bar(x, ty + 36, cardW - 12, 3, ch.ip / 100, PAL.magenta);
     });
   }
 
@@ -539,30 +566,41 @@ export class BattleScene {
       return;
     }
 
-    const cmdBox = (inactive) => {
-      scr.panel(12, BAR_Y, PANEL_X - 24, BAR_H, { accent: !inactive });
-      scr.text(this.actor?.name ?? '', 24, BAR_Y + 8, inactive ? PAL.textDim : PAL.accent);
+    // The compact, non-interactive wheel shown during target/move selection —
+    // just enough to remember what was chosen. The active picker below is a
+    // different, taller rendering entirely, not this box made bigger.
+    const cmdBox = () => {
+      scr.panel(12, BAR_Y, PANEL_X - 24, BAR_H);
+      scr.text(this.actor?.name ?? '', 24, BAR_Y + 8, PAL.textDim);
       scr.rect(24, BAR_Y + 18, PANEL_X - 48, 1, PAL.line);
-      this.cmdMenu.x = 34; this.cmdMenu.y = BAR_Y + 24;
-      this.cmdMenu.cellW = 62; this.cmdMenu.cellH = 13;
-      this.cmdMenu.columns = 2; this.cmdMenu.rows = 3;
-      this.cmdMenu.draw(scr, { inactive });
+      const cell = 14;
+      this.cmdWheel.cell = cell;
+      this.cmdWheel.x = 12 + (PANEL_X - 24 - 3 * cell) / 2;
+      this.cmdWheel.y = BAR_Y + 22;
+      this.cmdWheel.draw(scr, { inactive: true });
     };
 
     if (this.state === 'command') {
-      cmdBox(false);
+      // One tall panel spanning what is normally the message strip and the
+      // bar beneath it — the wheel needs the room, and HP/MP already live on
+      // this character's own card in the status panel to the right, so the
+      // header here only needs to name the actor and show IP.
+      const y0 = MSG_Y, h0 = BAR_Y + BAR_H - MSG_Y;
+      scr.panel(12, y0, PANEL_X - 24, h0, { accent: true });
       const ch = this.actor.ref;
-      const s = this.actor.stats();
-      scr.panel(12, MSG_Y, W - 24, MSG_H);
-      scr.text('IP', 24, MSG_Y + 10, PAL.magenta);
-      scr.bar(40, MSG_Y + 11, 90, 5, ch.ip / 100, PAL.magenta);
-      scr.text(`${Math.floor(ch.ip)}`, 136, MSG_Y + 10, PAL.textDim);
-      scr.text(`reach ${s.reach}`, 176, MSG_Y + 10, PAL.textDim);
-      scr.text(`column ${ch.grid.col}`, 244, MSG_Y + 10, PAL.textDim);
-      scr.text(`row ${ch.grid.row}`, 330, MSG_Y + 10, PAL.textDim);
-      scr.textRight('Z select  ·  X back', W - 24, MSG_Y + 10, PAL.textFaint);
-      scr.text(ELEMENT_BY_ID[ch.elementId].name, 24, MSG_Y + 24, ELEMENT_BY_ID[ch.elementId].color);
-      scr.text(`${ch.hp}/${s.maxHp} HP    ${ch.mp}/${s.maxMp} MP`, 100, MSG_Y + 24, PAL.textDim);
+      scr.text(this.actor.name, 24, y0 + 8, PAL.accent);
+      scr.textRight(ELEMENT_BY_ID[ch.elementId].name, PANEL_X - 36, y0 + 8, ELEMENT_BY_ID[ch.elementId].color);
+      scr.text('IP', 24, y0 + 19, PAL.magenta);
+      scr.bar(38, y0 + 20, 62, 5, ch.ip / 100, PAL.magenta);
+      scr.textRight(this.cmdWheel.current?.label ?? '', PANEL_X - 36, y0 + 19, PAL.text);
+      scr.rect(24, y0 + 29, PANEL_X - 48, 1, PAL.line);
+      const cell = 22;
+      this.cmdWheel.cell = cell;
+      this.cmdWheel.x = 12 + (PANEL_X - 24 - 3 * cell) / 2;
+      this.cmdWheel.y = y0 + 34;
+      this.cmdWheel.draw(scr);
+      // the gold border on the chosen tile already says which one is selected
+      scr.textCenter('Z select · X back', 12 + (PANEL_X - 24) / 2, y0 + h0 - 10, PAL.textFaint);
     } else if (this.state === 'skill' || this.state === 'item') {
       scr.panel(12, 104, 208, 152, { accent: true });
       scr.heading(this.state === 'skill' ? 'ARTS' : 'ITEMS', 26, 114, 180);
@@ -610,13 +648,13 @@ export class BattleScene {
             W - 24, MSG_Y + 24, ok ? PAL.green : PAL.red);
         }
       }
-      cmdBox(true);
+      cmdBox();
     } else if (this.state === 'move') {
       scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
       scr.text('REPOSITION', 24, MSG_Y + 9, PAL.accent);
       scr.text('Column 0 is the front rank: it reaches, and it is reached.', 24, MSG_Y + 24, PAL.textDim);
       scr.textRight(`row ${this.moveCursor.row}   column ${this.moveCursor.col}`, W - 24, MSG_Y + 24, PAL.text);
-      cmdBox(true);
+      cmdBox();
     }
   }
 }

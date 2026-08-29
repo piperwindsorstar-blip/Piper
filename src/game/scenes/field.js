@@ -361,6 +361,7 @@ export class FieldScene {
     const y0 = Math.max(0, Math.floor(cam.y / TS));
     const x1 = Math.min(w - 1, Math.ceil((cam.x + W) / TS));
     const y1 = Math.min(h - 1, Math.ceil((cam.y + H) / TS));
+    const theme = m.theme ?? 'green';
 
     // Two passes. Ground first for the whole view, then the masses on top of it
     // — a peak that spills into the cell above must not be painted over by that
@@ -371,13 +372,13 @@ export class FieldScene {
         if (!t) continue;
         const px = x * TS - cam.x, py = y * TS - cam.y;
         if (isOutdoor(t.tile)) {
-          scr.ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sampler(m, x, y)), px, py);
+          scr.ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sampler(m, x, y), theme), px, py);
         } else if (isStructure(t.tile)) {
           // A house stands on ground, so lay ground under it first. The building
           // itself reads as grass, but its neighbours are sampled for real, so a
           // house beside a road still gets the road running up to its wall.
           scr.ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS,
-            groundUnder(m, x, y)), px, py);
+            groundUnder(m, x, y), theme), px, py);
         } else {
           scr.ctx.drawImage(tileSprite(t.tile), px, py);
         }
@@ -391,7 +392,7 @@ export class FieldScene {
         const smp = sampler(m, x, y);
         // buildings draw over the ground, and over the cells they overhang
         if (hasStructure(smp)) {
-          scr.ctx.drawImage(buildingSprite(`${m.id}|${x}|${y}`, smp), px2, py2);
+          scr.ctx.drawImage(buildingSprite(`${m.id}|${x}|${y}`, smp, theme), px2, py2);
         }
         if (!isOutdoor(t.tile)) continue;
         const sample = smp;

@@ -68,54 +68,99 @@ export const isOutdoor = (name) => name !== null && Object.hasOwn(GROUND_OF, nam
 /**
  * Each material is a colour as a function of world position. Sampling noise
  * instead of stamping a pattern is what stops a large field from tiling.
+ *
+ * Two themes, not one: 'green' is the countryside these functions were
+ * written for, 'desert' warms and dries every material for fortress and
+ * wasteland regions — sage instead of green, ochre instead of grey road, a
+ * bleached rather than a wet-look sand. The bleed and distance-field logic
+ * above knows nothing of either; only the colour lookup changes.
  */
-const MAT = {
-  grass: (wx, wy) => {
-    const n = noise(wx, wy, 6.5);
-    const clump = noise(wx + 91, wy + 37, 17);
-    if (clump > 0.70 && n > 0.45) return '#67a557';
-    if (n > 0.63) return '#57904a';
-    if (n < 0.30) return '#365f2f';
-    if (n < 0.44) return '#3f6b37';
-    return '#4a7c40';
+const MAT_THEMES = {
+  green: {
+    grass: (wx, wy) => {
+      const n = noise(wx, wy, 6.5);
+      const clump = noise(wx + 91, wy + 37, 17);
+      if (clump > 0.70 && n > 0.45) return '#67a557';
+      if (n > 0.63) return '#57904a';
+      if (n < 0.30) return '#365f2f';
+      if (n < 0.44) return '#3f6b37';
+      return '#4a7c40';
+    },
+    sand: (wx, wy) => {
+      const n = noise(wx, wy, 7);
+      if (n > 0.68) return '#e8d5a4';
+      if (n < 0.33) return '#c4a970';
+      return '#d8bf88';
+    },
+    road: (wx, wy) => {
+      const n = noise(wx, wy, 5.5);
+      if (n > 0.72) return '#c6ae86';
+      if (n < 0.28) return '#8a7452';
+      if (n < 0.42) return '#98815d';
+      return '#a89066';
+    },
+    water: (wx, wy) => {
+      // a slow swell, with crests where two waves ride up together
+      const swell = noise(wx * 0.7, wy * 1.6, 9);
+      const fine = noise(wx + 200, wy * 2.2 + 60, 4);
+      if (swell + fine * 0.5 > 1.10) return '#6fa2d8';
+      if (swell > 0.66) return '#2f5f9c';
+      if (swell < 0.32) return '#16315c';
+      return '#20477e';
+    },
   },
-  sand: (wx, wy) => {
-    const n = noise(wx, wy, 7);
-    if (n > 0.68) return '#e8d5a4';
-    if (n < 0.33) return '#c4a970';
-    return '#d8bf88';
-  },
-  road: (wx, wy) => {
-    const n = noise(wx, wy, 5.5);
-    if (n > 0.72) return '#c6ae86';
-    if (n < 0.28) return '#8a7452';
-    if (n < 0.42) return '#98815d';
-    return '#a89066';
-  },
-  water: (wx, wy) => {
-    // a slow swell, with crests where two waves ride up together
-    const swell = noise(wx * 0.7, wy * 1.6, 9);
-    const fine = noise(wx + 200, wy * 2.2 + 60, 4);
-    if (swell + fine * 0.5 > 1.10) return '#6fa2d8';
-    if (swell > 0.66) return '#2f5f9c';
-    if (swell < 0.32) return '#16315c';
-    return '#20477e';
+  desert: {
+    grass: (wx, wy) => {
+      // sparse sage scrub over sun-baked earth, not a lawn
+      const n = noise(wx, wy, 6.5);
+      const clump = noise(wx + 91, wy + 37, 17);
+      if (clump > 0.70 && n > 0.45) return '#8c9a5c';
+      if (n > 0.63) return '#7c8a4e';
+      if (n < 0.30) return '#8a6f42';
+      if (n < 0.44) return '#96794a';
+      return '#a2854f';
+    },
+    sand: (wx, wy) => {
+      const n = noise(wx, wy, 7);
+      if (n > 0.68) return '#f2dfa8';
+      if (n < 0.33) return '#d0aa68';
+      return '#e2c384';
+    },
+    road: (wx, wy) => {
+      const n = noise(wx, wy, 5.5);
+      if (n > 0.72) return '#d8b888';
+      if (n < 0.28) return '#96794a';
+      if (n < 0.42) return '#a8875a';
+      return '#bc9c68';
+    },
+    water: (wx, wy) => {
+      // the same oasis blue, just less of the map wants to be it
+      const swell = noise(wx * 0.7, wy * 1.6, 9);
+      const fine = noise(wx + 200, wy * 2.2 + 60, 4);
+      if (swell + fine * 0.5 > 1.10) return '#7cb4c4';
+      if (swell > 0.66) return '#337c88';
+      if (swell < 0.32) return '#1a4550';
+      return '#265f6a';
+    },
   },
 };
 
 /** Sparse detail scattered over a filled material: blades, pebbles, glints. */
-function speckle(P, mat, px, py, wx, wy) {
+function speckle(P, mat, px, py, wx, wy, theme) {
   const h = hash2(wx * 3 + 11, wy * 5 + 7);
   if (mat === 'grass') {
-    if (h > 0.972) { P.px(px, py, '#7cbb63'); P.px(px, py - 1, '#8ecb70'); }
+    if (theme === 'desert') {
+      if (h > 0.978) P.px(px, py, '#c8b878');       // a dry stalk, not a blade
+      else if (h < 0.018) P.px(px, py, '#6a5230');
+    } else if (h > 0.972) { P.px(px, py, '#7cbb63'); P.px(px, py - 1, '#8ecb70'); }
     else if (h < 0.022) P.px(px, py, '#2c4e26');
   } else if (mat === 'road') {
-    if (h > 0.982) P.px(px, py, '#d8c8a8');
-    else if (h < 0.014) P.px(px, py, '#6e5c40');
+    if (h > 0.982) P.px(px, py, theme === 'desert' ? '#ecd8a4' : '#d8c8a8');
+    else if (h < 0.014) P.px(px, py, theme === 'desert' ? '#7a5f38' : '#6e5c40');
   } else if (mat === 'sand') {
-    if (h > 0.984) P.px(px, py, '#f2e4bd');
+    if (h > 0.984) P.px(px, py, theme === 'desert' ? '#fbeec0' : '#f2e4bd');
   } else if (mat === 'water') {
-    if (h > 0.9958) P.px(px, py, '#b8dcff');
+    if (h > 0.9958) P.px(px, py, theme === 'desert' ? '#c8e8ec' : '#b8dcff');
   }
 }
 
@@ -133,8 +178,9 @@ function distToCell(wx, wy, cx0, cy0) {
  * around it bleeding across a noisy boundary. Where land meets water a sand
  * beach is laid slightly proud of the land, so a shore reads as a shore.
  */
-export function groundSprite(key, wx0, wy0, sample) {
-  return make(`gnd|${key}`, TS, TS, (P) => {
+export function groundSprite(key, wx0, wy0, sample, theme = 'green') {
+  const MAT = MAT_THEMES[theme] ?? MAT_THEMES.green;
+  return make(`gnd|${theme}|${key}`, TS, TS, (P) => {
     const own = GROUND_OF[sample(0, 0)] ?? 'grass';
 
     // which higher-priority materials are around, and where
@@ -167,7 +213,7 @@ export function groundSprite(key, wx0, wy0, sample) {
           if (d < depth) mat = m;
         }
         P.px(px, py, MAT[mat](wx, wy));
-        speckle(P, mat, px, py, wx, wy);
+        speckle(P, mat, px, py, wx, wy, theme);
       }
     }
   });

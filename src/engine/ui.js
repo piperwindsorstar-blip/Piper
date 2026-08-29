@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { PAL, W, H } from './screen.js';
+import { iconSprite } from './icons.js';
 
 export class Menu {
   /**
@@ -102,6 +103,102 @@ export class Menu {
     const rx = this.x + this.cellW * this.columns - 8;
     if (this.scroll > 0) scr.text('▲', rx, this.y - 10, PAL.accentDim);
     if (end < this.items.length) scr.text('▼', rx, this.y + this.rows * this.cellH - 2, PAL.accentDim);
+  }
+}
+
+/**
+ * A cross-shaped command picker — a fixed handful of icon tiles arranged on a
+ * small grid (typically a plus with one corner filled) rather than a scrolling
+ * list. Navigation moves to the nearest item sharing the current row or
+ * column, which is what makes an irregular layout (not every grid cell holds
+ * an item) still feel like a d-pad cross instead of a maze.
+ */
+export class CommandWheel {
+  /** @param {object} o {x, y, cell} top-left and the size of one square tile */
+  constructor(o = {}) {
+    this.x = o.x ?? 0; this.y = o.y ?? 0;
+    this.cell = o.cell ?? 34;
+    this.items = [];
+    this.index = 0;
+  }
+
+  /**
+   * `items`: [{id, label, icon, pos: [col, row], disabled}]
+   * `defaultId` picks the opening selection by id (the centre command, in
+   * practice) rather than by array order, which is otherwise whatever order
+   * the caller happened to list the commands in.
+   */
+  setItems(items, { keepIndex = false, defaultId } = {}) {
+    this.items = items;
+    if (!keepIndex) {
+      let start = defaultId ? items.findIndex((it) => it.id === defaultId && !it.disabled) : -1;
+      if (start < 0) start = items.findIndex((it) => !it.disabled);
+      this.index = start < 0 ? 0 : start;
+    }
+  }
+
+  get length() { return this.items.length; }
+  get current() { return this.items[this.index]; }
+  disabled(i = this.index) { return !!this.items[i]?.disabled; }
+
+  update() {}
+
+  /** Move to whichever item shares this row (dx) or column (dy) and is nearest. */
+  move(dx, dy) {
+    const cur = this.items[this.index];
+    if (!cur) return false;
+    const [cx, cy] = cur.pos;
+    let best = -1, bestDist = Infinity;
+    this.items.forEach((it, i) => {
+      if (i === this.index) return;
+      const [x, y] = it.pos;
+      if (dx && y === cy && Math.sign(x - cx) === Math.sign(dx)) {
+        const d = Math.abs(x - cx);
+        if (d < bestDist) { bestDist = d; best = i; }
+      } else if (dy && x === cx && Math.sign(y - cy) === Math.sign(dy)) {
+        const d = Math.abs(y - cy);
+        if (d < bestDist) { bestDist = d; best = i; }
+      }
+    });
+    if (best < 0) return false;
+    this.index = best;
+    return true;
+  }
+
+  handle(input) {
+    let moved = false;
+    if (input.tap('up')) moved = this.move(0, -1) || moved;
+    if (input.tap('down')) moved = this.move(0, 1) || moved;
+    if (input.tap('left')) moved = this.move(-1, 0) || moved;
+    if (input.tap('right')) moved = this.move(1, 0) || moved;
+    return moved;
+  }
+
+  /**
+   * Icons only — a tile this small cannot hold an icon and a legible label
+   * both, and text that overflows one tile bleeds into its neighbour. The
+   * selected command's name belongs to whatever draws the wheel (see its
+   * header line in battle.js), not to the wheel itself.
+   */
+  draw(scr, opts = {}) {
+    const { cell } = this;
+    for (const it of this.items) {
+      const [col, row] = it.pos;
+      const x = this.x + col * cell, y = this.y + row * cell;
+      const sel = it === this.current && !opts.inactive;
+      const disabled = !!it.disabled;
+      const size = cell - 4;
+      scr.panel(x, y, size, size, sel
+        ? { accent: true, accentWidth: size, border: 'rgba(240,180,76,0.65)', top: 'rgba(46,58,92,0.94)' }
+        : { alpha: disabled ? 0.4 : 0.86 });
+      const icon = iconSprite(it.icon ?? 'sword');
+      const s = Math.max(0.4, (size - 4) / icon.width);
+      const iw = icon.width * s, ih = icon.height * s;
+      scr.ctx.save();
+      scr.ctx.globalAlpha = disabled ? 0.4 : 1;
+      scr.ctx.drawImage(icon, x + (size - iw) / 2, y + (size - ih) / 2, iw, ih);
+      scr.ctx.restore();
+    }
   }
 }
 

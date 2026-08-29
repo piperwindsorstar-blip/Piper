@@ -23,6 +23,7 @@ export const LEGEND = {
   's': { tile: 'stairs',   solid: false },
   'H': { tile: 'house',    solid: true },
   'R': { tile: 'roof',     solid: true },
+  'O': { tile: 'roofdome', solid: true },
   'D': { tile: 'door',     solid: true },
   'f': { tile: 'flower',   solid: false },
 };
@@ -134,7 +135,8 @@ export const MAPS = {
     encounter: null,
     rate: 0,
     town: true,
-    bg: "#181c30",
+    theme: 'desert',
+    bg: "#302418",
     tiles: [
       '^^^^^^^^^^^^^^^^^^^^^^^^^^',
       '^..f..................f..^',
@@ -149,9 +151,11 @@ export const MAPS = {
       '^..RRRRRR......RRRRRR....^',
       '^..HHDHHH......HHHDHHH...^',
       '^..HHHHHH......HHHHHH....^',
-      '^........................^',
-      '^......RRRRRRRR..........^',
-      '^......RRRRRRRR..........^',
+      '^.........O..............^',
+      // the guild hall keeps a watchtower — a domed column rising a row above
+      // the ridgeline, standing in for one of the roof's own tiles
+      '^......RRRORRRR..........^',
+      '^......RRRORRRR..........^',
       '^......HHDHHHHH..........^',
       '^......HHHHHHHH..........^',
       'T..........,,......f.....T',

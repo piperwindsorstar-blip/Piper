@@ -416,6 +416,37 @@ with scanlines that open up toward the viewer. Ranks are staggered rather than
 square, because three sprites in one column on a strict grid overlap into a totem
 pole; offsetting each row outward reads as depth.
 
+Commands are picked from a cross of six icon tiles rather than a scrolling
+text list — a plus shape with Attack at its centre, the default selection, and
+Move filling the one corner a cross leaves spare. `src/engine/icons.js` draws
+each glyph (sword, book, shield, satchel, boot, compass) the same way every
+other sprite in the engine is built: painter primitives, cached by `make()`,
+no image assets. `CommandWheel` in `src/engine/ui.js` navigates it by finding
+the nearest item that shares the current row or column, so an irregular
+five-plus-one layout still feels like a d-pad cross rather than a maze.
+
+The party's status cards grow a small bust portrait — the same `actorSprite()`
+the field and menu scenes already generate, cropped to head and shoulders —
+whenever the active command panel is on screen and has the room for one; the
+plain HP/MP/IP rows underneath are unchanged.
+
+### A second region palette
+
+Not every outdoor tile wants to look like Wren's Ford. `terrain.js`'s `MAT`
+table and `building.js`'s wall/roof palette are both keyed by a `theme` string
+now (`'green'`, the original countryside; `'desert'`, dusty and sun-baked),
+read from the map's own `theme` field the same way `field.js` already reads
+`m.town` or `m.outdoor`. Nothing about the bleed or the signed-field logic
+changes — a theme is purely a different set of colour functions plumbed
+through the same shapes.
+
+A domed watchtower rides on top of this: `roofdome` is a tile like `roof`, but
+`drawDome()` renders it as a hemisphere on a cylindrical drum rather than a
+pitch. The first attempt made the dome's cap span the tower's whole height,
+which stretches a hemisphere into a spike — a dome only reads as a dome when
+its cap height is close to its own radius, with a plain drum taking up
+whatever height is left below it.
+
 ### What static checks cannot catch
 
 Every layout bug in this project was found by screenshotting a real browser, not

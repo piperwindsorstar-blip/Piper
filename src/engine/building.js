@@ -17,21 +17,46 @@
 //  shadow on the wall below, and a shadow on the ground so they stop floating.
 // ============================================================================
 
-import { make } from './pixel.js';
+import { make, shade } from './pixel.js';
 
 export const TS = 24;
 
-const isRoof = (n) => n === 'roof';
+const isDome = (n) => n === 'roofdome';
+const isRoof = (n) => n === 'roof' || isDome(n);
 const isWall = (n) => n === 'house' || n === 'door';
 const isBuilding = (n) => isRoof(n) || isWall(n);
 
 export const isStructure = (name) => isBuilding(name);
 
-// terracotta, light to dark; the last is the keyline
-const TILE = ['#e08a62', '#c4603f', '#a4442c', '#82301f', '#511b12'];
-// plaster and its timber frame
-const WALL = ['#e8d3ad', '#d4bb90', '#b89b70', '#8d7452'];
-const BEAM = ['#7a5a38', '#5d4227'];
+/**
+ * Two regional styles, same construction. 'green' is the FF6-ish countryside
+ * cottage — terracotta tile, timber-and-plaster. 'desert' is adobe: sun-baked
+ * mud-brick walls, a flatter clay roof, and turquoise-painted trim, which is
+ * what lets a domed watchtower (drawn separately, see drawDome) sit on top of
+ * an otherwise ordinary wall without looking like it wandered in from another
+ * building style.
+ */
+const THEMES = {
+  green: {
+    // terracotta, light to dark; the last is the keyline
+    TILE: ['#e08a62', '#c4603f', '#a4442c', '#82301f', '#511b12'],
+    WALL: ['#e8d3ad', '#d4bb90', '#b89b70', '#8d7452'],
+    BEAM: ['#7a5a38', '#5d4227'],
+    GLASS: ['#3f5a86', '#6f96c8'],
+    DOME: ['#e0c468', '#c49a3e', '#96712a', '#5f4518'],
+    TRIM: '#8a5a2c',
+  },
+  desert: {
+    // sun-baked clay, light to dark
+    TILE: ['#d69a5c', '#c07f42', '#a3652e', '#7c4b1e', '#4a2c10'],
+    WALL: ['#e6c99a', '#d4b17e', '#b8905e', '#8f6a42'],
+    BEAM: ['#6b4a28', '#4a3018'],
+    GLASS: ['#2f7a82', '#5cb0b8'],
+    DOME: ['#e8b45c', '#c88f38', '#9c6a22', '#623f10'],
+    TRIM: '#2f7a82',                          // turquoise paint, the regional accent
+  },
+};
+
 const SHADOW = 'rgba(24,18,14,0.42)';
 const SOFT = 'rgba(24,18,14,0.22)';
 const CONTACT = 'rgba(20,14,10,0.55)';
@@ -48,7 +73,8 @@ function run(sample, pred, dx, dy) {
  * run down from it to an overhanging eave, so a two-row roof reads as one pitch
  * rather than as two bands of red.
  */
-function drawRoof(P, sample) {
+function drawRoof(P, sample, T) {
+  const TILE = T.TILE;
   const up = run(sample, isRoof, 0, -1);
   const down = run(sample, isRoof, 0, 1);
   const left = run(sample, isBuilding, -1, 0);
@@ -90,8 +116,59 @@ function drawRoof(P, sample) {
   }
 }
 
+/**
+ * A domed watchtower cap — a rounded silhouette rather than a pitch, the
+ * regional marker from the desert reference. Unlike the pitched roof this
+ * never spans multiple columns: a dome tops one narrow tower, so only the
+ * vertical run matters and the shape stays centred in its own TS-wide column.
+ */
+function drawDome(P, sample, T) {
+  const D = T.DOME;
+  const up = run(sample, isDome, 0, -1);
+  const down = run(sample, isDome, 0, 1);
+  const blockH = (up + 1 + down) * TS;
+  const yOff = up * TS;
+  const cx = TS / 2;
+  const r = TS / 2 - 1;
+  // A dome reads as a dome only if its cap is roughly as tall as it is wide —
+  // stretch that cap over the whole block and a hemisphere becomes a spike.
+  // The cap sits on a cylindrical drum that takes up whatever height is left,
+  // however tall the tower itself is.
+  const domeH = r * 1.15;
+
+  for (let py = 0; py < TS; py++) {
+    const by = yOff + py;
+    for (let px = 0; px < TS; px++) {
+      const dx = px - cx;
+      let col = null;
+      if (by < domeH) {
+        // a hemisphere: at height `by`, the dome's half-width shrinks toward the apex
+        const t = by / domeH;                  // 0 at apex, 1 at the springline
+        const hw = r * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t)));
+        if (Math.abs(dx) <= hw) {
+          const edge = hw - Math.abs(dx);
+          if (edge < 1.1) col = D[3];                          // outline
+          else if (dx < -hw * 0.15) col = t < 0.3 ? D[0] : D[1]; // lit face
+          else col = t < 0.5 ? D[1] : D[2];                     // shadow face
+          if (by < 2 && Math.abs(dx) < 2) col = D[3];           // finial
+        }
+      } else if (by < blockH - 3) {
+        // a short cylindrical drum below the dome
+        if (Math.abs(dx) <= r) {
+          col = dx < -r * 0.2 ? D[1] : D[2];
+          if (Math.abs(dx) > r - 1.2) col = D[3];
+        }
+      } else if (Math.abs(dx) <= r + 1) {
+        col = by >= blockH - 1 ? D[3] : D[2];   // the base lip
+      }
+      if (col) P.px(px, py, col);
+    }
+  }
+}
+
 /** Plaster wall with a timber frame, in shadow under the eaves. */
-function drawWall(P, sample, isDoor) {
+function drawWall(P, sample, isDoor, T) {
+  const WALL = T.WALL, BEAM = T.BEAM;
   const up = run(sample, isWall, 0, -1);
   const down = run(sample, isWall, 0, 1);
   const left = run(sample, isBuilding, -1, 0);
@@ -119,16 +196,17 @@ function drawWall(P, sample, isDoor) {
   // a window per wall cell, except where the door is
   if (!isDoor && yOff % TS === 0 && up === 0 && blockH > TS) {
     P.rect(8, 9, 9, 8, BEAM[1]);
-    P.rect(9, 10, 7, 6, '#3f5a86');
-    P.rect(9, 10, 7, 2, '#6f96c8');
+    P.rect(9, 10, 7, 6, T.GLASS[0]);
+    P.rect(9, 10, 7, 2, T.GLASS[1]);
     P.rect(12, 10, 1, 6, BEAM[1]);
     P.rect(9, 13, 7, 1, BEAM[1]);
+    P.rect(7, 8, 11, 1, T.TRIM);                        // painted lintel — the accent that reads regional
   }
   if (isDoor) {
     const top = up === 0 ? 6 : 0;
     P.rect(6, top, 12, TS - top, BEAM[1]);
-    P.rect(7, top + 1, 10, TS - top - 1, '#6b4622');
-    P.rect(7, top + 1, 2, TS - top - 1, '#8a6032');
+    P.rect(7, top + 1, 10, TS - top - 1, T.TRIM);            // a painted door, the regional accent
+    P.rect(7, top + 1, 2, TS - top - 1, shade(T.TRIM, 0.35));
     P.rect(14, top + 9, 2, 2, '#e8c860');
   }
 }
@@ -138,15 +216,17 @@ function drawWall(P, sample, isDoor) {
  * on both sides, and the whole structure drops a shadow down and to the right.
  * Drawn by the neighbouring cell, since a cell's canvas cannot reach outside it.
  */
-function drawCast(P, sample) {
-  // the roof's overhang, from a building one cell to the left or right
-  if (isRoof(sample(-1, 0))) {
+function drawCast(P, sample, T) {
+  const TILE = T.TILE;
+  // the roof's overhang, from a building one cell to the left or right — a
+  // dome has no sideways overhang in this model, it is drawn self-contained
+  if (sample(-1, 0) === 'roof') {
     for (let py = 0; py < TS; py++) {
       P.px(0, py, TILE[3]);
       P.px(1, py, TILE[4]);
     }
   }
-  if (isRoof(sample(1, 0))) {
+  if (sample(1, 0) === 'roof') {
     for (let py = 0; py < TS; py++) {
       P.px(TS - 1, py, TILE[3]);
       P.px(TS - 2, py, TILE[4]);
@@ -172,11 +252,13 @@ export function hasStructure(sample) {
   return isRoof(sample(-1, 0)) || isRoof(sample(1, 0)) || isBuilding(sample(0, -1));
 }
 
-export function buildingSprite(key, sample) {
-  return make(`bld|${key}`, TS, TS, (P) => {
+export function buildingSprite(key, sample, theme = 'green') {
+  const T = THEMES[theme] ?? THEMES.green;
+  return make(`bld|${theme}|${key}`, TS, TS, (P) => {
     const self = sample(0, 0);
-    if (isRoof(self)) drawRoof(P, sample);
-    else if (isWall(self)) drawWall(P, sample, self === 'door');
-    else drawCast(P, sample);
+    if (isDome(self)) drawDome(P, sample, T);
+    else if (isRoof(self)) drawRoof(P, sample, T);
+    else if (isWall(self)) drawWall(P, sample, self === 'door', T);
+    else drawCast(P, sample, T);
   });
 }
