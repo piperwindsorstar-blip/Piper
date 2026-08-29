@@ -93,6 +93,16 @@ else
   echo "  not installed"
 fi
 
+hr "dkim signing"
+SOCK=/var/spool/postfix/opendkim/opendkim.sock
+kv "milter socket" "$(yn "$SOCK")"
+kv "postfix in opendkim grp" "$(id -nG postfix 2>/dev/null | tr ' ' '\n' | grep -qx opendkim && echo yes || echo 'NO — mail goes out unsigned')"
+if [[ -S "$SOCK" ]]; then
+  kv "postfix can open it" "$(runuser -u postfix -- test -r "$SOCK" 2>/dev/null && echo yes || echo 'NO — mail goes out unsigned')"
+fi
+DKIM_WARNS="$(grep -c "opendkim.sock: Permission denied" /var/log/mail.log 2>/dev/null || echo 0)"
+kv "denied in mail.log" "$DKIM_WARNS"
+
 hr "recent errors"
 for f in /var/log/nginx/error.log /var/www/roundcube/logs/errors.log /var/log/roundcube/errors.log; do
   if [[ -s "$f" ]]; then

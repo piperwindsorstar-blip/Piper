@@ -294,6 +294,16 @@ EOF
 mkdir -p /var/spool/postfix/opendkim
 chown opendkim:postfix /var/spool/postfix/opendkim
 chmod 750 /var/spool/postfix/opendkim
+
+# Postfix has to be in the opendkim group, or none of the above matters.
+#
+# OpenDKIM runs as opendkim:opendkim and creates its socket 0660 — owned by
+# its own group, not Postfix's. Postfix, chrooted and running as user postfix,
+# then cannot open it: "connect to local:opendkim/opendkim.sock: Permission
+# denied". Because milter_default_action is accept, mail keeps flowing and
+# nothing looks broken — it just goes out unsigned, for ever, and the only
+# sign is one warning line per message in the mail log.
+gpasswd -a postfix opendkim >/dev/null 2>&1 || usermod -aG opendkim postfix
 chown -R opendkim:opendkim /etc/opendkim
 chmod 640 /etc/opendkim/key.table /etc/opendkim/signing.table /etc/opendkim/trusted.hosts
 
@@ -306,6 +316,23 @@ systemctl enable opendkim >/dev/null 2>&1 || true
 systemctl restart opendkim
 systemctl restart postfix
 note "postfix and opendkim restarted"
+
+# Prove the milter is reachable rather than assume it. Signing that silently
+# does not happen is worse than no DKIM at all: the DNS record says mail from
+# here is signed, so anything unsigned looks like a forgery.
+sleep 1
+SOCK=/var/spool/postfix/opendkim/opendkim.sock
+if [[ -S "$SOCK" ]]; then
+  if runuser -u postfix -- test -r "$SOCK" 2>/dev/null; then
+    note "postfix can reach the DKIM milter"
+  else
+    echo "    WARNING: postfix cannot open $SOCK, so mail will go out UNSIGNED." >&2
+    echo "    Check:  groups postfix   (it needs to include opendkim)" >&2
+  fi
+else
+  echo "    WARNING: opendkim did not create $SOCK — mail will go out unsigned." >&2
+  echo "    Check:  systemctl status opendkim  and  journalctl -u opendkim -n 30" >&2
+fi
 
 ###############################################################################
 # Adding a mailbox
