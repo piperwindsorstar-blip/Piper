@@ -3,7 +3,14 @@
 # Gets the webmail installer onto the mail droplet and runs it.
 #
 #   curl -fsSL https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo/deploy/mail/bootstrap.sh \
-#     | sudo PIPER_IMPORT_TOKEN=xxxx bash -s -- mail.djpynxpro.com
+#     -o /tmp/bootstrap.sh
+#   bash /tmp/bootstrap.sh mail.djpynxpro.com
+#
+# The token is optional — without it everything installs and the Piper button
+# stays hidden. With one, put the real value on the line; a placeholder in
+# angle brackets is a shell redirect, not a placeholder:
+#
+#   PIPER_IMPORT_TOKEN=realtoken bash /tmp/bootstrap.sh mail.djpynxpro.com
 #
 # The mail server is not the machine Piper runs on, so there is no checkout of
 # this repository there and nothing to run install-webmail.sh from. That script

@@ -3,7 +3,13 @@
 # Webmail for Pynx, on the mail droplet. Run as root on the box that already
 # answers for the name and already has its certificate:
 #
-#   sudo PIPER_IMPORT_TOKEN=xxxx bash install-webmail.sh mail.djpynxpro.com
+#   bash install-webmail.sh mail.djpynxpro.com
+#
+# The token is optional; without it the Piper button stays hidden. With one,
+# use the real value — PIPER_IMPORT_TOKEN=<token> is a shell redirect, not a
+# placeholder, and bash answers "No such file or directory".
+#
+#   PIPER_IMPORT_TOKEN=realtoken bash install-webmail.sh mail.djpynxpro.com
 #
 # Installs Roundcube behind nginx, and — only if the box has no mail server of
 # its own yet — a Postfix and Dovecot to read from. Adds one button to the
@@ -40,7 +46,8 @@ PIPER_FORCE_MAIL_STACK="${PIPER_FORCE_MAIL_STACK:-no}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ -z "$DOMAIN" ]]; then
-  echo "Usage: sudo PIPER_IMPORT_TOKEN=xxxx bash install-webmail.sh mail.yourdomain.com" >&2
+  echo "Usage: bash install-webmail.sh mail.yourdomain.com" >&2
+  echo "   or: PIPER_IMPORT_TOKEN=realtoken bash install-webmail.sh mail.yourdomain.com" >&2
   exit 1
 fi
 if [[ $EUID -ne 0 ]]; then
@@ -78,6 +85,34 @@ if [[ "$HAS_APT_ROUNDCUBE" == yes ]]; then
   note "/var/www/roundcube instead — one webmail, over HTTPS, with the Piper"
   note "button. Remove the other later if you want the disk back:"
   note "  sudo apt-get remove --purge roundcube roundcube-core"
+fi
+
+# Am I even on the right droplet?
+#
+# The mail server and the machine Piper runs on are two different boxes with
+# similar-looking prompts, and installing webmail on the wrong one is a mess
+# that is much easier to avoid than to undo. If the name does not point at an
+# address this machine holds, say so before touching anything. A warning
+# rather than a stop: floating IPs and NAT are real, and the certificate check
+# below will catch a genuinely wrong box anyway.
+LOCAL_IPS="$(hostname -I 2>/dev/null || true)"
+DOMAIN_IPS="$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
+ON_THIS_BOX=no
+for ip in $DOMAIN_IPS; do
+  case " $LOCAL_IPS " in *" $ip "*) ON_THIS_BOX=yes ;; esac
+done
+
+if [[ "$ON_THIS_BOX" == no && -n "$DOMAIN_IPS" ]]; then
+  cat >&2 <<EOF
+
+    Careful: $DOMAIN points at ${DOMAIN_IPS% }, and this machine's
+    addresses are ${LOCAL_IPS% }. They do not overlap.
+
+    If you meant to install webmail on the mail droplet, you may be logged
+    into the wrong box — the CRM and the mail server are two different
+    machines. Carrying on regardless; the certificate check below will stop
+    this if it really is the wrong one.
+EOF
 fi
 
 if [[ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]]; then

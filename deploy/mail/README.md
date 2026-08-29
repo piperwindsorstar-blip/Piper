@@ -7,25 +7,42 @@ made of it.
 ## Start here, on the mail droplet
 
 The mail server is **not** the machine Piper runs on, so there is no checkout
-of this repository there and nothing to run. Fetch it and go, in one command,
-over ssh to that box:
+of this repository there and nothing to run. Over ssh **to the mail droplet**,
+as root:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo/deploy/mail/bootstrap.sh \
-  | sudo PIPER_IMPORT_TOKEN=<the token> bash -s -- mail.djpynxpro.com
+curl -fsSL https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo/deploy/mail/bootstrap.sh -o /tmp/bootstrap.sh
+bash /tmp/bootstrap.sh mail.djpynxpro.com
 ```
+
+Downloaded and then run, rather than piped into a shell: you can read it
+first, and there is no pipe syntax to get wrong.
 
 That drops the installer at `/opt/piper-mail` and runs it. Re-running is safe,
 and is also how you pick up a newer version of any of this.
 
-If you would rather look before you run:
+**The token is optional.** Leave it out and everything installs; the "File in
+Piper" button simply stays hidden until one is set. To include it, put a real
+token on the same line — never a placeholder in angle brackets, because `<` is
+input redirection in a shell and bash will answer `-bash: the: No such file or
+directory`:
 
 ```
-sudo apt-get install -y git
-sudo git clone -b claude/wedding-dj-crm-sltogo \
+PIPER_IMPORT_TOKEN=paste_the_real_token_here bash /tmp/bootstrap.sh mail.djpynxpro.com
+```
+
+It lives in `/etc/piper.env` on the **CRM** droplet, not this one. Adding it
+afterwards is fine — edit
+`/var/www/roundcube/plugins/piper_report/config.inc.php` and reload PHP-FPM.
+
+If you would rather read the whole thing before running any of it:
+
+```
+apt-get install -y git
+git clone -b claude/wedding-dj-crm-sltogo \
   https://github.com/piperwindsorstar-blip/Piper.git /opt/piper
 cd /opt/piper/deploy/mail
-sudo PIPER_IMPORT_TOKEN=<the token> bash install-webmail.sh mail.djpynxpro.com
+bash install-webmail.sh mail.djpynxpro.com
 ```
 
 ## What the scripts do
