@@ -33,6 +33,42 @@ sudo piper-mailbox passwd reports@mail.djpynxpro.com
 Mailboxes are virtual: a line in `/etc/dovecot/users` and a Maildir under
 `/var/mail/vhosts`. No system account, no shell, nothing to log into but mail.
 
+### If that says `command not found`
+
+Two reasons, and they need different answers.
+
+**It is installed, but not on your PATH.** `/usr/local/sbin` is not on an
+ordinary user's PATH on Ubuntu — only root's. Use `sudo`, as above, or the
+full path:
+
+```
+ls -l /usr/local/sbin/piper-mailbox     # is it there?
+sudo /usr/local/sbin/piper-mailbox list
+```
+
+**It was never installed**, because the droplet already had a Dovecot when
+you ran the installer. In that case `install-webmail.sh` deliberately did not
+touch your mail server, and `piper-mailbox` only understands the Dovecot
+configuration *this* script writes — pointing it at somebody else's would
+write users into a file their server never reads. Check which happened:
+
+```
+sudo doveconf -n | head -40                    # whose config is running
+ls -l /etc/dovecot/conf.d/99-piper.conf        # present = Piper configured it
+```
+
+If you would rather Piper managed the mail server, hand it over explicitly:
+
+```
+sudo PIPER_FORCE_MAIL_STACK=yes bash install-webmail.sh mail.djpynxpro.com
+```
+
+That rewrites Dovecot and Postfix to the configuration described here. It
+keeps existing Maildirs, but any mailbox users your old setup knew about will
+have to be recreated with `piper-mailbox add`, because the user list moves to
+`/etc/dovecot/users`. Read that sentence twice before running it on a box
+that is already receiving mail.
+
 ## The DNS that is still missing
 
 Checked on 29 August 2026, and this is the honest state of it:

@@ -30,6 +30,11 @@ RC_DATA=/var/lib/roundcube
 PIPER_ENDPOINT="${PIPER_ENDPOINT:-https://crm.djpynxpro.com/api/reports/email}"
 PIPER_IMPORT_TOKEN="${PIPER_IMPORT_TOKEN:-}"
 
+# Set to yes to configure Postfix and Dovecot even though the box already has
+# one. Off by default: a box that is delivering mail today should keep
+# delivering it, and finding that out afterwards is not the way.
+PIPER_FORCE_MAIL_STACK="${PIPER_FORCE_MAIL_STACK:-no}"
+
 # The directory this script was run from, so the plugin next to it is found
 # whether the repo was cloned to /srv/piper or to somebody's home directory.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -337,11 +342,19 @@ note "nginx reloaded"
 # 8. A mail server to read from, if there is not one already
 ###############################################################################
 
-if [[ "$HAS_DOVECOT" == yes && "$MAIL_STACK_IS_OURS" == no ]]; then
+if [[ "$HAS_DOVECOT" == yes && "$MAIL_STACK_IS_OURS" == no && "$PIPER_FORCE_MAIL_STACK" != yes ]]; then
   say "Leaving the existing mail server alone"
   note "Dovecot is already configured here and this script did not configure it,"
   note "so it is not touched. Roundcube expects IMAP on localhost:143 and"
   note "submission on localhost:587 — adjust config/config.inc.php if yours differ."
+  note ""
+  note "This also means piper-mailbox is NOT installed: it only understands the"
+  note "Dovecot configuration this script writes, and pointing it at somebody"
+  note "else's would write users into a file their server never reads."
+  note "Add mailboxes the way this box already does."
+  note ""
+  note "To hand mail over to Piper's configuration instead, re-run with:"
+  note "  sudo PIPER_FORCE_MAIL_STACK=yes bash install-webmail.sh $DOMAIN"
 else
   bash "$HERE/install-mail-stack.sh" "$DOMAIN"
 fi
@@ -350,15 +363,36 @@ fi
 # 9. What is left to do
 ###############################################################################
 
-cat <<EOF
+echo ""
+echo "------------------------------------------------------------------------"
+echo "Webmail is at https://$DOMAIN"
+echo ""
 
-------------------------------------------------------------------------
-Webmail is at https://$DOMAIN
-
+# Checked, not assumed. Telling somebody to run a command that is not there is
+# how a working install reads as a broken one.
+if command -v piper-mailbox >/dev/null 2>&1; then
+  cat <<EOF
 Add a mailbox before you can sign in:
 
   sudo piper-mailbox add reports@$DOMAIN
 
+Use sudo, or the full path. /usr/local/sbin is not on an ordinary user's PATH
+on Ubuntu, so typing piper-mailbox on its own answers "command not found" even
+though it is installed:
+
+  /usr/local/sbin/piper-mailbox list
+
+EOF
+else
+  cat <<EOF
+Mailboxes are managed by the mail server that was already on this box, so
+piper-mailbox was not installed. Add one the way you normally do here, then
+sign in to webmail with it.
+
+EOF
+fi
+
+cat <<EOF
 Still worth doing, and none of it is optional if this box is going to send
 mail anywhere that Gmail or Outlook will accept:
 
