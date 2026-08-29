@@ -16,6 +16,7 @@ import { getItem } from '../../data/items.js';
 import { stats, canPromote } from '../character.js';
 import { getJob } from '../../data/jobs.js';
 import { rng } from '../../engine/rng.js';
+import { STORY } from '../../data/story.js';
 
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -40,6 +41,13 @@ export class FieldScene {
     if (opts.message) this.dlg.say(opts.message);
     // returning from a battle we won on a boss tile
     if (opts.afterBossFlag) this.g.setFlag(opts.afterBossFlag);
+    if (!this.g.flag('story.intro') && this.g.mapId === 'wren') {
+      this.g.setFlag('story.intro');
+      for (const line of STORY.intro) this.dlg.say(line);
+    } else if (this.g.flag('boss.thirteenth') && !this.g.flag('story.epilogue')) {
+      this.g.setFlag('story.epilogue');
+      for (const line of STORY.epilogue) this.dlg.say(line);
+    }
   }
 
   get map() { return this.g.map; }
@@ -264,9 +272,37 @@ export class FieldScene {
         this.dlg.say(npc.text, npc.name);
         this.dlg.say('(Open the party menu with C or TAB for Formation, Jobs and the class ladder.)');
         break;
+      case 'recruit': {
+        const flag = `story.recruited.${npc.id}`;
+        if (this.g.flag(flag)) { this.dlg.say(npc.text, npc.name); break; }
+        this.choice = {
+          title: `${npc.name}: "${npc.hook}"`,
+          options: ['Recruit', 'Not yet'],
+          onPick: (i) => {
+            if (i !== 0) { this.dlg.say('"The offer stands, whenever you\'re ready."', npc.name); return; }
+            const ch = this.g.addMember(npc.recruit);
+            this.g.setFlag(flag);
+            if (ch) this.dlg.say(`${ch.name} joins the party.`);
+            else this.dlg.say('The roster has no room left.');
+          },
+        };
+        break;
+      }
       default:
-        this.dlg.say(npc.text, npc.name);
+        this.dlg.say(this.reactionLine(npc), npc.name);
     }
+  }
+
+  /** An NPC's normal line, unless a `reactions` entry for an already-set
+   *  boss flag names a different one — the minimal version of conditional
+   *  dialogue this project needs, not a full branching-dialogue system. */
+  reactionLine(npc) {
+    if (npc.reactions) {
+      for (const [flag, text] of Object.entries(npc.reactions)) {
+        if (this.g.flag(`boss.${flag}`)) return text;
+      }
+    }
+    return npc.text;
   }
 
   reviveCost() {
@@ -421,7 +457,7 @@ export class FieldScene {
     for (const n of m.npcs ?? []) {
       const px = n.x * TS - cam.x, py = n.y * TS - cam.y;
       if (px < -TS || py < -TS || px > W || py > H) continue;
-      drawNpc(scr, px, py, n, this.animT);
+      drawNpc(scr, px, py, n, this.animT, this.g);
     }
 
     // boss markers
@@ -531,14 +567,18 @@ const groundUnder = (m, x, y) => (dx, dy) => {
   return isStructure(t) ? 'grass' : t;
 };
 
-function drawNpc(scr, x, y, npc, t) {
+function drawNpc(scr, x, y, npc, t, g) {
   // a slow two-frame idle, offset per NPC so a street does not breathe in unison
   const frame = Math.floor(t * 1.6 + npc.x * 0.7 + npc.y * 0.3) % 2;
   const cv = npcSprite(npc.kind, (npc.x + npc.y) % 4, frame);
   scr.ctx.drawImage(cv, Math.round(x + (TS - cv.width) / 2), Math.round(y + TS - cv.height));
-  // a small marker over service NPCs
-  if (npc.kind !== 'talk') {
-    const g = { shop: '$', inn: 'Z', temple: '+', guild: '!' }[npc.kind] ?? '';
-    scr.text(g, x + 6, y - 7 + Math.round(Math.sin(t * 3)), PAL.gold);
+  // a small marker over service NPCs, or a still-recruitable ally
+  if (npc.kind === 'recruit') {
+    if (!g.flag(`story.recruited.${npc.id}`)) {
+      scr.text('*', x + 6, y - 7 + Math.round(Math.sin(t * 3)), PAL.accent);
+    }
+  } else if (npc.kind !== 'talk') {
+    const gm = { shop: '$', inn: 'Z', temple: '+', guild: '!' }[npc.kind] ?? '';
+    scr.text(gm, x + 6, y - 7 + Math.round(Math.sin(t * 3)), PAL.gold);
   }
 }

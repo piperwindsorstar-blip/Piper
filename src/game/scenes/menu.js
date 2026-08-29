@@ -62,6 +62,8 @@ export class MenuScene {
     this.equipSlot = 0;
     this.formCursor = { row: 1, col: 0 };
     this.formPicked = null;
+    this.formSide = 'grid';
+    this.benchCursor = 0;
   }
 
   say(m) { this.msg = m; this.msgT = 2.6; }
@@ -251,6 +253,23 @@ export class MenuScene {
 
   // --- formation -------------------------------------------------------------
   updateFormation(input) {
+    // MENU toggles focus between the grid and the bench, unless a member is
+    // already held (finish placing them first, don't strand the pick).
+    if (input.tap('menu') && !this.formPicked) {
+      this.formSide = this.formSide === 'bench' ? 'grid' : 'bench';
+      this.benchCursor = 0;
+      return;
+    }
+    if (this.formSide === 'bench') {
+      const bench = this.g.benched();
+      const d = input.dir();
+      if (d.y && bench.length) this.benchCursor = (this.benchCursor + d.y + bench.length) % bench.length;
+      if (input.tap('confirm') && bench.length) {
+        this.formPicked = bench[this.benchCursor];
+        this.formSide = 'grid';
+      }
+      return;
+    }
     const d = input.dir();
     if (d.y) this.formCursor.row = Math.max(0, Math.min(2, this.formCursor.row + d.y));
     if (d.x) this.formCursor.col = Math.max(0, Math.min(2, this.formCursor.col + d.x));
@@ -258,9 +277,15 @@ export class MenuScene {
       const here = this.g.party.find((c) => c.grid.row === this.formCursor.row && c.grid.col === this.formCursor.col);
       if (this.formPicked) {
         const a = this.formPicked;
-        const ag = { ...a.grid };
-        a.grid.row = this.formCursor.row; a.grid.col = this.formCursor.col;
-        if (here && here !== a) { here.grid.row = ag.row; here.grid.col = ag.col; }
+        if (!this.g.party.includes(a)) {
+          // a bench pick: bring them into the active party at this cell
+          const ok = this.g.benchInto(a.id, this.formCursor.row, this.formCursor.col);
+          this.say(ok ? `${a.name} joins the formation.` : 'The party is full.');
+        } else {
+          const ag = { ...a.grid };
+          a.grid.row = this.formCursor.row; a.grid.col = this.formCursor.col;
+          if (here && here !== a) { here.grid.row = ag.row; here.grid.col = ag.col; }
+        }
         this.formPicked = null;
       } else if (here) {
         this.formPicked = here;
@@ -550,6 +575,7 @@ export class MenuScene {
     scr.textRight('column 0 is the front rank', IX + IW, TOP + 10, PAL.textDim);
     scr.rect(IX, TOP + 22, IW, 1, PAL.line);
 
+    const gridActive = this.formSide !== 'bench';
     const ox = IX + 30, oy = TOP + 46, cw = 56, chh = 50;
     for (let c = 0; c < 3; c++) {
       scr.textCenter(`col ${c}`, ox + c * cw + 24, oy - 12, c === 0 ? PAL.accent : PAL.textFaint);
@@ -557,7 +583,7 @@ export class MenuScene {
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
         const x = ox + c * cw, y = oy + r * chh;
-        const sel = this.formCursor.row === r && this.formCursor.col === c;
+        const sel = gridActive && this.formCursor.row === r && this.formCursor.col === c;
         scr.rect(x, y, cw - 6, chh - 6, c === 0 ? 'rgba(40,58,110,0.55)'
           : c === 1 ? 'rgba(28,38,72,0.5)' : 'rgba(20,26,50,0.45)');
         scr.outline(x, y, cw - 6, chh - 6, sel ? PAL.accent : 'rgba(150,175,235,0.16)');
@@ -591,8 +617,30 @@ export class MenuScene {
     } else {
       scr.text('Empty cell', x, TOP + 46, PAL.textFaint);
     }
-    scr.textRight(this.formPicked ? 'Z place / swap' : 'Z pick   ·   SHIFT auto',
-      IX + IW, TOP + BODY_H - 22, PAL.textFaint);
+
+    // --- the bench: everyone recruited but not currently fighting ----------
+    const bench = this.g.benched();
+    const by = TOP + 138;
+    scr.text(`BENCH (${bench.length})`, x, by, this.formSide === 'bench' ? PAL.accent : PAL.textDim);
+    scr.rect(x, by + 12, CW - 16, 1, PAL.line);
+    if (!bench.length) {
+      scr.text('Nobody waiting.', x, by + 20, PAL.textFaint);
+    } else {
+      bench.slice(0, 4).forEach((ch, i) => {
+        const sel = this.formSide === 'bench' && this.benchCursor === i;
+        const y = by + 20 + i * 13;
+        if (sel) scr.rect(x - 4, y - 2, CW - 8, 12, 'rgba(120,155,235,0.16)');
+        const heldByThis = this.formPicked === ch;
+        scr.text(ch.name.slice(0, 14), x, y, heldByThis ? PAL.accent : sel ? PAL.text : PAL.textDim);
+      });
+    }
+
+    if (this.formPicked && !this.g.party.includes(this.formPicked)) {
+      scr.textRight(`Holding ${this.formPicked.name} · Z to place`, IX + IW, TOP + BODY_H - 22, PAL.accent);
+    } else {
+      scr.textRight(this.formPicked ? 'Z place / swap'
+        : 'Z pick · SHIFT auto · MENU bench', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
+    }
   }
 
   // --- jobs ------------------------------------------------------------------

@@ -10,11 +10,13 @@ import { getJob } from '../data/jobs.js';
 import { saveGame, loadGame } from '../engine/save.js';
 
 export const MAX_PARTY = 4;
+export const MAX_ROSTER = 24;
 export const BASE_CARRY = 30;
 
 export class GameState {
   constructor() {
-    this.party = [];
+    this.roster = [];               // everyone ever recruited (superset of party)
+    this.party = [];                // the active battle formation, up to MAX_PARTY
     this.gold = 200;
     this.inventory = [];            // [{id, count}]
     this.flags = {};                // world flags: opened chests, defeated bosses
@@ -34,12 +36,45 @@ export class GameState {
   get leader() { return this.party[0]; }
 
   // --- party ---------------------------------------------------------------
+  /**
+   * Adds a new character to the roster, and to the active battle party too
+   * while there's room (so creation's initial members behave exactly as
+   * before). A recruit met after the party is full joins the roster on the
+   * bench, swappable in later via `benchSwap` — this is what lets the
+   * roster grow well past the 4-wide battle formation without touching
+   * combat balance or layout.
+   */
   addMember(spec) {
-    if (this.party.length >= MAX_PARTY) return null;
+    if (this.roster.length >= MAX_ROSTER) return null;
     const ch = createCharacter(spec);
-    this.party.push(ch);
-    this.autoFormation();
+    this.roster.push(ch);
+    if (this.party.length < MAX_PARTY) {
+      this.party.push(ch);
+      this.autoFormation();
+    }
     return ch;
+  }
+
+  /** Roster members not currently in the active battle party. */
+  benched() { return this.roster.filter((c) => !this.party.includes(c)); }
+
+  /** Bring a benched roster member into the active party at a grid cell —
+   *  swapping out whoever's there, or taking a free slot if the party
+   *  isn't full and the cell is empty. The DQ3-tavern-swap equivalent. */
+  benchInto(benchedId, row, col) {
+    const benched = this.roster.find((c) => c.id === benchedId);
+    if (!benched || this.party.includes(benched)) return false;
+    const occIdx = this.party.findIndex((c) => c.grid.row === row && c.grid.col === col);
+    if (occIdx >= 0) {
+      benched.grid = { ...this.party[occIdx].grid };
+      this.party[occIdx] = benched;
+    } else if (this.party.length < MAX_PARTY) {
+      benched.grid = { row, col };
+      this.party.push(benched);
+    } else {
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -213,13 +248,14 @@ export class GameState {
   // --- serialisation -------------------------------------------------------
   toJSON() {
     return {
-      party: this.party.map((c) => ({
+      roster: this.roster.map((c) => ({
         id: c.id, name: c.name, classId: c.classId, raceId: c.raceId,
         elementId: c.elementId, jobId: c.jobId,
         level: c.level, exp: c.exp, acc: c.acc, jobExp: c.jobExp, equip: c.equip,
         grid: c.grid, ip: c.ip, statuses: c.statuses, hp: c.hp, mp: c.mp,
         classHistory: c.classHistory, skin: c.skin, hair: c.hair, alive: c.hp > 0,
       })),
+      partyIds: this.party.map((c) => c.id),
       gold: this.gold,
       inventory: this.inventory,
       flags: this.flags,
@@ -235,7 +271,10 @@ export class GameState {
 
   static fromJSON(d) {
     const g = new GameState();
-    g.party = (d.party ?? []).map((c) => {
+    // pre-roster saves only ever had `party` (everyone was active, since
+    // MAX_PARTY was the only cap) — treat that as the roster too
+    const rosterData = d.roster ?? d.party ?? [];
+    g.roster = rosterData.map((c) => {
       const ch = createCharacter({
         id: c.id, name: c.name, classId: c.classId, raceId: c.raceId ?? 'human',
         elementId: c.elementId, jobId: c.jobId, skin: c.skin, hair: c.hair,
@@ -254,6 +293,9 @@ export class GameState {
       clampVitals(ch);
       return ch;
     });
+    g.party = d.partyIds
+      ? d.partyIds.map((id) => g.roster.find((c) => c.id === id)).filter(Boolean)
+      : g.roster.slice(0, MAX_PARTY);
     g.gold = d.gold ?? 0;
     g.inventory = d.inventory ?? [];
     g.flags = d.flags ?? {};
