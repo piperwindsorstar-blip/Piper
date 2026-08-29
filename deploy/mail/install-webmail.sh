@@ -62,10 +62,23 @@ command -v postfix >/dev/null 2>&1 && HAS_POSTFIX=yes
 command -v dovecot >/dev/null 2>&1 && HAS_DOVECOT=yes
 [[ -f /etc/dovecot/conf.d/99-piper.conf ]] && MAIL_STACK_IS_OURS=yes
 
+HAS_APT_ROUNDCUBE=no
+dpkg-query -W -f='${Status}' roundcube-core 2>/dev/null | grep -q "^install ok installed" && HAS_APT_ROUNDCUBE=yes
+
 note "nginx      : $(command -v nginx >/dev/null && nginx -v 2>&1 | cut -d/ -f2 || echo 'not installed')"
 note "postfix    : $HAS_POSTFIX"
 note "dovecot    : $HAS_DOVECOT"
+note "roundcube  : $([[ "$HAS_APT_ROUNDCUBE" == yes ]] && echo 'an apt package is installed' || echo 'none from apt')"
 note "certificate: $([[ -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]] && echo present || echo MISSING)"
+
+if [[ "$HAS_APT_ROUNDCUBE" == yes ]]; then
+  note ""
+  note "There is already a Roundcube from apt on this box. It is left installed"
+  note "and its data untouched, but after this run nginx serves the copy under"
+  note "/var/www/roundcube instead — one webmail, over HTTPS, with the Piper"
+  note "button. Remove the other later if you want the disk back:"
+  note "  sudo apt-get remove --purge roundcube roundcube-core"
+fi
 
 if [[ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]]; then
   cat >&2 <<EOF
@@ -362,6 +375,40 @@ fi
 ###############################################################################
 # 9. What is left to do
 ###############################################################################
+
+###############################################################################
+# 9a. Check its own work
+###############################################################################
+
+say "Checking it actually answers"
+
+# Asked over the network, against the real name and the real certificate,
+# because "nginx reloaded without complaining" and "webmail loads" are not the
+# same claim. A run that ends by announcing an address nobody has fetched is
+# how a box ends up serving a login form over plain HTTP for a week.
+SELF_HTTPS="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://$DOMAIN/" 2>/dev/null)" || true
+SELF_HTTP="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "http://$DOMAIN/" 2>/dev/null)" || true
+
+note "https://$DOMAIN/  -> $SELF_HTTPS"
+note "http://$DOMAIN/   -> $SELF_HTTP (301 expected: it redirects to https)"
+
+if [[ "$SELF_HTTPS" != "200" ]]; then
+  cat >&2 <<EOF
+
+    HTTPS did not answer with 200, so do not sign in yet — a login form on
+    plain HTTP sends the mailbox password across the network in the clear.
+
+    Worth looking at, in this order:
+      sudo nginx -t
+      sudo ss -lntp | grep -E ':(80|443)'
+      sudo tail -30 /var/log/nginx/error.log
+      sudo tail -30 $RC_DIR/logs/errors.log
+
+    An "Internal Error" page from Roundcube with a 500 is almost always its
+    database: check that $RC_DATA/roundcube.db exists and is owned by
+    www-data.
+EOF
+fi
 
 echo ""
 echo "------------------------------------------------------------------------"
