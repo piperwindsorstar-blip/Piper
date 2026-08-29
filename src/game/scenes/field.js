@@ -85,7 +85,14 @@ export class FieldScene {
     if (this.choice) return this.updateChoice(input);
 
     if (this.dlg.active) {
-      if (input.tap('confirm') || input.tap('cancel')) this.dlg.skipOrAdvance();
+      if (input.tap('confirm') || input.tap('cancel')) {
+        const emptied = this.dlg.skipOrAdvance();
+        if (emptied && this.pendingBoss) {
+          const boss = this.pendingBoss;
+          this.pendingBoss = null;
+          this.app.push('battle', { formationId: boss.formation, bossFlag: boss.flag });
+        }
+      }
       return;
     }
 
@@ -148,7 +155,6 @@ export class FieldScene {
       }
       this.dlg.say(boss.intro);
       this.pendingBoss = boss;
-      this.dlg.queue.push({ text: '__BOSS__', speaker: null });
       return;
     }
 
