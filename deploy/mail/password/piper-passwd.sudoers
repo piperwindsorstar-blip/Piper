@@ -1,0 +1,7 @@
+# Roundcube may ask piper-passwd to change a password, and nothing else.
+#
+# Installed at /etc/sudoers.d/piper-passwd, mode 440. The helper takes no
+# arguments — everything arrives on stdin — so there is no argument pattern to
+# get wrong here, and nothing a caller can append to widen what it does.
+www-data ALL=(root) NOPASSWD: /usr/local/sbin/piper-passwd
+Defaults!/usr/local/sbin/piper-passwd !requiretty

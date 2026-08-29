@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#
+# Changes one mailbox password, for the person who already knows it.
+#
+# Called by Roundcube through sudo. Reads three lines on stdin — username,
+# current password, new password — and writes nothing anywhere unless the
+# current password checks out against Dovecot first.
+#
+# That check is the whole point of this file existing. Roundcube's stock
+# passwd-file driver writes /etc/dovecot/users directly, which means giving
+# the web server write access to every mailbox hash on the box: anything that
+# can run code as www-data could then lock every user out and take their mail.
+# Here www-data can only ask for a change it can already prove it is entitled
+# to make, and the file stays root-owned.
+#
+# Never takes a password as an argument. Arguments are visible in ps to every
+# user on the machine; stdin is not.
+
+set -euo pipefail
+
+USERS=/etc/dovecot/users
+umask 077
+
+fail() { echo "$1" >&2; exit 1; }
+
+[[ $EUID -eq 0 ]] || fail "piper-passwd must run as root"
+
+IFS= read -r username || fail "no username on stdin"
+IFS= read -r currpass || fail "no current password on stdin"
+IFS= read -r newpass  || fail "no new password on stdin"
+
+[[ -n "$username" && "$username" == *@* ]] || fail "not an address: $username"
+# A colon or a newline in the username would let somebody write an extra field,
+# or an extra line, into the passwd file.
+[[ "$username" != *:* ]] || fail "illegal character in username"
+[[ ${#newpass} -ge 10 ]] || fail "new password must be at least 10 characters"
+
+cut -d: -f1 "$USERS" 2>/dev/null | grep -qxF "$username" || fail "no such mailbox"
+
+# Dovecot decides whether the current password is right, because Dovecot owns
+# what a correct password means — the scheme, the salt, all of it.
+#
+# The exit status is NOT the answer. "doveadm auth test" exits 0 whether the
+# password was accepted or rejected; only the words differ. Trusting $? here
+# would accept every password ever offered, which is the exact opposite of
+# what this file is for. Verified against a running Dovecot.
+result="$(doveadm auth test -- "$username" "$currpass" 2>&1 || true)"
+grep -q "auth succeeded" <<<"$result" || fail "current password is wrong"
+
+hash="$(doveadm pw -s ARGON2ID -p "$newpass")"
+[[ -n "$hash" ]] || fail "could not hash the new password"
+
+# Written to a temporary file in the same directory and moved into place, so a
+# crash halfway cannot leave a truncated user list — which would lock out
+# everybody whose line had not been written yet.
+tmp="$(mktemp "${USERS}.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+awk -F: -v u="$username" '$1 != u' "$USERS" > "$tmp"
+printf '%s:%s\n' "$username" "$hash" >> "$tmp"
+
+chown root:dovecot "$tmp"
+chmod 640 "$tmp"
+mv -f "$tmp" "$USERS"
+trap - EXIT
+
+# Make Dovecot notice, rather than waiting for it to.
+#
+# The passwd-file backend caches the file and reloads it when the mtime
+# changes — compared to the second, not finer. Two changes inside one second
+# therefore leave the second one unseen, and the superseded password keeps
+# authenticating: reproduced here, accepted in two runs out of three. That also
+# means this script's own current-password check can be answered from a stale
+# copy. A reload after every write costs nothing measurable, drops no
+# connections, and made it three rejections out of three.
+doveadm reload 2>/dev/null || true
+
+logger -t piper-passwd "password changed for $username" 2>/dev/null || true
+echo "ok"

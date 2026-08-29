@@ -126,6 +126,37 @@ have to be recreated with `piper-mailbox add`, because the user list moves to
 `/etc/dovecot/users`. Read that sentence twice before running it on a box
 that is already receiving mail.
 
+## Changing your own password
+
+**Settings → Password**, in webmail. Asks for the current one, wants at least
+ten characters for the new one.
+
+Roundcube ships a driver that writes `/etc/dovecot/users` itself. That works,
+and it means the web server can rewrite every mailbox hash on the box — so
+anything able to run code as `www-data` owns all the mail on it, permanently.
+Instead:
+
+- `/usr/local/sbin/piper-passwd` does the write as root and is the only thing
+  `www-data` may call through sudo. It takes no arguments; the username and
+  both passwords arrive on stdin, because arguments are visible in `ps` to
+  every user on the machine.
+- It re-checks the current password against Dovecot before writing anything,
+  so `www-data` can only ask for a change it can already prove it is entitled
+  to make.
+- `/etc/dovecot/users` stays owned by `root:dovecot`, mode 640.
+
+Two things that testing caught and reading would not have:
+
+- **`doveadm auth test` exits 0 whether the password was right or wrong.**
+  Only the words differ. Trusting the exit status would have accepted every
+  password ever offered — the exact opposite of the point. The helper matches
+  on `auth succeeded`.
+- **Dovecot caches the passwd file and notices changes only to the second.**
+  Two changes inside one second left the second unseen, and the superseded
+  password still authenticated — reproduced, accepted in two runs out of
+  three. The helper now reloads Dovecot after writing, which made it three
+  rejections out of three.
+
 ## The DNS that is still missing
 
 Checked on 29 August 2026, and this is the honest state of it:

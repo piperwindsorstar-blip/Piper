@@ -224,11 +224,39 @@ if [[ ! -f "$RC_DIR/config/config.inc.php" ]]; then
 \$config['mail_domain'] = '$DOMAIN';
 
 // Sensible for a small team that lives in this all day.
-\$config['plugins'] = ['archive', 'zipdownload', 'newmail_notifier', 'piper_report'];
+\$config['plugins'] = ['archive', 'zipdownload', 'newmail_notifier', 'markasjunk', 'password', 'piper_report'];
 \$config['skin'] = 'elastic';
-\$config['message_show_email'] = true;
 \$config['prefer_html'] = true;
 \$config['session_lifetime'] = 480;
+
+// Read like an inbox, not like a file listing.
+//
+// Three columns — folders, messages, the message itself — which is the shape
+// every mail client has settled on and the one nobody has to be taught. The
+// rest is what stops it feeling like a database front end: threads so a reply
+// sits under what it replies to, a check often enough that new mail turns up
+// without a refresh, and a sender column that shows who it is from rather
+// than only their address.
+\$config['layout'] = 'widescreen';
+\$config['default_list_mode'] = 'threads';
+\$config['autoexpand_threads'] = 2;
+\$config['message_show_email'] = false;
+\$config['mail_pagesize'] = 50;
+\$config['refresh_interval'] = 60;
+\$config['check_all_folders'] = false;
+
+// A message counts as read once it has been open for two seconds, so clicking
+// down a list to find something does not silently mark six things read.
+\$config['mail_read_time'] = 2;
+
+\$config['list_cols'] = ['subject', 'status', 'fromto', 'date', 'flag', 'attachment'];
+\$config['message_sort_col'] = 'date';
+\$config['message_sort_order'] = 'DESC';
+
+// Reply under the quoted text, which is what everyone outside of mailing
+// lists expects, and keeps the signature with the reply.
+\$config['reply_mode'] = 1;
+\$config['sig_below'] = false;
 
 // Sent mail should be on the server, not only in the browser that sent it.
 \$config['default_folders'] = ['INBOX', 'Drafts', 'Sent', 'Junk', 'Trash'];
@@ -301,6 +329,53 @@ if [[ -d "$HERE/piper_report" ]]; then
   fi
 else
   note "plugin source not found next to this script — skipping the button"
+fi
+
+###############################################################################
+# 5b. Changing your own password
+###############################################################################
+
+say "Setting up password changing"
+
+# Roundcube ships a driver that writes /etc/dovecot/users itself. It works, and
+# it means the web server can rewrite every mailbox hash on the box — so
+# anything that runs code as www-data owns all the mail, permanently. Instead a
+# small helper does the write as root, and only after Dovecot confirms the
+# current password, so www-data can only ask for changes it can already prove
+# it is entitled to make.
+if [[ -d "$HERE/password" ]]; then
+  install -m 755 -o root -g root "$HERE/password/piper-passwd" /usr/local/sbin/piper-passwd
+  install -m 644 -o root -g root "$HERE/password/piper_dovecot.php" \
+    "$RC_DIR/plugins/password/drivers/piper_dovecot.php"
+
+  install -m 440 -o root -g root "$HERE/password/piper-passwd.sudoers" /etc/sudoers.d/piper-passwd
+  # A bad sudoers file locks sudo out of the whole machine, so it is checked
+  # and removed again rather than left in place broken.
+  if ! visudo -cf /etc/sudoers.d/piper-passwd >/dev/null 2>&1; then
+    rm -f /etc/sudoers.d/piper-passwd
+    echo "    the sudoers rule did not validate and was removed — password changing is off" >&2
+  fi
+
+  cat > "$RC_DIR/plugins/password/config.inc.php" <<'EOF'
+<?php
+
+// Written by install-webmail.sh.
+$config['password_driver'] = 'piper_dovecot';
+$config['password_piper_cmd'] = 'sudo -n /usr/local/sbin/piper-passwd';
+
+// The plugin asks for the current password, and piper-passwd checks it again
+// against Dovecot before writing. Twice on purpose: the first is a courtesy to
+// the person typing, the second is the one that is actually load-bearing,
+// because only it runs as root.
+$config['password_confirm_current'] = true;
+$config['password_minimum_length'] = 10;
+$config['password_log'] = true;
+EOF
+  chown root:www-data "$RC_DIR/plugins/password/config.inc.php"
+  chmod 640 "$RC_DIR/plugins/password/config.inc.php"
+  note "Settings -> Password will change the mailbox password"
+else
+  note "password helper not found next to this script — skipping"
 fi
 
 ###############################################################################
