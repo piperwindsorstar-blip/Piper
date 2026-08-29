@@ -158,7 +158,8 @@ export function groundSprite(key, wx0, wy0, sample) {
         const wx = wx0 + px, wy = wy0 + py;
         let mat = own;
         // the boundary wobbles a few pixels, continuously across seams
-        const depth = 6.4 + (noise(wx, wy, 8) - 0.5) * 7.5;
+        const depth = 6.4 + (noise(wx, wy, 8) - 0.5) * 7.5
+          + (noise(wx + 500, wy + 90, 26) - 0.5) * 7;
         for (const m of higher) {
           let d = Infinity;
           for (const [cx, cy] of around.get(m)) d = Math.min(d, distToCell(wx, wy, cx, cy));

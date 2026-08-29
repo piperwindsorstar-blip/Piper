@@ -6,6 +6,7 @@ import { PAL, W, H } from '../../engine/screen.js';
 import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
 import { tileSprite, actorSprite, npcSprite, TS } from '../../engine/sprites.js';
 import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terrain.js';
+import { buildingSprite, hasStructure, isStructure } from '../../engine/building.js';
 import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS,
@@ -371,6 +372,12 @@ export class FieldScene {
         const px = x * TS - cam.x, py = y * TS - cam.y;
         if (isOutdoor(t.tile)) {
           scr.ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sampler(m, x, y)), px, py);
+        } else if (isStructure(t.tile)) {
+          // A house stands on ground, so lay ground under it first. The building
+          // itself reads as grass, but its neighbours are sampled for real, so a
+          // house beside a road still gets the road running up to its wall.
+          scr.ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS,
+            groundUnder(m, x, y)), px, py);
         } else {
           scr.ctx.drawImage(tileSprite(t.tile), px, py);
         }
@@ -379,8 +386,15 @@ export class FieldScene {
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const t = tileAt(m, x, y);
-        if (!t || !isOutdoor(t.tile)) continue;
-        const sample = sampler(m, x, y);
+        if (!t) continue;
+        const px2 = x * TS - cam.x, py2 = y * TS - cam.y;
+        const smp = sampler(m, x, y);
+        // buildings draw over the ground, and over the cells they overhang
+        if (hasStructure(smp)) {
+          scr.ctx.drawImage(buildingSprite(`${m.id}|${x}|${y}`, smp), px2, py2);
+        }
+        if (!isOutdoor(t.tile)) continue;
+        const sample = smp;
         const px = x * TS - cam.x, py = y * TS - cam.y;
         if (hasMass(sample)) {
           scr.ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sample), px, py);
@@ -503,6 +517,12 @@ const FEATURE = new Set(['town', 'cave', 'bridge', 'flower']);
  * what it borders, which is the whole reason boundaries can curve.
  */
 const sampler = (m, x, y) => (dx, dy) => tileAt(m, x + dx, y + dy)?.tile ?? null;
+
+/** The same, but with building cells reading as the ground they were built on. */
+const groundUnder = (m, x, y) => (dx, dy) => {
+  const t = tileAt(m, x + dx, y + dy)?.tile ?? null;
+  return isStructure(t) ? 'grass' : t;
+};
 
 function drawNpc(scr, x, y, npc, t) {
   // a slow two-frame idle, offset per NPC so a street does not breathe in unison

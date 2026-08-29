@@ -12,6 +12,7 @@ export { actorSprite, npcSprite, AW, AH, NW, NH } from './actor.js';
 export { monsterSprite, MW, MH } from './monsters.js';
 export { tileSprite, TILE_NAMES, TILE_DRAW, TS } from './tiles.js';
 export { groundSprite, massSprite, hasMass, isOutdoor } from './terrain.js';
+export { buildingSprite, hasStructure, isStructure } from './building.js';
 
 import { actorSprite } from './actor.js';
 
