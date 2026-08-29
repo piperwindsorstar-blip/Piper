@@ -137,12 +137,34 @@ say "Installing packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 
-# php-imap is the one people forget; without it Roundcube starts, accepts a
-# password, and then says "connection to storage server failed" forever.
+# Deliberately NOT php-imap.
+#
+# It is the package everyone adds for a webmail client and Roundcube does not
+# use it: there is not one call to imap_* anywhere in the tree, because
+# Roundcube speaks IMAP over sockets itself. Asking for it is not merely
+# redundant — PHP 8.4 moved IMAP out of core to PECL, so on a box with a
+# modern PHP the request is unsatisfiable and apt refuses the whole
+# transaction with "held broken packages", taking the packages that *are*
+# needed down with it.
+#
+# This list is what docs/INSTALL.md actually asks for: PCRE, DOM, JSON,
+# Session, Sockets, OpenSSL, Mbstring, Filter, Ctype, Intl, and PDO with a
+# driver. Most are built into php-cli; these are the ones that are not.
 apt-get install -y -qq \
-  nginx php-fpm php-cli php-imap php-mbstring php-xml php-intl \
+  nginx php-fpm php-cli php-mbstring php-xml php-intl \
   php-zip php-sqlite3 php-curl php-gd php-bcmath \
   curl ca-certificates rsync >/dev/null
+
+# Said out loud rather than discovered at the login screen: a missing
+# extension here is a blank page later.
+MISSING=""
+for ext in pcre dom json session sockets openssl mbstring filter ctype intl pdo_sqlite; do
+  php -m 2>/dev/null | grep -qix "$ext" || MISSING="$MISSING $ext"
+done
+if [[ -n "$MISSING" ]]; then
+  echo "    PHP is missing extensions Roundcube needs:$MISSING" >&2
+  exit 1
+fi
 
 PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
 note "php $PHP_VER"
