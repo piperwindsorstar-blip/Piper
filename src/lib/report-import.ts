@@ -101,6 +101,21 @@ export function importReports(inputs: ReportInput[]): ImportResult {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
+  /*
+   * Why a second query for the rows that did not insert.
+   *
+   * INSERT OR IGNORE swallows every constraint, not just the unique one —
+   * a bad rating or an out-of-range manifest is skipped just as quietly as a
+   * report that was already filed. Both arrive here as changes === 0, and
+   * calling them all duplicates is how a report can be dropped on the floor
+   * while the caller is told everything is fine. So when nothing changed, ask
+   * whether the row is actually there: present means duplicate, absent means
+   * refused, and refused gets said out loud.
+   */
+  const existing = db().prepare(
+    "SELECT 1 FROM crew_reports WHERE kind = ? AND job_norm = ? AND sent_at = ?",
+  );
+
   const run = db().transaction(() => {
     inputs.forEach((input, index) => {
       const sentAt = normalizeSentAt(input.sentAt);
@@ -137,8 +152,15 @@ export function importReports(inputs: ReportInput[]): ImportResult {
         resolveVenue(input.venue),
       );
 
-      if (info.changes === 0) result.duplicates += 1;
-      else {
+      if (info.changes === 0) {
+        if (existing.get(input.kind, jobNorm, sentAt)) result.duplicates += 1;
+        else {
+          result.rejected.push({
+            index,
+            reason: `job ${input.job} was refused by the database — a value is out of range`,
+          });
+        }
+      } else {
         result.inserted += 1;
         if (isTest) result.tests += 1;
       }

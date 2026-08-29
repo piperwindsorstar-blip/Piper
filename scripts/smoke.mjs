@@ -1381,6 +1381,12 @@ await reportDj.ctx.close();
       await ops.page.click('button:has-text("Send it out")');
       await ops.page.waitForTimeout(1100);
     }
+    // Counted on the week the bookings are actually in. day(3) crosses into
+    // next month for the last days of one, and the default view is this week —
+    // so the three vans were out exactly as asked and simply off-screen, which
+    // read as a failure for the last three days of every month.
+    await ops.page.goto(`${BASE}/dispatch?week=${dayOne}&view=week`);
+    await ops.page.waitForTimeout(1200);
     const three = await ops.page.locator(`.run-bar:has-text("Hire 3 ${stamp}")`).count();
     check("three of a hired class can be out at once", three === 1, `${three} found`);
 
@@ -2195,6 +2201,30 @@ await reportDj.ctx.close();
     return d.toISOString().slice(0, 10);
   };
 
+  /*
+   * Hires that have to be *drawn* are dated by month, not by "a few days from now".
+   *
+   * The chart is one calendar month wide. A hire booked from today+2 to today+6
+   * is clipped to a single square whenever the suite runs near the end of a
+   * month, so the block-width and overlap checks failed for the last week of
+   * every month while the product was behaving perfectly correctly. Anchoring
+   * to a whole month instead removes the calendar from the result: next month
+   * always has at least 28 days and is always in the future, and last month is
+   * always entirely in the past, which is what "overdue" needs.
+   */
+  const monthStart = (delta) => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + delta, 1));
+  };
+  const inMonth = (delta, dayOfMonth) => {
+    const m = monthStart(delta);
+    return `${m.getUTCFullYear()}-${String(m.getUTCMonth() + 1).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+  };
+  const soon = (d) => inMonth(1, d);
+  const past = (d) => inMonth(-1, d);
+  const soonView = `${BASE}/rentals?at=${soon(1)}`;
+  const pastView = `${BASE}/rentals?at=${past(1)}`;
+
   await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1200);
   check(
@@ -2293,9 +2323,13 @@ await reportDj.ctx.close();
   await ops.page.locator('.gantt-dialog button[aria-label="Close"]').click();
   await ops.page.waitForTimeout(400);
 
+  // Next month's view, where a five-day hire fits whatever today's date is.
+  await ops.page.goto(soonView);
+  await ops.page.waitForTimeout(1400);
+
   await hire({
     track: 0, cell: 4, item: `Console ${stamp}`, qty: 2, state: "out",
-    from: day(2), to: day(6), job: `26-${stamp % 10000}`,
+    from: soon(3), to: soon(7), job: `26-${stamp % 10000}`,
   });
   await ops.page.reload();
   await ops.page.waitForTimeout(1400);
@@ -2324,7 +2358,7 @@ await reportDj.ctx.close();
       const to = await ops.page.inputValue(".gantt-dialog #ends_on");
       await ops.page.locator('.gantt-dialog button[aria-label="Close"]').click();
       await ops.page.waitForTimeout(400);
-      return from === day(2) && to === day(6);
+      return from === soon(3) && to === soon(7);
     })(),
   );
 
@@ -2337,13 +2371,13 @@ await reportDj.ctx.close();
   );
   await hire({
     track: 1, cell: 5, item: `Switcher ${stamp}`, state: "booked",
-    from: day(3), to: day(8),
+    from: soon(4), to: soon(9),
   });
   await ops.page.reload();
   await ops.page.waitForTimeout(1400);
-  // Both blocks drawn, in their own colours, rather than an exact day count:
-  // the second hire runs to day+8, which lands in the next month whenever the
-  // suite runs late in one, and a block clipped by the window is correct.
+  // Both blocks drawn, in their own colours, and overlapping on days 4 to 7 —
+  // which is the point: two hires from one place at the same time need two
+  // tracks, and the row has to grow a third so a third hire can still start.
   const labels = (await row.locator(".rental-block").allTextContents()).join(" | ");
   check(
     "two hires from one place can overlap",
@@ -2355,20 +2389,29 @@ await reportDj.ctx.close();
   );
   check("and the row grows another spare", (await row.locator(".gantt-track").count()) === 3);
 
-  // Overdue: due back before today, and nobody has said it is back.
+  // Overdue: due back before today, and nobody has said it is back. Dated in
+  // last month so it is in the past on the 1st as surely as on the 31st.
   await hire({
     track: 2, cell: 1, item: `Late ${stamp}`, state: "out",
-    from: day(-9), to: day(-3),
+    from: past(10), to: past(16),
   });
+
+  // The banner is about today, not about the window, so it shows on any view.
   await ops.page.goto(`${BASE}/rentals`);
   await ops.page.waitForTimeout(1400);
   let body = await ops.page.textContent("body");
   check("a hire past its due-back date is flagged", body.includes("past due back"));
   check("and the flag names it", body.includes(`Late ${stamp}`));
+
+  // The block is only on the chart of the month it was held in.
+  await ops.page.goto(pastView);
+  await ops.page.waitForTimeout(1400);
   check(
     "the block is marked late as well",
     (await ops.page.locator(".rental-block.rental-overdue").count()) > 0,
   );
+  await ops.page.goto(`${BASE}/rentals`);
+  await ops.page.waitForTimeout(1400);
 
   await ops.page
     .locator(`li:has-text("Late ${stamp}") button:has-text("Back with them")`)
@@ -2382,6 +2425,8 @@ await reportDj.ctx.close();
     "marking it back clears the flag",
     banner === 0 || !(await ops.page.locator(".alert-warn").first().textContent()).includes(`Late ${stamp}`),
   );
+  await ops.page.goto(pastView);
+  await ops.page.waitForTimeout(1400);
   check(
     "and the block turns returned rather than vanishing",
     (await ops.page.locator(".rental-block.rental-returned").count()) > 0,
@@ -2887,6 +2932,120 @@ await reportDj.ctx.close();
     await ops.page.waitForTimeout(1400);
   }
   check("the suite puts the order back", (await titles()).join("|") === before.join("|"), (await titles()).join(" | "));
+  await ops.ctx.close();
+}
+
+/* ---------- 34. filing a forwarded crew report ---------- */
+{
+  const ops = await signIn("owner@piper.test");
+
+  /*
+   * The date is built fresh on every run, so the first paste always files and
+   * the second is always a duplicate. A fixed date would file once and then
+   * report "already filed" for the rest of the suite's life, which would make
+   * the check pass without measuring anything.
+   *
+   * Written in Gmail's rendering — "Mon, Aug 24, 2026 at 12:20 PM" — because
+   * that is what a person actually forwards, and the " at " is exactly what a
+   * naive Date() gives up on.
+   */
+  const now = new Date();
+  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const h24 = now.getUTCHours();
+  const gmailDate =
+    `${DAYS[now.getUTCDay()]}, ${MONTHS[now.getUTCMonth()]} ${now.getUTCDate()}, ` +
+    `${now.getUTCFullYear()} at ${((h24 % 12) || 12)}:${String(now.getUTCMinutes()).padStart(2, "0")}` +
+    `:${String(now.getUTCSeconds()).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
+
+  // Job 00-xxxx so every run lands in Test Entries rather than the real stats.
+  const forward = [
+    "---------- Forwarded message ---------",
+    "From: PYNX Forms <forms@example.test>",
+    `Date: ${gmailDate}`,
+    "Subject: Warehouse Report Crew Manager Report",
+    "To: <office@piper.test>",
+    "",
+    " Warehouse Report Crew Manager Report # PYNX MANAGER REPORT",
+    "",
+    "| |",
+    "| Type of Event |",
+    "| Warehouse Report |",
+    "| Job # |",
+    "| 00-9142 |",
+    "| Quality of crew return |",
+    "| 4 - Very Good - Above expectations, minor issues only |",
+    "| Was the manifest signed? |",
+    "| No |",
+    "| List any missing items after the return: |",
+    "| 1x Stage Bug (02571) |",
+    "| Attach Picture |",
+    "",
+    "| * 20260824_125911.jpg[](https://example.test/index.php?gf-download=x) |",
+  ].join("\n");
+
+  await ops.page.goto(`${BASE}/reports`);
+  await ops.page.waitForTimeout(900);
+  check(
+    "the reports tabs offer forwarding one",
+    await ops.page.locator('a[href="/reports/forward"]').count() > 0,
+  );
+
+  const paste = async (text) => {
+    await ops.page.goto(`${BASE}/reports/forward`);
+    await ops.page.waitForTimeout(900);
+    await ops.page.locator('textarea[name="raw"]').fill(text);
+    await ops.page.locator('button:has-text("File this report")').click();
+    await ops.page.waitForTimeout(1600);
+  };
+
+  await paste("Hi Martin, are we still on for Tuesday next week?");
+  check(
+    "something that is not a report is refused",
+    ((await ops.page.locator(".alert-error").textContent()) ?? "").includes("doesn't look like a crew report"),
+    (await ops.page.locator(".alert-error").textContent())?.slice(0, 80),
+  );
+
+  await paste(forward.split("\n").filter((l) => !l.startsWith("Date:")).join("\n"));
+  check(
+    "a forward with its date stripped is refused",
+    ((await ops.page.locator(".alert-error").textContent()) ?? "").includes("No date in the forwarded headers"),
+    (await ops.page.locator(".alert-error").textContent())?.slice(0, 80),
+  );
+
+  await paste(forward);
+  const filed = (await ops.page.locator(".alert-ok").textContent()) ?? "";
+  check("a forwarded warehouse report files", filed.includes("00-9142"), filed.slice(0, 90));
+
+  // What it read, shown back — a wrong job number should be visible now rather
+  // than discovered in the stats a month later.
+  const readBack = (await ops.page.locator(".shop-list").textContent()) ?? "";
+  check(
+    "it shows back the answers it recognised",
+    readBack.includes("Manifest signed") && readBack.includes("Return quality"),
+    readBack.slice(0, 120),
+  );
+
+  /*
+   * The check today's bug would have failed.
+   *
+   * The form writes "4 - Very Good" and "No"; the table holds 4 and 'no'. When
+   * the raw strings went in uncoerced, INSERT OR IGNORE dropped the row on a
+   * CHECK constraint, the importer read changes === 0 as "already filed", and
+   * the page said so — cheerfully, having saved nothing. So the banner is not
+   * evidence: go and look for the row.
+   */
+  await ops.page.goto(`${BASE}/reports/test`);
+  await ops.page.waitForTimeout(1000);
+  check(
+    "the report is really in the table, not just announced",
+    ((await ops.page.locator("table").textContent()) ?? "").includes("00-9142"),
+  );
+
+  await paste(forward);
+  const again = (await ops.page.locator(".alert-ok").textContent()) ?? "";
+  check("filing the same forward twice does not duplicate it", again.includes("Already filed"), again.slice(0, 90));
+
   await ops.ctx.close();
 }
 

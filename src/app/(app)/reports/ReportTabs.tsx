@@ -11,6 +11,7 @@ const TABS = [
   { href: "/reports/quality", label: "Quality" },
   { href: "/reports/aliases", label: "Aliases" },
   { href: "/reports/test", label: "Test Entries" },
+  { href: "/reports/forward", label: "Forward a report" },
 ];
 
 export default function ReportTabs() {
