@@ -287,10 +287,20 @@ group('MAPS');
   report('every warp is walkable on both sides', bad.length === 0, [...new Set(bad)].join(','));
 }
 {
-  // flood fill: nothing placed on a map may be walled off from its entrance
+  // flood fill: nothing placed on a map may be walled off from its entrance.
+  // A town's entrance is wherever another map's warp actually lands you —
+  // not a fixed point, since not every town shares Wren's Ford's layout.
+  const entranceTo = (id) => {
+    for (const other of Object.values(MAPS)) {
+      const wp = (other.warps ?? []).find((w) => w.to === id);
+      if (wp) return [wp.tx, wp.ty];
+    }
+    return null;
+  };
   const bad = [];
   for (const m of Object.values(MAPS)) {
-    const entry = m.id === 'world' ? [9, 18] : m.town ? [12, 18] : [m.warps[0].x, m.warps[0].y];
+    const entry = m.id === 'world' ? [9, 18]
+      : m.town ? (entranceTo(m.id) ?? [12, 18]) : [m.warps[0].x, m.warps[0].y];
     const { w, h } = mapSize(m);
     const seen = new Set();
     const q = [entry];
