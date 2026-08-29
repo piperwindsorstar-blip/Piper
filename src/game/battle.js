@@ -145,6 +145,18 @@ export class Battle {
     if (!this.formation) throw new Error(`unknown formation: ${formationId}`);
     this.isBoss = !!this.formation.boss;
     this.party = party.filter(Boolean).map((c) => pcUnit(c, this));
+    // Front-rank wipe (the Lufia: The Legend Returns rule): losing every
+    // unit that STARTED in the front column is instant defeat, even with a
+    // healthy back line. Snapshotted once here rather than recomputed live,
+    // since frontColumn() slides back automatically as the front dies —
+    // recomputing it live would make this condition unreachable.
+    const startFrontCol = this.party.length ? Math.min(...this.party.map((u) => u.grid.col)) : 0;
+    const startFront = this.party.filter((u) => u.grid.col === startFrontCol);
+    // Only a fully-staffed front rank (all 3 rows) carries the instant-loss
+    // risk — with a 4-person party, 1-2 members caught forward of the rest
+    // is just how formations shake out, not the "held the line and broke"
+    // moment the rule is meant to punish.
+    this.frontRankUids = startFront.length >= 3 ? startFront.map((u) => u.uid) : [];
 
     // name duplicate enemies "Slime A", "Slime B"
     const counts = {};
@@ -313,6 +325,14 @@ export class Battle {
   checkEnd() {
     if (!this.livingEnemies().length) { this.phase = PHASE.VICTORY; this.result = 'victory'; }
     else if (!this.livingParty().length) { this.phase = PHASE.DEFEAT; this.result = 'defeat'; }
+    else if (!this.result && this.frontRankUids.length
+      && this.frontRankUids.every((uid) => !this.party.find((u) => u.uid === uid)?.alive)) {
+      // front-rank wipe: instant defeat even with a healthy back line
+      this.phase = PHASE.DEFEAT;
+      this.result = 'defeat';
+      this.defeatReason = 'front-rank';
+      this.say('The front line has fallen — the party breaks.');
+    }
     return this.phase;
   }
 
