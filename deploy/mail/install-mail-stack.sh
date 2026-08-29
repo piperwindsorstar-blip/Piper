@@ -316,7 +316,8 @@ cat > /usr/local/sbin/piper-mailbox <<'HELPER'
 #
 # Mailboxes, one line at a time.
 #
-#   piper-mailbox add reports@mail.djpynxpro.com
+#   piper-mailbox add reports@mail.djpynxpro.com            # asks for a password
+#   piper-mailbox add reports@mail.djpynxpro.com --generate # makes one up, prints it once
 #   piper-mailbox passwd reports@mail.djpynxpro.com
 #   piper-mailbox list
 #   piper-mailbox remove reports@mail.djpynxpro.com
@@ -328,54 +329,117 @@ if [[ $EUID -ne 0 ]]; then echo "Run this with sudo." >&2; exit 1; fi
 
 cmd="${1:-}"
 addr="${2:-}"
+opt="${3:-}"
+
+# Exact, whole-field, fixed-string. An address is full of regex metacharacters
+# — the dots alone match anything — so "^$addr:" would report a.b@x.com as
+# already existing because of axb@x.com.
+mailbox_exists() {
+  cut -d: -f1 "$USERS" 2>/dev/null | grep -qxF "$1"
+}
 
 # ARGON2ID, matching the scheme the passdb declares. A hash written under one
 # scheme and read under another is a password that is simply always wrong.
-hash_for() {
+hash_of() { doveadm pw -s ARGON2ID -p "$1"; }
+
+ask_password() {
   local pw pw2
-  read -rsp "Password for $1: " pw; echo
-  read -rsp "Again: " pw2; echo
+  read -rsp "Password for $1: " pw; echo >&2
+  read -rsp "Again: " pw2; echo >&2
   [[ "$pw" == "$pw2" ]] || { echo "They do not match." >&2; exit 1; }
   [[ ${#pw} -ge 10 ]] || { echo "Use at least 10 characters — this mailbox faces the internet." >&2; exit 1; }
-  doveadm pw -s ARGON2ID -p "$pw"
+  printf '%s' "$pw"
+}
+
+# Straight from the kernel, no shuffling of a small alphabet by hand. Only
+# characters that survive being pasted into a phone's mail settings, and no
+# 0/O/1/l/I to misread off a screen.
+#
+# pipefail is off for this one pipeline, in a subshell so it stays off for
+# nothing else: head closes the pipe after twenty bytes, tr dies of SIGPIPE
+# with status 141, and pipefail promotes that to a failure of the whole
+# substitution — which under set -e killed the script silently, printing
+# neither a password nor an error.
+make_password() {
+  ( set +o pipefail; LC_ALL=C tr -dc 'A-HJ-NP-Za-km-z2-9' < /dev/urandom | head -c 20 )
+}
+
+replace_line() {
+  local a="$1" line="$2" tmp
+  tmp="$(mktemp)"; trap 'rm -f "$tmp"' RETURN
+  awk -F: -v a="$a" '$1 != a' "$USERS" > "$tmp" 2>/dev/null || true
+  printf '%s\n' "$line" >> "$tmp"
+  cat "$tmp" > "$USERS"
 }
 
 case "$cmd" in
   add)
     [[ -n "$addr" ]] || { echo "Which address?" >&2; exit 1; }
-    grep -q "^$addr:" "$USERS" 2>/dev/null && { echo "$addr already exists. Use: piper-mailbox passwd $addr" >&2; exit 1; }
-    h="$(hash_for "$addr")"
-    echo "$addr:$h" >> "$USERS"
+    [[ "$addr" == *@* ]] || { echo "That is not an address: $addr" >&2; exit 1; }
+    mailbox_exists "$addr" && { echo "$addr already exists. Use: piper-mailbox passwd $addr" >&2; exit 1; }
+
+    if [[ "$opt" == "--generate" ]]; then
+      pw="$(make_password)"
+      generated=yes
+    else
+      pw="$(ask_password "$addr")"
+      generated=no
+    fi
+
+    printf '%s:%s\n' "$addr" "$(hash_of "$pw")" >> "$USERS"
+    chown root:dovecot "$USERS"; chmod 640 "$USERS"
+
     # Dovecot creates the Maildir on first delivery, but making it now means a
     # brand new mailbox can be signed into before anybody has written to it.
     d="/var/mail/vhosts/${addr#*@}/${addr%@*}"
     mkdir -p "$d"; chown -R vmail:vmail "$d"; chmod -R 700 "$d"
-    echo "Added $addr"
+
+    echo ""
+    echo "  Mailbox : $addr"
+    if [[ "$generated" == yes ]]; then
+      echo "  Password: $pw"
+      echo ""
+      echo "  Written down nowhere else. Put it in a password manager now —"
+      echo "  only the hash is kept, so this cannot be read back later."
+    fi
+    echo ""
+    echo "  Sign in at https://${addr#*@}/ with the full address as the username."
     ;;
+
   passwd)
     [[ -n "$addr" ]] || { echo "Which address?" >&2; exit 1; }
-    grep -q "^$addr:" "$USERS" || { echo "No such mailbox: $addr" >&2; exit 1; }
-    h="$(hash_for "$addr")"
-    tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
-    grep -v "^$addr:" "$USERS" > "$tmp"
-    echo "$addr:$h" >> "$tmp"
-    cat "$tmp" > "$USERS"
+    mailbox_exists "$addr" || { echo "No such mailbox: $addr" >&2; exit 1; }
+
+    if [[ "$opt" == "--generate" ]]; then
+      pw="$(make_password)"
+      echo ""
+      echo "  New password for $addr: $pw"
+      echo ""
+    else
+      pw="$(ask_password "$addr")"
+    fi
+    replace_line "$addr" "$addr:$(hash_of "$pw")"
+    chown root:dovecot "$USERS"; chmod 640 "$USERS"
     echo "Changed the password for $addr"
     ;;
+
   list)
-    cut -d: -f1 "$USERS" 2>/dev/null || true
+    if [[ -s "$USERS" ]]; then cut -d: -f1 "$USERS"; else echo "No mailboxes yet."; fi
     ;;
+
   remove)
     [[ -n "$addr" ]] || { echo "Which address?" >&2; exit 1; }
+    mailbox_exists "$addr" || { echo "No such mailbox: $addr" >&2; exit 1; }
     tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
-    grep -v "^$addr:" "$USERS" > "$tmp" || true
+    awk -F: -v a="$addr" '$1 != a' "$USERS" > "$tmp"
     cat "$tmp" > "$USERS"
     echo "Removed $addr from the user list."
     echo "Its mail is still on disk at /var/mail/vhosts/${addr#*@}/${addr%@*}"
     echo "— delete that yourself once you are sure."
     ;;
+
   *)
-    echo "Usage: piper-mailbox {add|passwd|list|remove} address@domain" >&2
+    echo "Usage: piper-mailbox {add|passwd|list|remove} address@domain [--generate]" >&2
     exit 1
     ;;
 esac

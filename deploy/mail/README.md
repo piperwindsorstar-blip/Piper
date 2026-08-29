@@ -62,10 +62,16 @@ Roundcube: bump `RC_VERSION` and `RC_SHA256` at the top and run it again. Your
 Nobody can sign in until there is somebody to sign in as.
 
 ```
-sudo piper-mailbox add reports@mail.djpynxpro.com
-sudo piper-mailbox list
-sudo piper-mailbox passwd reports@mail.djpynxpro.com
+piper-mailbox add martin@mail.djpynxpro.com --generate
+piper-mailbox list
+piper-mailbox passwd martin@mail.djpynxpro.com --generate
+piper-mailbox remove martin@mail.djpynxpro.com
 ```
+
+`--generate` makes a twenty-character password, prints it once and keeps only
+the hash — so it cannot be read back later. Leave the flag off to be asked for
+one instead. Either way the username to sign in with is the **full address**,
+not the part before the @.
 
 Mailboxes are virtual: a line in `/etc/dovecot/users` and a Maildir under
 `/var/mail/vhosts`. No system account, no shell, nothing to log into but mail.
