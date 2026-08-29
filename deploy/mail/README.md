@@ -45,6 +45,20 @@ cd /opt/piper/deploy/mail
 bash install-webmail.sh mail.djpynxpro.com
 ```
 
+## When something is wrong
+
+One read-only command that reports the whole state of the box — what is
+installed, what is listening, which nginx site owns the name, whether the
+certificate is there, what the last errors were:
+
+```
+curl -fsSL https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo/deploy/mail/doctor.sh -o /tmp/doctor.sh
+bash /tmp/doctor.sh mail.djpynxpro.com
+```
+
+It changes nothing, starts nothing and stops nothing, so it is safe on a live
+box. Paste its output rather than guessing which file to look at next.
+
 ## What the scripts do
 
 `install-webmail.sh` installs Roundcube, PHP-FPM, the nginx site and the
