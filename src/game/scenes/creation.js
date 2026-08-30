@@ -9,7 +9,7 @@
 //  are actually buying.
 // ============================================================================
 
-import { PAL, W, H } from '../../engine/screen.js';
+import { PAL, W, H, drawFit } from '../../engine/screen.js';
 import { Menu, header } from '../../engine/ui.js';
 import { ROOT_CLASSES, CLASSES, STAT_KEYS, PROMOTION_LEVELS } from '../../data/classes.js';
 import { ELEMENTS, ELEMENT_BY_ID } from '../../data/elements.js';
@@ -17,6 +17,7 @@ import { JOBS, JOB_BY_ID } from '../../data/jobs.js';
 import { RACES, RACE_BY_ID } from '../../data/races.js';
 import { SCHOOLS } from '../../data/skills.js';
 import { actorSprite } from '../../engine/sprites.js';
+import { racePortrait, classPortrait } from '../../data/portraits.js';
 import { GameState, STARTING_PARTY } from '../state.js';
 
 const NAME_ROWS = [
@@ -43,6 +44,7 @@ const CW = Math.floor((PW - 14) / 2); // detail column width
 const PANEL_Y = 38;
 const STRIP_H = 40;
 const PANEL_H = H - PANEL_Y - STRIP_H - 16;
+const PORTRAIT_H = 74;  // illustrated race/class art, shown above the list column
 
 export class CreationScene {
   constructor(app) { this.app = app; }
@@ -66,9 +68,12 @@ export class CreationScene {
   }
 
   buildMenus() {
-    const list = (items) => new Menu({ items, x: LX + 18, y: PANEL_Y + 14, cellW: LW - 30, cellH: 12, rows: 13 });
-    this.raceMenu = list(RACES.map((r) => ({ label: r.name, id: r.id })));
-    this.classMenu = list(ROOT_CLASSES.map((c) => ({ label: c.name, id: c.id })));
+    const list = (items, y = PANEL_Y + 14, rows = 13) =>
+      new Menu({ items, x: LX + 18, y, cellW: LW - 30, cellH: 12, rows });
+    // race/class each get an illustrated portrait above their list, so their
+    // lists start lower and show fewer rows at once — Menu already scrolls.
+    this.raceMenu = list(RACES.map((r) => ({ label: r.name, id: r.id })), PANEL_Y + 14 + PORTRAIT_H, 7);
+    this.classMenu = list(ROOT_CLASSES.map((c) => ({ label: c.name, id: c.id })), PANEL_Y + 14 + PORTRAIT_H, 7);
     this.elemMenu = list(ELEMENTS.map((e) => ({ label: e.name, id: e.id, color: e.color })));
     // Twenty jobs in two columns put "Cartographer" on top of "Locksmith" —
     // the list column is not wide enough to halve. One scrolling column instead.
@@ -238,6 +243,12 @@ export class CreationScene {
 
     // list column
     scr.panel(LX, PANEL_Y, LW, PANEL_H, { accent: true });
+    if (this.stage === 'race' || this.stage === 'class') {
+      const menu = this.menuFor(this.stage);
+      const img = this.stage === 'race' ? racePortrait(menu.current?.id) : classPortrait(menu.current?.id);
+      drawFit(scr, LX + 6, PANEL_Y + 6, LW - 12, PORTRAIT_H - 4, img);
+      scr.rect(LX + 4, PANEL_Y + PORTRAIT_H + 4, LW - 8, 1, 'rgba(150,175,235,0.16)');
+    }
     this.menuFor(this.stage).draw(scr);
 
     switch (this.stage) {

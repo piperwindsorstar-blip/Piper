@@ -8,9 +8,10 @@
 //  tree, marks the path actually walked, and names the branch still ahead.
 // ============================================================================
 
-import { PAL, W, H } from '../../engine/screen.js';
+import { PAL, W, H, drawFit } from '../../engine/screen.js';
 import { Menu, header, hpColor, statRow } from '../../engine/ui.js';
 import { actorSprite } from '../../engine/sprites.js';
+import { racePortrait } from '../../data/portraits.js';
 import {
   stats, knownSkills, upcomingSkills, jobInfo, jobProgress, equipItem, unequipSlot,
   promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL, trainStat, TRAIN_COST,
@@ -44,6 +45,7 @@ const BX = 110, BW = W - BX - 12;          // body panel
 const TOP = 34, BODY_H = H - TOP - 32;
 const IX = BX + 14, IW = BW - 28;         // body inner
 const CW = Math.floor((IW - 16) / 2);     // two-column width
+const HEAD_PORTRAIT_W = 40, HEAD_PORTRAIT_H = 38; // illustrated race art in charHeader
 
 export class MenuScene {
   constructor(app) { this.app = app; }
@@ -415,12 +417,17 @@ export class MenuScene {
     const cls = CLASSES[ch.classId];
     const el = ELEMENT_BY_ID[ch.elementId];
     const race = raceInfo(ch);
-    const cv = actorSprite({
-      classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-      skin: ch.skin, hair: ch.hair, frame: 0,
-    });
+    const portrait = racePortrait(ch.raceId);
     scr.light(IX + 20, TOP + 32, 28, el.color, 0.16);
-    scr.ctx.drawImage(cv, IX, TOP + 6);
+    if (portrait) {
+      drawFit(scr, IX, TOP + 5, HEAD_PORTRAIT_W, HEAD_PORTRAIT_H, portrait);
+    } else {
+      const cv = actorSprite({
+        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+        skin: ch.skin, hair: ch.hair, frame: 0,
+      });
+      scr.ctx.drawImage(cv, IX, TOP + 6);
+    }
     scr.text(ch.name, IX + 44, TOP + 8, PAL.accent);
     scr.text(`Lv ${ch.level}   ${race.name} ${cls.name}`, IX + 44, TOP + 22, PAL.text);
     scr.rect(IX + 44, TOP + 36, 4, 6, el.color);
