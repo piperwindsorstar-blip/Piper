@@ -197,6 +197,11 @@ EXP, and spent from the party menu's Train page to permanently raise a
 stat — the same growth accumulator levelling already writes to, so it
 composes with race, element, job and equipment for free.
 
+Every smithy, pedlar, inn, temple and guildhall in every town is a real
+room you walk into through its door, not a facade with an NPC standing in
+front of it — the same warp mechanic that moves you between town and
+overworld, reused for a doorway instead of a map edge.
+
 ---
 
 ## Layout

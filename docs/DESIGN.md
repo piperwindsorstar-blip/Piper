@@ -558,3 +558,47 @@ same operation `grantLevels()` performs, so a trained stat composes with
 race, element, job and equipment through the exact same `stats()` call
 everything else goes through. The party menu's Train page is the only new
 code; the stat system underneath it is the one that was already there.
+
+## 8. Towns you can walk into
+
+Every service building in the game's six towns — smithy, pedlar, inn,
+temple, guildhall, and each small waypost's single home — was a facade:
+a drawn roof and wall with an NPC standing in front of it on the plaza. A
+request to make towns "detailed and interactive" needed those doors to
+actually go somewhere, and the engine already had the mechanism for that
+sitting unused for this purpose: a **warp** is nothing but a coordinate
+match — `warpAt(map, x, y)` looks for `{x, y}` in `map.warps` and doesn't
+care what glyph is drawn on that tile — which is exactly how every
+town/dungeon entrance and exit already works. A door needed no new engine
+code, only to stop being `solid: true` and start being a warp target like
+any other.
+
+Two small, self-inflicted bugs showed up doing this, both worth recording
+because neither would show up as a validator failure:
+
+- **A door that led nowhere reachable.** Buildings draw as two roof rows
+  over two wall rows, with the door glyph on the *upper* wall row — fine
+  when a door is just decoration, but the *lower* wall row beneath it was
+  still solid, so even after marking the door walkable it opened onto a
+  sealed one-tile pocket. The fix was moving the door glyph down to the
+  lower wall row for every building, not just flipping `solid`.
+- **`_` versus `.`** — the dungeon floor glyph and the outdoor grass glyph
+  are both valid tiles, so an interior floor built from `.` passed every
+  structural check and still looked like a fenced-in lawn instead of a
+  room. Caught by eye in a screenshot, not by `validate.js`, which is the
+  reminder that reachability and rendering are different questions.
+
+Each interior is the same small template — a 9×7 room, one door warping
+back to the exact tile the player stepped off of outside, one NPC moved
+from the plaza to stand inside. Nothing about the NPC systems changed: a
+shopkeeper still opens the same shop scene, a recruit still offers the
+same dialogue, an innkeeper still charges the same rate — they just do it
+from a room with their name on it instead of a stretch of open ground.
+Kelda and Wren's Ford each gained five interiors this way; the four small
+waypost towns gained one each, turning their sole recruit's doorstep
+conversation into an actual home to walk into.
+
+Grouping every service building behind its own walls also does something
+the open plaza couldn't: a town's outdoor space now reads as the shared
+public square it was always meant to be, with the specific business of
+each shop kept out of sight until a player chooses to walk in and ask.
