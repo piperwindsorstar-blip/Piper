@@ -7,10 +7,9 @@
 //  target, everything out of reach for the chosen action is greyed out.
 // ============================================================================
 
-import { PAL, W, H } from '../../engine/screen.js';
+import { PAL, W, H, drawFit } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
-import { monsterSprite } from '../../engine/sprites.js';
-import { drawActorBox } from '../../data/portraits.js';
+import { actorSprite, actorPortraitSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE, gridNeighbors } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion } from '../character.js';
@@ -467,12 +466,13 @@ export class BattleScene {
     const breathe = Math.round(Math.sin(this.t * 2.2 + p.x * 0.1) * 0.5);
     if (u.isPC) {
       const ch = u.ref;
-      const boxW = 30, boxH = 40;
-      const bob = isActor ? -1 : breathe;
-      drawActorBox(scr,
-        Math.round(p.x + CELL_W / 2 - boxW / 2), Math.round(p.y + CELL_H - boxH + bob),
-        boxW, boxH,
-        { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
+      const hurtFrame = ch.hp / stats(ch).maxHp < 0.25 ? 2 : 0;
+      const cv = actorSprite({
+        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+        skin: ch.skin, hair: ch.hair,
+        frame: isActor ? 3 : (hurtFrame || (breathe ? 1 : 0)),
+      });
+      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H - cv.height));
     } else {
       const cv = monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
       scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H + 3 - cv.height));
@@ -544,9 +544,14 @@ export class BattleScene {
       let ty = y;
       if (tall && rows === 1) {
         const boxW = cardW - 16, boxH = Math.min(cardH - 40, 84);
-        drawActorBox(scr, x + (cardW - 12 - boxW) / 2, ty, boxW, boxH,
-          { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair },
-          { alpha: u.alive ? 1 : 0.35, bust: true });
+        const bust = actorPortraitSprite({
+          classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+          skin: ch.skin, hair: ch.hair,
+        });
+        scr.ctx.save();
+        if (!u.alive) scr.ctx.globalAlpha = 0.35;
+        drawFit(scr, x + (cardW - 12 - boxW) / 2, ty, boxW, boxH, bust);
+        scr.ctx.restore();
         ty += boxH + 3;
       }
       const nameChars = Math.max(3, Math.floor((cardW - 4) / 5));

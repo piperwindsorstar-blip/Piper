@@ -16,7 +16,7 @@ import { ELEMENTS, ELEMENT_BY_ID } from '../../data/elements.js';
 import { JOBS, JOB_BY_ID } from '../../data/jobs.js';
 import { RACES, RACE_BY_ID } from '../../data/races.js';
 import { SCHOOLS } from '../../data/skills.js';
-import { racePortrait, classPortrait, drawActorBox } from '../../data/portraits.js';
+import { actorSprite, actorPortraitSprite } from '../../engine/sprites.js';
 import { GameState, STARTING_PARTY } from '../state.js';
 
 const NAME_ROWS = [
@@ -244,8 +244,13 @@ export class CreationScene {
     scr.panel(LX, PANEL_Y, LW, PANEL_H, { accent: true });
     if (this.stage === 'race' || this.stage === 'class') {
       const menu = this.menuFor(this.stage);
-      const img = this.stage === 'race' ? racePortrait(menu.current?.id) : classPortrait(menu.current?.id);
-      drawFit(scr, LX + 6, PANEL_Y + 6, LW - 12, PORTRAIT_H - 4, img);
+      const previewId = menu.current?.id;
+      const bust = actorPortraitSprite({
+        classId: this.stage === 'class' ? previewId : this.draft.classId,
+        raceId: this.stage === 'race' ? previewId : this.draft.raceId,
+        elementId: this.draft.elementId, skin: this.draft.skin, hair: this.draft.hair,
+      });
+      drawFit(scr, LX + 6, PANEL_Y + 6, LW - 12, PORTRAIT_H - 4, bust);
       scr.rect(LX + 4, PANEL_Y + PORTRAIT_H + 4, LW - 8, 1, 'rgba(150,175,235,0.16)');
     }
     this.menuFor(this.stage).draw(scr);
@@ -276,10 +281,13 @@ export class CreationScene {
     const race = RACE_BY_ID[this.draft.raceId];
     const cls = CLASSES[this.draft.classId];
     const job = JOB_BY_ID[this.draft.jobId];
+    const cv = actorSprite({
+      classId: this.draft.classId, raceId: this.draft.raceId,
+      elementId: this.draft.elementId, skin: this.draft.skin, hair: this.draft.hair,
+      frame: Math.floor(this.t * 3) % 2,
+    });
     scr.light(LX + 28, y + 24, 30, el.color, 0.18);
-    drawActorBox(scr, LX + 10, y - 6, 36, 48,
-      { classId: this.draft.classId, raceId: this.draft.raceId, elementId: this.draft.elementId,
-        skin: this.draft.skin, hair: this.draft.hair });
+    scr.ctx.drawImage(cv, LX + 10, y - 6);
     // Five labelled fields plus a control hint, in a strip that a long draft
     // (Lizardfolk Spiritist, Provisioner) can fill on its own — so measure
     // first, tighten the gaps if it is close, and drop the hint if it is not.
@@ -404,9 +412,11 @@ export class CreationScene {
     if (Math.floor(this.t * 2) % 2 === 0 && name.length < 10) {
       scr.rect(LX + 16 + scr.textWidth(name, 16), PANEL_Y + 24, 8, 14, PAL.accent);
     }
-    drawActorBox(scr, W - LX - 60, PANEL_Y + 4, 36, 48,
-      { classId: this.draft.classId, raceId: this.draft.raceId, elementId: this.draft.elementId,
-        skin: this.draft.skin, hair: this.draft.hair });
+    const cv = actorSprite({
+      classId: this.draft.classId, raceId: this.draft.raceId, elementId: this.draft.elementId,
+      skin: this.draft.skin, hair: this.draft.hair, frame: Math.floor(this.t * 3) % 2,
+    });
+    scr.ctx.drawImage(cv, W - LX - 60, PANEL_Y + 4, cv.width * 1.0, cv.height * 1.0);
 
     const gy = PANEL_Y + 64;
     scr.panel(LX, gy, W - LX * 2, 108, { accent: true });
@@ -557,9 +567,12 @@ export class CreationScene {
       if (!s) return;
       const x = 66 + i * 106;
       const el = ELEMENT_BY_ID[s.elementId];
+      const cv = actorSprite({
+        classId: s.classId, raceId: s.raceId, elementId: s.elementId,
+        skin: s.skin, hair: s.hair, frame: Math.floor(this.t * 3 + i) % 2,
+      });
       scr.light(x + 18, 218, 30, el.color, 0.14);
-      drawActorBox(scr, x, 194, 36, 48,
-        { classId: s.classId, raceId: s.raceId, elementId: s.elementId, skin: s.skin, hair: s.hair });
+      scr.ctx.drawImage(cv, x, 194);
       scr.text(s.name.slice(0, 9), x + 40, 200, PAL.text);
       scr.text(RACE_BY_ID[s.raceId].name, x + 40, 212, PAL.textDim);
       scr.text(CLASSES[s.classId].name, x + 40, 224, PAL.textDim);

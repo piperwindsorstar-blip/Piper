@@ -8,9 +8,9 @@
 //  tree, marks the path actually walked, and names the branch still ahead.
 // ============================================================================
 
-import { PAL, W, H } from '../../engine/screen.js';
+import { PAL, W, H, drawFit } from '../../engine/screen.js';
 import { Menu, header, hpColor, statRow } from '../../engine/ui.js';
-import { drawActorBox } from '../../data/portraits.js';
+import { actorPortraitSprite } from '../../engine/sprites.js';
 import {
   stats, knownSkills, upcomingSkills, jobInfo, jobProgress, equipItem, unequipSlot,
   promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL, trainStat, TRAIN_COST,
@@ -44,7 +44,15 @@ const BX = 110, BW = W - BX - 12;          // body panel
 const TOP = 34, BODY_H = H - TOP - 32;
 const IX = BX + 14, IW = BW - 28;         // body inner
 const CW = Math.floor((IW - 16) / 2);     // two-column width
-const HEAD_PORTRAIT_W = 40, HEAD_PORTRAIT_H = 38; // illustrated race art in charHeader
+const HEAD_PORTRAIT_W = 40, HEAD_PORTRAIT_H = 38; // procedural bust in charHeader
+
+/** The procedural bust portrait, scaled to fit a box. */
+function drawBust(scr, x, y, w, h, ch, alpha = 1) {
+  scr.ctx.save();
+  if (alpha !== 1) scr.ctx.globalAlpha = alpha;
+  drawFit(scr, x, y, w, h, actorPortraitSprite(ch));
+  scr.ctx.restore();
+}
 
 export class MenuScene {
   constructor(app) { this.app = app; }
@@ -387,8 +395,7 @@ export class MenuScene {
       const el = ELEMENT_BY_ID[ch.elementId];
       const race = raceInfo(ch);
       scr.light(IX + 22, y + 24, 26, el.color, 0.14);
-      drawActorBox(scr, IX, y - 2, 30, Math.min(44, rowH - 6),
-        { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
+      drawBust(scr, IX, y - 2, 30, Math.min(44, rowH - 6), ch);
       scr.text(ch.name, IX + 44, y + 2, PAL.text);
       scr.text(`Lv ${ch.level}   ${race.name} ${cls.name}`, IX + 44, y + 15, PAL.textDim);
       scr.rect(IX + 44, y + 29, 4, 6, el.color);
@@ -414,8 +421,7 @@ export class MenuScene {
     const el = ELEMENT_BY_ID[ch.elementId];
     const race = raceInfo(ch);
     scr.light(IX + 20, TOP + 32, 28, el.color, 0.16);
-    drawActorBox(scr, IX, TOP + 5, HEAD_PORTRAIT_W, HEAD_PORTRAIT_H,
-      { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
+    drawBust(scr, IX, TOP + 5, HEAD_PORTRAIT_W, HEAD_PORTRAIT_H, ch);
     scr.text(ch.name, IX + 44, TOP + 8, PAL.accent);
     scr.text(`Lv ${ch.level}   ${race.name} ${cls.name}`, IX + 44, TOP + 22, PAL.text);
     scr.rect(IX + 44, TOP + 36, 4, 6, el.color);
@@ -616,9 +622,7 @@ export class MenuScene {
         const occ = this.g.party.find((ch) => ch.grid.row === r && ch.grid.col === c);
         if (occ) {
           const picked = this.formPicked === occ ? 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7)) : 1;
-          drawActorBox(scr, x + 8, y - 4, 34, 38,
-            { classId: occ.classId, raceId: occ.raceId, elementId: occ.elementId, skin: occ.skin, hair: occ.hair },
-            { alpha: picked });
+          drawBust(scr, x + 8, y - 4, 34, 38, occ, picked);
           scr.textCenter(occ.name.slice(0, 7), x + (cw - 6) / 2, y + chh - 17, PAL.text);
         }
       }

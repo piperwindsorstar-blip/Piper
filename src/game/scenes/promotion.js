@@ -10,7 +10,7 @@
 
 import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, header } from '../../engine/ui.js';
-import { drawActorBox } from '../../data/portraits.js';
+import { actorSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
 import { refreshPromotion, promote, stats } from '../character.js';
 import { CLASSES, TIER_NAME, PROMOTION_BONUS } from '../../data/classes.js';
@@ -133,9 +133,12 @@ export class PromotionScene {
   drawHead(scr, ch, el) {
     const cls = CLASSES[ch.classId];
     scr.panel(16, HEAD_Y, W - 32, HEAD_H, { accent: true, accentWidth: 30 });
+    const cv = actorSprite({
+      classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+      skin: ch.skin, hair: ch.hair, frame: Math.floor(this.t * 3) % 2,
+    });
     scr.light(46, HEAD_Y + 26, 34, el.color, 0.18);
-    drawActorBox(scr, 24, HEAD_Y - 4, 34, 40,
-      { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
+    scr.ctx.drawImage(cv, 26, HEAD_Y - 4);
     scr.text(ch.name, 70, HEAD_Y + 8, PAL.accent);
     // the element swatch follows the class name rather than sitting at a fixed
     // x, because "Draconian Dawnedge" is a lot longer than "Elf Mage"
@@ -212,8 +215,11 @@ export class PromotionScene {
 
     const pulse = 0.4 + 0.6 * Math.abs(Math.sin(this.resultT * 3.4));
     scr.light(W / 2, 132, 66, el.color, 0.28 * pulse);
-    drawActorBox(scr, W / 2 - 36, 96, 72, 96,
-      { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
+    const cv = actorSprite({
+      classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+      skin: ch.skin, hair: ch.hair, frame: 0,
+    });
+    scr.ctx.drawImage(cv, W / 2 - cv.width, 96, cv.width * 2, cv.height * 2);
     this.fxp.draw(scr);
 
     const line = `${ch.name} is now a ${to.name}`;

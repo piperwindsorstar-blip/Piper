@@ -4,11 +4,10 @@
 
 import { PAL, W, H } from '../../engine/screen.js';
 import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
-import { tileSprite, npcSprite, TS } from '../../engine/sprites.js';
+import { tileSprite, actorSprite, npcSprite, TS } from '../../engine/sprites.js';
 import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terrain.js';
 import { buildingSprite, hasStructure, isStructure } from '../../engine/building.js';
 import { Particles } from '../../engine/particles.js';
-import { drawActorBox } from '../../data/portraits.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS,
 } from '../../data/maps.js';
@@ -491,13 +490,12 @@ export class FieldScene {
 
     // player
     const px = this.playerPixel();
-    const boxW = 28, boxH = 36;
-    const bob = this.moving ? Math.round(Math.sin(this.animT * 8) * 1) : 0;
-    drawActorBox(scr,
-      Math.round(px.x - cam.x - (boxW - TS) / 2), Math.round(px.y - cam.y - (boxH - TS) - 4 + bob),
-      boxW, boxH,
-      { classId: this.g.leader.classId, raceId: this.g.leader.raceId, elementId: this.g.leader.elementId,
-        skin: this.g.leader.skin, hair: this.g.leader.hair });
+    const cv = actorSprite({
+      classId: this.g.leader.classId, raceId: this.g.leader.raceId, elementId: this.g.leader.elementId,
+      skin: this.g.leader.skin, hair: this.g.leader.hair,
+      frame: this.moving ? (Math.floor(this.animT * 8) % 2) : 0,
+    });
+    scr.ctx.drawImage(cv, Math.round(px.x - cam.x - (cv.width - TS) / 2), Math.round(px.y - cam.y - (cv.height - TS) - 4));
 
     // lighting: a warm pool on the player, torches in the dark, ambient motes
     const lx = Math.round(px.x - cam.x + TS / 2), ly = Math.round(px.y - cam.y + TS / 2);
