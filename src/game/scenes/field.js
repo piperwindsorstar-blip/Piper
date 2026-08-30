@@ -552,7 +552,7 @@ export class FieldScene {
 }
 
 /** Tiles that still want their own stamp drawn over the terrain. */
-const FEATURE = new Set(['town', 'cave', 'bridge', 'flower']);
+const FEATURE = new Set(['town', 'cave', 'bridge', 'flower', 'well', 'stall', 'lamp']);
 
 /**
  * A neighbourhood reader for the terrain layer: `sample(dx, dy)` gives the tile

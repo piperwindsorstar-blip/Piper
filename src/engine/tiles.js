@@ -257,6 +257,59 @@ T.flower = (P) => {
   }
 };
 
+T.well = (P) => {
+  T.grass(P);
+  // stone ring
+  P.ellipse(12, 16, 8, 6, '#78706a');
+  P.ellipse(12, 16, 8, 6, '#8c8478');
+  P.ellipse(12, 15, 7, 5, '#5a544c');
+  P.ellipse(12, 14, 6, 4, '#100e0c');
+  P.speck([[7, 13], [17, 12], [9, 18], [15, 17], [6, 16]], '#4a453e');
+  // roof posts and crossbeam
+  P.rect(4, 3, 2, 12, '#6b4622');
+  P.rect(18, 3, 2, 12, '#6b4622');
+  P.rect(3, 2, 18, 2, '#7d5429');
+  P.rect(3, 2, 18, 1, '#966333');
+  P.tri(1, -4, 22, 8, '#9c4030');
+  P.tri(1, -4, 22, 5, '#cc6a4e');
+  // bucket on a rope
+  P.rect(11, 6, 1, 6, '#3a2f22');
+  P.rect(9, 11, 5, 4, '#5a4630');
+  P.rect(9, 11, 5, 1, '#7a5f40');
+};
+
+T.stall = (P) => {
+  T.road(P);
+  // trestle table
+  P.rect(3, 15, 18, 7, '#6b4622');
+  P.dither(3, 15, 18, 7, '#7d5429', 0.4);
+  P.rect(3, 15, 18, 1, '#966333');
+  P.rect(4, 22, 2, 2, '#3a2f22'); P.rect(18, 22, 2, 2, '#3a2f22');
+  // goods laid out
+  P.speck([[5, 16], [6, 17], [12, 16], [16, 17], [9, 18]], '#c85040');
+  P.speck([[8, 16], [15, 16], [11, 18]], '#e8c860');
+  P.speck([[6, 18], [14, 18], [19, 16]], '#5b9150');
+  // striped awning
+  P.tri(0, 0, 24, 11, '#a83838', 1);
+  for (let x = 0; x < 24; x += 6) P.rect(x, 0, 3, 5, '#e0e0e0');
+  P.rect(0, 10, 24, 1, '#6a2020');
+  P.rect(1, 5, 1, 9, '#4a3018'); P.rect(22, 5, 1, 9, '#4a3018');
+};
+
+T.lamp = (P) => {
+  T.road(P);
+  // post
+  P.rect(11, 8, 2, 15, '#2c2a30');
+  P.rect(11, 8, 1, 15, '#3e3c44');
+  P.rect(8, 22, 8, 2, '#221f24');
+  // lamp head
+  P.rect(9, 1, 6, 7, '#3e3c44');
+  P.rect(10, 2, 4, 5, '#f8d878');
+  P.rect(10, 2, 4, 2, '#fff4c0');
+  P.rect(8, 0, 8, 1, '#221f24');
+  P.rect(11, 8, 2, 1, '#221f24');
+};
+
 export const TILE_DRAW = T;
 export const TILE_NAMES = Object.keys(T);
 
