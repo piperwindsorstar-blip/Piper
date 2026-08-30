@@ -472,8 +472,7 @@ export class BattleScene {
       drawActorBox(scr,
         Math.round(p.x + CELL_W / 2 - boxW / 2), Math.round(p.y + CELL_H - boxH + bob),
         boxW, boxH,
-        { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair },
-        { frame: true });
+        { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
     } else {
       const cv = monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
       scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H + 3 - cv.height));

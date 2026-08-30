@@ -497,8 +497,7 @@ export class FieldScene {
       Math.round(px.x - cam.x - (boxW - TS) / 2), Math.round(px.y - cam.y - (boxH - TS) - 4 + bob),
       boxW, boxH,
       { classId: this.g.leader.classId, raceId: this.g.leader.raceId, elementId: this.g.leader.elementId,
-        skin: this.g.leader.skin, hair: this.g.leader.hair },
-      { frame: true });
+        skin: this.g.leader.skin, hair: this.g.leader.hair });
 
     // lighting: a warm pool on the player, torches in the dark, ambient motes
     const lx = Math.round(px.x - cam.x + TS / 2), ly = Math.round(px.y - cam.y + TS / 2);
