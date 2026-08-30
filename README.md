@@ -157,6 +157,46 @@ is what lets a Berserker out of MP still do something frightening.
 Bosses take two turns per round; the second is restricted to a single target, so
 a boss cannot open with two party-wide nukes.
 
+**Grid-adjacent allies share a fraction of their own element's stat bias** —
+the Lufia: The Legend Returns "Spiritual Force" idea, folded into the
+13-element wheel instead of a second stat system. Whoever a unit is
+orthogonally touching (never diagonal) lends them a slice of their bias;
+the center of the grid ends up strongest purely because it has the most
+neighbours (up to 4, against 3 on an edge and 2 in a corner) — nothing
+special-cased, just adjacency counting. A status card gets a thin tint
+naming which element is currently helping it.
+
+**Losing your entire starting front rank is instant defeat**, even with a
+healthy back line — a second Lufia rule, layered on top of the ordinary
+total-party-wipe loss. Only triggers when the front rank was fully
+staffed (all three rows); a party that never committed three members
+forward never risks it.
+
+---
+
+## Story and recruitment
+
+The seven bosses already form a three-act campaign: a bandit chief, a
+golem tyrant, an undead choir, an ancient dragon guardian, then an
+endgame gauntlet — a Gatekeeper, a World Heart, and finally **The
+Thirteenth**, "the element that was left off the wheel" — the title's own
+riddle, answered. An opening hook plays once on first entering the world,
+per-region dialogue beats gate each boss, town NPCs react once their
+region's threat falls, and a short epilogue closes the loop once The
+Thirteenth does.
+
+You build a 4-person party at creation, same as always, but the **roster**
+isn't capped at 4 — every one of the game's 6 towns holds one named,
+recruitable ally with their own fixed race, class and element, and the
+roster can grow well past what fits in the active 3×3 formation. Whoever
+isn't currently fighting waits on the **bench**, swappable in from the
+party menu's Formation page for anyone already in the grid.
+
+**Learning Points** (LP) are earned from every battle alongside gold and
+EXP, and spent from the party menu's Train page to permanently raise a
+stat — the same growth accumulator levelling already writes to, so it
+composes with race, element, job and equipment for free.
+
 ---
 
 ## Layout
@@ -183,11 +223,12 @@ src/
     jobs.js           20 jobs
     skills.js         25 schools, 148 skills, 23 status effects
     items.js          113 items     enemies.js  41 enemies, 33 formations
-    maps.js           overworld, 2 towns, 5 dungeon floors
+    maps.js           overworld, 6 towns, 5 dungeon floors
+    story.js          the campaign's opening hook and epilogue
   game/
     character.js      stats, levelling, promotion, races, jobs, equipment, status
     battle.js         the grid combat engine
-    state.js          party, inventory, flags, save/load
+    state.js          roster, active party, inventory, flags, LP, save/load
     scenes/           title creation field battle menu shop promotion gameover
 tools/
   bundle.js           builds docs/play.html, the one-file playable build

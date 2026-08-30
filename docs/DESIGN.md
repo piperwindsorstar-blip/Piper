@@ -259,6 +259,44 @@ taken. Some Arts cost IP instead of MP, which gives an out-of-MP character
 something to do and rewards a fight that has gone badly. A Bard in the party
 starts everyone with bonus IP.
 
+### Grid-adjacent elemental sharing
+
+Lufia: The Legend Returns' Matrix System shares a "Spiritual Force" value
+between grid-adjacent allies — four colours, unrelated to elements. This
+game already has an element wheel where every character's fixed element
+grants a permanent stat `bias` (§3), so a second, disconnected four-colour
+resource would just be a rival identity system sitting next to the one
+the game is actually about. Instead, adjacency shares a *fraction*
+(`GRID_SHARE = 0.3`) of a neighbour's own bias — orthogonal only, never
+diagonal. `stats()` grew an optional `extraBias` parameter for exactly
+this, computed fresh every time a unit's stats are read in battle so it
+tracks repositioning and deaths with no cache to invalidate, and left out
+of every call site outside battle (menu, shop, creation preview stay
+pure).
+
+The center of a 3×3 grid ends up the strongest position with no
+special-casing: it touches up to 4 neighbours where an edge cell touches
+3 and a corner touches 2, so "the center is a battery" — the reference's
+own description — falls straight out of counting orthogonal neighbours.
+Scoped to the party side only; extending it to enemies would mean
+re-tuning every hand-placed formation's difficulty around a bonus the
+player doesn't get to see or plan against.
+
+### Front-rank wipe
+
+A second Lufia rule: losing your *starting* front rank is instant defeat,
+even with a full-health back line. The engine's own front column is
+fluid — it slides back automatically as the front dies, which is the
+whole point of `effCol` (above) — so the rule has to snapshot who
+occupied the front column at the moment the battle began, not recompute
+it live; recomputed live, the condition could never actually trigger,
+since the "front" would just relabel itself the instant someone in it
+died. Gated to a *fully-staffed* front rank (all three rows) after the
+first sim pass showed the naive version was punishing: the default
+4-person formation only ever puts two members forward, and treating that
+as a doomed rank dropped boss_volk from 85% to 63% and boss_anvil from
+68% to 55% for a tradeoff no formation was actually choosing to make.
+
 ### Damage
 
 ```
@@ -298,8 +336,10 @@ target, so a boss opens hard without opening lethally.
 party from a gold budget derived from actual encounter rewards.
 
 At the intended level per region, trash resolves in 0–8 turns at ~100%. Bosses
-run 68–100% over 12–42 turns, rising through the game: Volk 75% at Lv9, the Anvil
-68% at Lv16, and the Thirteenth 98% over 42 turns at Lv85. Bosses sit high on
+run 68–100% over 12–42 turns, rising through the game: Volk 85% at Lv9 (up from
+75% once grid-adjacent elemental sharing gave the player a real positioning
+lever), the Anvil 68% at Lv16, and the Thirteenth 98% over 42 turns at Lv85.
+Bosses sit high on
 purpose — the simulated party never wastes a turn, so 70% for the harness is a
 real fight for a person. The property that actually matters is that difficulty
 *responds*: at three levels under, the same party loses those fights outright.
@@ -455,3 +495,66 @@ ladder, the shop and the promotion screen in four different ways, and all four
 imported cleanly and passed all 80 data checks while doing it. The Playwright
 harnesses that drive the actual game and dump PNGs are the only tool that finds
 a panel overflowing its box.
+
+---
+
+## 7. Story and recruitment
+
+### The campaign was already there
+
+Asked for a Dragon Quest III-style story, the honest first move was reading
+what already existed rather than inventing something disconnected from it.
+`maps.js`'s `BOSS_SLOTS` already carried a strong `intro` line per boss and a
+`requires` chain gating each one on the last — Volk, the Anvil King, the
+Hollow Choir, Aurelith, then an endgame gauntlet ending in **The
+Thirteenth**, whose own intro line (*"Nine on the wheel. Four beside it. And
+then there is me."*) directly answers the game's own title and subtitle. A
+three-act campaign was sitting in the data, unfinished only in the sense
+that nothing delivered it: `FieldScene.onArrive()` set a `pendingBoss` field
+and queued a fake `'__BOSS__'` dialogue line that nothing ever read, so
+walking onto a boss tile showed the intro line and then, on the next
+keypress, would have surfaced that literal placeholder string instead of
+starting the fight. Fixed at the source — the dialogue-advance handler now
+launches the battle itself once the queue empties with a boss pending —
+before writing a word of new narrative on top of a delivery mechanism that
+didn't deliver.
+
+`story.js` holds only what doesn't already live somewhere better: an
+opening hook and an epilogue. Per-region beats and aftermath reactions live
+on the town NPCs they belong to, as a `reactions` map keyed by boss flag —
+the one piece of conditional dialogue `talkTo()` needed, not a branching
+dialogue-tree engine for a game that mostly wants one good line per moment.
+
+### Roster and bench, not a bigger party
+
+Character recruitment needed a decision `MAX_PARTY = 4` couldn't answer
+alone: growing the roster past what fits in a 3×3 grid means *something*
+has to hold the overflow. Raising the active-party cap was the tempting
+shortcut, and the wrong one — every formation, every AI weighting, the
+whole balance simulation is tuned around a 4-wide fight, and touching that
+number touches all of it. Instead `GameState.roster` became the superset
+(everyone ever recruited, uncapped past the grid) and `GameState.party`
+kept its exact old meaning and cap — a subset, not a rename. `addMember()`
+fills the active party first so creation's starting four behave exactly as
+they did before this existed, and anyone recruited afterward lands on the
+bench by default, swappable in from the Formation page in place of whoever's
+already fighting.
+
+A recruit is `createCharacter()` called with fixed, authored values instead
+of player choices — the same function the creation screen itself calls, so
+a recruit's stats, growth, class tree and equipment are the genuine game
+systems, not a special case. Placing one recruit in each of four new small
+towns, each dropped next to an existing boss's region rather than
+invented geography, is what pushed the roster total past nine without
+asking the player to build a bigger starting party than Dragon Quest III
+ever did.
+
+### Learning Points spend into the same accumulator growth already uses
+
+The temptation with a new currency is a new stat-modifier system to spend
+it on. `ch.acc[key]` — the accumulator every level-up already writes
+growth into — doesn't need one: `trainStat()` just adds to it directly, the
+same operation `grantLevels()` performs, so a trained stat composes with
+race, element, job and equipment through the exact same `stats()` call
+everything else goes through. The party menu's Train page is the only new
+code; the stat system underneath it is the one that was already there.
