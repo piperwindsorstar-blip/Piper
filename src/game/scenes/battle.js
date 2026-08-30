@@ -7,9 +7,10 @@
 //  target, everything out of reach for the chosen action is greyed out.
 // ============================================================================
 
-import { PAL, W, H } from '../../engine/screen.js';
+import { PAL, W, H, drawFit } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, actorPortraitSprite, monsterSprite } from '../../engine/sprites.js';
+import { racePortrait } from '../../data/portraits.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE, gridNeighbors } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion } from '../character.js';
@@ -543,18 +544,24 @@ export class BattleScene {
       }
       let ty = y;
       if (tall && rows === 1) {
-        const bust = actorPortraitSprite({
-          classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-          skin: ch.skin, hair: ch.hair,
-        });
-        const dh = Math.min(cardH - 40, bust.height * 2);
-        const dw = Math.min(cardW - 16, bust.width * (dh / bust.height));
+        const boxW = cardW - 16, boxH = Math.min(cardH - 40, 84);
+        const portrait = racePortrait(ch.raceId);
         scr.ctx.save();
         if (!u.alive) scr.ctx.globalAlpha = 0.35;
-        scr.ctx.drawImage(bust, 0, 0, bust.width, bust.height,
-          x + (cardW - 12 - dw) / 2, ty, dw, dh);
+        if (portrait) {
+          drawFit(scr, x + (cardW - 12 - boxW) / 2, ty, boxW, boxH, portrait);
+        } else {
+          const bust = actorPortraitSprite({
+            classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+            skin: ch.skin, hair: ch.hair,
+          });
+          const dh = Math.min(boxH, bust.height * 2);
+          const dw = Math.min(boxW, bust.width * (dh / bust.height));
+          scr.ctx.drawImage(bust, 0, 0, bust.width, bust.height,
+            x + (cardW - 12 - dw) / 2, ty, dw, dh);
+        }
         scr.ctx.restore();
-        ty += dh + 3;
+        ty += boxH + 3;
       }
       const nameChars = Math.max(3, Math.floor((cardW - 4) / 5));
       const compact = cardH < 45;               // a wrapped second row of small cards

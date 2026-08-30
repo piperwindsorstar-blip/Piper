@@ -40,13 +40,20 @@ export function saveSummary(slot) {
   const s = loadGame(slot);
   if (!s) return null;
   const d = s.data;
+  // saves store the full roster plus which ids are active (`partyIds`);
+  // older saves only ever had a flat `party` array — fall back to that.
+  const roster = d.roster ?? d.party ?? [];
+  const party = d.partyIds
+    ? d.partyIds.map((id) => roster.find((c) => c.id === id)).filter(Boolean)
+    : roster;
+  const leader = party[0] ?? roster[0];
   return {
     at: s.at,
-    leader: d.party?.[0]?.name ?? '???',
-    level: d.party?.[0]?.level ?? 1,
+    leader: leader?.name ?? '???',
+    level: leader?.level ?? 1,
     gold: d.gold ?? 0,
     map: d.mapName ?? '',
     playtime: d.playtime ?? 0,
-    members: d.party?.length ?? 0,
+    members: party.length || roster.length,
   };
 }
