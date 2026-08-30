@@ -8,10 +8,9 @@
 //  tree, marks the path actually walked, and names the branch still ahead.
 // ============================================================================
 
-import { PAL, W, H, drawFit } from '../../engine/screen.js';
+import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, header, hpColor, statRow } from '../../engine/ui.js';
-import { actorSprite } from '../../engine/sprites.js';
-import { racePortrait } from '../../data/portraits.js';
+import { drawActorBox } from '../../data/portraits.js';
 import {
   stats, knownSkills, upcomingSkills, jobInfo, jobProgress, equipItem, unequipSlot,
   promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL, trainStat, TRAIN_COST,
@@ -387,12 +386,9 @@ export class MenuScene {
       const cls = CLASSES[ch.classId];
       const el = ELEMENT_BY_ID[ch.elementId];
       const race = raceInfo(ch);
-      const cv = actorSprite({
-        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-        skin: ch.skin, hair: ch.hair, frame: Math.floor(this.t * 3 + i) % 2,
-      });
       scr.light(IX + 22, y + 24, 26, el.color, 0.14);
-      scr.ctx.drawImage(cv, IX, y - 2);
+      drawActorBox(scr, IX, y - 2, 30, Math.min(44, rowH - 6),
+        { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
       scr.text(ch.name, IX + 44, y + 2, PAL.text);
       scr.text(`Lv ${ch.level}   ${race.name} ${cls.name}`, IX + 44, y + 15, PAL.textDim);
       scr.rect(IX + 44, y + 29, 4, 6, el.color);
@@ -417,17 +413,9 @@ export class MenuScene {
     const cls = CLASSES[ch.classId];
     const el = ELEMENT_BY_ID[ch.elementId];
     const race = raceInfo(ch);
-    const portrait = racePortrait(ch.raceId);
     scr.light(IX + 20, TOP + 32, 28, el.color, 0.16);
-    if (portrait) {
-      drawFit(scr, IX, TOP + 5, HEAD_PORTRAIT_W, HEAD_PORTRAIT_H, portrait);
-    } else {
-      const cv = actorSprite({
-        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-        skin: ch.skin, hair: ch.hair, frame: 0,
-      });
-      scr.ctx.drawImage(cv, IX, TOP + 6);
-    }
+    drawActorBox(scr, IX, TOP + 5, HEAD_PORTRAIT_W, HEAD_PORTRAIT_H,
+      { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair });
     scr.text(ch.name, IX + 44, TOP + 8, PAL.accent);
     scr.text(`Lv ${ch.level}   ${race.name} ${cls.name}`, IX + 44, TOP + 22, PAL.text);
     scr.rect(IX + 44, TOP + 36, 4, 6, el.color);
@@ -627,14 +615,10 @@ export class MenuScene {
         scr.outline(x, y, cw - 6, chh - 6, sel ? PAL.accent : 'rgba(150,175,235,0.16)');
         const occ = this.g.party.find((ch) => ch.grid.row === r && ch.grid.col === c);
         if (occ) {
-          const cv = actorSprite({
-            classId: occ.classId, raceId: occ.raceId, elementId: occ.elementId,
-            skin: occ.skin, hair: occ.hair, frame: 0,
-          });
-          scr.ctx.save();
-          if (this.formPicked === occ) scr.ctx.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7));
-          scr.ctx.drawImage(cv, x + 7, y - 6);
-          scr.ctx.restore();
+          const picked = this.formPicked === occ ? 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7)) : 1;
+          drawActorBox(scr, x + 8, y - 4, 34, 38,
+            { classId: occ.classId, raceId: occ.raceId, elementId: occ.elementId, skin: occ.skin, hair: occ.hair },
+            { alpha: picked });
           scr.textCenter(occ.name.slice(0, 7), x + (cw - 6) / 2, y + chh - 17, PAL.text);
         }
       }

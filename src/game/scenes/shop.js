@@ -9,7 +9,7 @@ import { SHOPS } from '../../data/maps.js';
 import { getItem, canEquip, isEquippable } from '../../data/items.js';
 import { CLASSES } from '../../data/classes.js';
 import { RACE_BY_ID } from '../../data/races.js';
-import { actorSprite } from '../../engine/sprites.js';
+import { drawActorBox } from '../../data/portraits.js';
 import { stats } from '../character.js';
 
 const LX = 16, LW = 212;              // stock list
@@ -173,14 +173,9 @@ export class ShopScene {
           col = d > 0 ? PAL.green : d === 0 ? PAL.textDim : PAL.red;
         }
       }
-      const cv = actorSprite({
-        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-        skin: ch.skin, hair: ch.hair, frame: 0,
-      });
-      scr.ctx.save();
-      if (!ok) scr.ctx.globalAlpha = 0.35;
-      scr.ctx.drawImage(cv, DX + 12, y - 16, Math.round(cv.width * 0.52), Math.round(cv.height * 0.52));
-      scr.ctx.restore();
+      drawActorBox(scr, DX + 12, y - 16, 19, 25,
+        { classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId, skin: ch.skin, hair: ch.hair },
+        { alpha: ok ? 1 : 0.35 });
       scr.text(ch.name.slice(0, 9), DX + 36, y - 4, ok ? PAL.text : PAL.grey);
       scr.text(RACE_BY_ID[ch.raceId ?? 'human'].name, DX + 36, y + 6, PAL.textFaint);
       scr.textRight(note, DX + DW - 14, y, col);

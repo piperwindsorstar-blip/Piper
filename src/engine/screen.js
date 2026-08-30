@@ -122,15 +122,18 @@ export function fontScale(size = 8) {
 export const LINE = GLYPH_H + 3;
 
 /**
- * Draw an illustrated portrait (a real image, not a procedural sprite)
- * scaled to fit inside a box, centred, preserving aspect ratio. Guards
- * against the image not having finished decoding yet — a data-URI image
- * is effectively instant, but the very first frame can still race it.
+ * Draw an image or canvas scaled to fit inside a box, centred, preserving
+ * aspect ratio. Works for a decoded <img> (checked via naturalWidth /
+ * complete — a data-URI image is effectively instant, but the very first
+ * frame can still race it) or a procedural sprite <canvas> (always ready,
+ * sized via width/height instead).
  */
 export function drawFit(scr, x, y, maxW, maxH, img) {
-  if (!img || !img.complete || !img.naturalWidth) return;
-  const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
-  const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+  if (!img) return;
+  const iw = img.naturalWidth ?? img.width, ih = img.naturalHeight ?? img.height;
+  if (!iw || !ih || ('complete' in img && !img.complete)) return;
+  const scale = Math.min(maxW / iw, maxH / ih);
+  const w = iw * scale, h = ih * scale;
   scr.ctx.drawImage(img, x + (maxW - w) / 2, y + (maxH - h) / 2, w, h);
 }
 
