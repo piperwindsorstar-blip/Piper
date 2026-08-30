@@ -174,7 +174,16 @@
      fix as index.html's #wrap, so a tap on menu text never also lands on a
      pad button sitting on top of it. */
   @media (pointer: coarse) and (orientation: landscape) { #plate, #rail { display: none; } }
-  body:has(#touch.visible) #cabinet { padding: 58px 12px 170px; }
+  /* screen.js's resize() (reimplemented in the boot script below, since this
+     file has no module system) picks one of two pad layouts the moment
+     #touch gains .visible: SIDE mode leaves #touch unclassed and parks the
+     pad in the left/right margins via inline styles it sets itself — usually
+     there's room, since a landscape phone is normally wider than this 16:9
+     canvas — letting the canvas keep its natural size. #touch.band is BAND
+     mode, the fallback for a viewport with no side room: the pad's original
+     top/bottom bands, reserved here as padding so the canvas can never
+     render underneath a button. */
+  body:has(#touch.visible.band) #cabinet { padding: 58px 12px 170px; }
 
   /* The world is 480x270 — landscape. On a touch device held portrait the
      canvas shrinks to a thin centred strip with the on-screen pad's corner

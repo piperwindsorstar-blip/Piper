@@ -38,13 +38,15 @@
   #touch [data-btn="shift"]   { right: 78px; top: 14px; width: 56px; height: 34px; font-size: 12px; }
   #hint { position: fixed; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 11px; opacity: .45; }
   @media (pointer: coarse) { #hint { display: none; } }
-  /* #touch's buttons live in a top band (0-58px) and a bottom band
-     (0-170px, the dpad's own reach) measured from the viewport edges —
-     never in the sides. Reserving exactly those bands as padding keeps the
-     canvas from ever rendering underneath a button, so a tap on menu text
-     never doubles as a tap on Cancel. screen.js's resize() sizes the canvas
-     to match the moment #touch gains .visible. */
-  body:has(#touch.visible) #wrap { padding: 58px 0 170px; }
+  /* screen.js's resize() picks one of two layouts the moment #touch gains
+     .visible: SIDE mode leaves #touch unclassed and parks the pad in the
+     left/right margins via inline styles it sets itself (there's usually
+     room, since a landscape phone is normally wider than this 16:9 canvas),
+     letting the canvas keep its natural size. #touch.band is BAND mode, the
+     fallback for a viewport with no side room — the pad's original top/
+     bottom bands, reserved here as padding so the canvas can never render
+     underneath a button (a tap on menu text must never double as Cancel). */
+  body:has(#touch.visible.band) #wrap { padding: 58px 0 170px; }
 
   /* The world is 480x270 — landscape. On a touch device held portrait the
      canvas shrinks to a thin centred strip with the on-screen pad's corner

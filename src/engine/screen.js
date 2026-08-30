@@ -12,14 +12,69 @@ import { drawText, measure, wrap, GLYPH_H } from './font.js';
 export const W = 480;
 export const H = 270;
 
-// The on-screen touch pad is anchored to the viewport's corners, not the
-// canvas — so on a canvas that fills most of a small phone screen, pad
-// buttons sit on top of real menu content instead of beside it (a tap meant
-// for a menu word lands on Cancel instead). These gutters keep the canvas
-// entirely clear of the pad's footprint; #wrap/#cabinet apply matching
-// padding via CSS the moment #touch gains .visible.
+// The on-screen touch pad must never sit on top of real menu content (a tap
+// meant for a menu word must never double as a tap on Cancel), so it always
+// needs space of its own, clear of the canvas. There are two ways to give it
+// that space:
+//
+//  - BAND mode reserves a fixed top/bottom strip across the whole viewport
+//    (the pad's original layout) — the only option once the canvas is close
+//    to the viewport's own aspect ratio, since there is nowhere else to put
+//    the pad.
+//  - SIDE mode leaves the canvas at its natural height and parks the pad in
+//    the left/right margins instead. A landscape phone is almost always
+//    *wider* than this game's 16:9 canvas, so those margins usually exist
+//    and are usually bigger than the band mode's fixed gutters — letting the
+//    canvas reach full integer scale instead of shrinking to make room.
+//
+// resize() below picks whichever mode the current viewport actually has room
+// for; #wrap/#cabinet's CSS reserves the same BAND gutters as a fallback for
+// when SIDE mode doesn't fit.
 const TOUCH_TOP_GUTTER = 58;
 const TOUCH_BOTTOM_GUTTER = 170;
+const DPAD_SIZE = 140;
+const SIDE_BTN_W = 56;
+const SIDE_MARGIN_GAP = 16;           // breathing room around the pad within its margin
+const SIDE_STACK = [                   // the four non-dpad buttons, stacked in the right margin
+  { sel: '[data-btn="menu"]', w: 56, h: 34 },
+  { sel: '[data-btn="shift"]', w: 56, h: 34 },
+  { sel: '[data-btn="confirm"]', w: 56, h: 56 },
+  { sel: '[data-btn="cancel"]', w: 50, h: 50 },
+];
+const SIDE_STACK_GAP = 10;
+const SIDE_STACK_H = SIDE_STACK.reduce((h, b) => h + b.h, 0) + SIDE_STACK_GAP * (SIDE_STACK.length - 1);
+
+/** Clear a SIDE-mode layout so BAND mode's own CSS positions apply again. */
+function clearTouchSideLayout(touch) {
+  const dpad = touch.querySelector('.dpad');
+  if (dpad) { dpad.style.left = ''; dpad.style.top = ''; dpad.style.bottom = ''; }
+  for (const { sel } of SIDE_STACK) {
+    const el = touch.querySelector(sel);
+    if (el) { el.style.left = ''; el.style.right = ''; el.style.top = ''; el.style.bottom = ''; }
+  }
+}
+
+/** Park the dpad and buttons in the left/right margins beside the canvas. */
+function applyTouchSideLayout(touch, leftMargin, canvasRight, viewportH) {
+  const dpad = touch.querySelector('.dpad');
+  if (dpad) {
+    dpad.style.left = `${Math.round((leftMargin - DPAD_SIZE) / 2)}px`;
+    dpad.style.bottom = '';
+    dpad.style.top = `${Math.round((viewportH - DPAD_SIZE) / 2)}px`;
+  }
+  const rightMargin = leftMargin; // canvas is horizontally centered, so margins match
+  let y = Math.round((viewportH - SIDE_STACK_H) / 2);
+  for (const { sel, w, h } of SIDE_STACK) {
+    const el = touch.querySelector(sel);
+    if (el) {
+      el.style.left = `${Math.round(canvasRight + (rightMargin - w) / 2)}px`;
+      el.style.right = '';
+      el.style.top = `${y}px`;
+      el.style.bottom = '';
+    }
+    y += h + SIDE_STACK_GAP;
+  }
+}
 
 // A modern dark-UI palette: near-black grounds, cool desaturated blues for
 // surfaces, and a warm amber accent that never appears in the world art.
@@ -94,14 +149,31 @@ export class Screen {
 
   resize() {
     const pad = 8;
-    const touchOn = document.getElementById('touch')?.classList.contains('visible') ?? false;
-    const topGutter = touchOn ? TOUCH_TOP_GUTTER : 0;
-    const bottomGutter = touchOn ? TOUCH_BOTTOM_GUTTER : 0;
-    const sx = (window.innerWidth - pad) / W;
-    const sy = (window.innerHeight - pad - topGutter - bottomGutter) / H;
-    // integer scale where it fits, so pixels stay square
-    const raw = Math.min(sx, sy);
-    this.scale = raw >= 1 ? Math.max(1, Math.floor(raw)) : raw;
+    const touch = document.getElementById('touch');
+    const touchOn = touch?.classList.contains('visible') ?? false;
+    const fit = (w, h) => {
+      const raw = Math.min(w / W, h / H);
+      return raw >= 1 ? Math.max(1, Math.floor(raw)) : raw;
+    };
+
+    if (touchOn) {
+      const fullScale = fit(window.innerWidth - pad, window.innerHeight - pad);
+      const sideMargin = (window.innerWidth - W * fullScale) / 2;
+      const fitsSide = sideMargin >= DPAD_SIZE + SIDE_MARGIN_GAP
+        && sideMargin >= SIDE_BTN_W + SIDE_MARGIN_GAP
+        && window.innerHeight >= SIDE_STACK_H + SIDE_MARGIN_GAP;
+      touch.classList.toggle('band', !fitsSide);
+      if (fitsSide) {
+        this.scale = fullScale;
+        applyTouchSideLayout(touch, sideMargin, window.innerWidth - sideMargin, window.innerHeight);
+      } else {
+        this.scale = fit(window.innerWidth - pad, window.innerHeight - pad - TOUCH_TOP_GUTTER - TOUCH_BOTTOM_GUTTER);
+        clearTouchSideLayout(touch);
+      }
+    } else {
+      this.scale = fit(window.innerWidth - pad, window.innerHeight - pad);
+      if (touch) clearTouchSideLayout(touch);
+    }
     this.canvas.width = Math.round(W * this.scale);
     this.canvas.height = Math.round(H * this.scale);
     this.canvas.style.width = `${Math.round(W * this.scale)}px`;

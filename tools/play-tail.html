@@ -10,27 +10,85 @@
   const canvas = document.getElementById('screen');
   const app    = window.app;
 
+  // Two ways to give the touch pad room of its own, clear of the canvas:
+  // SIDE mode parks it in the left/right margins (a landscape phone is
+  // usually wider than this 16:9 canvas, so those margins usually exist and
+  // are usually roomier than fixed top/bottom bands would be); BAND mode is
+  // the fallback for a viewport with no side room. See src/engine/screen.js
+  // for the canonical version of this — duplicated here because this file
+  // has no module system to share it from.
+  const DPAD_SIZE = 140, SIDE_BTN_W = 56, SIDE_MARGIN_GAP = 16, SIDE_STACK_GAP = 10;
+  const SIDE_STACK = [
+    { sel: '[data-btn="menu"]', w: 56, h: 34 },
+    { sel: '[data-btn="shift"]', w: 56, h: 34 },
+    { sel: '[data-btn="confirm"]', w: 56, h: 56 },
+    { sel: '[data-btn="cancel"]', w: 50, h: 50 },
+  ];
+  const SIDE_STACK_H = SIDE_STACK.reduce((h, b) => h + b.h, 0) + SIDE_STACK_GAP * (SIDE_STACK.length - 1);
+
+  function clearTouchSideLayout(touch) {
+    const dpad = touch.querySelector('.dpad');
+    if (dpad) { dpad.style.left = ''; dpad.style.top = ''; dpad.style.bottom = ''; }
+    for (const { sel } of SIDE_STACK) {
+      const el = touch.querySelector(sel);
+      if (el) { el.style.left = ''; el.style.right = ''; el.style.top = ''; el.style.bottom = ''; }
+    }
+  }
+
+  function applyTouchSideLayout(touch, sideMargin, canvasRight, viewportH) {
+    const dpad = touch.querySelector('.dpad');
+    if (dpad) {
+      dpad.style.left = Math.round((sideMargin - DPAD_SIZE) / 2) + 'px';
+      dpad.style.bottom = '';
+      dpad.style.top = Math.round((viewportH - DPAD_SIZE) / 2) + 'px';
+    }
+    let y = Math.round((viewportH - SIDE_STACK_H) / 2);
+    for (const { sel, w, h } of SIDE_STACK) {
+      const el = touch.querySelector(sel);
+      if (el) {
+        el.style.left = Math.round(canvasRight + (sideMargin - w) / 2) + 'px';
+        el.style.right = '';
+        el.style.top = y + 'px';
+        el.style.bottom = '';
+      }
+      y += h + SIDE_STACK_GAP;
+    }
+  }
+
   // The engine scales to the whole window. Here the game shares the page with
   // a wordmark and a control rail, so measure those and fit to what is left.
   if (app && app.screen) {
     const scr = app.screen;
     scr.resize = function () {
-      // The touch pad is anchored to the viewport's corners, not the canvas,
-      // so it needs the same top/bottom gutters reserved here that the
-      // #cabinet padding rule reserves in CSS (see the stylesheet) — otherwise
-      // this override would size the canvas back over the pad's buttons.
-      const touchOn = document.getElementById('touch')?.classList.contains('visible') ?? false;
-      const touchGutter = touchOn ? 58 + 170 : 0;
-      // The +68 approximates #cabinet's flex gaps plus its default 12px+12px
-      // padding — only real when the wordmark/rail are on screen. On touch
-      // devices in landscape both are display:none (see the stylesheet) and
-      // #cabinet's own padding switches to exactly touchGutter, so adding both
-      // double-counts ~68px of chrome that isn't actually there and shrinks
-      // the canvas for no reason.
-      const desktopChrome = touchOn ? 0 : 68;
-      const chrome = plate.offsetHeight + rail.offsetHeight + desktopChrome + touchGutter;
-      const raw = Math.min((window.innerWidth - 28) / W, (window.innerHeight - chrome) / H);
-      this.scale = raw >= 1 ? Math.max(1, Math.floor(raw)) : Math.max(0.35, raw);
+      const touch = document.getElementById('touch');
+      const touchOn = touch?.classList.contains('visible') ?? false;
+      const fit = (w, h) => {
+        const raw = Math.min(w / W, h / H);
+        return raw >= 1 ? Math.max(1, Math.floor(raw)) : Math.max(0.35, raw);
+      };
+
+      if (touchOn) {
+        // plate/rail are display:none in touch+landscape (see the stylesheet),
+        // so they contribute nothing here regardless of which mode is picked.
+        const fullScale = fit(window.innerWidth - 28, window.innerHeight - 28);
+        const sideMargin = (window.innerWidth - W * fullScale) / 2;
+        const fitsSide = sideMargin >= DPAD_SIZE + SIDE_MARGIN_GAP
+          && sideMargin >= SIDE_BTN_W + SIDE_MARGIN_GAP
+          && window.innerHeight >= SIDE_STACK_H + SIDE_MARGIN_GAP;
+        touch.classList.toggle('band', !fitsSide);
+        if (fitsSide) {
+          this.scale = fullScale;
+          applyTouchSideLayout(touch, sideMargin, window.innerWidth - sideMargin, window.innerHeight);
+        } else {
+          this.scale = fit(window.innerWidth - 28, window.innerHeight - (58 + 170));
+          clearTouchSideLayout(touch);
+        }
+      } else {
+        // #cabinet's own flex gaps + default 12px+12px padding, approximated
+        // — only relevant here since it's the one branch where they're real.
+        const chrome = plate.offsetHeight + rail.offsetHeight + 68;
+        this.scale = fit(window.innerWidth - 28, window.innerHeight - chrome);
+      }
       canvas.width  = Math.round(W * this.scale);
       canvas.height = Math.round(H * this.scale);
       canvas.style.width  = Math.round(W * this.scale) + 'px';
