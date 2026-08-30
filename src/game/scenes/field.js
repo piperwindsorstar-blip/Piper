@@ -282,8 +282,26 @@ export class FieldScene {
             if (i !== 0) { this.dlg.say('"The offer stands, whenever you\'re ready."', npc.name); return; }
             const ch = this.g.addMember(npc.recruit);
             this.g.setFlag(flag);
-            if (ch) this.dlg.say(`${ch.name} joins the party.`);
-            else this.dlg.say('The roster has no room left.');
+            if (!ch) { this.dlg.say('The roster has no room left.'); return; }
+            if (this.g.party.includes(ch)) { this.dlg.say(`${ch.name} joins the party.`); return; }
+            // The active party is already full (it always is, past creation's
+            // starting four), so addMember() only benched them — ask right
+            // here who to swap out instead of leaving a new recruit invisible
+            // on the bench with no clear way to notice they exist.
+            const party = this.g.party;
+            this.choice = {
+              title: `${ch.name} joins the roster. Who do they take the field for?`,
+              options: [...party.map((p) => `${p.name} (Lv${p.level})`), "No one — bench them for now"],
+              onPick: (j) => {
+                if (j < party.length) {
+                  const out = party[j];
+                  this.g.benchInto(ch.id, out.grid.row, out.grid.col);
+                  this.dlg.say(`${ch.name} takes the field for ${out.name}.`);
+                } else {
+                  this.dlg.say(`${ch.name} waits on the bench — swap them in anytime from the party menu's Formation page.`);
+                }
+              },
+            };
           },
         };
         break;

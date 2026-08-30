@@ -23,7 +23,12 @@ export const TS = 24;
 
 const isDome = (n) => n === 'roofdome';
 const isRoof = (n) => n === 'roof' || isDome(n);
-const isWall = (n) => n === 'house' || n === 'door';
+// A sign is an ordinary wall cell that trades its window for a small painted
+// plaque naming the trade behind it — placed one cell above a door in the map
+// data, so a player can tell a smithy from an inn without walking up to read it.
+const SIGN_KINDS = new Set(['sign_smithy', 'sign_pedlar', 'sign_inn', 'sign_temple', 'sign_guild', 'sign_store']);
+const isSign = (n) => SIGN_KINDS.has(n);
+const isWall = (n) => n === 'house' || n === 'door' || isSign(n);
 const isBuilding = (n) => isRoof(n) || isWall(n);
 
 export const isStructure = (name) => isBuilding(name);
@@ -166,8 +171,55 @@ function drawDome(P, sample, T) {
   }
 }
 
+/** A small hanging plaque with a pictogram naming the trade behind the wall. */
+function drawSign(P, kind, T) {
+  P.rect(9, 2, 2, 6, T.BEAM[1]);                      // bracket hanging it from the eave
+  P.rect(13, 2, 2, 6, T.BEAM[1]);
+  P.rect(4, 7, 16, 12, shade(T.BEAM[1], -0.3));       // plaque frame/shadow
+  P.rect(5, 8, 14, 10, '#e6d3a2');                    // parchment face
+  P.rect(5, 8, 14, 1, '#f6ecc8');                     // lit top edge
+
+  const cx = 12, cy = 13;
+  switch (kind) {
+    case 'sign_smithy':                                 // an anvil
+      P.rect(cx - 5, cy, 10, 3, '#3a3a42');
+      P.rect(cx - 5, cy - 1, 10, 1, '#6a6a76');
+      P.rect(cx + 2, cy - 3, 4, 3, '#3a3a42');
+      P.rect(cx - 2, cy + 3, 4, 3, '#241f28');
+      break;
+    case 'sign_pedlar':                                 // a flask of something green
+      P.rect(cx - 1, cy - 5, 2, 3, '#8a6a3e');
+      P.rect(cx - 3, cy - 2, 6, 7, '#c8d8f0');
+      P.rect(cx - 3, cy + 1, 6, 4, '#5cc088');
+      P.px(cx - 2, cy - 1, '#f0f8ff');
+      break;
+    case 'sign_inn':                                    // a bed
+      P.rect(cx - 6, cy + 1, 12, 4, '#8a5a2c');
+      P.rect(cx - 5, cy - 2, 4, 4, '#f0e6d0');
+      P.rect(cx - 1, cy - 1, 7, 3, '#c85050');
+      break;
+    case 'sign_temple':                                 // a four-point star
+      P.rect(cx - 1, cy - 6, 2, 12, '#f8d048');
+      P.rect(cx - 6, cy - 1, 12, 2, '#f8d048');
+      P.rect(cx - 2, cy - 2, 4, 4, '#fff0b0');
+      break;
+    case 'sign_guild':                                  // a rolled scroll
+      P.rect(cx - 6, cy - 2, 12, 5, '#e6d3a2');
+      P.rect(cx - 6, cy - 2, 2, 5, '#8a6a3e');
+      P.rect(cx + 4, cy - 2, 2, 5, '#8a6a3e');
+      P.rect(cx - 4, cy - 1, 8, 1, '#8a7050');
+      P.rect(cx - 4, cy + 1, 6, 1, '#8a7050');
+      break;
+    case 'sign_store':                                  // a tied sack of goods
+      P.rect(cx - 4, cy - 2, 8, 7, '#a3652e');
+      P.rect(cx - 5, cy - 3, 10, 2, '#7c4b1e');
+      P.rect(cx - 1, cy - 5, 2, 3, '#4a2c10');
+      break;
+  }
+}
+
 /** Plaster wall with a timber frame, in shadow under the eaves. */
-function drawWall(P, sample, isDoor, T) {
+function drawWall(P, sample, isDoor, T, self) {
   const WALL = T.WALL, BEAM = T.BEAM;
   const up = run(sample, isWall, 0, -1);
   const down = run(sample, isWall, 0, 1);
@@ -193,8 +245,9 @@ function drawWall(P, sample, isDoor, T) {
     }
   }
 
-  // a window per wall cell, except where the door is
-  if (!isDoor && yOff % TS === 0 && up === 0 && blockH > TS) {
+  const sign = isSign(self);
+  // a window per wall cell, except where the door or a sign is
+  if (!isDoor && !sign && yOff % TS === 0 && up === 0 && blockH > TS) {
     P.rect(8, 9, 9, 8, BEAM[1]);
     P.rect(9, 10, 7, 6, T.GLASS[0]);
     P.rect(9, 10, 7, 2, T.GLASS[1]);
@@ -202,6 +255,7 @@ function drawWall(P, sample, isDoor, T) {
     P.rect(9, 13, 7, 1, BEAM[1]);
     P.rect(7, 8, 11, 1, T.TRIM);                        // painted lintel — the accent that reads regional
   }
+  if (sign) drawSign(P, self, T);
   if (isDoor) {
     const top = up === 0 ? 6 : 0;
     P.rect(6, top, 12, TS - top, BEAM[1]);
@@ -258,7 +312,7 @@ export function buildingSprite(key, sample, theme = 'green') {
     const self = sample(0, 0);
     if (isDome(self)) drawDome(P, sample, T);
     else if (isRoof(self)) drawRoof(P, sample, T);
-    else if (isWall(self)) drawWall(P, sample, self === 'door', T);
+    else if (isWall(self)) drawWall(P, sample, self === 'door', T, self);
     else drawCast(P, sample, T);
   });
 }
