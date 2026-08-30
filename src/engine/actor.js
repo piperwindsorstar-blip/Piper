@@ -29,8 +29,8 @@ function hashStr(s) {
 
 /**
  * The head-and-shoulders "face": silhouette, cheeks, jaw, eyes, eyebrows,
- * mouth. Shared by the full body sprite and the battle portrait bust so
- * both read as the same character.
+ * mouth — used by the full body sprite. paintPortraitFace() below is the
+ * same construction at the bust's bigger scale.
  */
 function paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt, L }) {
   const hRows = headH - 1;
@@ -56,19 +56,19 @@ function paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hu
     P.rect(ax - headW + 1, hY + 5, 2, 3, skinD);
     P.rect(ax + headW - 3, hY + 5, 2, 3, skinD);
   }
-  // eyebrows, pupil/eyes
+  // eyebrows, pupil/eyes — proportioned like a real eye socket, not a
+  // cartoon dot: a sliver of white, a shaded iris, a dark pupil
   if (!hurt) {
     P.rect(ax - 4, hY + 4, 3, 1, hairD);
     P.rect(ax + 1, hY + 4, 3, 1, hairD);
-    P.rect(ax - 4, hY + 5, 3, 2, eye);
-    P.rect(ax + 1, hY + 5, 3, 2, eye);
-    P.px(ax - 4, hY + 5, '#f4f4ff');
-    P.px(ax + 1, hY + 5, '#f4f4ff');
-    if (L.glow) {
-      P.px(ax - 3, hY + 6, L.glow); P.px(ax + 2, hY + 6, L.glow);
-    } else {
-      P.px(ax - 3, hY + 6, shade(eye, -0.45)); P.px(ax + 2, hY + 6, shade(eye, -0.45));
-    }
+    P.rect(ax - 4, hY + 5, 3, 2, '#e8e4dc');
+    P.rect(ax + 1, hY + 5, 3, 2, '#e8e4dc');
+    P.rect(ax - 4, hY + 5, 2, 2, eye);
+    P.rect(ax + 2, hY + 5, 2, 2, eye);
+    P.px(ax - 4, hY + 6, shade(eye, -0.4));
+    P.px(ax + 2, hY + 6, shade(eye, -0.4));
+    P.px(ax - 4, hY + 5, L.glow ?? '#f4f4ff');
+    P.px(ax + 2, hY + 5, L.glow ?? '#f4f4ff');
   } else {
     P.px(ax - 3, hY + 4, hairD);
     P.px(ax + 2, hY + 4, hairD);
@@ -76,6 +76,56 @@ function paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hu
     P.rect(ax + 1, hY + 6, 3, 1, eye);
   }
   if (!L.muzzle) P.rect(ax - 1, hY + 9, 2, 1, skinD);              // mouth
+}
+
+/**
+ * The battle portrait's face — same construction as paintFace(), just at
+ * the bust's bigger scale, so the eye gets one extra row to hold a visible
+ * sclera-iris-pupil structure instead of a flat chip. Still a proportionate
+ * eye, not an oversized one: realism here means depth and shading, not size.
+ */
+function paintPortraitFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt, L }) {
+  const hRows = headH - 1;
+  const headHalf = (i) => {
+    const t = (i + 0.5) / hRows;
+    const s = Math.sin(Math.PI * (0.14 + 0.78 * t));
+    return headW * (0.52 + 0.48 * s);
+  };
+  const hw = (i) => Math.max(1, Math.round(headHalf(i)));
+  P.profile(ax, hY, hRows, skin, headHalf);
+  for (let i = 1; i < hRows - 1; i++) {                            // cheeks
+    P.rect(ax - hw(i), hY + i, 2, 1, skinL);
+    P.rect(ax + hw(i) - 2, hY + i, 2, 1, skinD);
+  }
+  P.rect(ax - hw(hRows - 2), hY + headH - 2, hw(hRows - 2) * 2, 1, skinD);   // jaw
+  P.px(ax, hY + headH - 3, skinL);                                 // chin highlight
+  if (L.scaled) {
+    for (let i = 0; i < 5; i++) P.px(ax - 4 + (i % 3) * 4, hY + 3 + i * 1.3 | 0, shade(skin, -0.2));
+  }
+  if (L.gaunt) {
+    P.rect(ax - headW + 1, hY + 6, 2, 4, skinD);
+    P.rect(ax + headW - 3, hY + 6, 2, 4, skinD);
+  }
+
+  const eyeY = hY + Math.round(headH * 0.42);
+  const dx = Math.max(4, Math.round(headW * 0.6));
+  if (hurt) {
+    for (const cx of [ax - dx, ax + dx]) P.rect(cx - 2, eyeY, 4, 1, shade(eye, -0.3));
+  } else {
+    for (const cx of [ax - dx, ax + dx]) {
+      P.rect(cx - 2, eyeY - 3, 5, 1, hairD);                       // brow
+      P.rect(cx - 2, eyeY - 1, 5, 3, '#e8e4dc');                   // sclera
+      P.rect(cx - 2, eyeY - 1, 4, 2, eye);                         // iris, shaded not flat
+      P.rect(cx - 2, eyeY, 4, 1, shade(eye, -0.3));
+      P.px(cx - 1, eyeY - 1, L.glow ?? shade(eye, -0.55));         // pupil
+      P.px(cx - 2, eyeY - 1, '#f4f4ff');                           // one small highlight
+      P.rect(cx - 2, eyeY + 1, 4, 1, shade(skin, -0.2));           // lower lid
+    }
+  }
+  if (!L.muzzle) {
+    P.rect(ax - 1, hY + headH - 6, 3, 1, shade(skin, -0.3));       // mouth
+    P.px(ax - 1, hY + headH - 5, shade(skin, -0.15));
+  }
 }
 
 /** The flat-color hair cap, with a handful of cheap shape variants layered
@@ -632,7 +682,7 @@ export function actorPortraitSprite(o) {
     P.rect(ax - headW, shoulderY, headW * 2, 2, trim);              // collar
     P.rect(ax - headW, shoulderY, headW * 2, 1, trimL);
 
-    paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt: false, L });
+    paintPortraitFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt: false, L });
     if (!L.muzzle && !L.plates) {
       paintHairCap(P, { ax, hY, headW, hair, hairL, hairD, styleIdx: hairStyle });
     }
