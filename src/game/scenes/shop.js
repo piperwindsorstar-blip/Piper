@@ -175,7 +175,7 @@ export class ShopScene {
       }
       const cv = actorSprite({
         classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-        skin: ch.skin, hair: ch.hair, frame: 0,
+        skin: ch.skin, hair: ch.hair, equip: ch.equip, frame: 0,
       });
       scr.ctx.save();
       if (!ok) scr.ctx.globalAlpha = 0.35;

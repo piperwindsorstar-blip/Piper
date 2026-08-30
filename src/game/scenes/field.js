@@ -492,7 +492,7 @@ export class FieldScene {
     const px = this.playerPixel();
     const cv = actorSprite({
       classId: this.g.leader.classId, raceId: this.g.leader.raceId, elementId: this.g.leader.elementId,
-      skin: this.g.leader.skin, hair: this.g.leader.hair,
+      skin: this.g.leader.skin, hair: this.g.leader.hair, equip: this.g.leader.equip,
       frame: this.moving ? (Math.floor(this.animT * 8) % 2) : 0,
     });
     scr.ctx.drawImage(cv, Math.round(px.x - cam.x - (cv.width - TS) / 2), Math.round(px.y - cam.y - (cv.height - TS) - 4));

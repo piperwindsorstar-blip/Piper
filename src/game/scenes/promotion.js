@@ -135,7 +135,7 @@ export class PromotionScene {
     scr.panel(16, HEAD_Y, W - 32, HEAD_H, { accent: true, accentWidth: 30 });
     const cv = actorSprite({
       classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-      skin: ch.skin, hair: ch.hair, frame: Math.floor(this.t * 3) % 2,
+      skin: ch.skin, hair: ch.hair, equip: ch.equip, frame: Math.floor(this.t * 3) % 2,
     });
     scr.light(46, HEAD_Y + 26, 34, el.color, 0.18);
     scr.ctx.drawImage(cv, 26, HEAD_Y - 4);
@@ -217,7 +217,7 @@ export class PromotionScene {
     scr.light(W / 2, 132, 66, el.color, 0.28 * pulse);
     const cv = actorSprite({
       classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-      skin: ch.skin, hair: ch.hair, frame: 0,
+      skin: ch.skin, hair: ch.hair, equip: ch.equip, frame: 0,
     });
     scr.ctx.drawImage(cv, W / 2 - cv.width, 96, cv.width * 2, cv.height * 2);
     this.fxp.draw(scr);

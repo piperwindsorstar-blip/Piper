@@ -13,9 +13,10 @@ import { make, shade, mix } from './pixel.js';
 import { ELEMENT_BY_ID } from '../data/elements.js';
 import { getClass } from '../data/classes.js';
 import { getRace } from '../data/races.js';
+import { getItem } from '../data/items.js';
 
 export const AW = 36, AH = 48;      // actor canvas
-export const PW = 40, PH = 44;      // portrait bust canvas
+export const PW = 56, PH = 64;      // portrait bust canvas
 const OUTLINE = '#0a0812';
 const RIM = '#8fa8d8';
 
@@ -25,6 +26,24 @@ function hashStr(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h += s.charCodeAt(i);
   return h;
+}
+
+/**
+ * What a character actually carries, in visual terms — the weapon shape to
+ * draw and its elemental tint (if any), and whether a shield rides the off
+ * hand — independent of class, since two warriors can carry entirely
+ * different arms. Falls back to the class's default kit whenever `o.equip`
+ * is absent (a creation-screen preview, before any items are owned) or a
+ * slot is empty, so every existing caller keeps working unchanged.
+ */
+function equipLook(o, kit) {
+  const equip = o.equip;
+  const weaponItem = equip?.weapon ? getItem(equip.weapon) : null;
+  const offhandItem = equip?.offhand ? getItem(equip.offhand) : null;
+  const weaponType = weaponItem?.wtype ?? kit.weapon;
+  const weaponElement = weaponItem?.element && weaponItem.element !== 'none' ? weaponItem.element : null;
+  const hasShield = offhandItem?.wtype === 'shield';
+  return { weaponType, weaponElement, hasShield };
 }
 
 /**
@@ -80,9 +99,10 @@ function paintFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hu
 
 /**
  * The battle portrait's face — same construction as paintFace(), just at
- * the bust's bigger scale, so the eye gets one extra row to hold a visible
- * sclera-iris-pupil structure instead of a flat chip. Still a proportionate
- * eye, not an oversized one: realism here means depth and shading, not size.
+ * the bust's bigger scale, so there's room for a socket shadow, a two-tone
+ * iris with its own catchlight, an angled brow, and nose/lip shading instead
+ * of the body sprite's flatter chip-eyed version. Still a proportionate eye,
+ * not an oversized one: realism here means depth and shading, not size.
  */
 function paintPortraitFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt, L }) {
   const hRows = headH - 1;
@@ -94,38 +114,73 @@ function paintPortraitFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD,
   const hw = (i) => Math.max(1, Math.round(headHalf(i)));
   P.profile(ax, hY, hRows, skin, headHalf);
   for (let i = 1; i < hRows - 1; i++) {                            // cheeks
-    P.rect(ax - hw(i), hY + i, 2, 1, skinL);
-    P.rect(ax + hw(i) - 2, hY + i, 2, 1, skinD);
+    P.rect(ax - hw(i), hY + i, 3, 1, skinL);
+    P.rect(ax + hw(i) - 3, hY + i, 3, 1, skinD);
   }
   P.rect(ax - hw(hRows - 2), hY + headH - 2, hw(hRows - 2) * 2, 1, skinD);   // jaw
-  P.px(ax, hY + headH - 3, skinL);                                 // chin highlight
+  P.rect(ax - 2, hY + headH - 4, 4, 1, skinL);                     // chin highlight
+  P.px(ax, hY + headH - 3, skinL);
   if (L.scaled) {
-    for (let i = 0; i < 5; i++) P.px(ax - 4 + (i % 3) * 4, hY + 3 + i * 1.3 | 0, shade(skin, -0.2));
+    for (let i = 0; i < 6; i++) P.px(ax - 5 + (i % 3) * 5, hY + 3 + Math.round(i * 1.5), shade(skin, -0.2));
   }
   if (L.gaunt) {
-    P.rect(ax - headW + 1, hY + 6, 2, 4, skinD);
-    P.rect(ax + headW - 3, hY + 6, 2, 4, skinD);
+    P.rect(ax - headW + 1, hY + 6, 2, 5, skinD);
+    P.rect(ax + headW - 3, hY + 6, 2, 5, skinD);
   }
 
-  const eyeY = hY + Math.round(headH * 0.42);
-  const dx = Math.max(4, Math.round(headW * 0.6));
+  // nose — a bridge highlight and a soft shadow, not just the mouth doing
+  // all the work of reading as a face
+  const noseY = hY + Math.round(headH * 0.5);
+  P.rect(ax - 1, noseY, 1, Math.round(headH * 0.14), skinL);
+  P.px(ax + 1, noseY + Math.round(headH * 0.13), skinD);
+
+  const eyeY = hY + Math.round(headH * 0.4);
+  const dx = Math.max(5, Math.round(headW * 0.62));
   if (hurt) {
-    for (const cx of [ax - dx, ax + dx]) P.rect(cx - 2, eyeY, 4, 1, shade(eye, -0.3));
+    for (const cx of [ax - dx, ax + dx]) P.rect(cx - 2, eyeY, 5, 1, shade(eye, -0.3));
   } else {
     for (const cx of [ax - dx, ax + dx]) {
-      P.rect(cx - 2, eyeY - 3, 5, 1, hairD);                       // brow
-      P.rect(cx - 2, eyeY - 1, 5, 3, '#e8e4dc');                   // sclera
-      P.rect(cx - 2, eyeY - 1, 4, 2, eye);                         // iris, shaded not flat
-      P.rect(cx - 2, eyeY, 4, 1, shade(eye, -0.3));
-      P.px(cx - 1, eyeY - 1, L.glow ?? shade(eye, -0.55));         // pupil
-      P.px(cx - 2, eyeY - 1, '#f4f4ff');                           // one small highlight
-      P.rect(cx - 2, eyeY + 1, 4, 1, shade(skin, -0.2));           // lower lid
+      const s = cx < ax ? 1 : -1;                                  // brow angles up toward the nose
+      P.rect(cx - 2, eyeY - 4, 6, 1, hairD);
+      P.px(cx - 2 + (s < 0 ? 5 : 0), eyeY - 5, hairD);
+      P.rect(cx - 3, eyeY - 2, 2, 2, shade(skin, -0.12));           // socket shadow
+      P.rect(cx - 2, eyeY - 1, 6, 4, '#e8e4dc');                    // sclera
+      P.rect(cx - 1, eyeY - 1, 4, 3, eye);                          // iris
+      P.rect(cx - 1, eyeY - 1, 4, 1, shade(eye, 0.3));              // iris top catches the light
+      P.rect(cx, eyeY, 2, 2, shade(eye, -0.5));                     // pupil
+      P.px(cx - 1, eyeY - 1, '#ffffff');                            // catchlight
+      P.rect(cx - 2, eyeY + 2, 6, 1, shade(skin, -0.22));           // lower lid
+      P.px(cx + 3, eyeY - 1, shade(skin, 0.15));                    // brow-bone highlight
     }
   }
   if (!L.muzzle) {
-    P.rect(ax - 1, hY + headH - 6, 3, 1, shade(skin, -0.3));       // mouth
-    P.px(ax - 1, hY + headH - 5, shade(skin, -0.15));
+    const mouthY = hY + headH - 7;
+    P.rect(ax - 2, mouthY, 5, 1, shade(skin, -0.32));               // mouth line
+    P.rect(ax - 2, mouthY + 1, 5, 1, shade(skin, 0.1));             // lower-lip catch
+    P.px(ax - 2, mouthY, shade(skin, -0.2));
   }
+}
+
+/**
+ * A few brighter strands over the hair cap — the difference between a flat
+ * colour block and hair that catches light, at a scale worth the extra rows.
+ */
+function paintPortraitHairShine(P, { ax, hY, headW, hairL, styleIdx }) {
+  const y0 = hY - 1;
+  for (let i = 0; i < 3; i++) {
+    const x = ax - headW + 2 + i * Math.round(headW * 0.9) + (styleIdx % 2);
+    P.rect(x, y0, 1, 3 + (i % 2), hairL);
+  }
+}
+
+/** A small circlet for a promoted character — the bust's equivalent of the
+ *  body sprite's aura, worn rather than radiated. */
+function paintPortraitAccolade(P, { ax, hY, headW, tier, elColor, elColor2 }) {
+  if (tier < 3) return;
+  const y = hY - 2;
+  P.rect(ax - headW - 1, y, headW * 2 + 2, 1, tier >= 5 ? elColor2 : shade(elColor, 0.2));
+  P.rect(ax - 1, y - 2, 2, 3, elColor);
+  if (tier >= 5) P.px(ax, y - 2, elColor2);
 }
 
 /** The flat-color hair cap, with a handful of cheap shape variants layered
@@ -164,15 +219,19 @@ function paintHairCap(P, { ax, hY, headW, hair, hairL, hairD, styleIdx }) {
 function paintRaceAnatomy(P, { ax, hY, headW, headH, skin, skinL, skinD, hair, hairL, hairD, L }) {
   switch (L.ears) {
     case 'long': {                                     // Elf, Fairy, Gnome
+      // a bigger head (the portrait bust) gets a thicker ear to match — a
+      // single-pixel spike that reads fine on the small body sprite looks
+      // like a stray hair once the head around it triples in size
+      const thick = headW > 9 ? Math.max(1, Math.round(headW / 6)) : 1;
       for (let i = 0; i < 9; i++) {
-        const dx = Math.floor(i * 0.55);
-        const yy = hY + 6 - i;
-        P.px(ax - headW - 1 - dx, yy, i > 5 ? skinL : skin);
-        P.px(ax - headW - 2 - dx, yy, skinD);
-        P.px(ax + headW + dx, yy, i > 5 ? skin : skinD);
-        P.px(ax + headW + 1 + dx, yy, skinD);
+        const dx = Math.floor(i * 0.55 * thick);
+        const yy = hY + 6 - i * thick;
+        P.rect(ax - headW - thick - dx, yy, thick, thick, i > 5 ? skinL : skin);
+        P.rect(ax - headW - 2 * thick - dx, yy, thick, thick, skinD);
+        P.rect(ax + headW + dx, yy, thick, thick, i > 5 ? skin : skinD);
+        P.rect(ax + headW + thick + dx, yy, thick, thick, skinD);
       }
-      P.px(ax - headW - 5, hY - 2, skinL);
+      P.rect(ax - headW - 5 * thick, hY - 2, thick, thick, skinL);
       break;
     }
     case 'wolf': {                                     // Wolfkin
@@ -262,8 +321,11 @@ const KITS = {
 };
 
 /**
- * @param {object} o {classId, raceId, elementId, skin, hair, frame}
+ * @param {object} o {classId, raceId, elementId, skin, hair, frame, equip}
  *   frame 0 idle · 1 step · 2 hurt · 3 attack
+ *   equip {weapon, offhand, body, head, accessory} — item ids, all optional;
+ *   when given, the actual carried weapon and off-hand shield are drawn
+ *   instead of the class's stock loadout.
  */
 export function actorSprite(o) {
   const cls = getClass(o.classId);
@@ -273,10 +335,12 @@ export function actorSprite(o) {
   const L = race.look;
   const frame = o.frame ?? 0;
   const tier = cls.tier;
+  const { weaponType, weaponElement, hasShield } = equipLook(o, kit);
 
   const skin = L.skins[(o.skin ?? 0) % L.skins.length];
   const hair = L.hairs[(o.hair ?? 0) % L.hairs.length];
-  const key = `act|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}|${frame}`;
+  const key = `act|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}|${frame}` +
+    `|${weaponType}|${weaponElement ?? ''}|${hasShield ? 1 : 0}`;
 
   return make(key, AW, AH, (P) => {
     const ax = AW / 2;                       // mirror axis
@@ -568,10 +632,22 @@ export function actorSprite(o) {
     paintRaceAnatomy(P, { ax, hY, headW, headH, skin, skinL, skinD, hair, hairL, hairD, L });
 
     // --- weapon (in front) ---------------------------------------------------
+    //  Whatever is actually in the weapon slot, not just the class's stock
+    //  loadout — a warrior who picked up an axe carries an axe. An elemental
+    //  weapon (Flametongue, Stormrod, ...) tints its own steel and gets a
+    //  small glow at the business end, independent of the wielder's own
+    //  element, since the two can differ.
     const wx = ax + bodyW + 4 + lean;
     const wy = armY - 5 - lean;
-    const steel = '#a2acc4', steelL = '#eef2ff', steelD = '#6a7286';
-    switch (kit.weapon) {
+    const weaponEl = weaponElement ? ELEMENT_BY_ID[weaponElement] : null;
+    const steel = weaponEl ? mix('#a2acc4', weaponEl.color, 0.35) : '#a2acc4';
+    const steelL = weaponEl ? weaponEl.color2 : '#eef2ff';
+    const steelD = weaponEl ? shade(weaponEl.color, -0.3) : '#6a7286';
+    // a single opaque bright fleck at the business end — the same trick the
+    // staff's orb already uses, just for whichever weapon is actually held,
+    // and only when there's an element to show off
+    const glow = (gx, gy) => { if (weaponEl) P.px(Math.round(gx), Math.round(gy), weaponEl.color2); };
+    switch (weaponType) {
       case 'sword':
         P.rect(wx, wy - 8, 4, 21, steel);
         P.rect(wx, wy - 8, 1, 21, steelL);
@@ -579,18 +655,39 @@ export function actorSprite(o) {
         P.rect(wx - 2, wy + 12, 8, 2, trim);
         P.rect(wx - 2, wy + 12, 8, 1, trimL);
         P.rect(wx + 1, wy + 14, 2, 5, '#5c4028');
+        glow(wx + 2, wy - 8);
+        break;
+      case 'axe':
+        P.rect(wx + 1, wy - 6, 2, 27, '#6b4a28');
+        P.rect(wx + 1, wy - 6, 1, 27, '#8a6238');
+        for (let i = 0; i < 10; i++) {
+          const w = Math.max(1, 6 - Math.abs(i - 4.5));
+          P.rect(wx + 3, wy - 13 + i, Math.round(w), 1, i < 5 ? steel : steelD);
+        }
+        P.rect(wx + 3, wy - 13, 1, 5, steelL);
+        glow(wx + 6, wy - 9);
         break;
       case 'spear':
         P.rect(wx + 1, wy - 14, 2, 34, '#6b4a28');
         P.rect(wx + 1, wy - 14, 1, 34, '#8a6238');
         P.tri(wx - 1, wy - 21, 6, 8, steel);
         P.rect(wx - 1, wy - 13, 6, 2, trim);
+        glow(wx + 2, wy - 20);
+        break;
+      case 'whip':
+        for (let i = 0; i < 18; i++) {
+          const t = i / 17;
+          const dx = Math.round(Math.sin(t * 5.2) * 5 * t);
+          P.px(wx + 1 + dx, wy - 8 + i, i < 3 ? trim : (i % 3 === 0 ? steelD : steel));
+        }
+        glow(wx + 1, wy - 8);
         break;
       case 'staff':
         P.rect(wx + 1, wy - 8, 3, 30, '#6b4a28');
         P.rect(wx + 1, wy - 8, 1, 30, '#8a6238');
-        P.ellipse(wx + 2, wy - 11, 4, 4, el.color);
+        P.ellipse(wx + 2, wy - 11, 4, 4, weaponEl?.color ?? el.color);
         P.ellipse(wx + 1, wy - 12, 2, 2, '#ffffff');
+        glow(wx + 2, wy - 11);
         break;
       case 'bow':
         for (let i = -12; i <= 12; i++) {
@@ -598,17 +695,19 @@ export function actorSprite(o) {
           P.rect(wx + dx, wy + 3 + i, 2, 1, '#8a6030');
           if (i % 4 === 0) P.px(wx + dx, wy + 3 + i, '#a87a44');
         }
-        P.rect(wx + 2, wy - 9, 1, 25, '#e4e8f4');
+        P.rect(wx + 2, wy - 9, 1, 25, weaponEl ? weaponEl.color2 : '#e4e8f4');
         break;
       case 'dagger':
         P.rect(wx, wy + 2, 3, 10, steel);
         P.rect(wx, wy + 2, 1, 10, steelL);
         P.rect(wx - 1, wy + 12, 5, 2, trim);
+        glow(wx + 1, wy + 2);
         break;
       case 'mace':
         P.rect(wx + 1, wy + 2, 2, 14, '#6b4a28');
-        P.ellipse(wx + 2, wy + 1, 4, 4, trim);
-        P.ellipse(wx + 1, wy, 2, 2, trimL);
+        P.ellipse(wx + 2, wy + 1, 4, 4, weaponEl ? steel : trim);
+        P.ellipse(wx + 1, wy, 2, 2, weaponEl ? steelL : trimL);
+        glow(wx + 2, wy + 1);
         break;
       case 'shield':
         P.rect(wx - 1, wy, 9, 17, trim);
@@ -621,6 +720,40 @@ export function actorSprite(o) {
         P.rect(wx - 1, wy + 8, 5, 1, trim);
         break;
       default: break;
+    }
+
+    // --- off-hand shield, worn alongside a real weapon -----------------------
+    if (hasShield && weaponType !== 'shield') {
+      const sx = ax - tw(2) - 6, sy = armY - 2;
+      P.rect(sx, sy, 6, 15, trim);
+      P.rect(sx, sy, 6, 1, trimL);
+      P.rect(sx + 1, sy + 4, 4, 7, el.color);
+      P.rect(sx + 2, sy + 5, 2, 3, shade(el.color, 0.35));
+    }
+
+    // --- promotion aura, tier 5+ -----------------------------------------------
+    //  A wash of the wielder's own element across everything already drawn —
+    //  it only appears once a class has climbed high enough up its ladder to
+    //  matter. `source-atop` keeps it confined to the silhouette that already
+    //  exists, so it can never leave a stray glow where the outline/AO/rim
+    //  post-passes below would trace a halo around empty air.
+    if (tier >= 5) {
+      P.ctx.save();
+      P.ctx.globalCompositeOperation = 'source-atop';
+      P.ctx.globalAlpha = tier >= 7 ? 0.24 : 0.13;
+      const g = P.ctx.createRadialGradient(ax, bodyY + bodyH / 2, 2, ax, bodyY + bodyH / 2, bodyW + 14);
+      g.addColorStop(0, el.color2 ?? el.color);
+      g.addColorStop(1, el.color);
+      P.ctx.fillStyle = g;
+      P.ctx.fillRect(0, 0, AW, AH);
+      P.ctx.restore();
+      if (tier >= 7) {
+        const sparkle = [[ax - bodyW - 6, bodyY + 2], [ax + bodyW + 7, bodyY + 6], [ax - 4, headY - 6]];
+        for (const [sxp, syp] of sparkle) {
+          const tw2 = Math.sin(hashStr(race.id) + sxp * 3.1) > 0 ? el.color2 ?? '#ffffff' : el.color;
+          P.px(Math.round(sxp), Math.round(syp), tw2);
+        }
+      }
     }
   }, { round: true, outline: OUTLINE, ao: 0.26, rim: RIM, rimAlpha: 0.34 });
 }
@@ -664,13 +797,46 @@ export function actorPortraitSprite(o) {
     const eye = L.glow ?? L.eye ?? '#2b1f2e';
     const hairStyle = (hashStr(race.id) + (o.hair ?? 0)) % 4;
 
-    const headW = Math.round(6 * build * 1.4);
-    const headH = Math.round(13 * build * 1.25);
-    const hY = 4;
+    const headW = Math.round(6 * build * 1.9);
+    const headH = Math.round(13 * build * 1.7);
+    const hY = 5;
+
+    // --- wings, clear of the shoulders --------------------------------------
+    //  Anchored outside the shoulders' own widest point rather than close to
+    //  the neck, so the broad shoulder silhouette drawn next can never cover
+    //  them — a wing that only peeks out 1px past a cloak reads as nothing.
+    const shoulderY0 = hY + headH - 2;
+    const wingBase = PW / 2 - 2;
+    if (L.wings === 'fairy') {
+      for (const s of [-1, 1]) {
+        for (let r = 0; r < 18; r++) {
+          const t = (r - 8) / 9;
+          const span = Math.round(14 * Math.sqrt(Math.max(0, 1 - t * t)));
+          if (span <= 0) continue;
+          const yy = shoulderY0 - 12 + r;
+          const x0 = s < 0 ? ax - wingBase - span : ax + wingBase;
+          P.rect(x0, yy, span, 1, r % 3 === 0 ? '#cfe8ff' : '#9fd0f0');
+        }
+        P.rect(ax + s * (wingBase + 2), shoulderY0 - 10, 1, 12, '#e8f4ff');
+      }
+    } else if (L.wings === 'dragon') {
+      for (const s of [-1, 1]) {
+        const memb = shade(skin, -0.3), bone = shade(skin, 0.15);
+        for (let r = 0; r < 19; r++) {
+          const t = (r - 9) / 9.5;
+          const span = Math.round(16 * Math.sqrt(Math.max(0, 1 - t * t)));
+          if (span <= 0) continue;
+          const yy = shoulderY0 - 11 + r;
+          const x0 = s < 0 ? ax - wingBase - span : ax + wingBase;
+          P.rect(x0, yy, span, 1, s < 0 ? shade(memb, -0.2) : memb);
+          if (r < 3) P.rect(x0, yy, span, 1, bone);
+        }
+      }
+    }
 
     // --- shoulders/collar (drawn first, the head silhouette sits on top) ---
     const maxHalf = PW / 2 - 2;
-    const shoulderY = hY + headH - 2;
+    const shoulderY = shoulderY0;
     const shoulderH = Math.max(4, PH - shoulderY - 2);
     const shoulderHalf = (i) => Math.min(maxHalf, headW + 3 + i * 0.8);
     P.profile(ax, shoulderY, shoulderH, cloth, shoulderHalf);
@@ -679,14 +845,34 @@ export function actorPortraitSprite(o) {
       P.rect(ax - w, shoulderY + i, 3, 1, clothL);
       P.dither(ax - w + 2, shoulderY + i, 2, 1, cloth, 0.35);
     }
+    // pauldrons on plate-body classes read even this close up
+    if (kit.body === 'plate') {
+      P.mrect(ax, headW + 1, shoulderY - 1, 5, 4, trimL);
+      P.mrect(ax, headW + 1, shoulderY + 2, 5, 1, shade(trim, -0.3));
+    }
     P.rect(ax - headW, shoulderY, headW * 2, 2, trim);              // collar
     P.rect(ax - headW, shoulderY, headW * 2, 1, trimL);
 
     paintPortraitFace(P, { ax, hY, headW, headH, skin, skinL, skinD, hairD, eye, hurt: false, L });
     if (!L.muzzle && !L.plates) {
       paintHairCap(P, { ax, hY, headW, hair, hairL, hairD, styleIdx: hairStyle });
+      paintPortraitHairShine(P, { ax, hY, headW, hairL, styleIdx: hairStyle });
     }
     paintRaceAnatomy(P, { ax, hY, headW, headH, skin, skinL, skinD, hair, hairL, hairD, L });
+    paintPortraitAccolade(P, { ax, hY, headW, tier, elColor: el.color, elColor2: el.color2 ?? el.color });
+
+    // --- promotion wash, tier 5+ — the same treatment the body sprite gets
+    if (tier >= 5) {
+      P.ctx.save();
+      P.ctx.globalCompositeOperation = 'source-atop';
+      P.ctx.globalAlpha = tier >= 7 ? 0.22 : 0.12;
+      const g = P.ctx.createRadialGradient(ax, hY + headH * 0.6, 2, ax, hY + headH * 0.6, headW + 20);
+      g.addColorStop(0, el.color2 ?? el.color);
+      g.addColorStop(1, el.color);
+      P.ctx.fillStyle = g;
+      P.ctx.fillRect(0, 0, PW, PH);
+      P.ctx.restore();
+    }
   }, { round: true, outline: OUTLINE, ao: 0.3, rim: RIM, rimAlpha: 0.42 });
 }
 

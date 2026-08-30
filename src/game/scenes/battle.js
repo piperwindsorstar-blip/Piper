@@ -469,7 +469,7 @@ export class BattleScene {
       const hurtFrame = ch.hp / stats(ch).maxHp < 0.25 ? 2 : 0;
       const cv = actorSprite({
         classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-        skin: ch.skin, hair: ch.hair,
+        skin: ch.skin, hair: ch.hair, equip: ch.equip,
         frame: isActor ? 3 : (hurtFrame || (breathe ? 1 : 0)),
       });
       scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H - cv.height));
