@@ -602,3 +602,40 @@ Grouping every service building behind its own walls also does something
 the open plaza couldn't: a town's outdoor space now reads as the shared
 public square it was always meant to be, with the specific business of
 each shop kept out of sight until a player chooses to walk in and ask.
+
+### Filling the plaza back in
+
+Emptying the plaza of shop business made the next gap obvious: five doors
+around an open square is still five doors around an open square. Two
+follow-up passes filled it back in, deliberately with texture rather than
+mechanics — the towns needed to feel lived-in, not to grow new systems.
+
+**New decorative tiles** — a well, a market stall, a lamppost — plug into
+the same overlay mechanism `'flower'` already used: `field.js`'s
+`FEATURE` set draws a tile's ground first and then stamps a second sprite
+on top for any glyph it lists, so adding three more glyphs to that set
+was the entire engine change. Each is a new 24×24 stamp in `tiles.js`
+built from the same pixel primitives every other tile uses — no new
+drawing system, just three more patterns for the existing one.
+
+**Wren's Ford and Kelda** each gained two small flavor houses beyond
+their five service buildings — deliberately narrower than a shop
+(`RRRR`/`HDHH` instead of `RRRRRR`/`HHDHHH`) so they read as modest homes
+at a glance. Each holds one named townsperson with a `reactions` line
+tied to a *distant* region's boss — Wren's Ford hears when Kelda's ruins
+go quiet, Kelda hears when Wren's Ford's roads clear — the same flat-flag
+`reactions` pattern every other town NPC already used, just aimed across
+the map instead of at the region next door, so news of the wider campaign
+visibly reaches both hubs from both directions.
+
+**The four small waypost towns** had zero commerce of any kind before
+this — only a recruit's home and one talk NPC. Each gained a small
+General Store carrying the same conservative early stock already
+established for Wren's Ford's `wren_items` (potions, antidotes, a tent),
+filling an actual gap in the world rather than duplicating what the two
+hubs already sell.
+
+Widening a town's tile grid rather than squeezing new buildings into
+existing gaps kept every prior coordinate — every NPC, warp, and door —
+untouched; new content only ever lands in newly appended columns, so
+nothing already shipped needed to move.

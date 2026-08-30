@@ -476,11 +476,11 @@ export const MAPS = {
     bg: "#1c2230",
     tiles: [
       'TTTTTTTTTTTTTTTT',
-      'T..............T',
-      'T.RRRRRR.......T',
-      'T.RRRRRR.......T',
-      'T.HHHHHH.......T',
-      'T.HHDHHH.......T',
+      'T............l.T',
+      'T.RRRRRR.RRRR..T',
+      'T.RRRRRR.RRRR..T',
+      'T.HHHHHH.HHHH..T',
+      'T.HHDHHH.HDHH..T',
       'T..............T',
       'T..........f...T',
       'T......,,......T',
@@ -490,11 +490,30 @@ export const MAPS = {
       {"x": 7, "y": 9, "to": "world", "tx": 35, "ty": 10},
       {"x": 8, "y": 9, "to": "world", "tx": 35, "ty": 10},
       {"x": 4, "y": 5, "to": "millhollow_home", "tx": 4, "ty": 4},
+      {"x": 10, "y": 5, "to": "millhollow_store", "tx": 4, "ty": 4},
     ],
     npcs: [
       {"x": 11, "y": 6, "kind": "talk", "name": "Miller's Widow",
         "text": "Volk took the mill's grain three winters running. Whatever's left of him, I hope it's cold.",
         "reactions": { "volk": "Cold, then. Good. Sit, eat something — the mill owes you at least that." }},
+    ],
+  },
+
+  millhollow_store: {
+    id: 'millhollow_store', name: "Peddler Joss's",
+    encounter: null, rate: 0, bg: "#1c2230",
+    tiles: [
+      '#########',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#___D___#',
+      '#########',
+    ],
+    warps: [{"x": 4, "y": 5, "to": "millhollow", "tx": 10, "ty": 6}],
+    npcs: [
+      {"x": 4, "y": 2, "kind": "shop", "name": "Peddler Joss", "shop": "millhollow_store", "text": "Nothing fancy. Just what a body needs before the road gets long."},
     ],
   },
 
@@ -527,11 +546,11 @@ export const MAPS = {
     bg: "#241c14",
     tiles: [
       'TTTTTTTTTTTTTTTT',
-      'T..............T',
-      'T.RRRRRR.......T',
-      'T.RRRRRR.......T',
-      'T.HHHHHH.......T',
-      'T.HHDHHH.......T',
+      'T............l.T',
+      'T.RRRRRR.RRRR..T',
+      'T.RRRRRR.RRRR..T',
+      'T.HHHHHH.HHHH..T',
+      'T.HHDHHH.HDHH..T',
       'T..............T',
       'T..........f...T',
       'T......,,......T',
@@ -541,11 +560,30 @@ export const MAPS = {
       {"x": 7, "y": 9, "to": "world", "tx": 15, "ty": 13},
       {"x": 8, "y": 9, "to": "world", "tx": 15, "ty": 13},
       {"x": 4, "y": 5, "to": "ashquarry_home", "tx": 4, "ty": 4},
+      {"x": 10, "y": 5, "to": "ashquarry_store", "tx": 4, "ty": 4},
     ],
     npcs: [
       {"x": 11, "y": 6, "kind": "talk", "name": "Quarry Foreman",
         "text": "We stopped digging the day it stood up. Nobody's gone back for their tools.",
         "reactions": { "anvil_king": "Sent a crew back for the tools this morning. First time in years this quarry's felt like ours." }},
+    ],
+  },
+
+  ashquarry_store: {
+    id: 'ashquarry_store', name: "Sutler Renn's",
+    encounter: null, rate: 0, bg: "#241c14",
+    tiles: [
+      '#########',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#___D___#',
+      '#########',
+    ],
+    warps: [{"x": 4, "y": 5, "to": "ashquarry", "tx": 10, "ty": 6}],
+    npcs: [
+      {"x": 4, "y": 2, "kind": "shop", "name": "Sutler Renn", "shop": "ashquarry_store", "text": "Quarry work eats potions faster than it pays. I keep both in stock."},
     ],
   },
 
@@ -578,11 +616,11 @@ export const MAPS = {
     bg: "#182818",
     tiles: [
       'TTTTTTTTTTTTTTTT',
-      'T..............T',
-      'T.RRRRRR.......T',
-      'T.RRRRRR.......T',
-      'T.HHHHHH.......T',
-      'T.HHDHHH.......T',
+      'T............l.T',
+      'T.RRRRRR.RRRR..T',
+      'T.RRRRRR.RRRR..T',
+      'T.HHHHHH.HHHH..T',
+      'T.HHDHHH.HDHH..T',
       'T..............T',
       'T..........f...T',
       'T......,,......T',
@@ -592,11 +630,30 @@ export const MAPS = {
       {"x": 7, "y": 9, "to": "world", "tx": 36, "ty": 18},
       {"x": 8, "y": 9, "to": "world", "tx": 36, "ty": 18},
       {"x": 4, "y": 5, "to": "farview_home", "tx": 4, "ty": 4},
+      {"x": 10, "y": 5, "to": "farview_store", "tx": 4, "ty": 4},
     ],
     npcs: [
       {"x": 11, "y": 6, "kind": "talk", "name": "Shepherd",
         "text": "Quietest crossing on the whole road. We like it that way.",
         "reactions": { "gatekeeper": "Heard something enormous fell open past the ruins. Doesn't feel quiet anymore, does it." }},
+    ],
+  },
+
+  farview_store: {
+    id: 'farview_store', name: "Drover Sil's",
+    encounter: null, rate: 0, bg: "#182818",
+    tiles: [
+      '#########',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#___D___#',
+      '#########',
+    ],
+    warps: [{"x": 4, "y": 5, "to": "farview", "tx": 10, "ty": 6}],
+    npcs: [
+      {"x": 4, "y": 2, "kind": "shop", "name": "Drover Sil", "shop": "farview_store", "text": "Flocks pass through, travellers pass through, and I keep both fed."},
     ],
   },
 
@@ -629,11 +686,11 @@ export const MAPS = {
     bg: "#201830",
     tiles: [
       'TTTTTTTTTTTTTTTT',
-      'T..............T',
-      'T.RRRRRR.......T',
-      'T.RRRRRR.......T',
-      'T.HHHHHH.......T',
-      'T.HHDHHH.......T',
+      'T............l.T',
+      'T.RRRRRR.RRRR..T',
+      'T.RRRRRR.RRRR..T',
+      'T.HHHHHH.HHHH..T',
+      'T.HHDHHH.HDHH..T',
       'T..............T',
       'T..........f...T',
       'T......,,......T',
@@ -643,11 +700,30 @@ export const MAPS = {
       {"x": 7, "y": 9, "to": "world", "tx": 39, "ty": 23},
       {"x": 8, "y": 9, "to": "world", "tx": 39, "ty": 23},
       {"x": 4, "y": 5, "to": "valesend_home", "tx": 4, "ty": 4},
+      {"x": 10, "y": 5, "to": "valesend_store", "tx": 4, "ty": 4},
     ],
     npcs: [
       {"x": 11, "y": 6, "kind": "talk", "name": "Last Lamplighter",
         "text": "I light the same lamp every night so the road home is findable. Nobody's used it in a year.",
         "reactions": { "thirteenth": "Somebody used the lamp again last night. First time since I started counting." }},
+    ],
+  },
+
+  valesend_store: {
+    id: 'valesend_store', name: "Charm-seller Perrin's",
+    encounter: null, rate: 0, bg: "#201830",
+    tiles: [
+      '#########',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#_______#',
+      '#___D___#',
+      '#########',
+    ],
+    warps: [{"x": 4, "y": 5, "to": "valesend", "tx": 10, "ty": 6}],
+    npcs: [
+      {"x": 4, "y": 2, "kind": "shop", "name": "Charm-seller Perrin", "shop": "valesend_store", "text": "Everyone passing this close to the ruins buys a little more insurance than usual."},
     ],
   },
 
@@ -920,6 +996,22 @@ export const SHOPS = {
     name: "Pell's Flasks",
     stock: ['potion', 'hipotion', 'ether', 'antidote', 'goldneedle', 'holywater',
             'revivalleaf', 'firebomb', 'frostbomb', 'boltbomb', 'smokebomb', 'tent'],
+  },
+  millhollow_store: {
+    name: "Peddler Joss's",
+    stock: ['potion', 'antidote', 'tent'],
+  },
+  ashquarry_store: {
+    name: "Sutler Renn's",
+    stock: ['potion', 'antidote', 'tent'],
+  },
+  farview_store: {
+    name: "Drover Sil's",
+    stock: ['potion', 'antidote', 'tent'],
+  },
+  valesend_store: {
+    name: "Charm-seller Perrin's",
+    stock: ['potion', 'antidote', 'tent'],
   },
 };
 

@@ -200,7 +200,11 @@ composes with race, element, job and equipment for free.
 Every smithy, pedlar, inn, temple and guildhall in every town is a real
 room you walk into through its door, not a facade with an NPC standing in
 front of it — the same warp mechanic that moves you between town and
-overworld, reused for a doorway instead of a map edge.
+overworld, reused for a doorway instead of a map edge. Wren's Ford and
+Kelda each add two flavor homes beyond their five services, and every
+small waypost town now has a General Store — plus wells, market stalls
+and lampposts scattered through each plaza — so a town reads as lived-in
+rather than a row of shops on an empty square.
 
 ---
 
