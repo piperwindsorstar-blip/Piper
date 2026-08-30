@@ -12,9 +12,13 @@ An HD-2D turn-based RPG that borrows deliberately:
 
 Runs in any modern browser. No build step, no dependencies.
 
-**To just play it:** download **`docs/play.html`** and double-click it. That one
-file is the entire game — every sprite, map and system inlined, nothing to
-install, no server, works offline. Saves live in that browser's local storage.
+**Play it right now:** **[piperwindsorstar-blip.github.io/Piper](https://piperwindsorstar-blip.github.io/Piper/)**
+— no download, just a link to send someone.
+
+**To play it offline:** download **`docs/play.html`** and double-click it. That
+one file is the entire game — every sprite, map and system inlined, nothing to
+install, no server. Saves live in that browser's local storage (separately for
+the web link and the downloaded file, since each is its own origin).
 
 **To work on it**, run it from source (needs [Node](https://nodejs.org) 18+):
 
