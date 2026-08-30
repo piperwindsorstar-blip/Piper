@@ -525,20 +525,29 @@ on the town NPCs they belong to, as a `reactions` map keyed by boss flag —
 the one piece of conditional dialogue `talkTo()` needed, not a branching
 dialogue-tree engine for a game that mostly wants one good line per moment.
 
-### Roster and bench, not a bigger party
+### Roster and bench: two caps, not one
 
 Character recruitment needed a decision `MAX_PARTY = 4` couldn't answer
 alone: growing the roster past what fits in a 3×3 grid means *something*
-has to hold the overflow. Raising the active-party cap was the tempting
-shortcut, and the wrong one — every formation, every AI weighting, the
-whole balance simulation is tuned around a 4-wide fight, and touching that
-number touches all of it. Instead `GameState.roster` became the superset
-(everyone ever recruited, uncapped past the grid) and `GameState.party`
-kept its exact old meaning and cap — a subset, not a rename. `addMember()`
-fills the active party first so creation's starting four behave exactly as
-they did before this existed, and anyone recruited afterward lands on the
-bench by default, swappable in from the Formation page in place of whoever's
-already fighting.
+has to hold the overflow. The first version of this kept the active-party
+cap at 4 to protect the balance simulation, and split off
+`GameState.roster` as the uncapped superset with a manual bench-swap for
+everyone past the first four. That undersold the grid itself, though — the
+formation is a real 3×3, nine cells, not four — so `MAX_PARTY` now means
+what the grid actually holds (9), and a separate `STARTING_PARTY = 4`
+constant is the only thing still fixing creation's size, the same way
+Dragon Quest III always builds four to start. `addMember()` fills the
+active party first, same as before, so a recruit only touches the bench
+once the grid is genuinely full — now a real ceiling instead of an
+artificial one.
+
+Reaching that ceiling still needs a decision — who, if anyone, a fully-
+grid party bumps for a new arrival — so the recruit dialogue itself asks
+right there, listing the current party by name, rather than silently
+benching the newcomer and leaving the player to discover them later in a
+menu. That fixed a real bug along the way: the dialogue always said "X
+joins the party" regardless of whether that was true, because nothing
+checked `addMember()`'s result against `this.g.party` before printing it.
 
 A recruit is `createCharacter()` called with fixed, authored values instead
 of player choices — the same function the creation screen itself calls, so
@@ -548,6 +557,15 @@ towns, each dropped next to an existing boss's region rather than
 invented geography, is what pushed the roster total past nine without
 asking the player to build a bigger starting party than Dragon Quest III
 ever did.
+
+Raising `MAX_PARTY` meant re-checking everywhere the battle and menu UI
+divided fixed screen space by party size — a card width or row height that
+assumed 4 would shrink toward unreadable at 9. `battle.js`'s status bar now
+wraps to a second row past 5 cards instead of squeezing infinitely; the
+party menu's roster overview compresses row height a little and then, past
+what stays legible, shows as many as fit with a "+N more — open Status"
+hint rather than cramming everyone in. The Formation page needed nothing:
+it already drew a real 3×3 grid and read whoever occupied each cell.
 
 ### Learning Points spend into the same accumulator growth already uses
 
@@ -639,3 +657,20 @@ Widening a town's tile grid rather than squeezing new buildings into
 existing gaps kept every prior coordinate — every NPC, warp, and door —
 untouched; new content only ever lands in newly appended columns, so
 nothing already shipped needed to move.
+
+### A sign for every trade
+
+Every service building was the same brick-and-roof shape regardless of
+what it sold — a smithy, an inn and a temple were only distinguishable by
+walking up and reading the door. `building.js` already draws each wall
+cell as a function of what's around it (a window here, a door there), so
+a sign is just a third case: a `sign_smithy`/`sign_pedlar`/`sign_inn`/
+`sign_temple`/`sign_guild`/`sign_store` wall variant that swaps the usual
+window for a small hanging plaque with a pictogram — an anvil, a flask, a
+bed, a star, a scroll, a sack — placed one map cell above the matching
+door. Nothing about reachability or the door's own warp changes; the sign
+occupies the wall cell that already existed, just drawn differently.
+
+Recruits' homes and the small towns' flavor houses stay plain — they
+already introduce themselves when you knock — so only the buildings a
+player would actually want to identify *before* walking in got a sign.

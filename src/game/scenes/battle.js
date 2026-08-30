@@ -512,17 +512,27 @@ export class BattleScene {
     const py = tall ? MSG_Y : BAR_Y;
     const ph = tall ? BAR_Y + BAR_H - MSG_Y : BAR_H;
     scr.panel(px, py, pw, ph);
-    const cardW = Math.floor((pw - 16) / b.party.length);
+    // Up to 5 cards per row before wrapping to a second row — a party of 4
+    // (still what creation itself builds) lays out exactly as it always did;
+    // a fuller roster of up to 9 (the formation grid's own capacity) wraps
+    // instead of squeezing every card down to an unreadable sliver.
+    const n = b.party.length;
+    const cols = Math.min(n, 5);
+    const rows = Math.ceil(n / cols);
+    const cardW = Math.floor((pw - 16) / cols);
+    const cardH = Math.floor(ph / rows);
     b.party.forEach((u, i) => {
-      const x = px + 8 + i * cardW;
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = px + 8 + col * cardW;
+      const rowY = py + row * cardH;
       const ch = u.ref;
       const s = u.stats();
       const active = this.actor?.uid === u.uid;
       const ratio = ch.hp / s.maxHp;
-      const y = py + 9;
+      const y = rowY + 9;
       if (active) {
-        scr.rect(x - 3, y - 4, cardW - 4, ph - 12, 'rgba(120,155,235,0.16)');
-        scr.rect(x - 3, y - 4, 2, ph - 12, PAL.accent);
+        scr.rect(x - 3, y - 4, cardW - 4, cardH - 12, 'rgba(120,155,235,0.16)');
+        scr.rect(x - 3, y - 4, 2, cardH - 12, PAL.accent);
       }
       // a grid-adjacent ally shares a fraction of its own element bias with
       // this unit — a thin tint names which element is currently helping
@@ -532,12 +542,12 @@ export class BattleScene {
         scr.rect(x - 3, y - 4, cardW - 4, 2, tint);
       }
       let ty = y;
-      if (tall) {
+      if (tall && rows === 1) {
         const bust = actorPortraitSprite({
           classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
           skin: ch.skin, hair: ch.hair,
         });
-        const dh = Math.min(ph - 40, bust.height * 2);
+        const dh = Math.min(cardH - 40, bust.height * 2);
         const dw = Math.min(cardW - 16, bust.width * (dh / bust.height));
         scr.ctx.save();
         if (!u.alive) scr.ctx.globalAlpha = 0.35;
@@ -546,12 +556,14 @@ export class BattleScene {
         scr.ctx.restore();
         ty += dh + 3;
       }
-      scr.text(ch.name.slice(0, 9), x, ty, !u.alive ? PAL.grey : active ? PAL.accent : PAL.text);
-      scr.text(`${ch.hp}`, x, ty + 13, hpColor(ratio));
-      scr.text(`/${s.maxHp}`, x + scr.textWidth(`${ch.hp}`) + 2, ty + 13, PAL.textFaint);
-      scr.bar(x, ty + 25, cardW - 12, 4, ratio, hpColor(ratio));
-      scr.bar(x, ty + 31, cardW - 12, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-      scr.bar(x, ty + 36, cardW - 12, 3, ch.ip / 100, PAL.magenta);
+      const nameChars = Math.max(3, Math.floor((cardW - 4) / 5));
+      const compact = cardH < 45;               // a wrapped second row of small cards
+      scr.text(ch.name.slice(0, nameChars), x, ty, !u.alive ? PAL.grey : active ? PAL.accent : PAL.text);
+      scr.text(`${ch.hp}`, x, ty + (compact ? 10 : 13), hpColor(ratio));
+      scr.text(`/${s.maxHp}`, x + scr.textWidth(`${ch.hp}`) + 2, ty + (compact ? 10 : 13), PAL.textFaint);
+      scr.bar(x, ty + (compact ? 18 : 25), cardW - 12, compact ? 3 : 4, ratio, hpColor(ratio));
+      scr.bar(x, ty + (compact ? 22 : 31), cardW - 12, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      scr.bar(x, ty + (compact ? 26 : 36), cardW - 12, 3, ch.ip / 100, PAL.magenta);
     });
   }
 

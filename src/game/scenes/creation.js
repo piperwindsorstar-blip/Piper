@@ -17,7 +17,7 @@ import { JOBS, JOB_BY_ID } from '../../data/jobs.js';
 import { RACES, RACE_BY_ID } from '../../data/races.js';
 import { SCHOOLS } from '../../data/skills.js';
 import { actorSprite } from '../../engine/sprites.js';
-import { GameState, MAX_PARTY } from '../state.js';
+import { GameState, STARTING_PARTY } from '../state.js';
 
 const NAME_ROWS = [
   'ABCDEFGHIJKLM',
@@ -107,7 +107,7 @@ export class CreationScene {
     if (i < STAGES.length - 1) { this.stage = STAGES[i + 1]; this.syncMenu(); return; }
     this.slots[this.slot] = { ...this.draft };
     const nextEmpty = this.slots.findIndex((s) => !s);
-    if (nextEmpty >= 0 && this.slots.filter(Boolean).length < MAX_PARTY) {
+    if (nextEmpty >= 0 && this.slots.filter(Boolean).length < STARTING_PARTY) {
       this.slot = nextEmpty;
       this.draft = this.blankDraft();
       this.stage = 'name';
@@ -541,7 +541,7 @@ export class CreationScene {
   }
 
   drawRoster(scr) {
-    header(scr, 'YOUR PARTY', `${this.slots.filter(Boolean).length} / ${MAX_PARTY}`);
+    header(scr, 'YOUR PARTY', `${this.slots.filter(Boolean).length} / ${STARTING_PARTY}`);
     scr.panel(40, 46, W - 80, 132, { accent: true });
     this.rosterMenu.x = 62; this.rosterMenu.y = 58;
     this.rosterMenu.cellW = W - 124; this.rosterMenu.cellH = 20; this.rosterMenu.rows = 6;

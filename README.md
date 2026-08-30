@@ -191,10 +191,11 @@ Thirteenth does.
 
 You build a 4-person party at creation, same as always, but the **roster**
 isn't capped at 4 — every one of the game's 6 towns holds one named,
-recruitable ally with their own fixed race, class and element, and the
-roster can grow well past what fits in the active 3×3 formation. Whoever
-isn't currently fighting waits on the **bench**, swappable in from the
-party menu's Formation page for anyone already in the grid.
+recruitable ally with their own fixed race, class and element. The active
+battle formation fills as they join, all the way up to the 3×3 grid's real
+capacity of 9 — recruiting past that asks right there who steps aside, and
+that answer (or anyone benched later) is still swappable from the party
+menu's Formation page any time.
 
 **Learning Points** (LP) are earned from every battle alongside gold and
 EXP, and spent from the party menu's Train page to permanently raise a

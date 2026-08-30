@@ -370,8 +370,16 @@ export class MenuScene {
 
   // --- roster ----------------------------------------------------------------
   drawRoster(scr) {
-    const rowH = Math.floor((BODY_H - 16) / Math.max(1, this.g.party.length));
-    this.g.party.forEach((ch, i) => {
+    // A party of 4 (creation's own size) always got the full, roomy card;
+    // a fuller roster of up to 9 compresses row height a little first, and
+    // only past what stays legible does it stop short and point at Status,
+    // which can already cycle through every party member one at a time.
+    const n = this.g.party.length;
+    const minRowH = 32;
+    const maxRows = Math.max(1, Math.floor((BODY_H - 16) / minRowH));
+    const shown = Math.min(n, maxRows);
+    const rowH = Math.floor((BODY_H - 16) / Math.max(1, shown));
+    this.g.party.slice(0, shown).forEach((ch, i) => {
       const y = TOP + 10 + i * rowH;
       const s = stats(ch);
       const cls = CLASSES[ch.classId];
@@ -394,8 +402,11 @@ export class MenuScene {
       scr.bar(bx, y + 15, 140, 4, ch.hp / s.maxHp, hpColor(ch.hp / s.maxHp));
       scr.bar(bx, y + 22, 140, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
       if (refreshPromotion(ch)) scr.textRight('PROMOTION READY', IX + IW, y + 28, PAL.accent);
-      if (i < this.g.party.length - 1) scr.rect(IX, y + rowH - 6, IW, 1, 'rgba(150,175,235,0.10)');
+      if (i < shown - 1) scr.rect(IX, y + rowH - 6, IW, 1, 'rgba(150,175,235,0.10)');
     });
+    if (n > shown) {
+      scr.text(`+${n - shown} more — open Status to browse everyone`, IX, TOP + 10 + shown * rowH + 4, PAL.textFaint);
+    }
   }
 
   /** Portrait + identity strip every per-character page shares. */
@@ -540,12 +551,14 @@ export class MenuScene {
       const py = TOP + BODY_H - 62;
       scr.panel(IX, py, IW, 54, { accent: true });
       scr.text('USE ON', IX + 12, py + 8, PAL.accent);
+      const cardW = Math.floor((IW - 24) / this.g.party.length);
+      const nameChars = Math.max(3, Math.floor((cardW - 4) / 5));
       this.g.party.forEach((ch, i) => {
-        const x = IX + 12 + i * Math.floor((IW - 24) / this.g.party.length);
+        const x = IX + 12 + i * cardW;
         const s = stats(ch);
         const sel = i === this.who;
-        if (sel) scr.rect(x - 4, py + 20, 84, 26, 'rgba(120,155,235,0.20)');
-        scr.text(ch.name.slice(0, 9), x, py + 24, sel ? PAL.white : PAL.textDim);
+        if (sel) scr.rect(x - 4, py + 20, cardW - 4, 26, 'rgba(120,155,235,0.20)');
+        scr.text(ch.name.slice(0, nameChars), x, py + 24, sel ? PAL.white : PAL.textDim);
         scr.text(`${ch.hp}/${s.maxHp}`, x, py + 35, hpColor(ch.hp / s.maxHp));
       });
     }

@@ -9,7 +9,13 @@ import { STAT_KEYS } from '../data/classes.js';
 import { getJob } from '../data/jobs.js';
 import { saveGame, loadGame } from '../engine/save.js';
 
-export const MAX_PARTY = 4;
+// The battle grid is a 3x3 of cells per side, so 9 is a real ceiling, not an
+// arbitrary one — MAX_PARTY is exactly how many can ever be on the field at
+// once. STARTING_PARTY is a separate, smaller number: what creation itself
+// builds, same as Dragon Quest III's starting four. Recruiting past four
+// fills the rest of the grid before anyone needs to bench a teammate.
+export const STARTING_PARTY = 4;
+export const MAX_PARTY = 9;
 export const MAX_ROSTER = 24;
 export const BASE_CARRY = 30;
 
