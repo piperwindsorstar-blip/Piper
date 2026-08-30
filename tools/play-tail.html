@@ -21,7 +21,14 @@
       // this override would size the canvas back over the pad's buttons.
       const touchOn = document.getElementById('touch')?.classList.contains('visible') ?? false;
       const touchGutter = touchOn ? 58 + 170 : 0;
-      const chrome = plate.offsetHeight + rail.offsetHeight + 68 + touchGutter;
+      // The +68 approximates #cabinet's flex gaps plus its default 12px+12px
+      // padding — only real when the wordmark/rail are on screen. On touch
+      // devices in landscape both are display:none (see the stylesheet) and
+      // #cabinet's own padding switches to exactly touchGutter, so adding both
+      // double-counts ~68px of chrome that isn't actually there and shrinks
+      // the canvas for no reason.
+      const desktopChrome = touchOn ? 0 : 68;
+      const chrome = plate.offsetHeight + rail.offsetHeight + desktopChrome + touchGutter;
       const raw = Math.min((window.innerWidth - 28) / W, (window.innerHeight - chrome) / H);
       this.scale = raw >= 1 ? Math.max(1, Math.floor(raw)) : Math.max(0.35, raw);
       canvas.width  = Math.round(W * this.scale);
