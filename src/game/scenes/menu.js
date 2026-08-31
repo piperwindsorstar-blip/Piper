@@ -63,6 +63,7 @@ export class MenuScene {
   enter() {
     this.g = this.app.game;
     this.t = 0;
+    this.openT = 0;
     this.mode = 'root';
     this.who = 0;
     this.msg = null;
@@ -91,6 +92,7 @@ export class MenuScene {
 
   update(dt, input) {
     this.t += dt;
+    this.openT = Math.min(0.2, this.openT + dt);
     this.g.playtime += dt;
     this.root.update(dt); this.list.update(dt);
     if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0) this.msg = null; }
@@ -369,6 +371,13 @@ export class MenuScene {
     for (let y = 0; y < H; y += 3) scr.rect(0, y, W, 1, 'rgba(255,255,255,0.012)');
     scr.light(W * 0.15, -30, 220, 'rgba(90,130,255,0.22)', 0.5);
 
+    // the whole panel slides down and fades in the moment the menu opens —
+    // a one-shot flourish on entry, not replayed when switching pages
+    const openK = 1 - (1 - this.openT / 0.2) ** 3;
+    scr.ctx.save();
+    scr.ctx.globalAlpha = openK;
+    scr.ctx.translate(0, (1 - openK) * -14);
+
     header(scr, 'PARTY', `${this.g.gold} G     ${formatTime(this.g.playtime)}`);
 
     scr.panel(NAV_X, TOP, NAV_W, BODY_H, { accent: true });
@@ -395,6 +404,7 @@ export class MenuScene {
     scr.panel(NAV_X, H - 26, W - NAV_X * 2, 20, this.msg ? { accent: true } : {});
     scr.text(this.msg ?? 'Z select   ·   X back   ·   arrows move',
       NAV_X + 14, H - 20, this.msg ? PAL.accent : PAL.textFaint);
+    scr.ctx.restore();
   }
 
   // --- roster ----------------------------------------------------------------

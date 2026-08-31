@@ -26,6 +26,13 @@ const SCENES = {
   gameover: GameOverScene,
 };
 
+// A short screen-wipe between scenes: fade the old frame to black, mutate the
+// stack once it is fully covered, then fade the new scene back in. push/pop/
+// replace queue the mutation rather than applying it immediately, so a scene
+// swap is never an instant, jarring cut — no caller relies on the stack
+// having already changed by the time push/pop/replace returns.
+const WIPE_OUT = 0.14, WIPE_IN = 0.18;
+
 class App {
   constructor(canvas) {
     this.screen = new Screen(canvas);
@@ -34,6 +41,7 @@ class App {
     this.game = null;
     this.last = performance.now();
     this.acc = 0;
+    this.transition = null;
     this.push('title');
     this.bindTouch();
     installAudioUnlock();
@@ -50,22 +58,53 @@ class App {
     return s;
   }
 
-  push(id, opts = {}) {
+  // --- public stack API — each queues a wipe rather than swapping instantly
+  push(id, opts = {}) { this.queueTransition({ type: 'push', id, opts }); }
+
+  pop(result) {
+    if (this.stack.length <= 1) return;
+    this.queueTransition({ type: 'pop', result });
+  }
+
+  replace(id, opts = {}) { this.queueTransition({ type: 'replace', id, opts }); }
+
+  queueTransition(action) {
+    // Batch onto an in-flight wipe only while it's still fading OUT — that's
+    // the same-tick case (e.g. battle popping itself then pushing promotion),
+    // where both mutations should land behind one cut. A wipe already fading
+    // back IN has already applied its own actions and emptied its intent;
+    // tacking a new one onto that stale array would just discard it once the
+    // fade-in finishes, leaving the scene silently stuck. Start a fresh wipe
+    // instead — a rare back-to-back nav restarts the cut, which is visible
+    // but correct, instead of invisible and wrong.
+    if (this.transition && this.transition.phase === 'out') {
+      // a handful of same-tick actions is real (pop then push a follow-up
+      // scene); anything past that means a caller is looping on a stack
+      // length that only changes once the wipe actually applies — refuse
+      // rather than let the queue grow without bound
+      if (this.transition.actions.length < 8) this.transition.actions.push(action);
+      return;
+    }
+    this.transition = { phase: 'out', t: 0, actions: [action] };
+  }
+
+  // --- the actual, immediate stack mutations, run once a wipe is fully black
+  applyPush(id, opts) {
     const s = this.make(id);
     this.stack.push(s);
     s.enter(opts);
     return s;
   }
 
-  pop(result) {
+  applyPop(result) {
     if (this.stack.length <= 1) return;
     this.stack.pop();
     this.current?.onResume?.(result);
   }
 
-  replace(id, opts = {}) {
+  applyReplace(id, opts) {
     this.stack.pop();
-    return this.push(id, opts);
+    return this.applyPush(id, opts);
   }
 
   frame = (now) => {
@@ -74,11 +113,31 @@ class App {
     if (dt > 0.25) dt = 0.25;                 // a backgrounded tab must not fast-forward
 
     this.input.update(dt);
-    try {
-      this.current?.update(dt, this.input);
-    } catch (e) {
-      console.error('update failed', e);
-      this.error = e;
+
+    const tr = this.transition;
+    if (tr) {
+      // frozen on both sides of the cut: the old scene holds its last frame
+      // while fading out, the new one doesn't animate until it's fading in
+      tr.t += dt;
+      if (tr.phase === 'out' && tr.t >= WIPE_OUT) {
+        for (const a of tr.actions) {
+          if (a.type === 'push') this.applyPush(a.id, a.opts);
+          else if (a.type === 'pop') this.applyPop(a.result);
+          else if (a.type === 'replace') this.applyReplace(a.id, a.opts);
+        }
+        tr.actions = [];
+        tr.phase = 'in';
+        tr.t = 0;
+      } else if (tr.phase === 'in' && tr.t >= WIPE_IN) {
+        this.transition = null;
+      }
+    } else {
+      try {
+        this.current?.update(dt, this.input);
+      } catch (e) {
+        console.error('update failed', e);
+        this.error = e;
+      }
     }
     this.input.endFrame();
 
@@ -89,6 +148,11 @@ class App {
       this.error = e;
     }
     if (this.error) this.drawError();
+    if (this.transition) {
+      const t2 = this.transition;
+      const alpha = t2.phase === 'out' ? Math.min(1, t2.t / WIPE_OUT) : Math.max(0, 1 - t2.t / WIPE_IN);
+      this.screen.fade(alpha, '#000');
+    }
     this.screen.present();
     requestAnimationFrame(this.frame);
   };

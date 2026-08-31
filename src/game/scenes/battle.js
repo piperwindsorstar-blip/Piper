@@ -60,9 +60,15 @@ export class BattleScene {
     this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
     this.fxp = new Particles(360);
     this.result = null;
-    this.introT = 1.1;
+    this.introDur = 1.1;
+    this.introT = this.introDur;
     this.hitPause = 0;
     playMusic(this.battle.isBoss ? 'boss' : 'battle', this.battle.isBoss ? BOSS_THEME : BATTLE_THEME);
+    // a small impact as the fight opens: a jolt, a white flash, and both
+    // sides slide in from off-screen (see unitPos) instead of just appearing
+    this.app.screen.addShake(6);
+    this.flash = 0.16;
+    sfx.encounter();
     this.flushLog();
   }
 
@@ -119,7 +125,17 @@ export class BattleScene {
     return { x: x + shift, y: GRID_Y + row * CELL_H };
   }
 
-  unitPos(u) { return this.cellPos(u.side, u.grid.row, u.grid.col); }
+  unitPos(u) {
+    const p = this.cellPos(u.side, u.grid.row, u.grid.col);
+    if (this.state === 'intro') {
+      // both ranks slide in from off-screen and settle as the intro banner
+      // reads, rather than simply appearing already in formation
+      const k = (this.introT / this.introDur) ** 2;
+      const dir = u.side === 'enemy' ? -1 : 1;
+      return { x: p.x + dir * 90 * k, y: p.y };
+    }
+    return p;
+  }
 
   // --- update --------------------------------------------------------------
   update(dt, input) {

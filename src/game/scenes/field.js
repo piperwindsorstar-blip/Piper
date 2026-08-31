@@ -187,7 +187,6 @@ export class FieldScene {
     const pool = formationsForRegion(m.encounter);
     if (!pool.length) return;
     const f = rng.pick(pool);
-    sfx.encounter();
     const scout = this.g.jobRankOf('scout');
     const keenScent = this.g.party.some((c) => c.raceId === 'lupine');
     const preemptive = rng.chance(Math.min(0.5, 0.06 + 0.08 * scout + (keenScent ? 0.08 : 0)));
