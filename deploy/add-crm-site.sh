@@ -18,8 +18,6 @@
 set -euo pipefail
 
 DOMAIN="${1:-crm.djpynxpro.com}"
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RAW_BASE="${PIPER_RAW_BASE:-https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo}"
 
 say()  { printf '\n==> %s\n' "$1"; }
 note() { printf '    %s\n' "$1"; }
@@ -149,32 +147,90 @@ command -v certbot >/dev/null || {
   apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
 }
 
-# The server block lives in a file next to this one so it can be read before
-# it is trusted. When only this script has been downloaded — which is the
-# normal way to run it — that file is not there, so fetch it rather than
-# failing halfway through, with Caddy already stopped and nothing yet serving
-# the CRM. That is the worst possible moment to stop.
-CONF="$HERE/nginx-crm.conf"
-if [[ ! -f "$CONF" ]]; then
-  note "nginx-crm.conf is not beside this script — fetching it"
-  CONF="$(mktemp)"
-  if ! curl -fsSL "$RAW_BASE/deploy/nginx-crm.conf" -o "$CONF"; then
-    echo "    could not download nginx-crm.conf from $RAW_BASE" >&2
-    echo "    Caddy is stopped. To put the CRM back the way it was:" >&2
-    echo "      systemctl enable --now caddy" >&2
-    exit 1
-  fi
-fi
-
-# A truncated or wrong download would be written straight into the nginx
-# config. The placeholder is the cheapest proof this is the right file.
-grep -q "__DOMAIN__" "$CONF" || {
-  echo "    $CONF does not look like the CRM template — refusing to install it" >&2
-  exit 1
-}
+# The server block, written from here rather than read from a file.
+#
+# It used to live in nginx-crm.conf beside this script, which is correct right
+# up until somebody runs the script the documented way — curl one file into
+# /tmp — and it stops, having already disabled Caddy, because its sibling is
+# not there. Fetching the file instead only moved the problem: the raw CDN
+# serves a cached copy for some minutes after a push, so the fix for that bug
+# was itself unavailable at the moment it was needed.
+#
+# One file has no such failure. Anything that can run this script has
+# everything the script needs.
 
 SITE=/etc/nginx/sites-available/piper-crm
-sed "s/__DOMAIN__/$DOMAIN/g" "$CONF" > "$SITE"
+cat > "$SITE" <<'NGINXCONF'
+# Piper, behind the same nginx that serves webmail.
+#
+# The CRM and the mail server ended up on one droplet, and Caddy and nginx
+# cannot both hold ports 80 and 443 — so rather than have them fight, nginx
+# holds the ports and proxies the CRM through to Piper on 3000. Caddy is
+# stopped and disabled; this file replaces its Caddyfile.
+#
+# Written by add-crm-site.sh with __DOMAIN__ replaced.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/html;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    # "listen ... ssl http2" rather than "http2 on;" — that directive arrived
+    # in nginx 1.25.1 and this box runs 1.24, where it stops nginx starting at
+    # all, taking webmail down with it.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name __DOMAIN__;
+
+    ssl_certificate     /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__DOMAIN__/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+
+    # Spreadsheet imports and report photographs go through here.
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        # X-Forwarded-Proto is load-bearing, not decoration. Piper marks its
+        # session cookie Secure in production; without this header Next.js
+        # believes the request arrived over plain HTTP, and the browser throws
+        # the cookie away — you log in and land straight back on the login
+        # page, with nothing in any log to explain it.
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+
+        # Server actions and the spreadsheet export can both outlast the
+        # default 60 seconds.
+        proxy_read_timeout 300;
+        proxy_connect_timeout 10;
+
+        # Deliberately no Upgrade/Connection headers. The usual recipe uses
+        # $connection_upgrade, which only exists if a map block is declared at
+        # http level — without it nginx refuses to start, and since this is the
+        # same nginx that serves webmail, a missing map takes mail down with
+        # the CRM. Next.js in production opens no websockets (HMR is a dev-only
+        # thing), so there is nothing here to upgrade.
+    }
+}
+NGINXCONF
+sed -i "s/__DOMAIN__/$DOMAIN/g" "$SITE"
 
 if [[ ! -f /proc/net/if_inet6 ]]; then
   sed -i '/listen \[::\]/d' "$SITE"
