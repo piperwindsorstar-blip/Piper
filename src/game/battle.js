@@ -451,8 +451,14 @@ export class Battle {
           target.ref.equip.accessory = null;
           revive(target.ref, 1);
           this.say(`${target.name}'s pendant shatters — and ${target.name} stands back up.`);
-        } else this.say(`${target.name} falls.`);
-      } else this.say(`${this.label(target)} is defeated.`);
+        } else {
+          this.say(`${target.name} falls.`);
+          this.fx.push({ type: 'death', uid: target.uid, element: target.element });
+        }
+      } else {
+        this.say(`${this.label(target)} is defeated.`);
+        this.fx.push({ type: 'death', uid: target.uid, element: target.element });
+      }
       // Devour: dark-element killers recover on a kill
       if (actor?.isPC && actor.element === 'dark' && target.hp <= 0) {
         const s = actor.stats();

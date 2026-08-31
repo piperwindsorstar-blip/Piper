@@ -65,6 +65,8 @@ export class BattleScene {
     this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
     this.fxp = new Particles(360);
     this.projectiles = [];
+    this.deathAnims = new Map();
+    this.statusFxT = 0;
     this.result = null;
     this.introDur = 1.1;
     this.introT = this.introDur;
@@ -119,6 +121,13 @@ export class BattleScene {
         sfx.buff();
       } else if (fx.type === 'debuff') {
         sfx.debuff();
+      } else if (fx.type === 'death') {
+        if (u) {
+          const p = this.unitPos(u);
+          const col = ELEMENT_BY_ID[fx.element]?.color ?? PAL.white;
+          this.deathAnims.set(fx.uid, { t: 0, dur: 0.55 });
+          this.fxp.burst(p.x + CELL_W / 2 - 4, p.y + CELL_H - 20, col, 22, 70);
+        }
       }
     }
     this.battle.fx.length = 0;
@@ -174,6 +183,11 @@ export class BattleScene {
       this.fxp.spawn({ x, y, life: 0.18, size: 1, color: pr.color, glow: true });
     }
     this.projectiles = this.projectiles.filter((pr) => pr.t < pr.dur);
+    for (const [uid, d] of this.deathAnims) {
+      d.t += dt;
+      if (d.t >= d.dur) this.deathAnims.delete(uid);
+    }
+    this.updateStatusFx(dt);
 
     if (this.state === 'intro') {
       this.introT -= dt;
@@ -184,6 +198,7 @@ export class BattleScene {
     if (this.state === 'messages') return this.updateMessages(dt, input);
     if (this.state === 'done') return this.updateDone(dt, input);
     if (this.state === 'attacking') return this.updateAttacking(dt);
+    if (this.state === 'victoryPose') return this.updateVictoryPose(dt, input);
 
     switch (this.state) {
       case 'command': return this.updateCommand(input);
@@ -192,6 +207,38 @@ export class BattleScene {
       case 'target': return this.updateTarget(input);
       case 'move': return this.updateMove(input);
       default: break;
+    }
+  }
+
+  /** A slow bubble/ember/frost drift off any unit carrying that status —
+   *  cheap, additive, and reuses the same particle language as everything
+   *  else in this scene rather than tinting the (cached, shared) sprites. */
+  updateStatusFx(dt) {
+    this.statusFxT += dt;
+    if (this.statusFxT < 0.22) return;
+    this.statusFxT = 0;
+    for (const u of this.battle.units()) {
+      if (!u.alive) continue;
+      const p = this.unitPos(u);
+      const cx = p.x + CELL_W / 2 - 4, cy = p.y + CELL_H - 16;
+      if (u.statuses.poison) {
+        this.fxp.spawn({
+          x: cx + (Math.random() - 0.5) * 10, y: cy, vx: (Math.random() - 0.5) * 4, vy: -14 - Math.random() * 8,
+          life: 0.7, color: '#7ee08a', glow: true, size: 1,
+        });
+      }
+      if (u.statuses.burn) {
+        this.fxp.spawn({
+          x: cx + (Math.random() - 0.5) * 10, y: cy, vx: (Math.random() - 0.5) * 10, vy: -22 - Math.random() * 14,
+          life: 0.4, color: Math.random() < 0.5 ? '#ff8a3c' : '#ffd24a', glow: true, size: 1,
+        });
+      }
+      if (u.statuses.freeze) {
+        this.fxp.spawn({
+          x: cx + (Math.random() - 0.5) * 14, y: cy + (Math.random() - 0.5) * 10, vx: 0, vy: -4,
+          life: 0.5, color: '#bfe8ff', glow: true, size: 1, fade: true,
+        });
+      }
     }
   }
 
@@ -446,10 +493,8 @@ export class BattleScene {
 
   // --- resolution ----------------------------------------------------------
   finish() {
-    if (this.state === 'done') return;
+    if (this.state === 'done' || this.state === 'victoryPose') return;
     const b = this.battle;
-    this.state = 'done';
-    this.doneT = 0;
     const msgs = [];
     if (b.result === 'victory') {
       playMusic('victory', VICTORY_THEME);
@@ -488,6 +533,25 @@ export class BattleScene {
     };
     this.doneMsgs = msgs;
     this.doneIndex = 0;
+    if (b.result === 'victory') {
+      this.state = 'victoryPose';
+      this.victoryT = 0;
+      for (const u of b.livingParty()) {
+        const p = this.unitPos(u);
+        this.fxp.burst(p.x + CELL_W / 2 - 4, p.y + CELL_H - 20, ELEMENT_BY_ID[u.element]?.color ?? PAL.gold, 14, 55);
+      }
+    } else {
+      this.state = 'done';
+      this.doneT = 0;
+    }
+  }
+
+  updateVictoryPose(dt, input) {
+    this.victoryT += dt;
+    if (this.victoryT > 0.7 || input.tap('confirm')) {
+      this.state = 'done';
+      this.doneT = 0;
+    }
   }
 
   updateDone(dt, input) {
@@ -534,6 +598,8 @@ export class BattleScene {
     if (this.state === 'intro') {
       const names = [...new Set(b.enemies.map((e) => e.name))].join(', ');
       this.msgBox(scr, `${names} ${b.enemies.length > 1 ? 'block the way!' : 'blocks the way!'}`);
+    } else if (this.state === 'victoryPose') {
+      this.msgBox(scr, 'Victory!', PAL.gold);
     }
   }
 
@@ -632,8 +698,23 @@ export class BattleScene {
       dim = !this.battle.inReach(this.actor, u, reach);
     }
 
+    // a defeated unit staggers and dissolves over half a second rather than
+    // instantly snapping to its resting "already dead" look
+    const dying = this.deathAnims.get(u.uid);
+    let offsetX = 0, offsetY = 0;
+    if (dying) {
+      const k = dying.t / dying.dur;
+      offsetY = k * 7;
+      offsetX = Math.sin(dying.t * 46) * (1 - k) * 3;
+    } else if (this.state === 'victoryPose' && u.isPC && u.alive) {
+      // a little hop for everyone still standing, staggered per unit so the
+      // whole party doesn't bounce in lockstep
+      offsetY = -Math.abs(Math.sin(this.victoryT * 9 + p.x * 0.05)) * 4;
+    }
+
     scr.ctx.save();
-    if (dead) scr.ctx.globalAlpha = 0.25;
+    if (dying) scr.ctx.globalAlpha = 1 - dying.t / dying.dur;
+    else if (dead) scr.ctx.globalAlpha = 0.25;
     else if (dim) scr.ctx.globalAlpha = 0.4;
 
     const breathe = Math.round(Math.sin(this.t * 2.2 + p.x * 0.1) * 0.5);
@@ -645,10 +726,10 @@ export class BattleScene {
         skin: ch.skin, hair: ch.hair, equip: ch.equip,
         frame: isActor ? 3 : (hurtFrame || (breathe ? 1 : 0)),
       });
-      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H - cv.height));
+      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2 + offsetX), Math.round(p.y + CELL_H - cv.height + offsetY));
     } else {
       const cv = monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
-      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2), Math.round(p.y + CELL_H + 3 - cv.height));
+      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2 + offsetX), Math.round(p.y + CELL_H + 3 - cv.height + offsetY));
     }
     scr.ctx.restore();
 
