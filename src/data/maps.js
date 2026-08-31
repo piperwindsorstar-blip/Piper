@@ -711,7 +711,10 @@ export const MAPS = {
     npcs: [
       {"x": 11, "y": 6, "kind": "talk", "name": "Last Lamplighter",
         "text": "I light the same lamp every night so the road home is findable. Nobody's used it in a year.",
-        "reactions": { "thirteenth": "Somebody used the lamp again last night. First time since I started counting." }},
+        "reactions": {
+          "thirteenth": "Somebody used the lamp again last night. First time since I started counting.",
+          "worldheart": "Something enormous came apart past the ruins last week. The lamp's stayed lit an hour longer every night since."
+        }},
     ],
   },
 

@@ -19,6 +19,7 @@ import { rng } from '../../engine/rng.js';
 import { STORY } from '../../data/story.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
+import { QUESTS, questState, questReady, startQuest, completeQuest } from '../../data/quests.js';
 
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -66,6 +67,9 @@ export class FieldScene {
     } else if (this.g.flag('boss.thirteenth') && !this.g.flag('story.epilogue')) {
       this.g.setFlag('story.epilogue');
       for (const line of STORY.epilogue) this.dlg.say(line);
+    } else if (this.g.flag('boss.aurelith') && !this.g.flag('story.midpoint')) {
+      this.g.setFlag('story.midpoint');
+      for (const line of STORY.midpoint) this.dlg.say(line);
     }
   }
 
@@ -311,6 +315,7 @@ export class FieldScene {
   }
 
   talkTo(npc) {
+    if (this.handleQuestTalk(npc)) return;
     switch (npc.kind) {
       case 'inn': {
         const cost = this.g.innCost(npc.cost ?? 10);
@@ -402,6 +407,59 @@ export class FieldScene {
   /** The bust dialogue shows beside an NPC's lines — the same kit/skin
    *  variant their own field sprite already uses, so the face matches. */
   npcPortrait(npc) { return { npcKind: npc.kind, variant: (npc.x + npc.y) % 4 }; }
+
+  /**
+   * Any quest hook this NPC carries right now, handled before their normal
+   * line — as the quest's own giver, or as the drop-off point for someone
+   * else's delivery. Returns true when it fully handled the conversation
+   * (so talkTo() skips the kind-based switch below), false to fall through
+   * to their ordinary dialogue.
+   */
+  handleQuestTalk(npc) {
+    const receiving = Object.values(QUESTS).find((q) => q.type === 'deliver' && q.deliverTo === npc.name);
+    if (receiving && this.g.flag(`quest.${receiving.id}.active`)) {
+      completeQuest(this.g, receiving.id);
+      this.dlg.say(receiving.deliverText, npc.name, this.npcPortrait(npc));
+      this.sayReward(receiving.reward);
+      return true;
+    }
+
+    const giving = Object.values(QUESTS).find((q) => q.npc === npc.name);
+    if (!giving) return false;
+    const state = questState(this.g, giving.id);
+    if (state === 'unstarted') {
+      this.choice = {
+        title: `${npc.name}: "${giving.hook}"`,
+        options: ['Accept', 'Not now'],
+        onPick: (i) => {
+          if (i !== 0) return;
+          startQuest(this.g, giving.id);
+          sfx.confirm();
+          this.dlg.say(giving.accept, npc.name, this.npcPortrait(npc));
+        },
+      };
+      return true;
+    }
+    if (state === 'active') {
+      if (giving.type !== 'deliver' && questReady(this.g, giving.id)) {
+        completeQuest(this.g, giving.id);
+        this.dlg.say(giving.turnIn, npc.name, this.npcPortrait(npc));
+        this.sayReward(giving.reward);
+      } else {
+        this.dlg.say(giving.reminder, npc.name, this.npcPortrait(npc));
+      }
+      return true;
+    }
+    return false; // done — their normal line (and any boss reaction) resumes
+  }
+
+  /** completeQuest() already granted all of this — these just narrate it,
+   *  matching openChest()'s own terse reward-line style. */
+  sayReward(reward) {
+    if (reward.gold) this.dlg.say(`${reward.gold} gold.`);
+    if (reward.item) this.dlg.say(`Found ${getItem(reward.item).name}.`);
+    if (reward.lp) this.dlg.say(`+${reward.lp} LP.`);
+  }
 
   /** An NPC's normal line, unless a `reactions` entry for an already-set
    *  boss flag names a different one — the minimal version of conditional

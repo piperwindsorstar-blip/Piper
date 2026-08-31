@@ -16,6 +16,11 @@ export const STORY = {
     + 'watching. Lately he doesn\'t say it with much confidence.',
     "Something is stirring past the Ford. It's time somebody went and looked.",
   ],
+  midpoint: [
+    "The Ruins are quiet now the way a held breath is quiet — not empty, just waiting for a reason to let go.",
+    "Nine on the wheel, four beside it. Aurelith made thirteen names, and Aurelith is done. The count still doesn't come out even.",
+    "Somewhere past all of it, something that was never on the wheel to begin with is still turning it anyway.",
+  ],
   epilogue: [
     '"Nine on the wheel. Four beside it. And then there is me."',
     "It said that, and then it was nothing at all — not defeated so much as "
