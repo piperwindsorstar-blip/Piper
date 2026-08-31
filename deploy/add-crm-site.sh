@@ -272,7 +272,16 @@ note "nginx reloaded"
 say "Checking it answers"
 
 APP="$(curl -sS -o /dev/null -m 10 --noproxy '*' -w '%{http_code}' http://127.0.0.1:3000/login 2>/dev/null)" || true
-OUT="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://$DOMAIN/login" 2>/dev/null)" || true
+
+# A reload is not instant — old workers finish their requests while new ones
+# come up — so one immediate probe can miss a config that is perfectly fine.
+CRM_ERR=""
+for _ in 1 2 3; do
+  CRM_ERR="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://$DOMAIN/login" 2>&1)" && break
+  sleep 2
+done
+OUT="$(printf '%s' "$CRM_ERR" | tail -1)"
+
 MAIL="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://mail.djpynxpro.com/" 2>/dev/null)" || true
 
 note "piper on 127.0.0.1:3000  -> $APP"
@@ -283,7 +292,22 @@ echo ""
 if [[ "$OUT" == "200" ]]; then
   echo "  The CRM is back at https://$DOMAIN/"
 else
-  echo "  The CRM is still not answering on https. Look at:" >&2
-  echo "    systemctl status piper --no-pager" >&2
-  echo "    tail -30 /var/log/nginx/error.log" >&2
+  # 000 is not an answer, it is curl declining to give one — nearly always a
+  # certificate it will not accept. Printing the reason, and which certificate
+  # is actually being served for this name, turns an unusable number into
+  # something that says what to do next.
+  echo "  The CRM is not answering on https yet." >&2
+  echo "" >&2
+  echo "  curl said:" >&2
+  printf '%s\n' "$CRM_ERR" | sed 's/^/    /' >&2
+  echo "" >&2
+  echo "  certificate being served for $DOMAIN:" >&2
+  timeout 10 openssl s_client -connect "127.0.0.1:443" -servername "$DOMAIN" </dev/null 2>/dev/null \
+    | openssl x509 -noout -subject -dates 2>/dev/null | sed 's/^/    /' >&2 \
+    || echo "    (could not read one — no TLS answer at all)" >&2
+  echo "" >&2
+  echo "  If that names mail.djpynxpro.com rather than $DOMAIN, the CRM server" >&2
+  echo "  block is not active and nginx fell back to the webmail one. Check:" >&2
+  echo "    ls -l /etc/nginx/sites-enabled/" >&2
+  echo "    nginx -T 2>/dev/null | grep -c 'server_name $DOMAIN'" >&2
 fi
