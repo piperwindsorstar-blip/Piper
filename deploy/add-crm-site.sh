@@ -19,6 +19,7 @@ set -euo pipefail
 
 DOMAIN="${1:-crm.djpynxpro.com}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RAW_BASE="${PIPER_RAW_BASE:-https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo}"
 
 say()  { printf '\n==> %s\n' "$1"; }
 note() { printf '    %s\n' "$1"; }
@@ -148,8 +149,32 @@ command -v certbot >/dev/null || {
   apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
 }
 
+# The server block lives in a file next to this one so it can be read before
+# it is trusted. When only this script has been downloaded — which is the
+# normal way to run it — that file is not there, so fetch it rather than
+# failing halfway through, with Caddy already stopped and nothing yet serving
+# the CRM. That is the worst possible moment to stop.
+CONF="$HERE/nginx-crm.conf"
+if [[ ! -f "$CONF" ]]; then
+  note "nginx-crm.conf is not beside this script — fetching it"
+  CONF="$(mktemp)"
+  if ! curl -fsSL "$RAW_BASE/deploy/nginx-crm.conf" -o "$CONF"; then
+    echo "    could not download nginx-crm.conf from $RAW_BASE" >&2
+    echo "    Caddy is stopped. To put the CRM back the way it was:" >&2
+    echo "      systemctl enable --now caddy" >&2
+    exit 1
+  fi
+fi
+
+# A truncated or wrong download would be written straight into the nginx
+# config. The placeholder is the cheapest proof this is the right file.
+grep -q "__DOMAIN__" "$CONF" || {
+  echo "    $CONF does not look like the CRM template — refusing to install it" >&2
+  exit 1
+}
+
 SITE=/etc/nginx/sites-available/piper-crm
-sed "s/__DOMAIN__/$DOMAIN/g" "$HERE/nginx-crm.conf" > "$SITE"
+sed "s/__DOMAIN__/$DOMAIN/g" "$CONF" > "$SITE"
 
 if [[ ! -f /proc/net/if_inet6 ]]; then
   sed -i '/listen \[::\]/d' "$SITE"
