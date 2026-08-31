@@ -115,10 +115,14 @@ const groups = ONLY ? FORMATIONS.filter((f) => f.id === ONLY) : FORMATIONS;
 const byRegion = {};
 for (const f of groups) (byRegion[f.region] ??= []).push(f);
 
-const REGION_LEVEL = { greenfield: 4, caverns: 11, ruins: 20, abyss: 55, boss: 0 };
+const REGION_LEVEL = {
+  greenfield: 4, caverns: 11, ruins: 20, abyss: 55, boss: 0,
+  cinder: 35, drowned: 53, glass: 73,
+};
 const BOSS_LEVEL = {
   boss_volk: 9, boss_anvil: 16, boss_choir: 24, boss_aurelith: 30,
-  boss_gate: 45, boss_worldheart: 65, boss_thirteenth: 85,
+  boss_kharos: 37, boss_gate: 45, boss_nerith: 55, boss_worldheart: 65,
+  boss_vessia: 75, boss_thirteenth: 85,
 };
 
 console.log(`\n  QUEST OF THE THIRTEEN — battle simulation (${RUNS} runs each)\n`);

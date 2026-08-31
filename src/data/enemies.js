@@ -221,6 +221,78 @@ export const ENEMIES = [
     blurb: 'Pulls the thread and watches what unravels.',
   }),
 
+  // --- Cinderreach (Lv33-40, between the Ruins and the Hollow Between) -----
+  e('cinderhound', 'Cinderhound', 'beast', 'fire', 33, [1480, 0, 142, 96, 58, 66, 46], {
+    sprite: sp('quadruped', '#c0442a', '#f0985a', '#5c1c0e', 1.3),
+    skills: ['maul'], ai: 'aggressive', drops: [['beastfang', 0.6], ['sunpetal', 0.2]],
+    blurb: 'Runs on coals it left behind an hour ago.',
+  }),
+  e('ashwraith', 'Ash Wraith', 'spirit', 'fire', 34, [1380, 160, 108, 74, 152, 92, 55], {
+    sprite: sp('flyer', '#7a5060', '#c48a70', '#3a2028', 1.2),
+    skills: ['bonespear', 'wither'], ai: 'caster', reach: 9,
+    drops: [['spiritglass', 0.3], ['sunpetal', 0.15]],
+  }),
+  e('moltenguard', 'Moltenguard', 'construct', 'earth', 36, [1920, 0, 156, 132, 68, 88, 30], {
+    sprite: sp('construct', '#8a5030', '#d08850', '#3a2010', 1.5),
+    skills: ['shieldbash', 'guardstance'], ai: 'defensive',
+    drops: [['ironore', 0.5], ['adamantite', 0.2]],
+    blurb: 'Slow the way lava is slow — right up until it isn\'t.',
+  }),
+  e('sparkhawk', 'Sparkhawk', 'beast', 'lightning', 38, [1660, 0, 168, 100, 122, 96, 88], {
+    sprite: sp('flyer', '#e0d840', '#fff8a0', '#7a7010', 1.15),
+    skills: ['aimshot', 'cripple'], reach: 9,
+    drops: [['silkthread', 0.4], ['spiritglass', 0.2]],
+  }),
+
+  // --- The Drowned Vale (Lv50-58, between the Gatekeeper and the World Heart)
+  e('tidewraith', 'Tidewraith', 'undead', 'water', 50, [3320, 260, 196, 132, 212, 152, 60], {
+    sprite: sp('flyer', '#2a6a8a', '#7ac0d8', '#12384a', 1.3),
+    skills: ['bonespear', 'wither', 'drain'], ai: 'caster', reach: 9,
+    drops: [['riverpearl', 0.4], ['spiritglass', 0.3]],
+    blurb: 'Drowned so long ago it forgot to notice.',
+  }),
+  e('drownedknight', 'Drowned Knight', 'undead', 'water', 52, [3900, 0, 232, 176, 100, 132, 44], {
+    sprite: sp('humanoid', '#3a5a68', '#7a9aa8', '#1a2a30', 1.25),
+    skills: ['crossslash', 'guardstance'], ai: 'defensive',
+    drops: [['chainmail', 0.2], ['riverpearl', 0.35]],
+  }),
+  e('krakenspawn', 'Krakenspawn', 'beast', 'water', 54, [3720, 0, 216, 150, 140, 140, 68], {
+    sprite: sp('serpent', '#1e4a5c', '#4a8898', '#0c2028', 1.5),
+    skills: ['maul', 'rot'], ai: 'aggressive',
+    drops: [['riverpearl', 0.5], ['dragonscale', 0.1]],
+  }),
+  e('stormsiren', 'Storm Siren', 'spirit', 'wind', 56, [3500, 300, 182, 120, 232, 166, 82], {
+    sprite: sp('flyer', '#8fd6c8', '#d6f5ee', '#3f8a78', 1.3),
+    skills: ['cataclysm', 'elemward'], ai: 'caster', reach: 9,
+    drops: [['spiritglass', 0.45], ['silkthread', 0.3]],
+    blurb: 'Sings the exact note a hull cannot survive.',
+  }),
+
+  // --- The Glassfields (Lv70-78, between the World Heart and the Thirteenth)
+  e('glasswraith', 'Glass Wraith', 'aberration', 'light', 70, [7100, 420, 258, 174, 286, 206, 76], {
+    sprite: sp('flyer', '#e8e0f8', '#ffffff', '#a89ac0', 1.3),
+    skills: ['bonespear', 'phantasm'], ai: 'caster', reach: 9,
+    drops: [['spiritglass', 0.5], ['sunpetal', 0.3]],
+    blurb: 'Shattered once. Kept moving anyway.',
+  }),
+  e('radiantguard', 'Radiant Guard', 'construct', 'light', 72, [8300, 0, 278, 224, 154, 194, 56], {
+    sprite: sp('construct', '#f0e8c0', '#ffffff', '#b8a860', 1.6),
+    skills: ['shieldbash', 'ironwall'], ai: 'defensive',
+    drops: [['adamantite', 0.5], ['titanhelm', 0.08]],
+  }),
+  e('duskstalker', 'Duskstalker', 'spirit', 'dark', 74, [7700, 260, 296, 182, 204, 214, 98], {
+    sprite: sp('quadruped', '#2a1c3a', '#5a4278', '#120a1c', 1.4),
+    skills: ['maul', 'wither'], ai: 'aggressive',
+    drops: [['spiritglass', 0.4], ['voidring', 0.05]],
+    blurb: 'Walks in the gap between one lit moment and the next.',
+  }),
+  e('starweaver', 'Starweaver', 'aberration', 'void', 76, [7900, 460, 246, 194, 306, 234, 88], {
+    sprite: sp('serpent', '#241a40', '#5a4a8a', '#0e0a1c', 1.5),
+    skills: ['unmaking', 'starfall', 'timeslip'], ai: 'caster', reach: 9,
+    drops: [['voidring', 0.15], ['spiritglass', 0.6]],
+    blurb: 'Weaves with a thread that was never really there.',
+  }),
+
   // --- Bosses --------------------------------------------------------------
   e('boss_brigand', 'Brigand Chief Volk', 'humanoid', 'fire', 9, [760, 40, 52, 30, 20, 18, 20], {
     sprite: sp('humanoid', '#a04a2c', '#d88a5a', '#5a240e', 1.3),
@@ -246,6 +318,12 @@ export const ENEMIES = [
     drops: [['sunblade', 1.0], ['dragonscale', 1.0]],
     blurb: 'Remembers the wheel being made.',
   }),
+  e('boss_kharos', 'Kharos, the Cinder Sovereign', 'spirit', 'fire', 37, [9800, 500, 205, 135, 178, 128, 52], {
+    sprite: sp('flyer', '#c0442a', '#f0985a', '#5c1c0e', 1.8),
+    skills: ['cataclysm', 'primeforce', 'elemward', 'warcry'], ai: 'boss', gold: 28000, exp: 75000,
+    drops: [['emberrod', 1.0], ['cindercrown', 1.0]],
+    blurb: 'Ruled the reach by never once letting it cool.',
+  }),
   e('boss_gate', 'The Gatekeeper', 'construct', 'metal', 46, [13000, 400, 268, 178, 232, 168, 56], {
     sprite: sp('construct', '#b8bcc8', '#eef2fa', '#5a606c', 2.2),
     skills: ['unyielding', 'breakpoint', 'grandsigil', 'shieldbash'], ai: 'boss',
@@ -253,12 +331,24 @@ export const ENEMIES = [
     drops: [['titanplate', 1.0], ['bulwarkshield', 1.0], ['titanring', 1.0]],
     blurb: 'Was told to let nobody through. Nobody has been through.',
   }),
+  e('boss_nerith', 'Nerith, the Drowned Vicar', 'undead', 'water', 55, [15000, 700, 295, 195, 270, 198, 60], {
+    sprite: sp('flyer', '#2a5a70', '#6aa8c0', '#122a38', 1.9),
+    skills: ['leviathan', 'soulbind', 'rot', 'drain'], ai: 'boss', gold: 60000, exp: 230000,
+    drops: [['drownedcrozier', 1.0], ['vicarlocket', 1.0]],
+    blurb: 'Kept preaching long after the congregation stopped surfacing.',
+  }),
   e('boss_worldheart', 'The World Heart', 'spirit', 'nature', 66, [18000, 900, 330, 220, 325, 238, 68], {
     sprite: sp('plant', '#4a9a4a', '#9ae07a', '#1e4a1c', 2.4),
     skills: ['worldvoice', 'finalhour', 'mendworld', 'anathemahex', 'stampede'], ai: 'boss',
     gold: 90000, exp: 380000,
     drops: [['voidweave', 1.0], ['aeonpendant', 1.0], ['godsfist', 1.0]],
     blurb: 'Everything green has been waiting for you to arrive.',
+  }),
+  e('boss_vessia', 'Vessia, the Glass Warden', 'construct', 'light', 75, [19500, 1150, 336, 237, 324, 258, 78], {
+    sprite: sp('construct', '#f0e8c0', '#ffffff', '#a89ac0', 2.1),
+    skills: ['consecration', 'judgement', 'ironwall', 'breakpoint'], ai: 'boss', gold: 150000, exp: 750000,
+    drops: [['glasslance', 1.0], ['glasshalo', 1.0]],
+    blurb: 'Stands where the reliquary asked her to stand. Has not been relieved.',
   }),
   e('boss_thirteenth', 'The Thirteenth', 'aberration', 'void', 88, [22000, 1600, 345, 262, 320, 288, 92], {
     sprite: sp('humanoid', '#3a3450', '#8a82ac', '#16121f', 2.6),
@@ -313,12 +403,30 @@ export const FORMATIONS = [
   f('ab6', 'abyss', [at('ashtitan', 1, 0), at('nullweaver', 1, 2), at('bonedragon', 0, 1), at('bonedragon', 2, 1)]),
   f('ab7', 'abyss', [at('nullweaver', 1, 2), at('ashtitan', 0, 0), at('ashtitan', 2, 0), at('seraph', 1, 1)]),
 
+  f('cd1', 'cinder', [at('cinderhound', 1, 0), at('cinderhound', 0, 0), at('ashwraith', 1, 2)]),
+  f('cd2', 'cinder', [at('moltenguard', 1, 1), at('cinderhound', 0, 0)]),
+  f('cd3', 'cinder', [at('sparkhawk', 0, 2), at('sparkhawk', 2, 2), at('ashwraith', 1, 0)]),
+  f('cd4', 'cinder', [at('moltenguard', 1, 0), at('moltenguard', 0, 1), at('sparkhawk', 2, 2)]),
+
+  f('dv1', 'drowned', [at('drownedknight', 1, 0), at('drownedknight', 0, 0), at('tidewraith', 1, 2)]),
+  f('dv2', 'drowned', [at('krakenspawn', 1, 1), at('tidewraith', 0, 0)]),
+  f('dv3', 'drowned', [at('stormsiren', 0, 2), at('stormsiren', 2, 2), at('drownedknight', 1, 0)]),
+  f('dv4', 'drowned', [at('krakenspawn', 1, 0), at('krakenspawn', 0, 1), at('stormsiren', 2, 2)]),
+
+  f('gl1', 'glass', [at('radiantguard', 1, 0), at('radiantguard', 0, 0), at('glasswraith', 1, 2)]),
+  f('gl2', 'glass', [at('duskstalker', 1, 1), at('glasswraith', 0, 0)]),
+  f('gl3', 'glass', [at('starweaver', 0, 2), at('starweaver', 2, 2), at('duskstalker', 1, 0)]),
+  f('gl4', 'glass', [at('radiantguard', 1, 0), at('duskstalker', 0, 1), at('starweaver', 2, 2)]),
+
   f('boss_volk', 'boss', [at('boss_brigand', 1, 0), at('bandit', 0, 0), at('bandit', 2, 0)], { boss: true }),
   f('boss_anvil', 'boss', [at('boss_golemking', 1, 0), at('golemshard', 0, 1), at('golemshard', 2, 1)], { boss: true }),
   f('boss_choir', 'boss', [at('boss_shadow', 1, 1), at('wraith', 0, 0), at('wraith', 2, 0)], { boss: true }),
   f('boss_aurelith', 'boss', [at('boss_wyrm', 1, 1)], { boss: true }),
+  f('boss_kharos', 'boss', [at('boss_kharos', 1, 1), at('cinderhound', 0, 0), at('cinderhound', 2, 0)], { boss: true }),
   f('boss_gate', 'boss', [at('boss_gate', 1, 1)], { boss: true }),
+  f('boss_nerith', 'boss', [at('boss_nerith', 1, 1), at('drownedknight', 0, 0), at('drownedknight', 2, 0)], { boss: true }),
   f('boss_worldheart', 'boss', [at('boss_worldheart', 1, 1), at('seraph', 0, 2), at('seraph', 2, 2)], { boss: true }),
+  f('boss_vessia', 'boss', [at('boss_vessia', 1, 1), at('radiantguard', 0, 0), at('radiantguard', 2, 0)], { boss: true }),
   f('boss_thirteenth', 'boss', [at('boss_thirteenth', 1, 1), at('nullweaver', 0, 0), at('nullweaver', 2, 0)], { boss: true }),
 ];
 

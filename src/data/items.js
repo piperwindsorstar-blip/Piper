@@ -77,6 +77,10 @@ export const ITEMS = [
   W('runestaff', 'Rune Staff', 'staff', 22, 640, { bonus: { int: 8, mp: 12 } }),
   W('stormrod', 'Storm Rod', 'staff', 38, 2300, { element: 'lightning', bonus: { int: 14 } }),
   W('worldstaff', 'Worldroot Staff', 'staff', 55, 9000, { bonus: { int: 22, spr: 12, mp: 40 } }),
+  // --- Cinderreach / Drowned Vale / Glassfields — dropped, not sold --------
+  W('emberrod', 'Emberreach Rod', 'staff', 46, 4800, { element: 'fire', bonus: { int: 16 } }),
+  W('drownedcrozier', "The Drowned Crozier", 'mace', 68, 15000, { element: 'water', bonus: { spr: 10, mp: 20 } }),
+  W('glasslance', 'Reliquary Spear', 'spear', 136, 42000, { element: 'light', bonus: { spr: 14, int: 10 } }),
   // --- endgame arms, dropped in the Hollow Between rather than sold ---------
   W('ruinblade', 'Ruinblade', 'sword', 124, 34000, { element: 'dark', bonus: { str: 14 } }),
   W('worldedge', 'Worldedge', 'sword', 168, 90000, { bonus: { str: 22, agi: 10 } }),
@@ -124,11 +128,15 @@ export const ITEMS = [
   ACC('bloodpact', 'Blood Pact', 2400, { bonus: { str: 10, hp: -30 } }),
   ACC('elemcharm', 'Element Charm', 2600, { resist: 'attuned', resistAmount: 0.35 }),
   ACC('voidring', 'Void Ring', 5000, { nullify: true, bonus: { lck: 6 } }),
-  ACC('phoenixdown', 'Phoenix Pendant', 6000, { autoRevive: true }),
+  ACC('phoenixdown', 'Phoenix Pendant', 24000, { autoRevive: true }),
   ACC('titanring', 'Titan Ring', 40000, { bonus: { str: 28, vit: 20 } }),
   ACC('aeonpendant', 'Aeon Pendant', 44000, { bonus: { int: 24, spr: 24, mp: 60 } }),
   ACC('quicksilver', 'Quicksilver Band', 38000, { bonus: { agi: 30, lck: 14 } }),
   ACC('ipband', 'Resonance Band', 3200, { ipGain: 1.5 }),
+  // --- Cinderreach / Drowned Vale / Glassfields — dropped, not sold --------
+  ACC('cindercrown', 'Cinder Crown', 8500, { bonus: { int: 10, spr: 8 } }),
+  ACC('vicarlocket', "The Vicar's Locket", 19000, { bonus: { spr: 14, mp: 30 } }),
+  ACC('glasshalo', 'Glass Halo', 54000, { bonus: { int: 16, spr: 16, lck: 8 } }),
 
   // --- consumables ---------------------------------------------------------
   U('potion', 'Potion', 30, { heal: 80, target: 'ally' }),
