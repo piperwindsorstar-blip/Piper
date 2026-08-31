@@ -47,6 +47,50 @@ for ip in $DOMAIN_IPS; do
   case " $LOCAL_IPS $PUBLIC_IP " in *" $ip "*) ON_THIS_BOX=yes ;; esac
 done
 
+# Resolving here is not the same as resolving where it matters.
+#
+# A brand new record shows up on this droplet immediately — DigitalOcean's own
+# resolver is authoritative for the zone — while the public internet is still
+# serving the cached NXDOMAIN from before it existed. Let's Encrypt asks the
+# public internet, so certbot would fail, and it allows only five failed
+# validations per hostname per hour: a couple of impatient runs and the name is
+# locked out for the rest of the hour.
+PUBLIC_DNS=""
+for resolver in "https://dns.google/resolve" "https://cloudflare-dns.com/dns-query"; do
+  answer="$(curl -fsS -m 10 -H 'accept: application/dns-json' \
+    "$resolver?name=$DOMAIN&type=A" 2>/dev/null || true)"
+  # Both an answer and a refusal contain "data" — an NXDOMAIN reply carries the
+  # zone's SOA in its Authority section, so matching on "data" alone calls a
+  # "does not exist" a success. Status 0 plus an Answer section is the pair
+  # that actually means the name resolved.
+  case "$answer" in
+    *'"Status":0'*'"Answer"'*) PUBLIC_DNS=yes; break ;;
+  esac
+done
+
+if [[ "$ON_THIS_BOX" == yes && "$PUBLIC_DNS" != yes ]]; then
+  cat >&2 <<EOF
+
+    $DOMAIN resolves on this box but not yet on the public internet.
+
+    That is normal a few minutes after adding a record: this droplet asks
+    DigitalOcean, which knows immediately, while everyone else is still
+    holding the cached "does not exist" from before you added it.
+
+    Let's Encrypt asks the public internet, so it would fail right now — and
+    it permits only five failed validations per hostname per hour. Running
+    this repeatedly to see if it has caught up is the one thing that will
+    genuinely lock you out.
+
+    Wait five or ten minutes, check with
+
+        curl -s 'https://dns.google/resolve?name=$DOMAIN&type=A'
+
+    and run this again once that shows an answer. Nothing has been changed.
+EOF
+  exit 1
+fi
+
 if [[ "$ON_THIS_BOX" != yes ]]; then
   cat >&2 <<EOF
 
