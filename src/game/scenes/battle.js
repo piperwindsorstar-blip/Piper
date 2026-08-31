@@ -35,6 +35,11 @@ const MSG_Y = 148, MSG_H = 40;
 
 const MSG_TIME = 0.85;
 
+// Attack animation: a small pull-back, a lunge toward the foe timed to land
+// exactly when the hit resolves (so shake/particles/sfx land on the impact
+// frame instead of a beat before it), then a settle back to formation.
+const ATK_WINDUP = 0.12, ATK_STRIKE = 0.08, ATK_RECOIL = 0.14;
+
 export class BattleScene {
   constructor(app) { this.app = app; }
 
@@ -134,6 +139,15 @@ export class BattleScene {
       const dir = u.side === 'enemy' ? -1 : 1;
       return { x: p.x + dir * 90 * k, y: p.y };
     }
+    if (this.attackAnim && this.attackAnim.uid === u.uid && this.attackAnim.foe) {
+      const a = this.attackAnim;
+      const dir = u.side === 'party' ? -1 : 1;   // lunge toward the opposing side
+      let k = 0;
+      if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
+      else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);   // continues from windup's -0.35 up to a full 1.0 lunge
+      else k = 1 - (a.t / ATK_RECOIL);
+      return { x: p.x + dir * 11 * k, y: p.y };
+    }
     return p;
   }
 
@@ -159,6 +173,7 @@ export class BattleScene {
 
     if (this.state === 'messages') return this.updateMessages(dt, input);
     if (this.state === 'done') return this.updateDone(dt, input);
+    if (this.state === 'attacking') return this.updateAttacking(dt);
 
     switch (this.state) {
       case 'command': return this.updateCommand(input);
@@ -199,10 +214,30 @@ export class BattleScene {
       this.enemyDelay = (this.enemyDelay ?? 0) + dt;
       if (this.enemyDelay > 0.35) {
         this.enemyDelay = 0;
-        b.act(u, b.enemyAction(u));
-        this.flushLog();
-        this.needsAdvance = true;
+        this.runAction(u, b.enemyAction(u));
       }
+    }
+  }
+
+  updateAttacking(dt) {
+    const a = this.attackAnim;
+    a.t += dt;
+    if (a.phase === 'windup' && a.t >= ATK_WINDUP) {
+      a.phase = 'strike';
+      a.t = 0;
+      // resolve right on the strike frame, so the hit fx land on the lunge
+      this.battle.act(this.pendingUnit, this.pendingAction);
+      this.flushLog();
+    } else if (a.phase === 'strike' && a.t >= ATK_STRIKE) {
+      a.phase = 'recoil';
+      a.t = 0;
+    } else if (a.phase === 'recoil' && a.t >= ATK_RECOIL) {
+      this.attackAnim = null;
+      this.pendingUnit = null;
+      this.pendingAction = null;
+      this.needsAdvance = true;
+      this.state = 'messages';
+      this.msgT = 0;
     }
   }
 
@@ -331,8 +366,25 @@ export class BattleScene {
     }
   }
 
-  perform(action) {
-    this.battle.act(this.actor, action);
+  perform(action) { this.runAction(this.actor, action); }
+
+  /**
+   * Resolve one action for `unit`. Attack/skill/item actions get a brief
+   * windup-strike-recoil animation first (see updateAttacking) so the sprite
+   * visibly closes the distance before the hit lands; anything else (guard,
+   * move, flee) resolves immediately as it always did.
+   */
+  runAction(unit, action) {
+    if (['attack', 'skill', 'item'].includes(action.kind)) {
+      const t = action.target;
+      const foe = !!t && t !== unit && t.side !== unit.side;
+      this.attackAnim = { uid: unit.uid, phase: 'windup', t: 0, foe };
+      this.pendingUnit = unit;
+      this.pendingAction = action;
+      this.state = 'attacking';
+      return;
+    }
+    this.battle.act(unit, action);
     this.flushLog();
     this.needsAdvance = true;
     this.state = 'messages';
@@ -507,7 +559,17 @@ export class BattleScene {
     const p = this.unitPos(u);
     const dead = !u.alive;
     const isTarget = this.state === 'target' && this.targetPool[this.targetIndex]?.uid === u.uid;
-    const isActor = this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'move'].includes(this.state);
+    const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'move'].includes(this.state))
+      || this.attackAnim?.uid === u.uid;
+
+    // a boss winding up telegraphs the coming hit with a pulsing red glow and
+    // a warning glyph, so a big attack reads as threat before it lands, not
+    // just as a number after the fact
+    if (this.attackAnim?.uid === u.uid && this.attackAnim.phase === 'windup' && !u.isPC && u.def?.ai === 'boss') {
+      const pulse = 0.5 + 0.5 * Math.sin(this.t * 26);
+      scr.light(p.x + CELL_W / 2 - 4, p.y + CELL_H - 12, 26 + pulse * 6, 'rgba(255,60,70,0.6)', 0.4 + pulse * 0.3);
+      scr.textCenter('!', p.x + CELL_W / 2 - 4, p.y - 10, PAL.red, { size: 12 });
+    }
 
     // reach shading while choosing a target
     let dim = false;
