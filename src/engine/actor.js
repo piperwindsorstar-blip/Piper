@@ -932,3 +932,60 @@ export function npcSprite(kind, variant = 0, frame = 0) {
     }
   }, { round: true, outline: OUTLINE, ao: 0.24, rim: RIM, rimAlpha: 0.3 });
 }
+
+/** A head-and-shoulders bust for dialogue — the same kit/skin an NPC's field
+ *  sprite already uses, just built at a size worth putting a face on. */
+export const NPW = 40, NPH = 46;
+
+export function npcPortraitSprite(kind, variant = 0) {
+  const kit = NPC_KITS[kind] ?? NPC_KITS.talk;
+  const skin = NPC_SKINS[variant % NPC_SKINS.length];
+  return make(`npcport|${kind}|${variant}`, NPW, NPH, (P) => {
+    const ax = NPW / 2;
+    const cloth = kit.cloth, clothL = shade(cloth, 0.3), clothD = shade(cloth, -0.42);
+    const skinL = shade(skin, 0.2), skinD = shade(skin, -0.26);
+    const headW = 18, headH = 20, headY = 5;
+    const shoulderY = headY + headH - 3;
+
+    // shoulders, filling out to the canvas edges
+    P.rect(0, shoulderY, NPW, NPH - shoulderY, cloth);
+    P.rect(0, shoulderY, 3, NPH - shoulderY, clothL);
+    P.rect(NPW - 3, shoulderY, 3, NPH - shoulderY, clothD);
+    P.rect(0, shoulderY, NPW, 2, kit.trim);
+    P.rect(ax - 4, shoulderY - 5, 8, 6, skinD);
+
+    // head
+    P.rect(ax - headW / 2, headY, headW, headH, skin);
+    P.rect(ax - headW / 2, headY, 3, headH, skinL);
+    P.rect(ax + headW / 2 - 3, headY, 3, headH, skinD);
+    P.rect(ax - headW / 2 + 2, headY + headH - 4, headW - 4, 3, skinD);
+
+    // eyes
+    P.rect(ax - 7, headY + 8, 4, 2, shade(skin, -0.12));
+    P.rect(ax + 3, headY + 8, 4, 2, shade(skin, -0.12));
+    P.rect(ax - 6, headY + 9, 3, 3, '#241a2c');
+    P.rect(ax + 3, headY + 9, 3, 3, '#241a2c');
+    P.rect(ax - 5, headY + 9, 1, 1, '#eef2fb');
+    P.rect(ax + 4, headY + 9, 1, 1, '#eef2fb');
+
+    // nose + mouth
+    P.rect(ax - 1, headY + 12, 2, 3, skinD);
+    P.rect(ax - 3, headY + headH - 6, 6, 1, shade(skinD, -0.15));
+
+    if (kit.hat === 'hood') {
+      P.rect(ax - headW / 2 - 3, headY - 5, headW + 6, 9, kit.trim);
+      P.rect(ax - headW / 2 - 3, headY - 5, headW + 6, 2, shade(kit.trim, 0.35));
+      P.rect(ax - headW / 2 + 1, headY + 4, 2, headH - 4, kit.trim);
+      P.rect(ax + headW / 2 - 3, headY + 4, 2, headH - 4, kit.trim);
+    } else if (kit.hat === 'cap') {
+      P.rect(ax - headW / 2 - 2, headY - 6, headW + 4, 7, cloth);
+      P.rect(ax - headW / 2 - 2, headY - 6, headW + 4, 2, clothL);
+      P.rect(ax - headW / 2 - 2, headY - 1, headW + 4, 2, kit.trim);
+    } else {
+      P.rect(ax - headW / 2 - 1, headY - 5, headW + 2, 7, kit.hair);
+      P.rect(ax - headW / 2 - 1, headY - 5, headW + 2, 2, shade(kit.hair, 0.4));
+      P.rect(ax - headW / 2 - 1, headY + 2, 3, headH - 6, kit.hair);
+      P.rect(ax + headW / 2 - 2, headY + 2, 3, headH - 6, kit.hair);
+    }
+  }, { round: true, outline: OUTLINE, ao: 0.26, rim: RIM, rimAlpha: 0.32 });
+}

@@ -2,9 +2,10 @@
 //  UI — cursor lists, dialogue boxes and the small widgets every scene reuses.
 // ============================================================================
 
-import { PAL, W, H } from './screen.js';
+import { PAL, W, H, drawFit } from './screen.js';
 import { iconSprite } from './icons.js';
 import { sfx } from './audio.js';
+import { actorPortraitSprite, npcPortraitSprite } from './sprites.js';
 
 export class Menu {
   /**
@@ -214,18 +215,25 @@ export class Dialogue {
     this.speed = 46;   // characters per second
     this.done = true;
     this.speaker = null;
+    this.portrait = null;
   }
 
-  say(text, speaker = null) {
-    this.queue.push({ text, speaker });
+  /**
+   * `portrait`, when given, is either `{npcKind, variant}` (a townsfolk bust)
+   * or a party member's own `{classId, raceId, elementId, skin, hair}` — the
+   * same descriptor every other bust in the game already takes.
+   */
+  say(text, speaker = null, portrait = null) {
+    this.queue.push({ text, speaker, portrait });
     if (this.done) this.next();
   }
 
   next() {
     const n = this.queue.shift();
-    if (!n) { this.done = true; this.text = ''; this.speaker = null; return false; }
+    if (!n) { this.done = true; this.text = ''; this.speaker = null; this.portrait = null; return false; }
     this.text = n.text;
     this.speaker = n.speaker;
+    this.portrait = n.portrait ?? null;
     this.shown = 0;
     this.done = false;
     return true;
@@ -253,13 +261,25 @@ export class Dialogue {
     const x = opts.x ?? 24;
     const w = opts.w ?? (W - 48);
     scr.panel(x, y, w, h, { accent: true, accentWidth: 24 });
+
+    let tx = x + 12, textW = w - 24;
+    if (this.portrait) {
+      const boxW = 40, boxH = h - 10;
+      const bust = this.portrait.npcKind
+        ? npcPortraitSprite(this.portrait.npcKind, this.portrait.variant ?? 0)
+        : actorPortraitSprite(this.portrait);
+      drawFit(scr, x + 8, y + 5, boxW, boxH, bust);
+      tx = x + 8 + boxW + 10;
+      textW = w - (tx - x) - 12;
+    }
+
     let ty = y + 9;
     if (this.speaker) {
-      scr.text(this.speaker, x + 12, ty, PAL.accent);
-      scr.rect(x + 12, ty + 10, scr.textWidth(this.speaker), 1, 'rgba(240,180,76,0.35)');
+      scr.text(this.speaker, tx, ty, PAL.accent);
+      scr.rect(tx, ty + 10, scr.textWidth(this.speaker), 1, 'rgba(240,180,76,0.35)');
       ty += 15;
     }
-    scr.textWrap(this.text.slice(0, Math.floor(this.shown)), x + 12, ty, w - 24, PAL.text,
+    scr.textWrap(this.text.slice(0, Math.floor(this.shown)), tx, ty, textW, PAL.text,
       { maxLines: Math.floor((h - (ty - y) - 8) / 11), lineHeight: 11 });
     if (this.revealed) {
       const t = Math.floor(performance.now() / 350) % 2;

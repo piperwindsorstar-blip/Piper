@@ -357,17 +357,17 @@ export class FieldScene {
         this.app.push('shop', { shopId: npc.shop, name: SHOPS[npc.shop]?.name ?? npc.name });
         break;
       case 'guild':
-        this.dlg.say(npc.text, npc.name);
+        this.dlg.say(npc.text, npc.name, this.npcPortrait(npc));
         this.dlg.say('(Open the party menu with C or TAB for Formation, Jobs and the class ladder.)');
         break;
       case 'recruit': {
         const flag = `story.recruited.${npc.id}`;
-        if (this.g.flag(flag)) { this.dlg.say(npc.text, npc.name); break; }
+        if (this.g.flag(flag)) { this.dlg.say(npc.text, npc.name, this.npcPortrait(npc)); break; }
         this.choice = {
           title: `${npc.name}: "${npc.hook}"`,
           options: ['Recruit', 'Not yet'],
           onPick: (i) => {
-            if (i !== 0) { this.dlg.say('"The offer stands, whenever you\'re ready."', npc.name); return; }
+            if (i !== 0) { this.dlg.say('"The offer stands, whenever you\'re ready."', npc.name, this.npcPortrait(npc)); return; }
             const ch = this.g.addMember(npc.recruit);
             this.g.setFlag(flag);
             if (!ch) { this.dlg.say('The roster has no room left.'); return; }
@@ -395,9 +395,13 @@ export class FieldScene {
         break;
       }
       default:
-        this.dlg.say(this.reactionLine(npc), npc.name);
+        this.dlg.say(this.reactionLine(npc), npc.name, this.npcPortrait(npc));
     }
   }
+
+  /** The bust dialogue shows beside an NPC's lines — the same kit/skin
+   *  variant their own field sprite already uses, so the face matches. */
+  npcPortrait(npc) { return { npcKind: npc.kind, variant: (npc.x + npc.y) % 4 }; }
 
   /** An NPC's normal line, unless a `reactions` entry for an already-set
    *  boss flag names a different one — the minimal version of conditional
