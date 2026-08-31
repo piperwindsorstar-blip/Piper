@@ -23,6 +23,20 @@ import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
+// A full day/night cycle, in real seconds of played time — long enough that
+// it reads as weather rather than a strobing gimmick, short enough to see
+// more than one phase in a normal session.
+const DAY_LEN = 300;
+
+function mixHex(a, b, t) {
+  t = Math.max(0, Math.min(1, t));
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
+  const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
+  const r = Math.round(ar + (br - ar) * t), g = Math.round(ag + (bg - ag) * t), bl = Math.round(ab + (bb - ab) * t);
+  return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0')}`;
+}
+
 export class FieldScene {
   constructor(app) { this.app = app; }
 
@@ -40,6 +54,9 @@ export class FieldScene {
     this.fadeDir = opts.fadeIn ? -1 : 0;
     this.choice = null;
     this.encounterCooldown = 0;
+    this.rainT = 0;
+    this.thunderFlash = 0;
+    this.rollWeather();
     if (opts.message) this.dlg.say(opts.message);
     // returning from a battle we won on a boss tile
     if (opts.afterBossFlag) this.g.setFlag(opts.afterBossFlag);
@@ -61,13 +78,48 @@ export class FieldScene {
     playMusic(this.map.town ? 'town' : 'field', this.map.town ? TOWN_THEME : FIELD_THEME);
   }
 
-  /** Look for the current map, driving grade, lights and ambient particles. */
+  /** 0 at midday, ramping up to 1 at true midnight, 0 again by dawn. Only
+   *  meaningful outdoors — caves and the abyss are dark all the time already
+   *  and never read this. */
+  nightAmount() {
+    const phase = (this.g.playtime % DAY_LEN) / DAY_LEN;
+    const sunHeight = Math.cos((phase - 0.25) * Math.PI * 2);
+    return Math.max(0, -sunHeight);
+  }
+
+  /** Rolled once per map (a fresh visit, or a warp into a new one) rather
+   *  than re-rolled every frame — weather is a condition you arrive into,
+   *  not a flicker. Indoors stays clear; there is no sky to rain from. */
+  rollWeather() {
+    const m = this.map;
+    this.raining = (m.outdoor || m.town) && rng.chance(0.3);
+    this.thunderT = this.raining ? 3 + Math.random() * 8 : Infinity;
+  }
+
+  /** Look for the current map, driving grade, lights and ambient particles.
+   *  Caves and the abyss keep their own fixed dark palette — night and
+   *  weather are an outdoor/town condition only. */
   get look() {
     const m = this.map;
-    if (m.town) return { grade: '#ffb46a', amount: 0.09, vignette: 0.40, motes: '#ffd9a0', warm: true };
-    if (m.outdoor) return { grade: '#9ecdff', amount: 0.07, vignette: 0.36, motes: '#dff2ff' };
-    if (m.encounter === 'abyss') return { grade: '#a06cff', amount: 0.22, vignette: 0.74, motes: '#c8a0ff', dark: true };
-    return { grade: '#5a7cc0', amount: 0.17, vignette: 0.68, motes: '#9ab4e0', dark: true };
+    const base = m.town ? { grade: '#ffb46a', amount: 0.09, vignette: 0.40, motes: '#ffd9a0', warm: true }
+      : m.outdoor ? { grade: '#9ecdff', amount: 0.07, vignette: 0.36, motes: '#dff2ff' }
+        : m.encounter === 'abyss' ? { grade: '#a06cff', amount: 0.22, vignette: 0.74, motes: '#c8a0ff', dark: true }
+          : { grade: '#5a7cc0', amount: 0.17, vignette: 0.68, motes: '#9ab4e0', dark: true };
+    if (!m.outdoor && !m.town) return base;
+
+    const night = this.nightAmount();
+    const wet = this.raining ? 0.55 : 0;
+    const dk = Math.min(1, night * 0.9 + wet * 0.4);
+    if (dk <= 0) return base;
+    return {
+      ...base,
+      grade: mixHex(base.grade, this.raining ? '#33415e' : '#16224a', Math.min(1, night * 0.85 + wet)),
+      amount: Math.min(0.4, base.amount + dk * 0.22),
+      vignette: Math.min(0.82, base.vignette + dk * 0.3),
+      motes: mixHex(base.motes, '#c9d8ff', night),
+      dark: night > 0.5,
+      warm: base.warm && night <= 0.5,
+    };
   }
 
   spawnAmbient(dt) {
@@ -84,11 +136,35 @@ export class FieldScene {
     }
   }
 
+  /** Rain streaks and the occasional flash of distant thunder — screen-space,
+   *  like the ambient motes, since weather sits over the whole view rather
+   *  than any one world position. */
+  spawnRainAndThunder(dt) {
+    this.rainT += dt;
+    const rate = 0.012;
+    while (this.rainT > rate) {
+      this.rainT -= rate;
+      this.fxp.spawn({
+        x: Math.random() * (W + 60) - 30, y: -4,
+        vx: -40, vy: 260 + Math.random() * 60,
+        life: 0.5, color: 'rgba(210,225,255,0.75)', size: 2, glow: true, fade: false,
+      });
+    }
+    this.thunderT -= dt;
+    if (this.thunderT <= 0) {
+      this.thunderT = 6 + Math.random() * 16;
+      this.thunderFlash = 0.14;
+      this.app.screen.addShake(2);
+    }
+    this.thunderFlash = Math.max(0, this.thunderFlash - dt);
+  }
+
   // --- update --------------------------------------------------------------
   update(dt, input) {
     this.animT += dt;
     this.fxp.update(dt);
     this.spawnAmbient(dt);
+    if (this.raining) this.spawnRainAndThunder(dt);
     this.syncMusic();
     this.banner = Math.max(0, this.banner - dt);
     this.g.playtime += dt;
@@ -375,6 +451,7 @@ export class FieldScene {
     this.banner = 2.2;
     this.fade = 1;
     this.fadeDir = -1;
+    this.rollWeather();
     const cart = this.g.party.find((c) => c.jobId === 'cartographer');
     if (cart && !this.g.mapped[wp.to]) {
       this.g.mapped[wp.to] = true;
@@ -528,6 +605,7 @@ export class FieldScene {
       scr.light(lx, ly - 6, 46, 'rgba(255,214,150,0.30)', 0.35);
     }
     this.fxp.draw(scr);
+    if (this.thunderFlash > 0) scr.fade(this.thunderFlash * 2.5, '#dfe8ff');
 
     this.drawHud(scr);
     if (this.banner > 0) this.drawBanner(scr);

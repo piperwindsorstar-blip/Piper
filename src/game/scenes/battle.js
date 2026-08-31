@@ -12,7 +12,7 @@ import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, actorPortraitSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE, gridNeighbors } from '../battle.js';
-import { stats, usableSkills, awardExp, refreshPromotion } from '../character.js';
+import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '../character.js';
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
@@ -64,6 +64,7 @@ export class BattleScene {
     this.cmdWheel = new CommandWheel({ x: 34, y: BAR_Y + 10, cell: 22 });
     this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
     this.fxp = new Particles(360);
+    this.projectiles = [];
     this.result = null;
     this.introDur = 1.1;
     this.introT = this.introDur;
@@ -164,6 +165,15 @@ export class BattleScene {
     this.listMenu.update(dt);
     for (const p of this.popups) { p.life -= dt; p.y -= dt * 22; }
     this.popups = this.popups.filter((p) => p.life > 0);
+    for (const pr of this.projectiles) {
+      pr.t += dt;
+      // a faint trail along the flight path
+      const k = Math.min(1, pr.t / pr.dur);
+      const x = pr.x0 + (pr.x1 - pr.x0) * k;
+      const y = pr.y0 + (pr.y1 - pr.y0) * k - Math.sin(k * Math.PI) * 9;
+      this.fxp.spawn({ x, y, life: 0.18, size: 1, color: pr.color, glow: true });
+    }
+    this.projectiles = this.projectiles.filter((pr) => pr.t < pr.dur);
 
     if (this.state === 'intro') {
       this.introT -= dt;
@@ -382,6 +392,7 @@ export class BattleScene {
       this.pendingUnit = unit;
       this.pendingAction = action;
       this.state = 'attacking';
+      if (foe) this.spawnProjectile(unit, t, action);
       return;
     }
     this.battle.act(unit, action);
@@ -389,6 +400,48 @@ export class BattleScene {
     this.needsAdvance = true;
     this.state = 'messages';
     this.msgT = 0;
+  }
+
+  /**
+   * What an action should look like closing the distance: a bow shot, a cast
+   * spell or a thrown item flies across the field as a coloured bolt; a
+   * weapon swing just lands where the lunge already carried the attacker.
+   * `reach >= 9` is this game's own shorthand for "hits from anywhere" (see
+   * the how-to-play text), which is exactly the set of things that should
+   * read as ranged rather than melee.
+   */
+  actionVisual(unit, action) {
+    if (action.kind === 'attack') {
+      const weapon = unit.isPC && unit.ref.equip?.weapon ? getItem(unit.ref.equip.weapon) : null;
+      const element = weapon?.element && weapon.element !== 'none' ? weapon.element : null;
+      return { element, ranged: unit.stats().reach >= 9 };
+    }
+    if (action.kind === 'skill') {
+      const skill = getSkill(action.skillId);
+      const element = unit.isPC ? skillElement(unit.ref, skill)
+        : (skill.element === 'attuned' ? unit.element : skill.element);
+      return { element, ranged: skill.type !== 'phys' || (skill.range ?? 0) >= 9 };
+    }
+    if (action.kind === 'item') {
+      const it = getItem(action.itemId);
+      return { element: it.element && it.element !== 'none' ? it.element : null, ranged: !!it.damage };
+    }
+    return { element: null, ranged: false };
+  }
+
+  /** A small bolt travelling attacker -> target, timed to arrive right
+   *  around when the hit resolves. Purely cosmetic — the fixed windup timer
+   *  still drives the actual resolution, so a slow bolt never delays a turn. */
+  spawnProjectile(unit, target, action) {
+    const vis = this.actionVisual(unit, action);
+    if (!vis.ranged) return;
+    const from = this.unitPos(unit), to = this.unitPos(target);
+    const color = vis.element ? (ELEMENT_BY_ID[vis.element]?.color ?? PAL.white) : PAL.white;
+    this.projectiles.push({
+      x0: from.x + CELL_W / 2 - 8, y0: from.y + CELL_H - 26,
+      x1: to.x + CELL_W / 2 - 8, y1: to.y + CELL_H - 26,
+      t: 0, dur: 0.2, color,
+    });
   }
 
   // --- resolution ----------------------------------------------------------
@@ -462,6 +515,7 @@ export class BattleScene {
     const all = [...b.enemies, ...b.party].sort((a, z) => z.grid.col - a.grid.col);
     for (const u of all) this.drawUnit(scr, u);
 
+    this.drawProjectiles(scr);
     this.fxp.draw(scr);
     for (const p of this.popups) {
       const a = Math.min(1, p.life / 0.35);
@@ -615,6 +669,18 @@ export class BattleScene {
     st.slice(0, 3).forEach((k, i) => {
       scr.rect(p.x + CELL_W / 2 - 10 + i * 7, p.y + 2, 5, 5, STATUS[k].kind === 'bad' ? PAL.magenta : PAL.cyan);
     });
+  }
+
+  /** A travelling bolt — an arced streak with a bright glowing head — for
+   *  every ranged or magic action currently in flight. */
+  drawProjectiles(scr) {
+    for (const pr of this.projectiles) {
+      const k = Math.min(1, pr.t / pr.dur);
+      const x = pr.x0 + (pr.x1 - pr.x0) * k;
+      const y = pr.y0 + (pr.y1 - pr.y0) * k - Math.sin(k * Math.PI) * 9;
+      scr.light(x, y, 9, pr.color, 0.6);
+      scr.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, '#ffffff');
+    }
   }
 
   /**
