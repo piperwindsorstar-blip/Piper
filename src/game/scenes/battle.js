@@ -738,7 +738,7 @@ export class BattleScene {
     }
     scr.ctx.restore();
 
-    if (this.state === 'victoryPose' && this.leveledUids.has(u.uid)) {
+    if (this.state === 'victoryPose' && u.alive && this.leveledUids.has(u.uid)) {
       const pulse = 0.5 + 0.5 * Math.sin(this.t * 12);
       scr.light(p.x + CELL_W / 2 - 4, p.y + CELL_H - 18, 24 + pulse * 4, 'rgba(240,200,80,0.55)', 0.45 + pulse * 0.25);
       scr.textCenter('LEVEL UP!', p.x + CELL_W / 2 - 4, p.y - 14, PAL.gold, { size: 8 });
