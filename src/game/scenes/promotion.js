@@ -17,6 +17,7 @@ import { CLASSES, TIER_NAME, PROMOTION_BONUS } from '../../data/classes.js';
 import { SCHOOLS } from '../../data/skills.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { RACE_BY_ID } from '../../data/races.js';
+import { sfx } from '../../engine/audio.js';
 
 const HEAD_Y = 30, HEAD_H = 42;
 const BOX_Y = 78, BOX_H = H - BOX_Y - 18;
@@ -62,6 +63,7 @@ export class PromotionScene {
           ELEMENT_BY_ID[this.ch.elementId].color, 2, 20);
       }
       if (this.resultT > 0.5 && (input.tap('confirm') || input.tap('cancel'))) {
+        sfx.confirm();
         this.result = null;
         this.resultT = 0;
         this.index++;
@@ -73,6 +75,7 @@ export class PromotionScene {
 
     this.choice.handle(input);
     if (input.tap('cancel')) {
+      sfx.cancel();
       // a promotion can always be deferred; the temple keeps the offer open
       this.index++;
       if (this.index >= this.queue.length) { this.app.pop(); return; }
@@ -80,6 +83,7 @@ export class PromotionScene {
       return;
     }
     if (input.tap('confirm')) {
+      sfx.promote();
       const before = stats(this.ch);
       const r = promote(this.ch, this.choice.current.id);
       this.result = { ...r, before, after: stats(this.ch) };

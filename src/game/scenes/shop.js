@@ -11,6 +11,7 @@ import { CLASSES } from '../../data/classes.js';
 import { RACE_BY_ID } from '../../data/races.js';
 import { actorSprite } from '../../engine/sprites.js';
 import { stats } from '../character.js';
+import { sfx } from '../../engine/audio.js';
 
 const LX = 16, LW = 212;              // stock list
 const DX = 240, DW = W - DX - 16;     // detail panel
@@ -55,8 +56,9 @@ export class ShopScene {
 
     if (this.mode === 'root') {
       this.root.handle(input);
-      if (input.tap('cancel')) { this.app.pop(); return; }
+      if (input.tap('cancel')) { sfx.cancel(); this.app.pop(); return; }
       if (input.tap('confirm')) {
+        sfx.confirm();
         const pick = this.root.current;
         if (pick === 'Buy') { this.buildBuy(); this.mode = 'buy'; }
         else if (pick === 'Sell') { this.buildSell(); this.mode = 'sell'; }
@@ -66,14 +68,15 @@ export class ShopScene {
     }
 
     this.list.handle(input);
-    if (input.tap('cancel')) { this.mode = 'root'; return; }
+    if (input.tap('cancel')) { sfx.cancel(); this.mode = 'root'; return; }
     if (input.tap('confirm') && !this.list.disabled() && this.list.current?.id) {
       const id = this.list.current.id;
       if (this.mode === 'buy') {
         const price = this.g.buyPrice(id);
-        if (this.g.gold < price) { this.say('Not enough gold.'); return; }
-        if (!this.g.addItem(id)) { this.say('The pack is full.'); return; }
+        if (this.g.gold < price) { sfx.error(); this.say('Not enough gold.'); return; }
+        if (!this.g.addItem(id)) { sfx.error(); this.say('The pack is full.'); return; }
         this.g.spend(price);
+        sfx.purchase();
         this.say(`Bought ${getItem(id).name}.`);
         const m = this.g.party.find((c) => c.jobId === 'merchant');
         if (m) { const t = this.g.jobTick(m, 3); if (t) this.say(t); }
@@ -82,6 +85,7 @@ export class ShopScene {
         const price = this.g.sellPrice(id);
         this.g.removeItem(id);
         this.g.earn(price);
+        sfx.coin();
         this.say(`Sold for ${price}G.`);
         const m = this.g.party.find((c) => c.jobId === 'merchant');
         if (m) { const t = this.g.jobTick(m, 3); if (t) this.say(t); }

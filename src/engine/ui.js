@@ -4,6 +4,7 @@
 
 import { PAL, W, H } from './screen.js';
 import { iconSprite } from './icons.js';
+import { sfx } from './audio.js';
 
 export class Menu {
   /**
@@ -70,6 +71,7 @@ export class Menu {
       if (input.tap('left')) moved = this.move(-1, 0) || moved;
       if (input.tap('right')) moved = this.move(1, 0) || moved;
     }
+    if (moved) sfx.move();
     return moved;
   }
 
@@ -171,6 +173,7 @@ export class CommandWheel {
     if (input.tap('down')) moved = this.move(0, 1) || moved;
     if (input.tap('left')) moved = this.move(-1, 0) || moved;
     if (input.tap('right')) moved = this.move(1, 0) || moved;
+    if (moved) sfx.move();
     return moved;
   }
 
@@ -233,6 +236,7 @@ export class Dialogue {
 
   skipOrAdvance() {
     if (!this.revealed) { this.shown = this.text.length; return false; }
+    sfx.confirm();
     return !this.next();       // true when the queue is now empty
   }
 

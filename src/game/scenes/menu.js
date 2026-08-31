@@ -23,6 +23,9 @@ import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
 import { SLOTS, saveSummary } from '../../engine/save.js';
 import { getTouchMode, cycleTouchMode, TOUCH_LABEL } from '../../engine/settings.js';
+import {
+  sfx, isMuted, toggleMuted, getSfxVolume, setSfxVolume, getMusicVolume, setMusicVolume,
+} from '../../engine/audio.js';
 
 const PAGES = [
   { id: 'status', label: 'Status' },
@@ -75,6 +78,8 @@ export class MenuScene {
     this.formSide = 'grid';
     this.benchCursor = 0;
     this.trainIdx = 0;
+    this.controlsIdx = 0;
+    sfx.menuOpen();
   }
 
   say(m) { this.msg = m; this.msgT = 2.6; }
@@ -92,11 +97,12 @@ export class MenuScene {
 
     if (this.mode === 'root') {
       this.root.handle(input);
-      if (input.tap('cancel') || input.tap('menu')) { this.app.pop(); return; }
-      if (input.tap('confirm')) this.openPage(this.root.current.id);
+      if (input.tap('cancel') || input.tap('menu')) { sfx.menuClose(); this.app.pop(); return; }
+      if (input.tap('confirm')) { sfx.confirm(); this.openPage(this.root.current.id); }
       return;
     }
     if (input.tap('cancel')) {
+      sfx.cancel();
       if (this.mode === 'equipList') { this.mode = 'equip'; return; }
       if (this.mode === 'itemTarget') { this.mode = 'items'; return; }
       this.mode = 'root';
@@ -228,7 +234,7 @@ export class MenuScene {
     if (input.tap('down')) this.equipSlot = (this.equipSlot + 1) % EQUIP_SLOTS.length;
     if (input.tap('shift')) {
       const removed = unequipSlot(this.ch, EQUIP_SLOTS[this.equipSlot]);
-      if (removed) { this.g.addItem(removed); this.say(`Removed ${getItem(removed).name}.`); }
+      if (removed) { sfx.equip(); this.g.addItem(removed); this.say(`Removed ${getItem(removed).name}.`); }
       return;
     }
     if (input.tap('confirm')) {
@@ -255,7 +261,8 @@ export class MenuScene {
       const slot = EQUIP_SLOTS[this.equipSlot];
       const id = this.list.current.id;
       const r = equipItem(this.ch, id);
-      if (!r.ok) { this.say(r.reason); return; }
+      if (!r.ok) { sfx.error(); this.say(r.reason); return; }
+      sfx.equip();
       this.g.removeItem(id);
       if (r.removed) this.g.addItem(r.removed);
       this.say(`${this.ch.name} equips ${getItem(id).name}.`);
@@ -319,8 +326,8 @@ export class MenuScene {
     if (input.tap('down')) this.trainIdx = (this.trainIdx + 1) % STAT_KEYS.length;
     if (input.tap('confirm')) {
       const key = STAT_KEYS[this.trainIdx];
-      if (trainStat(this.g, this.ch, key)) this.say(`${this.ch.name}'s ${key.toUpperCase()} rises.`);
-      else this.say(`Needs ${TRAIN_COST} LP.`);
+      if (trainStat(this.g, this.ch, key)) { sfx.confirm(); this.say(`${this.ch.name}'s ${key.toUpperCase()} rises.`); }
+      else { sfx.error(); this.say(`Needs ${TRAIN_COST} LP.`); }
     }
   }
 
@@ -329,15 +336,28 @@ export class MenuScene {
     this.list.handle(input);
     if (input.tap('confirm')) {
       const slot = this.list.current.id;
-      if (this.g.save(slot)) this.say(`Saved to slot ${slot}.`);
-      else this.say('Could not write the save.');
+      if (this.g.save(slot)) { sfx.save(); this.say(`Saved to slot ${slot}.`); }
+      else { sfx.error(); this.say('Could not write the save.'); }
       this.openPage('save');
     }
   }
 
   // --- controls ----------------------------------------------------------
   updateControls(input) {
-    if (input.tap('confirm')) cycleTouchMode();
+    const ROWS = 4; // touch mode, sfx volume, music volume, mute
+    if (input.tap('up')) { this.controlsIdx = (this.controlsIdx + ROWS - 1) % ROWS; sfx.move(); }
+    if (input.tap('down')) { this.controlsIdx = (this.controlsIdx + 1) % ROWS; sfx.move(); }
+    if (this.controlsIdx === 0) {
+      if (input.tap('confirm')) { cycleTouchMode(); sfx.confirm(); }
+    } else if (this.controlsIdx === 1) {
+      if (input.tap('left')) { setSfxVolume(getSfxVolume() - 0.1); sfx.confirm(); }
+      if (input.tap('right')) { setSfxVolume(getSfxVolume() + 0.1); sfx.confirm(); }
+    } else if (this.controlsIdx === 2) {
+      if (input.tap('left')) setMusicVolume(getMusicVolume() - 0.1);
+      if (input.tap('right')) setMusicVolume(getMusicVolume() + 0.1);
+    } else if (this.controlsIdx === 3) {
+      if (input.tap('confirm')) { toggleMuted(); sfx.confirm(); }
+    }
   }
 
   // --- draw ------------------------------------------------------------------
@@ -811,18 +831,44 @@ export class MenuScene {
   drawControls(scr) {
     scr.text('CONTROLS', IX, TOP + 10, PAL.accent);
     scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+
+    const row = (i, label, y) => {
+      const sel = this.controlsIdx === i;
+      if (sel) {
+        scr.rect(IX - 4, y - 3, IW + 8, 15, 'rgba(120,155,235,0.16)');
+        scr.rect(IX - 4, y - 3, 2, 15, PAL.accent);
+      }
+      scr.text(label, IX, y, sel ? PAL.text : PAL.textDim);
+      return sel;
+    };
+
     const mode = getTouchMode();
-    scr.text('Touch controls', IX, TOP + 40, PAL.text);
-    scr.textRight(TOUCH_LABEL[mode].toUpperCase(), IX + IW, TOP + 40, PAL.accent);
-    scr.rect(IX, TOP + 52, IW, 1, PAL.line);
+    row(0, 'Touch controls', TOP + 38);
+    scr.textRight(TOUCH_LABEL[mode].toUpperCase(), IX + IW, TOP + 38, PAL.accent);
+
+    row(1, 'SFX volume', TOP + 56);
+    scr.bar(IX + 140, TOP + 57, IW - 140, 6, getSfxVolume(), PAL.cyan);
+    scr.textRight(`${Math.round(getSfxVolume() * 100)}%`, IX + IW, TOP + 56, PAL.text);
+
+    row(2, 'Music volume', TOP + 74);
+    scr.bar(IX + 140, TOP + 75, IW - 140, 6, getMusicVolume(), PAL.cyan);
+    scr.textRight(`${Math.round(getMusicVolume() * 100)}%`, IX + IW, TOP + 74, PAL.text);
+
+    row(3, 'Mute all audio', TOP + 92);
+    scr.textRight(isMuted() ? 'ON' : 'OFF', IX + IW, TOP + 92, isMuted() ? PAL.red : PAL.textDim);
+
+    scr.rect(IX, TOP + 108, IW, 1, PAL.line);
     const desc = {
       auto: 'Shown automatically on a touchscreen, hidden otherwise.',
       on: 'Always shown — even with a mouse or keyboard attached.',
       off: "Always hidden. Use this on a touchscreen you'd rather drive with a keyboard.",
     }[mode];
-    scr.textWrap(desc, IX, TOP + 64, IW, PAL.textDim, { lineHeight: 11, maxLines: 3 });
-    scr.textWrap('Z cycles Auto / On / Off and takes effect immediately.',
-      IX, TOP + BODY_H - 30, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
+    const hint = this.controlsIdx === 0 ? desc
+      : this.controlsIdx === 3 ? 'Silences sound effects and music together.'
+        : '◄► adjusts the volume.';
+    scr.textWrap(hint, IX, TOP + 120, IW, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+    scr.textWrap('▲▼ choose a row   ·   Z toggles   ·   ◄► adjusts',
+      IX, TOP + BODY_H - 22, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
   }
 }
 

@@ -18,6 +18,7 @@ import { RACES, RACE_BY_ID } from '../../data/races.js';
 import { SCHOOLS } from '../../data/skills.js';
 import { actorSprite, actorPortraitSprite } from '../../engine/sprites.js';
 import { GameState, STARTING_PARTY } from '../state.js';
+import { sfx } from '../../engine/audio.js';
 
 const NAME_ROWS = [
   'ABCDEFGHIJKLM',
@@ -180,10 +181,11 @@ export class CreationScene {
 
   updateRoster(input) {
     this.rosterMenu.handle(input);
-    if (input.tap('cancel')) { this.app.pop(); return; }
+    if (input.tap('cancel')) { sfx.cancel(); this.app.pop(); return; }
     if (input.tap('confirm')) {
       const cur = this.rosterMenu.current;
-      if (cur.disabled) return;
+      if (cur.disabled) { sfx.error(); return; }
+      sfx.confirm();
       if (cur.begin) this.begin();
       else if (cur.quit) this.app.pop();
       else this.editSlot(cur.slotIndex);
@@ -200,9 +202,10 @@ export class CreationScene {
     this.namePos.c = Math.min(this.namePos.c, NAME_ROWS[this.namePos.r].length - 1);
     if (input.tap('confirm')) {
       const ch = NAME_ROWS[this.namePos.r][this.namePos.c];
-      if (this.draft.name.length < 10) this.draft.name += ch;
+      if (this.draft.name.length < 10) { this.draft.name += ch; sfx.move(); }
     }
     if (input.tap('cancel')) {
+      sfx.cancel();
       if (this.draft.name.length) this.draft.name = this.draft.name.slice(0, -1);
       else this.prevStage();
     }
@@ -210,15 +213,16 @@ export class CreationScene {
       this.draft.name = NAME_POOL[Math.floor(Math.random() * NAME_POOL.length)];
       this.draft.skin = Math.floor(Math.random() * 4);
       this.draft.hair = Math.floor(Math.random() * 5);
+      sfx.confirm();
     }
-    if (input.tap('menu') && this.draft.name.trim().length) this.nextStage();
+    if (input.tap('menu') && this.draft.name.trim().length) { sfx.confirm(); this.nextStage(); }
   }
 
   updateList(input, menu, key) {
     menu.handle(input);
     this.draft[key] = menu.current.id;
-    if (input.tap('confirm')) this.nextStage();
-    if (input.tap('cancel')) this.prevStage();
+    if (input.tap('confirm')) { sfx.confirm(); this.nextStage(); }
+    if (input.tap('cancel')) { sfx.cancel(); this.prevStage(); }
   }
 
   // --- draw ------------------------------------------------------------------

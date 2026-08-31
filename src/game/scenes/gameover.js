@@ -7,6 +7,8 @@ import { PAL, W, H } from '../../engine/screen.js';
 import { Menu } from '../../engine/ui.js';
 import { Particles } from '../../engine/particles.js';
 import { stats } from '../character.js';
+import { sfx, playMusic } from '../../engine/audio.js';
+import { GAMEOVER_THEME } from '../../data/music.js';
 
 export class GameOverScene {
   constructor(app) { this.app = app; }
@@ -20,6 +22,7 @@ export class GameOverScene {
       items: ['Wake in the last town', 'Return to title'],
       x: W / 2 - 76, y: 178, cellW: 168, cellH: 18, rows: 2,
     });
+    playMusic('gameover', GAMEOVER_THEME);
   }
 
   update(dt, input) {
@@ -39,6 +42,7 @@ export class GameOverScene {
     if (this.t < 1.4) return;
     this.menu.handle(input);
     if (input.tap('confirm')) {
+      sfx.confirm();
       if (this.menu.index === 0) {
         this.g.gold = Math.floor(this.g.gold / 2);
         this.g.mapId = 'wren';

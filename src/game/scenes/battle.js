@@ -16,6 +16,8 @@ import { stats, usableSkills, awardExp, refreshPromotion } from '../character.js
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
+import { sfx, playMusic } from '../../engine/audio.js';
+import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
 
 // Two facing grids on a 480x270 stage. Rows are staggered rather than square:
 // each row further from the centre is pushed outward, so three ranks in one
@@ -59,6 +61,8 @@ export class BattleScene {
     this.fxp = new Particles(360);
     this.result = null;
     this.introT = 1.1;
+    this.hitPause = 0;
+    playMusic(this.battle.isBoss ? 'boss' : 'battle', this.battle.isBoss ? BOSS_THEME : BATTLE_THEME);
     this.flushLog();
   }
 
@@ -70,21 +74,39 @@ export class BattleScene {
     // capture damage popups
     for (const fx of this.battle.fx) {
       const u = this.battle.units().find((x) => x.uid === fx.uid);
-      if (!u) continue;
-      const p = this.unitPos(u);
-      const cx = p.x + CELL_W / 2 - 8, cy = p.y + CELL_H - 26;
-      const col = fx.type === 'heal' ? PAL.green : (fx.element && fx.element !== 'none'
-        ? ELEMENT_BY_ID[fx.element]?.color ?? PAL.white : PAL.white);
-      this.popups.push({
-        x: cx, y: cy, life: 1.0,
-        text: fx.type === 'heal' ? `+${fx.amount}` : `${fx.amount}`, color: col,
-      });
-      if (fx.type === 'damage') {
-        this.flash = 0.14;
-        this.app.screen.addShake(4);
-        this.fxp.burst(cx, cy + 10, col, 14, 80);
-      } else {
-        this.fxp.rise(cx, cy + 12, col, 12, 12);
+      if (fx.type === 'damage' || fx.type === 'heal') {
+        if (!u) continue;
+        const p = this.unitPos(u);
+        const cx = p.x + CELL_W / 2 - 8, cy = p.y + CELL_H - 26;
+        const col = fx.type === 'heal' ? PAL.green : (fx.element && fx.element !== 'none'
+          ? ELEMENT_BY_ID[fx.element]?.color ?? PAL.white : PAL.white);
+        this.popups.push({
+          x: cx, y: cy, life: 1.0,
+          text: fx.type === 'heal' ? `+${fx.amount}` : `${fx.amount}`, color: col,
+          big: !!fx.crit,
+        });
+        if (fx.type === 'damage') {
+          this.flash = fx.crit ? 0.22 : 0.14;
+          this.app.screen.addShake(fx.crit ? 9 : 4);
+          this.fxp.burst(cx, cy + 10, col, fx.crit ? 26 : 14, fx.crit ? 130 : 80);
+          sfx.hit(fx.crit);
+          if (fx.crit) this.hitPause = 0.08;
+        } else {
+          this.fxp.rise(cx, cy + 12, col, 12, 12);
+          sfx.heal();
+        }
+      } else if (fx.type === 'miss') {
+        if (u) {
+          const p = this.unitPos(u);
+          this.popups.push({
+            x: p.x + CELL_W / 2 - 8, y: p.y + CELL_H - 26, life: 1.0, text: 'MISS', color: PAL.textDim,
+          });
+        }
+        sfx.miss();
+      } else if (fx.type === 'buff') {
+        sfx.buff();
+      } else if (fx.type === 'debuff') {
+        sfx.debuff();
       }
     }
     this.battle.fx.length = 0;
@@ -101,6 +123,10 @@ export class BattleScene {
 
   // --- update --------------------------------------------------------------
   update(dt, input) {
+    if (this.hitPause > 0) {
+      this.hitPause = Math.max(0, this.hitPause - dt);
+      dt = 0;   // a brief freeze-frame on a critical hit, for punch
+    }
     this.t += dt;
     this.fxp.update(dt);
     this.flash = Math.max(0, this.flash - dt);
@@ -182,7 +208,10 @@ export class BattleScene {
 
   updateCommand(input) {
     this.cmdWheel.handle(input);
-    if (input.tap('confirm') && !this.cmdWheel.disabled()) {
+    const confirmed = input.tap('confirm');
+    if (confirmed && this.cmdWheel.disabled()) { sfx.error(); return; }
+    if (confirmed) {
+      sfx.confirm();
       const id = this.cmdWheel.current.id;
       if (id === 'attack') {
         const a = this.actor.stats();
@@ -212,8 +241,9 @@ export class BattleScene {
 
   updateSkillList(input) {
     this.listMenu.handle(input);
-    if (input.tap('cancel')) { this.state = 'command'; return; }
+    if (input.tap('cancel')) { sfx.cancel(); this.state = 'command'; return; }
     if (input.tap('confirm') && this.listMenu.length) {
+      sfx.confirm();
       const skill = getSkill(this.listMenu.current.id);
       if (['self', 'allies'].includes(skill.target)) {
         this.perform({ kind: 'skill', skillId: skill.id, target: this.actor });
@@ -225,8 +255,9 @@ export class BattleScene {
 
   updateItemList(input) {
     this.listMenu.handle(input);
-    if (input.tap('cancel')) { this.state = 'command'; return; }
+    if (input.tap('cancel')) { sfx.cancel(); this.state = 'command'; return; }
     if (input.tap('confirm') && this.listMenu.length) {
+      sfx.confirm();
       const id = this.listMenu.current.id;
       const it = getItem(id);
       const spec = it.target === 'allies' ? { target: 'allies' }
@@ -257,13 +288,15 @@ export class BattleScene {
   }
 
   updateTarget(input) {
-    if (input.tap('cancel')) { this.state = 'command'; return; }
+    if (input.tap('cancel')) { sfx.cancel(); this.state = 'command'; return; }
     const d = input.dir();
     if (d.x || d.y) {
       const step = (d.x > 0 || d.y > 0) ? 1 : -1;
       this.targetIndex = (this.targetIndex + step + this.targetPool.length) % this.targetPool.length;
+      sfx.move();
     }
     if (input.tap('confirm')) {
+      sfx.confirm();
       const t = this.targetPool[this.targetIndex];
       const cb = this.onPickTarget;
       this.onPickTarget = null;
@@ -273,10 +306,11 @@ export class BattleScene {
 
   updateMove(input) {
     const d = input.dir();
-    if (d.y) this.moveCursor.row = Math.max(0, Math.min(2, this.moveCursor.row + d.y));
-    if (d.x) this.moveCursor.col = Math.max(0, Math.min(2, this.moveCursor.col + d.x));
-    if (input.tap('cancel')) { this.state = 'command'; return; }
+    if (d.y) { this.moveCursor.row = Math.max(0, Math.min(2, this.moveCursor.row + d.y)); sfx.move(); }
+    if (d.x) { this.moveCursor.col = Math.max(0, Math.min(2, this.moveCursor.col + d.x)); sfx.move(); }
+    if (input.tap('cancel')) { sfx.cancel(); this.state = 'command'; return; }
     if (input.tap('confirm')) {
+      sfx.confirm();
       this.perform({ kind: 'move', row: this.moveCursor.row, col: this.moveCursor.col });
     }
   }
@@ -297,6 +331,8 @@ export class BattleScene {
     this.doneT = 0;
     const msgs = [];
     if (b.result === 'victory') {
+      playMusic('victory', VICTORY_THEME);
+      sfx.victory();
       const spoils = b.spoils();
       msgs.push(`Victory! ${spoils.exp} EXP, ${spoils.gold} gold and ${spoils.lp} LP.`);
       this.g.earn(spoils.gold);
@@ -305,11 +341,13 @@ export class BattleScene {
         if (this.g.addItem(id)) msgs.push(`Found ${getItem(id).name}.`);
       }
       const promos = [];
+      let leveled = false;
       for (const ch of this.g.party) {
         const r = awardExp(ch, spoils.exp);
-        if (r.levels) msgs.push(`${ch.name} reaches level ${ch.level}!`);
+        if (r.levels) { msgs.push(`${ch.name} reaches level ${ch.level}!`); leveled = true; }
         if (refreshPromotion(ch)) promos.push(ch);
       }
+      if (leveled) sfx.levelUp();
       msgs.push(...this.g.jobTickAll(6));
       // record the bestiary
       for (const e of b.enemies) this.g.bestiary[e.def.id] = (this.g.bestiary[e.def.id] ?? 0) + 1;
@@ -318,7 +356,10 @@ export class BattleScene {
       }
       this.readyPromotions = promos.length > 0;
     } else if (b.result === 'fled') {
+      sfx.flee();
       msgs.push('Got away.');
+    } else if (b.result === 'defeat') {
+      sfx.defeat();
     }
     this.result = {
       outcome: b.result,
@@ -358,7 +399,7 @@ export class BattleScene {
       const a = Math.min(1, p.life / 0.35);
       scr.ctx.save();
       scr.ctx.globalAlpha = a;
-      const big = p.text.length <= 4 ? 12 : 8;
+      const big = p.big ? 16 : (p.text.length <= 4 ? 12 : 8);
       scr.textCenter(p.text, p.x, p.y, p.color, { size: big });
       scr.ctx.restore();
     }

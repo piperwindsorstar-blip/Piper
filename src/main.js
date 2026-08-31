@@ -13,6 +13,7 @@ import { ShopScene } from './game/scenes/shop.js';
 import { PromotionScene } from './game/scenes/promotion.js';
 import { GameOverScene } from './game/scenes/gameover.js';
 import { applyTouchVisibility } from './engine/settings.js';
+import { installAudioUnlock } from './engine/audio.js';
 
 const SCENES = {
   title: TitleScene,
@@ -35,6 +36,7 @@ class App {
     this.acc = 0;
     this.push('title');
     this.bindTouch();
+    installAudioUnlock();
     requestAnimationFrame(this.frame);
   }
 

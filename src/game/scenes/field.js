@@ -17,6 +17,8 @@ import { stats, canPromote } from '../character.js';
 import { getJob } from '../../data/jobs.js';
 import { rng } from '../../engine/rng.js';
 import { STORY } from '../../data/story.js';
+import { sfx, playMusic } from '../../engine/audio.js';
+import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -52,6 +54,13 @@ export class FieldScene {
 
   get map() { return this.g.map; }
 
+  /** Called every frame; playMusic() is a no-op once the named track is
+   *  already playing, so this is a cheap way to pick up a town/wild switch
+   *  the moment a warp crosses one without needing its own hook. */
+  syncMusic() {
+    playMusic(this.map.town ? 'town' : 'field', this.map.town ? TOWN_THEME : FIELD_THEME);
+  }
+
   /** Look for the current map, driving grade, lights and ambient particles. */
   get look() {
     const m = this.map;
@@ -80,6 +89,7 @@ export class FieldScene {
     this.animT += dt;
     this.fxp.update(dt);
     this.spawnAmbient(dt);
+    this.syncMusic();
     this.banner = Math.max(0, this.banner - dt);
     this.g.playtime += dt;
     this.dlg.update(dt);
@@ -116,6 +126,7 @@ export class FieldScene {
         this.g.y = this.moving.ty;
         this.moving = null;
         this.stepT = 0;
+        sfx.step();
         this.onArrive();
       }
       return;
@@ -153,7 +164,7 @@ export class FieldScene {
     this.g.stepTaken();
     const m = this.map;
     const wp = warpAt(m, this.g.x, this.g.y);
-    if (wp) { this.pendingWarp = wp; this.fadeDir = 1; return; }
+    if (wp) { sfx.door(); this.pendingWarp = wp; this.fadeDir = 1; return; }
 
     const boss = bossAt(m, this.g.x, this.g.y);
     if (boss && !this.g.flag(`boss.${boss.flag}`)) {
@@ -176,6 +187,7 @@ export class FieldScene {
     const pool = formationsForRegion(m.encounter);
     if (!pool.length) return;
     const f = rng.pick(pool);
+    sfx.encounter();
     const scout = this.g.jobRankOf('scout');
     const keenScent = this.g.party.some((c) => c.raceId === 'lupine');
     const preemptive = rng.chance(Math.min(0.5, 0.06 + 0.08 * scout + (keenScent ? 0.08 : 0)));
@@ -201,7 +213,7 @@ export class FieldScene {
 
     // standing on the exit of a town
     const wp = warpAt(m, this.g.x, this.g.y);
-    if (wp) { this.pendingWarp = wp; this.fadeDir = 1; }
+    if (wp) { sfx.door(); this.pendingWarp = wp; this.fadeDir = 1; }
   }
 
   openChest(chest) {
@@ -209,12 +221,13 @@ export class FieldScene {
     if (locked) { this.dlg.say('Locked. A Locksmith could open this.'); return; }
     this.g.setFlag(`chest.${chest.id}`);
     if (chest.gold) {
+      sfx.chest();
       this.g.earn(chest.gold);
       this.dlg.say(`${chest.gold} gold.`);
     } else if (chest.item) {
       const it = getItem(chest.item);
-      if (this.g.addItem(chest.item)) this.dlg.say(`Found ${it.name}.`);
-      else { this.g.setFlag(`chest.${chest.id}`, false); this.dlg.say('The pack is full.'); }
+      if (this.g.addItem(chest.item)) { sfx.chest(); this.dlg.say(`Found ${it.name}.`); }
+      else { this.g.setFlag(`chest.${chest.id}`, false); sfx.error(); this.dlg.say('The pack is full.'); }
     }
     if (chest.locked) {
       const smith = this.g.party.find((c) => c.jobId === 'locksmith');
@@ -340,11 +353,13 @@ export class FieldScene {
     this.choiceMenu.update(1 / 60);
     this.choiceMenu.handle(input);
     if (input.tap('confirm')) {
+      sfx.confirm();
       const i = this.choiceMenu.index;
       const cb = this.choice.onPick;
       this.choice = null; this.choiceMenu = null;
       cb?.(i);
     } else if (input.tap('cancel')) {
+      sfx.cancel();
       this.choice = null; this.choiceMenu = null;
     }
   }

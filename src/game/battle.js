@@ -425,14 +425,14 @@ export class Battle {
     return { damage: dmg, crit, mult, missed: false };
   }
 
-  dealDamage(actor, target, amount, { silent = false, element = 'none' } = {}) {
+  dealDamage(actor, target, amount, { silent = false, element = 'none', crit = false } = {}) {
     if (target.statuses.barrier) {
       delete target.statuses.barrier;
       if (!silent) this.say(`${this.label(target)}'s barrier absorbs the hit.`);
       return 0;
     }
     target.hp = Math.max(0, target.hp - amount);
-    this.fx.push({ type: 'damage', uid: target.uid, amount, element });
+    this.fx.push({ type: 'damage', uid: target.uid, amount, element, crit });
     if (target.statuses.sleep) delete target.statuses.sleep;
     if (target.statuses.freeze && element !== 'ice') delete target.statuses.freeze;
     this.gainIp(target, Math.min(24, 6 + amount * 40 / Math.max(1, target.stats().maxHp)));
@@ -530,8 +530,11 @@ export class Battle {
     const r = this.computeDamage(actor, target, {
       power: 1, element: el, reachCheck: true, reach: a.reach,
     });
-    if (r.missed) return this.say(`${this.label(actor)} misses ${this.label(target)}.`);
-    this.dealDamage(actor, target, r.damage, { element: el });
+    if (r.missed) {
+      this.fx.push({ type: 'miss', uid: target.uid });
+      return this.say(`${this.label(actor)} misses ${this.label(target)}.`);
+    }
+    this.dealDamage(actor, target, r.damage, { element: el, crit: r.crit });
     let msg = `${this.label(actor)} hits ${this.label(target)} for ${r.damage}.`;
     if (r.crit) msg = `Critical! ${msg}`;
     if (r.mult > 1) msg += ' It bites deep.';
@@ -614,10 +617,10 @@ export class Battle {
               undeadBonus: skill.undeadBonus,
               reachCheck: skill.type === 'phys', reach: skill.range,
             });
-            if (r.missed) { this.say(`  ...misses ${this.label(t)}.`); continue; }
+            if (r.missed) { this.fx.push({ type: 'miss', uid: t.uid }); this.say(`  ...misses ${this.label(t)}.`); continue; }
             let dmg = r.damage;
             if (skill.execute) dmg = Math.round(dmg * (1 + (1 - t.hp / t.stats().maxHp) * 0.8));
-            this.dealDamage(actor, t, dmg, { element: el });
+            this.dealDamage(actor, t, dmg, { element: el, crit: r.crit });
             this.say(`  ${this.label(t)} takes ${dmg}${r.crit ? ' (critical!)' : ''}${r.mult > 1 ? ' — weakness!' : ''}`);
             if (skill.drain) {
               const back = Math.round(dmg * skill.drain);
@@ -667,6 +670,7 @@ export class Battle {
           }
           if (skill.grants) { t.statuses[skill.grants] = 4; this.say(`  ${this.label(t)}: ${skill.grants}.`); }
           if (skill.shiftsElement && t.isPC) { t.ref.battleElement = actor.element; }
+          this.fx.push({ type: 'buff', uid: t.uid });
         }
         break;
       }
@@ -685,6 +689,7 @@ export class Battle {
           }
           if (skill.sunder) { t.statuses.sundered = 4; this.say(`  ${this.label(t)} is weakened.`); }
           if (skill.reveals) this.revealed = true;
+          this.fx.push({ type: 'debuff', uid: t.uid });
         }
         break;
       }

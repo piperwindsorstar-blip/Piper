@@ -8,6 +8,8 @@ import { SLOTS, saveSummary, deleteSave } from '../../engine/save.js';
 import { GameState, formatTime } from '../state.js';
 import { monsterSprite } from '../../engine/sprites.js';
 import { getTouchMode, cycleTouchMode, TOUCH_LABEL } from '../../engine/settings.js';
+import { playMusic, sfx } from '../../engine/audio.js';
+import { TITLE_THEME } from '../../data/music.js';
 
 const STARS = Array.from({ length: 120 }, (_, i) => ({
   x: (i * 97) % W, y: (i * 53) % 150, s: (i % 3) * 0.4 + 0.3, p: (i % 7) / 7,
@@ -20,6 +22,7 @@ export class TitleScene {
     this.t = 0;
     this.mode = 'main';
     this.rebuild();
+    playMusic('title', TITLE_THEME);
   }
 
   rebuild() {
@@ -54,9 +57,10 @@ export class TitleScene {
     if (this.mode === 'main') {
       this.menu.handle(input);
       if (input.tap('confirm')) {
+        if (this.menu.disabled()) { sfx.error(); return; }
+        sfx.confirm();
         const i = this.menu.index;
         const pick = this.menu.current.label;
-        if (this.menu.disabled()) return;
         if (pick === 'NEW GAME') this.app.push('creation');
         else if (pick === 'CONTINUE') this.mode = 'slots';
         else if (pick.startsWith('TOUCH CONTROLS')) {
@@ -68,19 +72,21 @@ export class TitleScene {
       }
     } else if (this.mode === 'slots') {
       this.slotMenu.handle(input);
-      if (input.tap('cancel')) this.mode = 'main';
+      if (input.tap('cancel')) { sfx.cancel(); this.mode = 'main'; }
       if (input.tap('confirm') && !this.slotMenu.disabled()) {
+        sfx.confirm();
         const slot = this.slotMenu.current.slot;
         const g = GameState.load(slot);
         if (g) { this.app.game = g; this.app.replace('field'); }
       }
       if (input.tap('shift') && !this.slotMenu.disabled()) {
+        sfx.cancel();
         deleteSave(this.slotMenu.current.slot);
         this.rebuild();
         this.mode = 'slots';
       }
     } else if (this.mode === 'help') {
-      if (input.tap('cancel') || input.tap('confirm')) this.mode = 'main';
+      if (input.tap('cancel') || input.tap('confirm')) { sfx.cancel(); this.mode = 'main'; }
     }
   }
 
