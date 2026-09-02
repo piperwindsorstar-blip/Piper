@@ -1035,13 +1035,42 @@ input:focus, select:focus, textarea:focus {
 .board-grid-name { font-size: 0.875rem; font-weight: 600; }
 
 .board-grid-days { display: grid; }
+
+/* The month band, and the date numbers underneath it.
+   --month-hue is set per element from monthHue(), so every August is the same
+   blue and no two neighbouring months are close — which is the case that
+   matters, since a quarter view shows three months side by side.
+   Lightness is fixed at a value that clears contrast on this background for
+   every hue, rather than letting yellow wash out where blue reads fine. */
+.board-grid-monthrow { border-bottom: 1px solid var(--border); }
+.board-grid-monthrow .board-grid-corner { padding-bottom: 0.35rem; }
+
+.board-grid-month {
+  padding: 0.4rem 0.4rem 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 1px solid var(--border);
+  color: hsl(var(--month-hue, 260) 52% 36%);
+  background: hsl(var(--month-hue, 260) 60% 96%);
+}
+
+.board-grid-day .board-grid-dow { color: inherit; }
 .board-grid-day {
   padding: 0.5rem 0.2rem;
   text-align: center;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-faint);
+  /* Set here rather than in a later rule of its own: an override with the same
+     specificity two hundred lines further down looks like it wins and does
+     not, because this one is written after it in the file. --month-hue comes
+     from monthHue() on the element. */
+  color: hsl(var(--month-hue, 260) 38% 42%);
   font-weight: 600;
   border-left: 1px solid var(--border);
 }
@@ -1465,4 +1494,14 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   position: relative;
   z-index: 2;
+}
+
+/* Same hues on a dark ground: the light-theme lightness of 36% disappears
+   against it, so the text lifts and the band's tint drops to a whisper. */
+@media (prefers-color-scheme: dark) {
+  .board-grid-month {
+    color: hsl(var(--month-hue, 260) 62% 72%);
+    background: hsl(var(--month-hue, 260) 40% 16%);
+  }
+  .board-grid-day { color: hsl(var(--month-hue, 260) 45% 66%); }
 }

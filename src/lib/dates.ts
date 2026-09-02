@@ -38,6 +38,51 @@ export function parseIso(iso: string): Date {
  * so this cannot slip a day the way new Date("2026-08-29").getDay() does west
  * of Greenwich — that reads as UTC midnight and comes back as the day before.
  */
+/**
+ * A hue for a month, so August is the same colour every time it appears.
+ *
+ * Spaced by the golden angle rather than 360/12. Thirty degrees apart makes
+ * neighbouring months nearly the same colour, and neighbouring months are
+ * exactly the ones on screen together — a quarter shows three in a row. At
+ * 137.5 degrees no two consecutive months land near each other, while each
+ * month still keeps one fixed hue of its own.
+ */
+export function monthHue(iso: string): number {
+  return Math.round(parseIso(iso).getMonth() * 137.5) % 360;
+}
+
+/**
+ * The months a run of days covers, as bands to lay across a grid of columns.
+ *
+ * `start` is a 1-based CSS grid line and `span` a column count, so a band
+ * drops straight into grid-column. Days are assumed to be consecutive and in
+ * order, which is what every caller builds them as.
+ */
+export function monthBands(
+  days: string[],
+): { key: string; label: string; start: number; span: number; hue: number }[] {
+  const bands: { key: string; label: string; start: number; span: number; hue: number }[] = [];
+
+  days.forEach((day, i) => {
+    const key = day.slice(0, 7);
+    const last = bands[bands.length - 1];
+    if (last && last.key === key) {
+      last.span += 1;
+      return;
+    }
+    const date = parseIso(day);
+    bands.push({
+      key,
+      label: MONTHS[date.getMonth()],
+      start: i + 1,
+      span: 1,
+      hue: monthHue(day),
+    });
+  });
+
+  return bands;
+}
+
 export function weekdayLetter(iso: string): string {
   return ["S", "M", "T", "W", "T", "F", "S"][parseIso(iso).getDay()];
 }

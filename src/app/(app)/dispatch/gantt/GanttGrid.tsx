@@ -1,6 +1,6 @@
 "use client";
 
-import { weekdayLetter } from "@/lib/dates";
+import { monthBands, monthHue, weekdayLetter } from "@/lib/dates";
 import { useRef, useState, useTransition, type CSSProperties } from "react";
 import { STATUS_LABELS, STATUS_SHORT, type RunStatus } from "@/lib/dispatch-types";
 import Icon from "@/components/Icon";
@@ -133,6 +133,32 @@ export default function GanttGrid({
     <>
       <div className="table-wrap">
         <div className={`board-grid gantt-grid${compact ? " board-grid-compact" : ""}`}>
+          {/* The months above the dates, each band laid across its own columns.
+              Only a quarter shows more than one, but the name is worth having
+              on a single month too — the numbers alone never say which. */}
+          <div className="board-grid-head board-grid-monthrow">
+            <div className="board-grid-corner" />
+            <div
+              className="board-grid-days"
+              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+            >
+              {monthBands(days).map((band) => (
+                <div
+                  key={band.key}
+                  className="board-grid-month"
+                  style={
+                    {
+                      gridColumn: `${band.start} / span ${band.span}`,
+                      "--month-hue": band.hue,
+                    } as CSSProperties
+                  }
+                >
+                  {band.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="board-grid-head">
             <div className="board-grid-corner">Vehicle</div>
             <div
@@ -140,7 +166,11 @@ export default function GanttGrid({
               style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
             >
               {days.map((day) => (
-                <div key={day} className={`board-grid-day${day === today ? " board-today" : ""}`}>
+                <div
+                  key={day}
+                  className={`board-grid-day${day === today ? " board-today" : ""}`}
+                  style={{ "--month-hue": monthHue(day) } as CSSProperties}
+                >
                   <span className="board-grid-dow">{weekdayLetter(day)}</span>
                   {/* On a quarter the month has to appear somewhere, so it
                       rides on the first of each. */}
