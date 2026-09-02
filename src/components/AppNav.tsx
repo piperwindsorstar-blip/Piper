@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout } from "@/app/login/actions";
 import Icon, { type IconName } from "./Icon";
@@ -16,6 +16,24 @@ type Props = {
 
 export default function AppNav({ main, admin, user }: Props) {
   const pathname = usePathname();
+  const search = useSearchParams();
+
+  /*
+   * dispatch.djpynxpro.com is this app with the rest of it out of the way.
+   *
+   * That address redirects to /dispatch?focus=dispatch, and the whole of the
+   * side menu goes: somebody sent to the board to see where a van is should
+   * not be one mis-tap from the outbox or the staff list. It is the same app
+   * and the same session — .shell is a flex row, so with the nav gone the
+   * board simply takes the full width.
+   *
+   * Deliberately a query parameter and not a cookie. A cookie would follow
+   * them to crm.djpynxpro.com and hide the menu there too, and the way out of
+   * that is not obvious from a page with no navigation on it. Here, editing
+   * the address bar is the way out, and the tabs carry the flag so it survives
+   * moving between Board, Gantt and Fleet.
+   */
+  if (search.get("focus") === "dispatch") return null;
   const [open, setOpen] = useState(false);
 
   // On phones the menu overlays the page, so close it once navigation lands.
