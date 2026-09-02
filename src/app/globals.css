@@ -918,66 +918,352 @@ input:focus, select:focus, textarea:focus {
 
 /* ------------------------------------------------- public crew board */
 
-/* Phone first, deliberately. This is read standing next to a van, one-handed,
-   so it is a stack of days rather than a grid — a seven-column table on a
-   phone is a pinch-and-scroll puzzle, and the answer to "what am I doing
-   today" should be the first thing on the screen. */
-.board-public {
-  max-width: 34rem;
+/* The crew board wears the shop's own colours rather than the app's.
+   Piper is a purple CRM read at a desk; this is one page read at six in the
+   morning in a yard, on a phone, often outdoors. It is dark on purpose and it
+   ignores the visitor's theme on purpose — a board that is white in daylight
+   and black at night is two different boards, and the crew learns one.
+
+   Every token below is local to .crew-board, so nothing here reaches the rest
+   of Piper. */
+.crew-board {
+  --bt-bg: #0c0c0d;
+  --bt-card: #141416;
+  --bt-raised: #1c1c1f;
+  --bt-text: #f2f1ee;
+  --bt-muted: #8a8984;
+  --bt-faint: #6d6860;
+  --bt-neon: #5cf2c8;
+  --bt-glow: rgba(92, 242, 200, 0.45);
+  --bt-meet: #e05c50;
+  /* A hairline drawn as an inset shadow, not a border: it costs no layout, so
+     a card can be padded to the pixel without a border eating one. */
+  --bt-hair: inset 0 0 0 1px rgba(242, 241, 238, 0.08);
+
+  --run-booked: #e8c547;
+  --run-needed: #8b6cc9;
+  --run-pynx: #4eae62;
+  --run-own: #e08a32;
+  --run-idle: #4d9de0;
+  --run-shop: #7d7b78;
+
+  /* Condensed for headings. No web font is fetched: a board loaded on a phone
+     with one bar of signal cannot wait for a font, and the page has to be
+     readable before anything downloads. Whatever condensed face the device
+     already has gets used, and the fallback is the system stack. */
+  --bt-display: "Barlow Condensed", "Oswald", "Roboto Condensed", "Avenir Next Condensed",
+    "HelveticaNeue-CondensedBold", var(--font);
+
+  min-height: 100dvh;
+  background: var(--bt-bg);
+  color: var(--bt-text);
+  max-width: 64rem;
   margin: 0 auto;
-  padding: 1.25rem 1rem 3rem;
-}
-.board-public-head { margin-bottom: 1rem; }
-.board-public-head .brand { padding: 0; gap: 0.7rem; }
-.board-public-foot {
-  margin-top: 1.5rem;
-  text-align: center;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
+  padding: 1rem 1rem 3rem;
+  padding-bottom: max(3rem, env(safe-area-inset-bottom));
 }
 
-.board-days { display: grid; gap: 0.85rem; }
-.board-day .card-head { padding: 0.7rem 1rem; }
-.board-day .card-head h2 { font-size: 1rem; }
-.board-day-today { border-color: var(--accent); }
+/* The page is narrower than the viewport on a desktop, so the ground behind it
+   has to be dark too or the board floats on a pale margin.
 
-.board-job {
-  border-left: 3px solid var(--run-booked);
-  padding: 0.5rem 0 0.5rem 0.7rem;
-}
-.board-job.run-booked { border-left-color: var(--run-booked); }
-.board-job.run-needed { border-left-color: var(--run-needed); }
-.board-job.run-own    { border-left-color: var(--run-own); }
-.board-job.run-pynx   { border-left-color: var(--run-pynx); }
-.board-job.run-idle   { border-left-color: var(--run-idle); }
-.board-job.run-shop   { border-left-color: var(--run-shop); }
+   On `html`, not `body`: the canvas takes its colour from the root element
+   whenever the root has one, and this stylesheet gives it one. Setting only
+   `body` leaves the margins in the app's light grey. */
+html:has(.crew-board), body:has(.crew-board) { background: #0c0c0d; }
 
-.board-job-head { display: flex; align-items: baseline; gap: 0.5rem; }
-/* The status badge sits at the far end, whatever is between it and the name. */
-.board-job-head .badge { margin-left: auto; }
-.board-job-label { font-size: 0.92rem; margin-top: 0.1rem; }
+.crew-board a { color: inherit; }
+.crew-board .faint { color: var(--bt-faint); }
 
-/* A day with nothing on it, as one line rather than an empty card. */
-.board-day-quiet {
+.crew-bar {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: baseline;
-  padding: 0.5rem 1rem;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  border-bottom: 1px dashed var(--border);
+  gap: 1rem;
+  padding-bottom: 0.9rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(242, 241, 238, 0.09);
+}
+.crew-bar .brand { padding: 0; gap: 0.7rem; }
+.crew-bar .brand-name { color: var(--bt-text); }
+.crew-bar .brand-mark {
+  background: var(--bt-neon);
+  color: #0c0c0d;
+  box-shadow: 0 0 14px var(--bt-glow);
 }
 
-/* Shop details on the crew board: a definition list, because that is what it
-   is — a label and the thing you came for. */
-.board-shop { margin-top: 1rem; }
+/* The one micro-label used everywhere: eleven pixels, wide tracking, upper
+   case. It names a region without competing with anything inside it. */
+.board-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bt-muted);
+}
+
+.board-range {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: var(--bt-muted);
+  white-space: nowrap;
+}
+
+.crew-grid { display: grid; gap: 1.5rem; align-items: start; }
+
+@media (min-width: 62rem) {
+  .crew-grid { grid-template-columns: minmax(0, 1fr) 17.5rem; }
+}
+
+.crew-main { min-width: 0; display: grid; gap: 1.5rem; align-content: start; }
+.crew-side { display: grid; gap: 1rem; align-content: start; }
+
+/* One card treatment for everything on the page. */
+.board-panel {
+  background: var(--bt-card);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: var(--bt-hair);
+}
+
+.board-empty {
+  margin: 0;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 0.9rem;
+  color: var(--bt-muted);
+}
+
+/* ------------------------------------------------------------ shop notes */
+
+.board-notes { display: flex; gap: 0.75rem; align-items: flex-start; }
+.board-notes > div { min-width: 0; flex: 1; }
+.board-glow { color: var(--bt-neon); filter: drop-shadow(0 0 6px var(--bt-glow)); }
+.board-notes .board-glow { margin-top: 0.35rem; flex-shrink: 0; }
+
+.board-panel-title {
+  font-family: var(--bt-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0.15rem 0 0;
+}
+
+.board-note-list { list-style: none; margin: 0.85rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.board-note-list li { display: flex; gap: 0.7rem; font-size: 0.9rem; }
+.board-dot {
+  margin-top: 0.45rem;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--bt-neon);
+  box-shadow: 0 0 8px var(--bt-glow);
+}
+
+/* ------------------------------------------------------------- today head */
+
+.crew-head { display: grid; gap: 0.5rem; }
+
+/* The largest thing on the page, by a distance. Somebody glancing at this in a
+   yard is answering one question, and it is what day it is. */
+.crew-date {
+  font-family: var(--bt-display);
+  font-size: clamp(2.4rem, 9vw, 3.25rem);
+  line-height: 0.95;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.board-stats { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.35rem; }
+.board-stat {
+  background: var(--bt-card);
+  border-radius: 7px;
+  padding: 0.4rem 0.7rem;
+  box-shadow: var(--bt-hair);
+}
+.board-stat-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bt-muted);
+}
+.board-stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
+/* A gap or a rule, rather than a count. Worth an eye, so it gets the accent. */
+.board-stat-flag { box-shadow: inset 0 0 0 1px rgba(92, 242, 200, 0.35); }
+.board-stat-flag .board-stat-value { color: var(--bt-neon); }
+
+/* ------------------------------------------------------------ day and call */
+
+.board-day-block { display: grid; gap: 0.6rem; }
+.board-day-name { margin-bottom: 0.1rem; }
+
+.board-call {
+  background: var(--bt-card);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: var(--bt-hair);
+  border-left: 3px solid var(--run-booked);
+}
+.board-call-compact { padding: 0.75rem 0.85rem; }
+
+.board-call.run-booked { border-left-color: var(--run-booked); }
+.board-call.run-needed { border-left-color: var(--run-needed); }
+.board-call.run-own    { border-left-color: var(--run-own); }
+.board-call.run-pynx   { border-left-color: var(--run-pynx); }
+.board-call.run-idle   { border-left-color: var(--run-idle); }
+.board-call.run-shop   { border-left-color: var(--run-shop); }
+
+.board-call-top { display: flex; align-items: center; gap: 0.5rem; }
+.board-call-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+.board-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  background: var(--bt-raised);
+  color: var(--bt-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.board-call-title {
+  font-family: var(--bt-display);
+  font-size: 1.35rem;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0.35rem 0 0;
+}
+
+.board-call-meta {
+  margin: 0.3rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--bt-muted);
+}
+.board-crew { color: var(--bt-text); }
+.board-meet, .board-where { display: inline-flex; align-items: center; gap: 0.3rem; }
+/* Meeting time is the one thing on a card that makes somebody late. */
+.board-meet { color: var(--bt-meet); font-weight: 500; }
+
+.board-legs { list-style: none; margin: 0.9rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.board-legs li { display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.88rem; }
+.board-leg-role {
+  flex: 0 0 4.5rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bt-muted);
+  padding-top: 0.15rem;
+}
+.board-leg-name { display: inline-flex; align-items: center; gap: 0.4rem; }
+.board-leg-keys {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  color: var(--bt-muted);
+}
+
+/* The nine days after today: one line each, so the page stays scrollable. */
+.board-call-line {
+  margin: 0.45rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--bt-muted);
+}
+.board-call-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--bt-faint);
+}
+
+/* --------------------------------------------------------------- the side */
+
+.board-rules { margin: 0.6rem 0 0; font-size: 0.88rem; white-space: pre-wrap; }
+
+.board-codes { margin: 0.9rem 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.board-codes dt {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bt-muted);
+}
+.board-codes dd { margin: 0; }
+.board-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+
+.board-field { margin-top: 0.85rem; font-size: 0.88rem; }
+.board-field-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bt-muted);
+  margin-bottom: 0.15rem;
+}
+.board-field-sub { display: block; color: var(--bt-muted); }
+.board-phone { display: flex; align-items: center; gap: 0.4rem; }
+.board-phone a { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.board-phone a:hover { text-decoration: underline; }
+
+.board-fleet { list-style: none; margin: 0.8rem 0 0; padding: 0; display: grid; gap: 0.7rem; }
+.board-fleet li { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.board-fleet-name { font-size: 0.88rem; font-weight: 500; }
+.board-fleet-sub { font-size: 0.75rem; color: var(--bt-muted); }
+.board-out { font-size: 0.75rem; color: var(--bt-neon); white-space: nowrap; }
+.board-yard { font-size: 0.75rem; color: var(--bt-muted); white-space: nowrap; }
+
+.crew-foot {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--bt-faint);
+  border-top: 1px solid rgba(242, 241, 238, 0.09);
+}
+
+/* The install offer sits inside the dark page, so it cannot keep the app's
+   light card colours. */
+.crew-board .install-hint {
+  background: var(--bt-card);
+  border-color: transparent;
+  box-shadow: var(--bt-hair);
+  color: var(--bt-text);
+  margin-bottom: 1.25rem;
+}
+
+/* Shop details elsewhere in the app: a definition list, because that is what
+   it is — a label and the thing you came for. */
 .shop-list { margin: 0; display: grid; gap: 0.6rem; }
 .shop-list > div { display: grid; grid-template-columns: 9rem 1fr; gap: 0.5rem; align-items: baseline; }
 .shop-list dt { font-size: 0.78rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
 .shop-list dd { margin: 0; font-size: 0.92rem; }
-.shop-rules { margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
-.shop-rules h3 { margin-bottom: 0.35rem; }
-.shop-rules p { white-space: pre-wrap; margin: 0; color: var(--text-muted); }
 
 @media (max-width: 420px) {
   .shop-list > div { grid-template-columns: 1fr; gap: 0.1rem; }

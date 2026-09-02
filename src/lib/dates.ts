@@ -102,6 +102,38 @@ export function formatDateShort(iso: string): string {
   return `${MONTHS[date.getMonth()].slice(0, 3)} ${date.getDate()}`;
 }
 
+/**
+ * 'Wednesday 2 September' — the one date a crew board leads with.
+ *
+ * Day-first, no comma, no year. The year is noise on a board that only ever
+ * shows the next ten days, and the weekday is the part somebody standing in
+ * the yard actually reads.
+ */
+export function formatDayTitle(iso: string): string {
+  const date = parseIso(iso);
+  return `${DAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
+/** 'Wednesday 2 Sep' — the same thing, sized for a section heading. */
+export function formatDayHeading(iso: string): string {
+  const date = parseIso(iso);
+  return `${DAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()].slice(0, 3)}`;
+}
+
+/** 'Wed 2' — narrow enough to sit after the word 'Tomorrow'. */
+export function formatWeekdayShort(iso: string): string {
+  const date = parseIso(iso);
+  return `${DAYS[date.getDay()].slice(0, 3)} ${date.getDate()}`;
+}
+
+/** '31 Aug – 9 Sep', the window a board covers, written as one range. */
+export function formatDayRange(from: string, to: string): string {
+  const a = parseIso(from);
+  const b = parseIso(to);
+  const short = (d: Date) => `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
+  return `${short(a)} – ${short(b)}`;
+}
+
 /** '18:30' -> '6:30 PM'. Returns an em dash for empty values so tables stay aligned. */
 export function formatTime(time: string | null | undefined): string {
   if (!time) return "—";

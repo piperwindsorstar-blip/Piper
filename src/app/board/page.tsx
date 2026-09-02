@@ -2,12 +2,24 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   CLASS_SHORT,
+  COMMITTED,
+  OWNERSHIP_LABELS,
   publicBoardRows,
   publicDays,
   STATUS_SHORT,
+  type PublicRun,
+  type PublicVehicle,
 } from "@/lib/dispatch";
-import { publicBoard, publicShopDetails, PUBLIC_DAYS, SHOP_LABELS } from "@/lib/settings";
-import { formatDateShort, todayIso } from "@/lib/dates";
+import { publicBoard, publicShopDetails, PUBLIC_DAYS } from "@/lib/settings";
+import {
+  formatDayHeading,
+  formatDayRange,
+  formatDayTitle,
+  formatTime,
+  formatWeekdayShort,
+  todayIso,
+} from "@/lib/dates";
+import Icon from "@/components/Icon";
 import InstallHint from "@/components/InstallHint";
 
 /**
@@ -27,6 +39,12 @@ import InstallHint from "@/components/InstallHint";
  * And it is off until an admin turns it on. A 404 rather than a "switched off"
  * notice: a page that announces itself is still an admission that the address
  * is real.
+ *
+ * The shape is the one the shop already reads on PYNX Dispatch: today at the
+ * top in the largest type on the page, the rest of the window under it in
+ * order, and the things that never change — codes, phones, where the fleet is
+ * — parked in a column down the side where they can be found without scrolling
+ * past the day.
  */
 export const metadata: Metadata = {
   title: "PYNX Dispatch — crew board",
@@ -39,6 +57,74 @@ export const metadata: Metadata = {
 // wrong thing at seven in the morning.
 export const dynamic = "force-dynamic";
 
+/**
+ * One call, and every vehicle going out on it.
+ *
+ * A run in the database is one vehicle for one job, so a show that takes the
+ * cargo van and the cube van is two rows. On a board that reads as two
+ * separate calls to the same place at the same time, which is how a crew ends
+ * up in the wrong van. They are gathered back into one card here, by the name
+ * of the job, and each vehicle becomes a line inside it.
+ */
+type Call = {
+  key: string;
+  label: string;
+  meet: string | null;
+  site: string | null;
+  crew: string | null;
+  status: PublicRun["status"];
+  legs: { runId: number; vehicle: PublicVehicle; keys: string | null }[];
+};
+
+function callsOn(
+  day: string,
+  rows: { vehicle: PublicVehicle; byDay: Map<string, PublicRun[]> }[],
+): Call[] {
+  const calls = new Map<string, Call>();
+
+  for (const { vehicle, byDay } of rows) {
+    for (const run of byDay.get(day) ?? []) {
+      // An unnamed run is its own call. Grouping every blank label together
+      // would put unrelated vehicles under one heading of nothing.
+      const key = run.label.trim() ? `label:${run.label.trim().toLowerCase()}` : `run:${run.id}`;
+      const existing = calls.get(key);
+
+      if (existing) {
+        existing.legs.push({ runId: run.id, vehicle, keys: run.keys_with });
+        // Whichever leg has the detail wins; a second van on the same job
+        // usually carries none of it.
+        existing.meet ??= run.meet_time;
+        existing.site ??= run.site;
+        existing.crew ??= run.crew ?? run.driver_first_name;
+        continue;
+      }
+
+      calls.set(key, {
+        key,
+        label: run.label.trim() || vehicle.name,
+        meet: run.meet_time,
+        site: run.site,
+        crew: run.crew ?? run.driver_first_name,
+        status: run.status,
+        legs: [{ runId: run.id, vehicle, keys: run.keys_with }],
+      });
+    }
+  }
+
+  // Earliest meet first; anything without a time is an all-day call and sits
+  // under the ones with a clock on them.
+  return [...calls.values()].sort((a, b) => (a.meet ?? "99:99").localeCompare(b.meet ?? "99:99"));
+}
+
+/** Distinct vehicles actually committed on a day — 'needed' is a gap, not cover. */
+function outOn(day: string, rows: { vehicle: PublicVehicle; byDay: Map<string, PublicRun[]> }[]) {
+  const ids = new Set<number>();
+  for (const { vehicle, byDay } of rows) {
+    if ((byDay.get(day) ?? []).some((r) => COMMITTED.includes(r.status))) ids.add(vehicle.id);
+  }
+  return ids;
+}
+
 export default async function CrewBoardPage() {
   const settings = publicBoard();
   if (!settings.on) notFound();
@@ -47,135 +133,272 @@ export default async function CrewBoardPage() {
   const days = publicDays(today, PUBLIC_DAYS);
   const rows = publicBoardRows(days);
 
-  const anything = rows.some((r) => days.some((d) => (r.byDay.get(d)?.length ?? 0) > 0));
+  const byDay = days.map((day) => ({ day, calls: callsOn(day, rows) }));
+  const anything = byDay.some((d) => d.calls.length > 0);
+
+  const outToday = outOn(today, rows);
+  const outWindow = new Set(days.flatMap((day) => [...outOn(day, rows)]));
+  const stillNeeded = days.reduce(
+    (n, day) =>
+      n +
+      rows.reduce(
+        (m, r) => m + (r.byDay.get(day) ?? []).filter((run) => run.status === "needed").length,
+        0,
+      ),
+    0,
+  );
+  const keysFirst = (byDay[0]?.calls ?? []).some((call) =>
+    call.legs.some((leg) => (leg.keys ?? "").toLowerCase().includes("shop")),
+  );
 
   // Already stripped of the codes unless they were deliberately published —
   // decided in publicShopDetails rather than here, so the markup never has to
   // be trusted with that.
   const shop = publicShopDetails();
-  const contacts = shop
-    ? (["location", "city", "phone", "emergency", "yard", "gate", "lockBox"] as const)
-        .map((key) => ({ key, label: SHOP_LABELS[key], value: shop[key] }))
-        .filter((f) => f.value.trim())
+  const codes = shop
+    ? ([
+        ["Lock box", shop.lockBox],
+        ["Gate", shop.gate],
+      ] as const).filter(([, v]) => v.trim())
     : [];
+  const phones = shop
+    ? ([
+        ["PYNX phone", shop.phone],
+        ["Emergency", shop.emergency],
+      ] as const).filter(([, v]) => v.trim())
+    : [];
+  const notes = settings.note
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   return (
-    <main className="board-public">
-      <header className="board-public-head">
+    <main className="crew-board">
+      <header className="crew-bar">
         <div className="brand">
           <span className="brand-mark">P</span>
           <div>
             <div className="brand-name">PYNX Dispatch</div>
-            <div className="small muted">The next {PUBLIC_DAYS} days</div>
+            <div className="board-eyebrow">Crew board</div>
           </div>
         </div>
+        <span className="board-range">{formatDayRange(days[0], days[days.length - 1])}</span>
       </header>
 
       <InstallHint />
 
-      {settings.note.trim() && <div className="login-banner login-banner-info">{settings.note}</div>}
+      <div className="crew-grid">
+        <div className="crew-main">
+          {notes.length > 0 && (
+            <section className="board-panel board-notes">
+              <Icon name="megaphone" size={20} className="board-glow" />
+              <div>
+                <p className="board-eyebrow">From the office</p>
+                <h2 className="board-panel-title">Shop notes</h2>
+                <ul className="board-note-list">
+                  {notes.map((note, i) => (
+                    <li key={`${i}-${note}`}>
+                      <span className="board-dot" />
+                      <span>{note}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          )}
 
-      {rows.length === 0 || !anything ? (
-        <div className="card">
-          <div className="empty">Nothing booked out in the next {PUBLIC_DAYS} days.</div>
-        </div>
-      ) : (
-        <div className="board-days">
-          {days.map((day) => {
-            const onDay = rows
-              .map((r) => ({ vehicle: r.vehicle, runs: r.byDay.get(day) ?? [] }))
-              .filter((r) => r.runs.length > 0);
+          <header className="crew-head">
+            <p className="board-eyebrow">View only · next {PUBLIC_DAYS} days</p>
+            <h1 className="crew-date">{formatDayTitle(today)}</h1>
+            <div className="board-stats">
+              <Stat label="Vehicles out today" value={String(outToday.size)} />
+              <Stat label={`Out over ${PUBLIC_DAYS} days`} value={String(outWindow.size)} />
+              {stillNeeded > 0 && <Stat label="Still needed" value={String(stillNeeded)} flag />}
+              {keysFirst && <Stat label="Keys at shop first" value="Yes" flag />}
+            </div>
+          </header>
 
-            // A quiet day is one line. Five identical cards saying "nothing
-            // out" is a lot of thumb between a crew and the day that matters.
-            if (onDay.length === 0) {
-              return (
-                <section key={day} className="board-day-quiet">
-                  <span>{day === today ? "Today" : formatDateShort(day)}</span>
-                  <span className="faint">Nothing out</span>
-                </section>
-              );
-            }
+          {!anything ? (
+            <div className="board-panel board-empty">
+              Nothing booked out in the next {PUBLIC_DAYS} days.
+            </div>
+          ) : (
+            byDay.map(({ day, calls }, index) => (
+              <section key={day} className="board-day-block">
+                <h2 className="board-eyebrow board-day-name">
+                  {index === 0
+                    ? "Today"
+                    : index === 1
+                      ? `Tomorrow · ${formatWeekdayShort(day)}`
+                      : formatDayHeading(day)}
+                </h2>
 
-            return (
-              <section key={day} className={`card board-day${day === today ? " board-day-today" : ""}`}>
-                <div className="card-head">
-                  <h2>{day === today ? "Today" : formatDateShort(day)}</h2>
-                  {day === today && <span className="badge badge-accent">{formatDateShort(day)}</span>}
-                </div>
-
-                {onDay.length === 0 ? (
-                  <div className="empty">Nothing out. Shop day.</div>
+                {calls.length === 0 ? (
+                  <p className="board-panel board-empty">
+                    {index === 0 ? "No vehicles out. Shop day." : "No calls."}
+                  </p>
                 ) : (
-                  <ul className="stack-list card-body">
-                    {onDay.map(({ vehicle, runs }) =>
-                      runs.map((run) => (
-                        <li key={`${vehicle.id}-${run.id}`} className={`board-job run-${run.status}`}>
-                          <div className="board-job-head">
-                            <strong>{vehicle.name}</strong>
-                            <span className="small faint">{CLASS_SHORT[vehicle.class]}</span>
-                            <span className="badge badge-plain">{STATUS_SHORT[run.status]}</span>
-                          </div>
-                          <div className="board-job-label">{run.label}</div>
-                          <div className="small muted">
-                            {[
-                              run.meet_time ? `Meet ${run.meet_time}` : null,
-                              run.site,
-                              run.crew ?? run.driver_first_name,
-                              run.keys_with ? `Keys: ${run.keys_with}` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </div>
-                        </li>
-                      )),
-                    )}
-                  </ul>
+                  calls.map((call) => (
+                    <CallCard key={`${day}-${call.key}`} call={call} compact={index !== 0} />
+                  ))
                 )}
               </section>
-            );
-          })}
+            ))
+          )}
         </div>
-      )}
 
-      {shop && (contacts.length > 0 || shop.rules.trim()) && (
-        <section className="card board-shop">
-          <div className="card-head">
-            <h2>The shop</h2>
-          </div>
-          <div className="card-body">
-            {contacts.length > 0 && (
-              <dl className="shop-list">
-                {contacts.map((f) => (
-                  <div key={f.key}>
-                    <dt>{f.label}</dt>
-                    <dd>
-                      {/* Phone numbers are tappable: this gets read on a phone,
-                          standing next to a van, usually in a hurry. */}
-                      {f.key === "phone" || f.key === "emergency" ? (
-                        <a href={`tel:${f.value.replace(/[^+\d]/g, "")}`}>{f.value}</a>
-                      ) : (
-                        f.value
-                      )}
-                    </dd>
+        <aside className="crew-side">
+          {shop && (
+            <section className="board-panel">
+              <p className="board-eyebrow">Standing rules</p>
+              {shop.rules.trim() ? (
+                <p className="board-rules">{shop.rules}</p>
+              ) : (
+                <p className="board-rules faint">Nothing standing this week.</p>
+              )}
+
+              {codes.length > 0 && (
+                <dl className="board-codes">
+                  {codes.map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd className="board-code">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              {(shop.location.trim() || shop.city.trim()) && (
+                <div className="board-field">
+                  <div className="board-field-label">Shop</div>
+                  <div>
+                    {shop.location}
+                    {shop.city.trim() && <span className="board-field-sub">{shop.city}</span>}
                   </div>
-                ))}
-              </dl>
-            )}
+                </div>
+              )}
 
-            {shop.rules.trim() && (
-              <div className="shop-rules">
-                <h3>Standing rules</h3>
-                <p className="small">{shop.rules}</p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+              {shop.yard.trim() && (
+                <div className="board-field">
+                  <div className="board-field-label">Yard</div>
+                  <div>{shop.yard}</div>
+                </div>
+              )}
 
-      <footer className="board-public-foot small muted">
+              {phones.map(([label, value]) => (
+                <div key={label} className="board-field">
+                  <div className="board-field-label">{label}</div>
+                  <div className="board-phone">
+                    <Icon name="phone" size={14} className="board-glow" />
+                    {/* Read on a phone, standing next to a van, in a hurry. */}
+                    <a href={`tel:${value.replace(/[^+\d]/g, "")}`}>{value}</a>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
+          <section className="board-panel">
+            <p className="board-eyebrow">Fleet snapshot</p>
+            <ul className="board-fleet">
+              {rows.map(({ vehicle }) => (
+                <li key={vehicle.id}>
+                  <div>
+                    <div className="board-fleet-name">{vehicle.name}</div>
+                    <div className="board-fleet-sub">
+                      {CLASS_SHORT[vehicle.class]} · {OWNERSHIP_LABELS[vehicle.ownership]}
+                    </div>
+                  </div>
+                  <span className={outToday.has(vehicle.id) ? "board-out" : "board-yard"}>
+                    {outToday.has(vehicle.id) ? "Out" : "Yard"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <footer className="crew-foot">
         Shows the next {PUBLIC_DAYS} days only. Ask the office for anything further out.
       </footer>
     </main>
+  );
+}
+
+function Stat({ label, value, flag = false }: { label: string; value: string; flag?: boolean }) {
+  return (
+    <div className={flag ? "board-stat board-stat-flag" : "board-stat"}>
+      <div className="board-stat-label">{label}</div>
+      <div className="board-stat-value">{value}</div>
+    </div>
+  );
+}
+
+/**
+ * One call.
+ *
+ * Today's are drawn in full — every vehicle, every key note. The nine days
+ * after it are compact: a crew is planning against those, not working from
+ * them, and nine days of full cards is a page nobody scrolls to the end of.
+ */
+function CallCard({ call, compact }: { call: Call; compact: boolean }) {
+  const note = call.legs.find((leg) => leg.keys)?.keys ?? null;
+
+  return (
+    <article
+      className={`board-call run-${call.status}${compact ? " board-call-compact" : ""}`}
+    >
+      <div className="board-call-top">
+        <span className="board-call-time">{call.meet ? formatTime(call.meet) : "All day"}</span>
+        <span className="board-tag">{STATUS_SHORT[call.status]}</span>
+      </div>
+
+      <h3 className="board-call-title">{call.label}</h3>
+
+      <p className="board-call-meta">
+        {call.crew && <span className="board-crew">{call.crew}</span>}
+        {call.meet && (
+          <span className="board-meet">
+            <Icon name="clock" size={12} />
+            Meet {formatTime(call.meet)}
+          </span>
+        )}
+        {call.site && (
+          <span className="board-where">
+            <Icon name="pin" size={12} />
+            {call.site}
+          </span>
+        )}
+      </p>
+
+      {compact ? (
+        <p className="board-call-line">
+          <Icon name="truck" size={14} />
+          {call.legs.map((leg) => leg.vehicle.name).join(" · ")}
+          {note && <span className="board-call-note">{note}</span>}
+        </p>
+      ) : (
+        <ol className="board-legs">
+          {call.legs.map((leg) => (
+            <li key={leg.runId}>
+              <span className="board-leg-role">{CLASS_SHORT[leg.vehicle.class]}</span>
+              <span>
+                <span className="board-leg-name">
+                  <Icon name="truck" size={14} />
+                  {leg.vehicle.name}
+                </span>
+                {leg.keys && (
+                  <span className="board-leg-keys">
+                    <Icon name="key" size={12} />
+                    {leg.keys}
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </article>
   );
 }
