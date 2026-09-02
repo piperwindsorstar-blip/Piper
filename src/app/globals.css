@@ -1014,8 +1014,32 @@ input:focus, select:focus, textarea:focus {
    chart grows past the viewport instead, scrolling inside .table-wrap.
    min-width stays as a floor for the other direction: a fortnight on a wide
    screen should still fill the card rather than huddle on the left. */
-.board-grid { --day-min: 2rem; min-width: 56rem; }
-.board-grid-compact { --day-min: 1.9rem; min-width: 72rem; }
+/* width: max-content is what makes the vehicle column able to stay put.
+   Without it the grid's *box* is only as wide as the scrolling wrapper — 1126
+   pixels — while its content runs to 2744 and simply overflows. A sticky item
+   is clamped to its containing block, so the vehicle name could travel a few
+   hundred pixels inside that short box and then had to go with the rest;
+   measured leaving the window edge instead of holding at the chart's.
+   Sized to the content, the row is the full 2744 and there is room to hold.
+   min-width: 100% keeps the other case: a fortnight on a wide screen fills
+   the card rather than huddling on the left. */
+.board-grid {
+  --day-min: 2rem;
+  width: max-content;
+  min-width: 100%;
+}
+.board-grid-compact { --day-min: 1.9rem; }
+
+/* The vehicle stays while the dates slide past.
+   Needs its own background, or the dates show through it, and a z-index above
+   the bars, which are positioned and would otherwise ride over the top. */
+.board-grid-corner,
+.board-grid-name {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: var(--surface);
+}
 
 
 .board-grid-head,
