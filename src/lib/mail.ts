@@ -227,6 +227,20 @@ function transportFor(config: MailConfig) {
     port: config.port,
     secure: config.secure,
     auth: { user: config.user, pass: config.pass },
+
+    /*
+     * Give up quickly rather than hang.
+     *
+     * nodemailer waits two minutes to connect by default, so a host that
+     * silently drops the packets — a provider blocking outbound SMTP, which
+     * DigitalOcean does on new droplets — leaves the settings page spinning
+     * with no clue why. A blocked port is indistinguishable from a slow one
+     * for the first fifteen seconds and clearly different after; waiting the
+     * other hundred and five seconds teaches nobody anything.
+     */
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
   });
 }
 

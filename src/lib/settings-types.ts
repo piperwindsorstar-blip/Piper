@@ -196,5 +196,9 @@ export function splitAddresses(raw: string): string[] {
 export const MAIL_PORTS = [
   { port: 587, label: "587 — STARTTLS (most providers)" },
   { port: 465, label: "465 — TLS from the start" },
+  // Hosts that block outbound mail — DigitalOcean among them — block 25, 465
+  // and 587 and leave 2525 alone, so the transactional providers all offer it
+  // as the way out. Same STARTTLS conversation, different door.
+  { port: 2525, label: "2525 — when the host blocks 587" },
   { port: 25, label: "25 — unencrypted, rarely right" },
 ];
