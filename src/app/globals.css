@@ -916,6 +916,164 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+/* ------------------------------------------------------- one call, one card */
+
+/* The same card on both boards. The crew board and the office board show the
+   same thing to different people, so they show it the same way; only the
+   colours differ, and those arrive through the four properties below. The
+   defaults are the app's, and .crew-board overrides them further down. */
+.call-card {
+  --call-surface: var(--surface);
+  --call-edge: var(--shadow);
+  --call-muted: var(--text-muted);
+  --call-faint: var(--text-faint);
+  --call-chip: var(--surface-alt);
+  --call-meet: var(--danger);
+  --call-display: var(--font);
+
+  background: var(--call-surface);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: var(--call-edge);
+  border-left: 3px solid var(--run-booked);
+}
+/* The days after today. A crew plans against those rather than works from
+   them, and ten days of full cards is a page nobody scrolls to the end of. */
+.call-card-compact { padding: 0.75rem 0.85rem; }
+
+.call-card.run-booked { border-left-color: var(--run-booked); }
+.call-card.run-needed { border-left-color: var(--run-needed); }
+.call-card.run-own    { border-left-color: var(--run-own); }
+.call-card.run-pynx   { border-left-color: var(--run-pynx); }
+.call-card.run-idle   { border-left-color: var(--run-idle); }
+.call-card.run-shop   { border-left-color: var(--run-shop); }
+
+.call-top { display: flex; align-items: center; gap: 0.5rem; }
+.call-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+.call-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  background: var(--call-chip);
+  color: var(--call-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.call-title {
+  font-family: var(--call-display);
+  font-size: 1.35rem;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0.35rem 0 0;
+}
+
+.call-meta {
+  margin: 0.3rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--call-muted);
+}
+.call-crew { color: var(--text); }
+.call-meet, .call-where { display: inline-flex; align-items: center; gap: 0.3rem; }
+/* The meeting time is the one thing on a card that makes somebody late. */
+.call-meet { color: var(--call-meet); font-weight: 500; }
+
+.call-legs { list-style: none; margin: 0.9rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.call-legs li { display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.88rem; }
+.call-leg-role {
+  flex: 0 0 4.5rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--call-muted);
+  padding-top: 0.15rem;
+}
+.call-leg-name { display: inline-flex; align-items: center; gap: 0.4rem; }
+.call-leg-back { margin-left: 0.4rem; font-size: 0.76rem; color: var(--call-muted); }
+.call-leg-keys {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  color: var(--call-muted);
+}
+
+.call-line {
+  margin: 0.45rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--call-muted);
+}
+.call-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--call-faint);
+}
+
+/* ---------------------------------------- today, on the office dispatch board */
+
+/* The office board leads with the same day the crew board does, so the yard
+   and the desk are reading one thing rather than two. The month grid stays
+   below it: that answers "is the cube van free on the 19th", which is a
+   different question from "what is going out in an hour". */
+.today-panel { padding: 1.1rem; display: grid; gap: 0.6rem; }
+.today-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.today-date {
+  font-size: clamp(1.8rem, 5vw, 2.4rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.today-stats { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }
+.today-stat {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.7rem;
+}
+.today-stat-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.today-stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.today-stat-note { font-size: 0.72rem; color: var(--text-muted); }
+.today-calls { display: grid; gap: 0.6rem; margin-top: 0.5rem; }
+.today-empty { margin: 0.5rem 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+/* The card already sits on a card, so it drops the second shadow. */
+.today-calls .call-card { --call-edge: none; border: 1px solid var(--border); }
+
 /* ------------------------------------------------- public crew board */
 
 /* The crew board wears the shop's own colours rather than the app's.
@@ -1100,107 +1258,6 @@ html:has(.crew-board), body:has(.crew-board) { background: #0c0c0d; }
 .board-stat-flag { box-shadow: inset 0 0 0 1px rgba(92, 242, 200, 0.35); }
 .board-stat-flag .board-stat-value { color: var(--bt-neon); }
 
-/* ------------------------------------------------------------ day and call */
-
-.board-day-block { display: grid; gap: 0.6rem; }
-.board-day-name { margin-bottom: 0.1rem; }
-
-.board-call {
-  background: var(--bt-card);
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: var(--bt-hair);
-  border-left: 3px solid var(--run-booked);
-}
-.board-call-compact { padding: 0.75rem 0.85rem; }
-
-.board-call.run-booked { border-left-color: var(--run-booked); }
-.board-call.run-needed { border-left-color: var(--run-needed); }
-.board-call.run-own    { border-left-color: var(--run-own); }
-.board-call.run-pynx   { border-left-color: var(--run-pynx); }
-.board-call.run-idle   { border-left-color: var(--run-idle); }
-.board-call.run-shop   { border-left-color: var(--run-shop); }
-
-.board-call-top { display: flex; align-items: center; gap: 0.5rem; }
-.board-call-time {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 0.85rem;
-}
-.board-tag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.1rem 0.5rem;
-  background: var(--bt-raised);
-  color: var(--bt-muted);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.board-call-title {
-  font-family: var(--bt-display);
-  font-size: 1.35rem;
-  line-height: 1.15;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 0.35rem 0 0;
-}
-
-.board-call-meta {
-  margin: 0.3rem 0 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.2rem 0.75rem;
-  font-size: 0.78rem;
-  color: var(--bt-muted);
-}
-.board-crew { color: var(--bt-text); }
-.board-meet, .board-where { display: inline-flex; align-items: center; gap: 0.3rem; }
-/* Meeting time is the one thing on a card that makes somebody late. */
-.board-meet { color: var(--bt-meet); font-weight: 500; }
-
-.board-legs { list-style: none; margin: 0.9rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
-.board-legs li { display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.88rem; }
-.board-leg-role {
-  flex: 0 0 4.5rem;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--bt-muted);
-  padding-top: 0.15rem;
-}
-.board-leg-name { display: inline-flex; align-items: center; gap: 0.4rem; }
-.board-leg-keys {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  margin-top: 0.15rem;
-  font-size: 0.76rem;
-  color: var(--bt-muted);
-}
-
-/* The nine days after today: one line each, so the page stays scrollable. */
-.board-call-line {
-  margin: 0.45rem 0 0;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-  color: var(--bt-muted);
-}
-.board-call-note {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--bt-faint);
-}
-
 /* --------------------------------------------------------------- the side */
 
 .board-rules { margin: 0.6rem 0 0; font-size: 0.88rem; white-space: pre-wrap; }
@@ -1247,6 +1304,18 @@ html:has(.crew-board), body:has(.crew-board) { background: #0c0c0d; }
   color: var(--bt-faint);
   border-top: 1px solid rgba(242, 241, 238, 0.09);
 }
+
+/* The crew board's own colours for the shared card. */
+.crew-board .call-card {
+  --call-surface: var(--bt-card);
+  --call-edge: var(--bt-hair);
+  --call-muted: var(--bt-muted);
+  --call-faint: var(--bt-faint);
+  --call-chip: var(--bt-raised);
+  --call-meet: var(--bt-meet);
+  --call-display: var(--bt-display);
+}
+.crew-board .call-crew { color: var(--bt-text); }
 
 /* The install offer sits inside the dark page, so it cannot keep the app's
    light card colours. */

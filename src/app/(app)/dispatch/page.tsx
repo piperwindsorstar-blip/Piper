@@ -6,21 +6,32 @@ import { listEvents } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import {
   boardLanes,
+  COMMITTED,
+  groupCalls,
   listVehicles,
   neededCounts,
   monthDays,
   needed,
   OWNERSHIP_LABELS,
   rentalsDue,
+  runsOn,
   shiftMonth,
   shiftWeek,
   STATUS_SHORT,
   uncoveredEvents,
   weekDays,
 } from "@/lib/dispatch";
-import { formatDate, formatDateShort, monthLabel, parseIso, todayIso } from "@/lib/dates";
+import {
+  formatDate,
+  formatDateShort,
+  formatDayTitle,
+  monthLabel,
+  parseIso,
+  todayIso,
+} from "@/lib/dates";
 import RunForm from "./RunForm";
 import BoardGrid from "./BoardGrid";
+import CallCard from "@/components/CallCard";
 import Icon from "@/components/Icon";
 
 /**
@@ -61,6 +72,30 @@ export default async function DispatchPage({
   const uncovered = uncoveredEvents(from, to);
   const due = rentalsDue(today);
 
+  // Today, whatever month the grid below is showing. The grid answers "is that
+  // free on the 19th"; this answers "what is going out in an hour", and the
+  // second question does not wait while somebody pages back from November.
+  const todayRuns = runsOn(today);
+  const todayCalls = groupCalls(
+    todayRuns.map((run) => ({
+      runId: run.id,
+      label: run.label,
+      status: run.status,
+      meet: run.meet_time,
+      site: run.site,
+      crew: run.crew ?? run.driver_name,
+      keys: run.keys_with,
+      endsOn: run.ends_on,
+      eventId: run.event_id,
+      vehicleId: run.vehicle_id,
+      vehicleName: run.vehicle_name,
+      vehicleClass: run.vehicle_class,
+    })),
+  );
+  const outToday = new Set(
+    todayRuns.filter((r) => COMMITTED.includes(r.status)).map((r) => r.vehicle_id),
+  ).size;
+
   const step = (n: number) => (monthly ? shiftMonth(anchor, n) : shiftWeek(anchor, n));
   const href = (at: string) => `/dispatch?week=${at}${monthly ? "" : "&view=week"}`;
 
@@ -80,28 +115,28 @@ export default async function DispatchPage({
 
   return (
     <>
-      <div className="grid cols-2">
-        <div className="card stat">
-          <div className="stat-label">Vehicles needed today</div>
-          <div
-            className="stat-value"
-            style={{ color: counts.today > 0 ? "var(--run-needed)" : undefined }}
-          >
-            {counts.today}
-          </div>
-          <div className="stat-note">flagged, not booked</div>
+      {/* The same shape the crew reads on the public board, so the office and
+          the yard are looking at one thing rather than two. */}
+      <section className="card today-panel">
+        <p className="today-eyebrow">On the road today</p>
+        <h2 className="today-date">{formatDayTitle(today)}</h2>
+
+        <div className="today-stats">
+          <Stat label="Vehicles out today" value={outToday} />
+          <Stat label="Needed today" value={counts.today} note="flagged, not booked" warn />
+          <Stat label="Needed the rest of the week" value={counts.week} note="phoning still to do" warn />
         </div>
-        <div className="card stat">
-          <div className="stat-label">Needed the rest of this week</div>
-          <div
-            className="stat-value"
-            style={{ color: counts.week > 0 ? "var(--run-needed)" : undefined }}
-          >
-            {counts.week}
+
+        {todayCalls.length === 0 ? (
+          <p className="today-empty">No vehicles out. Shop day.</p>
+        ) : (
+          <div className="today-calls">
+            {todayCalls.map((call) => (
+              <CallCard key={call.key} call={call} today={today} linkEvents />
+            ))}
           </div>
-          <div className="stat-note">phoning still to do</div>
-        </div>
-      </div>
+        )}
+      </section>
 
       {gaps.length > 0 && (
         <div className="alert alert-warn">
@@ -256,5 +291,38 @@ export default async function DispatchPage({
       </div>
       )}
     </>
+  );
+}
+
+/**
+ * A number with its name over it.
+ *
+ * `warn` marks the counts that are a gap rather than a fact — a day flagged as
+ * needing a vehicle nobody has booked. Those go the colour the board uses for
+ * 'needed', and only when there are any: a nought in warning red reads as a
+ * problem when it is the absence of one.
+ */
+function Stat({
+  label,
+  value,
+  note,
+  warn = false,
+}: {
+  label: string;
+  value: number;
+  note?: string;
+  warn?: boolean;
+}) {
+  return (
+    <div className="today-stat">
+      <div className="today-stat-label">{label}</div>
+      <div
+        className="today-stat-value"
+        style={{ color: warn && value > 0 ? "var(--run-needed)" : undefined }}
+      >
+        {value}
+      </div>
+      {note && <div className="today-stat-note">{note}</div>}
+    </div>
   );
 }

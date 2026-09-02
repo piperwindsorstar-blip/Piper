@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import {
   CLASS_SHORT,
   COMMITTED,
+  groupCalls,
   OWNERSHIP_LABELS,
   publicBoardRows,
   publicDays,
-  STATUS_SHORT,
+  type Call,
   type PublicRun,
   type PublicVehicle,
 } from "@/lib/dispatch";
@@ -15,10 +16,10 @@ import {
   formatDayHeading,
   formatDayRange,
   formatDayTitle,
-  formatTime,
   formatWeekdayShort,
   todayIso,
 } from "@/lib/dates";
+import CallCard from "@/components/CallCard";
 import Icon from "@/components/Icon";
 import InstallHint from "@/components/InstallHint";
 
@@ -58,62 +59,36 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 /**
- * One call, and every vehicle going out on it.
+ * The day's runs, gathered into calls.
  *
- * A run in the database is one vehicle for one job, so a show that takes the
- * cargo van and the cube van is two rows. On a board that reads as two
- * separate calls to the same place at the same time, which is how a crew ends
- * up in the wrong van. They are gathered back into one card here, by the name
- * of the job, and each vehicle becomes a line inside it.
+ * The mapping happens here rather than in `groupCalls` so this page keeps
+ * deciding which of a run's fields it is willing to publish. A shared helper
+ * that read straight off the database row would quietly publish the next
+ * column somebody adds to it.
  */
-type Call = {
-  key: string;
-  label: string;
-  meet: string | null;
-  site: string | null;
-  crew: string | null;
-  status: PublicRun["status"];
-  legs: { runId: number; vehicle: PublicVehicle; keys: string | null }[];
-};
-
 function callsOn(
   day: string,
   rows: { vehicle: PublicVehicle; byDay: Map<string, PublicRun[]> }[],
 ): Call[] {
-  const calls = new Map<string, Call>();
-
-  for (const { vehicle, byDay } of rows) {
-    for (const run of byDay.get(day) ?? []) {
-      // An unnamed run is its own call. Grouping every blank label together
-      // would put unrelated vehicles under one heading of nothing.
-      const key = run.label.trim() ? `label:${run.label.trim().toLowerCase()}` : `run:${run.id}`;
-      const existing = calls.get(key);
-
-      if (existing) {
-        existing.legs.push({ runId: run.id, vehicle, keys: run.keys_with });
-        // Whichever leg has the detail wins; a second van on the same job
-        // usually carries none of it.
-        existing.meet ??= run.meet_time;
-        existing.site ??= run.site;
-        existing.crew ??= run.crew ?? run.driver_first_name;
-        continue;
-      }
-
-      calls.set(key, {
-        key,
-        label: run.label.trim() || vehicle.name,
+  return groupCalls(
+    rows.flatMap(({ vehicle, byDay }) =>
+      (byDay.get(day) ?? []).map((run) => ({
+        runId: run.id,
+        label: run.label,
+        status: run.status,
         meet: run.meet_time,
         site: run.site,
         crew: run.crew ?? run.driver_first_name,
-        status: run.status,
-        legs: [{ runId: run.id, vehicle, keys: run.keys_with }],
-      });
-    }
-  }
-
-  // Earliest meet first; anything without a time is an all-day call and sits
-  // under the ones with a clock on them.
-  return [...calls.values()].sort((a, b) => (a.meet ?? "99:99").localeCompare(b.meet ?? "99:99"));
+        keys: run.keys_with,
+        endsOn: run.ends_on,
+        // The crew board links nowhere: it has no session to link with.
+        eventId: null,
+        vehicleId: vehicle.id,
+        vehicleName: vehicle.name,
+        vehicleClass: vehicle.class,
+      })),
+    ),
+  );
 }
 
 /** Distinct vehicles actually committed on a day — 'needed' is a gap, not cover. */
@@ -332,73 +307,5 @@ function Stat({ label, value, flag = false }: { label: string; value: string; fl
       <div className="board-stat-label">{label}</div>
       <div className="board-stat-value">{value}</div>
     </div>
-  );
-}
-
-/**
- * One call.
- *
- * Today's are drawn in full — every vehicle, every key note. The nine days
- * after it are compact: a crew is planning against those, not working from
- * them, and nine days of full cards is a page nobody scrolls to the end of.
- */
-function CallCard({ call, compact }: { call: Call; compact: boolean }) {
-  const note = call.legs.find((leg) => leg.keys)?.keys ?? null;
-
-  return (
-    <article
-      className={`board-call run-${call.status}${compact ? " board-call-compact" : ""}`}
-    >
-      <div className="board-call-top">
-        <span className="board-call-time">{call.meet ? formatTime(call.meet) : "All day"}</span>
-        <span className="board-tag">{STATUS_SHORT[call.status]}</span>
-      </div>
-
-      <h3 className="board-call-title">{call.label}</h3>
-
-      <p className="board-call-meta">
-        {call.crew && <span className="board-crew">{call.crew}</span>}
-        {call.meet && (
-          <span className="board-meet">
-            <Icon name="clock" size={12} />
-            Meet {formatTime(call.meet)}
-          </span>
-        )}
-        {call.site && (
-          <span className="board-where">
-            <Icon name="pin" size={12} />
-            {call.site}
-          </span>
-        )}
-      </p>
-
-      {compact ? (
-        <p className="board-call-line">
-          <Icon name="truck" size={14} />
-          {call.legs.map((leg) => leg.vehicle.name).join(" · ")}
-          {note && <span className="board-call-note">{note}</span>}
-        </p>
-      ) : (
-        <ol className="board-legs">
-          {call.legs.map((leg) => (
-            <li key={leg.runId}>
-              <span className="board-leg-role">{CLASS_SHORT[leg.vehicle.class]}</span>
-              <span>
-                <span className="board-leg-name">
-                  <Icon name="truck" size={14} />
-                  {leg.vehicle.name}
-                </span>
-                {leg.keys && (
-                  <span className="board-leg-keys">
-                    <Icon name="key" size={12} />
-                    {leg.keys}
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </article>
   );
 }
