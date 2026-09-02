@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { needed, rentalsDue, runsOn } from "@/lib/dispatch";
+import { groupCalls, needed, rentalsDue, runsOn } from "@/lib/dispatch";
 import { COMMITTED } from "@/lib/dispatch-types";
 import { formatDate, formatDateShort, todayIso } from "@/lib/dates";
+import CallCard from "@/components/CallCard";
 
 /**
  * What is on the road today, on the dashboard.
@@ -11,6 +12,10 @@ import { formatDate, formatDateShort, todayIso } from "@/lib/dates";
  * and any day somebody has flagged as needing a vehicle without booking one.
  * Planning a month happens on the board; noticing that a hire was due
  * yesterday has to happen wherever you already are.
+ *
+ * The calls are drawn with the same card the two dispatch boards use, so the
+ * dashboard, the office board and the yard are all showing one thing rather
+ * than three versions of it.
  *
  * Admin-only at the caller — vehicles and hire dates are office business.
  */
@@ -26,6 +31,23 @@ export default function DispatchToday() {
   const gaps = needed(today, ahead);
 
   if (out.length === 0 && due.length === 0 && gaps.length === 0) return null;
+
+  const calls = groupCalls(
+    out.map((run) => ({
+      runId: run.id,
+      label: run.label,
+      status: run.status,
+      meet: run.meet_time,
+      site: run.site,
+      crew: run.crew ?? run.driver_name,
+      keys: run.keys_with,
+      endsOn: run.ends_on,
+      eventId: run.event_id,
+      vehicleId: run.vehicle_id,
+      vehicleName: run.vehicle_name,
+      vehicleClass: run.vehicle_class,
+    })),
+  );
 
   return (
     <div className="card">
@@ -46,29 +68,16 @@ export default function DispatchToday() {
           </div>
         )}
 
-        {out.length === 0 ? (
-          <p className="small muted" style={{ marginBottom: due.length ? "0.75rem" : 0 }}>
-            Nothing booked out today.
+        {calls.length === 0 ? (
+          <p className="today-empty" style={{ marginBottom: due.length ? "0.75rem" : 0 }}>
+            No vehicles out. Shop day.
           </p>
         ) : (
-          <ul className="stack-list" style={{ marginBottom: due.length ? "1rem" : 0 }}>
-            {out.map((run) => (
-              <li key={run.id}>
-                <strong>{run.vehicle_name}</strong>{" "}
-                {run.event_id ? (
-                  <Link href={`/events/${run.event_id}`}>{run.label}</Link>
-                ) : (
-                  <span>{run.label}</span>
-                )}
-                <span className="muted small">
-                  {run.meet_time ? ` · meet ${run.meet_time}` : ""}
-                  {run.crew ? ` · ${run.crew}` : run.driver_name ? ` · ${run.driver_name}` : ""}
-                  {run.keys_with ? ` · keys with ${run.keys_with}` : ""}
-                  {run.ends_on !== today ? ` · back ${formatDate(run.ends_on)}` : ""}
-                </span>
-              </li>
+          <div className="today-calls" style={{ marginBottom: due.length ? "1rem" : 0 }}>
+            {calls.map((call) => (
+              <CallCard key={call.key} call={call} today={today} linkEvents />
             ))}
-          </ul>
+          </div>
         )}
 
         {due.length > 0 && (
