@@ -1007,8 +1007,16 @@ input:focus, select:focus, textarea:focus {
 /* Vehicles down, days across, each run one bar across the days it covers.
    A grid rather than a table: a table cell cannot span a run, and a run drawn
    as one box per day cannot be told apart from several separate bookings. */
-.board-grid { min-width: 56rem; }
-.board-grid-compact { min-width: 72rem; }
+/* Slide it rather than squeeze it.
+   Columns used to be minmax(0, 1fr), which let ninety-two days of a quarter
+   share whatever width the screen had — about ten pixels each, where two
+   digits do not fit and the dates ran together. They now hold a floor and the
+   chart grows past the viewport instead, scrolling inside .table-wrap.
+   min-width stays as a floor for the other direction: a fortnight on a wide
+   screen should still fill the card rather than huddle on the left. */
+.board-grid { --day-min: 2rem; min-width: 56rem; }
+.board-grid-compact { --day-min: 1.9rem; min-width: 72rem; }
+
 
 .board-grid-head,
 .board-grid-row {

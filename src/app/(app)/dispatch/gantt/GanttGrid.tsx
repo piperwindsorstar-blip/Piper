@@ -140,7 +140,7 @@ export default function GanttGrid({
             <div className="board-grid-corner" />
             <div
               className="board-grid-days"
-              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(var(--day-min), 1fr))` }}
             >
               {monthBands(days).map((band) => (
                 <div
@@ -163,7 +163,7 @@ export default function GanttGrid({
             <div className="board-grid-corner">Vehicle</div>
             <div
               className="board-grid-days"
-              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(var(--day-min), 1fr))` }}
             >
               {days.map((day) => (
                 <div
@@ -196,7 +196,7 @@ export default function GanttGrid({
                   <div
                     key={row.slot}
                     className="gantt-track"
-                    style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${days.length}, minmax(var(--day-min), 1fr))` }}
                   >
                     {days.map((day) => {
                       const state = stateOn(vehicle, row, day);

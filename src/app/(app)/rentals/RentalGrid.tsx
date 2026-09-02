@@ -103,7 +103,7 @@ export default function RentalGrid({
             <div className="board-grid-corner" />
             <div
               className="board-grid-days"
-              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(var(--day-min), 1fr))` }}
             >
               {monthBands(days).map((band) => (
                 <div
@@ -126,7 +126,7 @@ export default function RentalGrid({
             <div className="board-grid-corner">Hired from</div>
             <div
               className="board-grid-days"
-              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+              style={{ gridTemplateColumns: `repeat(${days.length}, minmax(var(--day-min), 1fr))` }}
             >
               {days.map((day) => (
                 <div
@@ -154,7 +154,7 @@ export default function RentalGrid({
                   <div
                     key={track.lane}
                     className="gantt-track"
-                    style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${days.length}, minmax(var(--day-min), 1fr))` }}
                   >
                     {/* One element per hire, spanning its days, rather than a
                         square per day. A five-day hire is one thing that
