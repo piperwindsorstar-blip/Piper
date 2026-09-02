@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 #
-# dispatch.djpynxpro.com — a short address that lands on the board with the
-# rest of Piper out of the way.
+# dispatch.djpynxpro.com — the public crew board, on its own address.
 #
 #   curl -fsSL https://raw.githubusercontent.com/piperwindsorstar-blip/Piper/claude/wedding-dj-crm-sltogo/deploy/add-dispatch-site.sh -o /tmp/add-dispatch-site.sh
 #   bash /tmp/add-dispatch-site.sh dispatch.djpynxpro.com crm.djpynxpro.com
 #
-# It redirects rather than serving anything of its own, so there is one app,
-# one session and one certificate renewal to care about. The ?focus=dispatch
-# it adds is what tells Piper to leave the side menu off.
+# Read-only and open to anyone with the link: /board is the one page in Piper
+# that renders without an account. Because no session is involved, this can
+# serve it directly and keep its own name in the address bar rather than
+# bouncing to the CRM.
+#
+# Only the board and the files it needs are proxied. Everything else on this
+# hostname is a 404 — so even somebody who knows the CRM's URLs cannot reach
+# /dashboard or /settings through this name.
+#
+# The board is off until an admin turns it on in Settings, and answers 404
+# until they do. That is deliberate and this script does not change it.
 #
 # Everything it needs is in this file. Idempotent; safe to re-run.
 
@@ -99,10 +106,31 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
 
-    # Everything here means the board. focus=dispatch is what hides the side
-    # menu; the tabs carry it between Board, Gantt, Fleet and Who drove.
+    # Only the board, and only what it needs to draw itself.
+    location = / {
+        proxy_pass http://127.0.0.1:3000/board;
+        proxy_http_version 1.1;
+        proxy_set_header Host              \$host;
+        proxy_set_header X-Real-IP         \$remote_addr;
+        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        # Without this Next.js reads the request as plain HTTP and builds its
+        # absolute URLs accordingly.
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 60;
+    }
+
+    # The stylesheet, the scripts and the icons. Named rather than passed
+    # through wholesale: this is the list of what a stranger may fetch.
+    location /_next/ { proxy_pass http://127.0.0.1:3000; }
+    location = /manifest.webmanifest { proxy_pass http://127.0.0.1:3000; }
+    location = /favicon.ico { proxy_pass http://127.0.0.1:3000; }
+    location ~ ^/(apple-touch-icon|icon-192|icon-512|icon-maskable-512)\\.png$ {
+        proxy_pass http://127.0.0.1:3000;
+    }
+
+    # Anything else. /dashboard, /settings, /events — none of them exist here.
     location / {
-        return 302 https://$TARGET/dispatch?focus=dispatch;
+        return 404;
     }
 }
 NGINXCONF
@@ -141,17 +169,25 @@ note "nginx reloaded"
 
 say "Checking"
 for _ in 1 2 3; do
-  OUT="$(curl -sS -o /dev/null -m 20 -w '%{http_code} %{redirect_url}' "https://$DOMAIN/" 2>&1)" && break
+  OUT="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://$DOMAIN/" 2>&1)" && break
   sleep 2
 done
+BLOCKED="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://$DOMAIN/dashboard" 2>/dev/null || true)"
 CRM="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://$TARGET/login" 2>/dev/null || true)"
 MAIL="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "https://mail.djpynxpro.com/" 2>/dev/null || true)"
-note "https://$DOMAIN/ -> $OUT"
-note "the CRM still up   -> $CRM"
-note "webmail still up   -> $MAIL"
+note "https://$DOMAIN/          -> $OUT"
+note "https://$DOMAIN/dashboard -> $BLOCKED (404 expected: nothing else is served here)"
+note "the CRM still up            -> $CRM"
+note "webmail still up            -> $MAIL"
 
 echo ""
 case "$OUT" in
-  302*focus=dispatch*) echo "  dispatch.djpynxpro.com now lands on the board, with no side menu." ;;
-  *) echo "  Not redirecting as expected. curl said: $OUT" >&2 ;;
+  200) echo "  The crew board is live at https://$DOMAIN/ — no sign-in, nothing editable." ;;
+  404) cat <<EOF
+  The board is switched off, which is its default and why this is a 404.
+  Turn it on in the CRM: Settings -> the crew board. Then reload this
+  address; nothing else needs running.
+EOF
+  ;;
+  *) echo "  Unexpected: $OUT. Check: systemctl status piper; tail -30 /var/log/nginx/error.log" >&2 ;;
 esac
