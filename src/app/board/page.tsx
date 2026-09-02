@@ -78,7 +78,7 @@ function callsOn(
         status: run.status,
         meet: run.meet_time,
         site: run.site,
-        crew: run.crew ?? run.driver_first_name,
+        crew: run.crew,
         keys: run.keys_with,
         endsOn: run.ends_on,
         // The crew board links nowhere: it has no session to link with.
@@ -86,6 +86,12 @@ function callsOn(
         vehicleId: vehicle.id,
         vehicleName: vehicle.name,
         vehicleClass: vehicle.class,
+        pickupFrom: run.pickup_from,
+        dropoffTo: run.dropoff_to,
+        pickupTime: run.pickup_time,
+        keysAtShop: run.keys_at_shop === 1,
+        driver: run.driver_first_name,
+        meetingOnSite: run.meeting_on_site,
       })),
     ),
   );

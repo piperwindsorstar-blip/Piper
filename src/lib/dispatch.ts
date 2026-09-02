@@ -2,6 +2,8 @@ import { db } from "./db";
 import { toIso, parseIso } from "./dates";
 import {
   COMMITTED,
+  groupCalls,
+  type Call,
   type Ownership,
   type RunStatus,
   type VehicleClass,
@@ -26,7 +28,7 @@ import { FLEET_ORDER } from "./fleet";
  * is due before it is late.
  */
 
-export type { Ownership, RunStatus, VehicleClass } from "./dispatch-types";
+export type { Call, CallRun, Ownership, RunStatus, VehicleClass } from "./dispatch-types";
 export {
   OWNERSHIPS,
   OWNERSHIP_LABELS,
@@ -39,6 +41,7 @@ export {
   STATUS_SHORT,
   COMMITTED,
 } from "./dispatch-types";
+export { groupCalls } from "./dispatch-types";
 
 export type Vehicle = {
   id: number;
@@ -85,7 +88,14 @@ export type Run = {
   crew: string | null;
   site: string | null;
   driver_id: number | null;
+  driver_text: string | null;
   keys_with: string | null;
+  show_date: string | null;
+  pickup_from: string | null;
+  dropoff_to: string | null;
+  pickup_time: string | null;
+  keys_at_shop: number;
+  meeting_on_site: string | null;
   notes: string | null;
   created_at: string;
 };
@@ -182,6 +192,23 @@ export function setVehicleActive(id: number, active: boolean): void {
 
 /* -------------------------------------------------------------------- runs */
 
+/**
+ * What differs from one day of a run to the next.
+ *
+ * A multi-day run stores one of these per day only when that day is not the
+ * same as the first. The absence of them is what "same as the first day"
+ * means, so nothing has to be kept in step with a flag.
+ */
+export type RunDay = {
+  day: string;
+  pickup_from: string | null;
+  dropoff_to: string | null;
+  pickup_time: string | null;
+  keys_at_shop: number;
+  driver_text: string | null;
+  meeting_on_site: string | null;
+};
+
 export type RunInput = {
   vehicle_id: number;
   event_id: number | null;
@@ -193,61 +220,145 @@ export type RunInput = {
   crew: string | null;
   site: string | null;
   driver_id: number | null;
+  driver_text: string | null;
   keys_with: string | null;
+  show_date: string | null;
+  pickup_from: string | null;
+  dropoff_to: string | null;
+  pickup_time: string | null;
+  keys_at_shop: boolean;
+  meeting_on_site: string | null;
   notes: string | null;
+  /** Empty means every day is the same as the first. */
+  days: RunDay[];
 };
 
 export function getRun(id: number): Run | null {
   return (db().prepare("SELECT * FROM dispatch_runs WHERE id = ?").get(id) as Run | undefined) ?? null;
 }
 
+const RUN_COLUMNS = `vehicle_id, event_id, label, status, starts_on, ends_on, meet_time,
+   crew, site, driver_id, driver_text, keys_with, show_date, pickup_from, dropoff_to,
+   pickup_time, keys_at_shop, meeting_on_site, notes`;
+
+function runValues(input: RunInput) {
+  return [
+    input.vehicle_id,
+    input.event_id,
+    input.label,
+    input.status,
+    input.starts_on,
+    input.ends_on,
+    input.meet_time,
+    input.crew,
+    input.site,
+    input.driver_id,
+    input.driver_text,
+    input.keys_with,
+    input.show_date,
+    input.pickup_from,
+    input.dropoff_to,
+    input.pickup_time,
+    input.keys_at_shop ? 1 : 0,
+    input.meeting_on_site,
+    input.notes,
+  ];
+}
+
+/**
+ * Replace a run's per-day rows.
+ *
+ * Deleted first rather than merged, because a run whose dates shrank would
+ * otherwise keep rows for days it no longer covers, and those days would
+ * reappear the moment somebody stretched it back out.
+ */
+function writeRunDays(runId: number, days: RunDay[]): void {
+  db().prepare("DELETE FROM dispatch_run_days WHERE run_id = ?").run(runId);
+  if (days.length === 0) return;
+
+  const insert = db().prepare(
+    `INSERT INTO dispatch_run_days
+       (run_id, day, pickup_from, dropoff_to, pickup_time, keys_at_shop, driver_text, meeting_on_site)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  for (const d of days) {
+    insert.run(
+      runId,
+      d.day,
+      d.pickup_from,
+      d.dropoff_to,
+      d.pickup_time,
+      d.keys_at_shop ? 1 : 0,
+      d.driver_text,
+      d.meeting_on_site,
+    );
+  }
+}
+
+export function runDays(runId: number): RunDay[] {
+  return db()
+    .prepare("SELECT * FROM dispatch_run_days WHERE run_id = ? ORDER BY day")
+    .all(runId)
+    .map((r) => {
+      const row = r as RunDay & { run_id: number };
+      return {
+        day: row.day,
+        pickup_from: row.pickup_from,
+        dropoff_to: row.dropoff_to,
+        pickup_time: row.pickup_time,
+        keys_at_shop: row.keys_at_shop,
+        driver_text: row.driver_text,
+        meeting_on_site: row.meeting_on_site,
+      };
+    });
+}
+
+/**
+ * A run as it stands on one particular day.
+ *
+ * The run's own values unless that day has a row of its own saying otherwise.
+ * A day row that leaves a field blank falls back to the run rather than
+ * blanking it: somebody filling in "different driver on the Sunday" should not
+ * have to retype the pickup location to keep it.
+ */
+export function runOnDay<T extends RunWithRefs>(run: T, day: string, days: RunDay[]): T {
+  const override = days.find((d) => d.day === day);
+  if (!override) return run;
+  return {
+    ...run,
+    pickup_from: override.pickup_from ?? run.pickup_from,
+    dropoff_to: override.dropoff_to ?? run.dropoff_to,
+    pickup_time: override.pickup_time ?? run.pickup_time,
+    keys_at_shop: override.keys_at_shop,
+    driver_text: override.driver_text ?? run.driver_text,
+    meeting_on_site: override.meeting_on_site ?? run.meeting_on_site,
+  };
+}
+
 export function createRun(input: RunInput): number {
   const result = db()
     .prepare(
-      `INSERT INTO dispatch_runs
-         (vehicle_id, event_id, label, status, starts_on, ends_on, meet_time, crew,
-          site, driver_id, keys_with, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO dispatch_runs (${RUN_COLUMNS})
+       VALUES (${new Array(19).fill("?").join(", ")})`,
     )
-    .run(
-      input.vehicle_id,
-      input.event_id,
-      input.label,
-      input.status,
-      input.starts_on,
-      input.ends_on,
-      input.meet_time,
-      input.crew,
-      input.site,
-      input.driver_id,
-      input.keys_with,
-      input.notes,
-    );
-  return Number(result.lastInsertRowid);
+    .run(...runValues(input));
+  const id = Number(result.lastInsertRowid);
+  writeRunDays(id, input.days);
+  return id;
 }
 
 export function updateRun(id: number, input: RunInput): void {
   db()
     .prepare(
-      `UPDATE dispatch_runs SET vehicle_id = ?, event_id = ?, label = ?, status = ?,
-         starts_on = ?, ends_on = ?, meet_time = ?, crew = ?, site = ?, driver_id = ?,
-         keys_with = ?, notes = ? WHERE id = ?`,
+      `UPDATE dispatch_runs SET
+         vehicle_id = ?, event_id = ?, label = ?, status = ?, starts_on = ?, ends_on = ?,
+         meet_time = ?, crew = ?, site = ?, driver_id = ?, driver_text = ?, keys_with = ?,
+         show_date = ?, pickup_from = ?, dropoff_to = ?, pickup_time = ?, keys_at_shop = ?,
+         meeting_on_site = ?, notes = ?
+       WHERE id = ?`,
     )
-    .run(
-      input.vehicle_id,
-      input.event_id,
-      input.label,
-      input.status,
-      input.starts_on,
-      input.ends_on,
-      input.meet_time,
-      input.crew,
-      input.site,
-      input.driver_id,
-      input.keys_with,
-      input.notes,
-      id,
-    );
+    .run(...runValues(input), id);
+  writeRunDays(id, input.days);
 }
 
 export function deleteRun(id: number): void {
@@ -374,6 +485,15 @@ export type PublicRun = {
   site: string | null;
   keys_with: string | null;
   driver_first_name: string | null;
+  // Added deliberately, and for the same reason keys_with was: these are what
+  // a person standing in the yard has to know before they can leave. Where the
+  // van is collected, when, where it goes back, who they are meeting, and
+  // whether the keys are already at the shop.
+  pickup_from: string | null;
+  dropoff_to: string | null;
+  pickup_time: string | null;
+  keys_at_shop: number;
+  meeting_on_site: string | null;
 };
 
 export type PublicVehicle = {
@@ -397,6 +517,8 @@ export function publicRuns(from: string, to: string): PublicRun[] {
     .prepare(
       `SELECT r.id, r.vehicle_id, v.name AS vehicle_name, r.label, r.status,
               r.starts_on, r.ends_on, r.meet_time, r.crew, r.site, r.keys_with,
+              r.pickup_from, r.dropoff_to, r.pickup_time, r.keys_at_shop,
+              r.meeting_on_site, r.driver_text,
               u.name AS driver_name
          FROM dispatch_runs r
          JOIN vehicles v ON v.id = r.vehicle_id
@@ -404,13 +526,19 @@ export function publicRuns(from: string, to: string): PublicRun[] {
         WHERE v.active = 1 AND r.starts_on <= ? AND r.ends_on >= ?
         ORDER BY r.starts_on, v.name`,
     )
-    .all(to, from) as (Omit<PublicRun, "driver_first_name"> & { driver_name: string | null })[];
+    .all(to, from) as (Omit<PublicRun, "driver_first_name"> & {
+    driver_name: string | null;
+    driver_text: string | null;
+  })[];
 
-  return rows.map(({ driver_name, ...run }) => ({
+  return rows.map(({ driver_name, driver_text, ...run }) => ({
     ...run,
     // A first name is what a crew board needs — "Jordan has the big van". The
     // full staff roster is not a thing this page has any business publishing.
-    driver_first_name: driver_name ? driver_name.trim().split(/\s+/)[0] : null,
+    // A driver typed in by hand is already just a name, so it goes as written.
+    driver_first_name: driver_name
+      ? driver_name.trim().split(/\s+/)[0]
+      : driver_text,
   }));
 }
 
@@ -431,96 +559,73 @@ export function publicBoardRows(days: string[]): PublicRow[] {
   const runs = publicRuns(days[0], days[days.length - 1]);
   const vehicles = publicVehicles();
 
+  // Fetched once per run rather than once per day: a ten-day window over a
+  // week-long run would otherwise ask the same question ten times.
+  const overrides = new Map(runs.map((run) => [run.id, runDays(run.id)]));
+
   return vehicles.map((vehicle) => {
     const byDay = new Map<string, PublicRun[]>(days.map((d) => [d, []]));
     for (const run of runs) {
       if (run.vehicle_id !== vehicle.id) continue;
       for (const day of days) {
-        if (run.starts_on <= day && run.ends_on >= day) byDay.get(day)?.push(run);
+        if (run.starts_on > day || run.ends_on < day) continue;
+        // A day of a run that was given its own pickup or driver shows that
+        // day's, not the first day's.
+        const override = overrides.get(run.id)?.find((d) => d.day === day);
+        byDay.get(day)?.push(
+          override
+            ? {
+                ...run,
+                pickup_from: override.pickup_from ?? run.pickup_from,
+                dropoff_to: override.dropoff_to ?? run.dropoff_to,
+                pickup_time: override.pickup_time ?? run.pickup_time,
+                keys_at_shop: override.keys_at_shop,
+                meeting_on_site: override.meeting_on_site ?? run.meeting_on_site,
+                driver_first_name: override.driver_text ?? run.driver_first_name,
+              }
+            : run,
+        );
       }
     }
     return { vehicle, byDay };
   });
 }
 
-/* ------------------------------------------------------------------ calls */
-
 /**
- * A run, reduced to what it takes to draw it as a call.
+ * The office view of a day: runs that touch it, gathered into calls, with each
+ * day's own pickup and driver applied where one was recorded.
  *
- * Both boards map into this: the crew board from `PublicRun`, the office board
- * from `RunWithRefs`. Neither hands its own row shape to the grouper, so the
- * public board keeps deciding for itself which columns it is willing to
- * publish — the thing that would otherwise leak the moment a shared helper
- * started reading straight off the database row.
+ * The public board deliberately does not use this — it maps its own rows, so
+ * it goes on deciding for itself which columns it is willing to publish.
  */
-export type CallRun = {
-  runId: number;
-  label: string;
-  status: RunStatus;
-  meet: string | null;
-  site: string | null;
-  crew: string | null;
-  keys: string | null;
-  endsOn: string;
-  eventId: number | null;
-  vehicleId: number;
-  vehicleName: string;
-  vehicleClass: VehicleClass;
-};
-
-/** One job, and every vehicle going out on it. */
-export type Call = {
-  key: string;
-  label: string;
-  status: RunStatus;
-  meet: string | null;
-  site: string | null;
-  crew: string | null;
-  legs: CallRun[];
-};
-
-/**
- * Gather runs into calls, by the name of the job.
- *
- * A run is one vehicle for one job, so a show that takes the cargo van and the
- * cube van is two rows. Drawn separately they read as two calls to the same
- * place at the same time, which is how a crew ends up in the wrong van.
- *
- * An unnamed run stays its own call: grouping every blank label together would
- * file unrelated vehicles under one heading of nothing.
- */
-export function groupCalls(runs: CallRun[]): Call[] {
-  const calls = new Map<string, Call>();
-
-  for (const run of runs) {
-    const key = run.label.trim() ? `label:${run.label.trim().toLowerCase()}` : `run:${run.runId}`;
-    const existing = calls.get(key);
-
-    if (existing) {
-      existing.legs.push(run);
-      // Whichever leg carries the detail wins; a second van on the same job
-      // usually carries none of it.
-      existing.meet ??= run.meet;
-      existing.site ??= run.site;
-      existing.crew ??= run.crew;
-      continue;
-    }
-
-    calls.set(key, {
-      key,
-      label: run.label.trim() || run.vehicleName,
-      status: run.status,
-      meet: run.meet,
-      site: run.site,
-      crew: run.crew,
-      legs: [run],
-    });
-  }
-
-  // Earliest meeting time first. Anything without one is an all-day call and
-  // sits under the calls that have a clock on them.
-  return [...calls.values()].sort((a, b) => (a.meet ?? "99:99").localeCompare(b.meet ?? "99:99"));
+export function callsForDay(runs: RunWithRefs[], day: string): Call[] {
+  return groupCalls(
+    runs
+      .filter((run) => run.starts_on <= day && run.ends_on >= day)
+      .map((run) => {
+        const onDay = runOnDay(run, day, runDays(run.id));
+        return {
+          runId: run.id,
+          label: run.label,
+          status: run.status,
+          meet: run.meet_time,
+          site: run.site,
+          crew: run.crew,
+          keys: run.keys_with,
+          endsOn: run.ends_on,
+          eventId: run.event_id,
+          vehicleId: run.vehicle_id,
+          vehicleName: run.vehicle_name,
+          vehicleClass: run.vehicle_class,
+          pickupFrom: onDay.pickup_from,
+          dropoffTo: onDay.dropoff_to,
+          pickupTime: onDay.pickup_time,
+          keysAtShop: onDay.keys_at_shop === 1,
+          driver: onDay.driver_text ?? run.driver_name,
+          meetingOnSite: onDay.meeting_on_site,
+        };
+      }),
+  );
 }
 
 /* ------------------------------------------------------------------ boards */

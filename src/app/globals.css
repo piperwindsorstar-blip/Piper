@@ -1028,6 +1028,47 @@ input:focus, select:focus, textarea:focus {
   color: var(--call-faint);
 }
 
+/* The keys warning. Yellow because it changes where somebody drives first, and
+   inside the card rather than above the list: it belongs to one show, and a
+   banner over the lot would say it about all of them. */
+.call-keys-alert {
+  margin: 0.5rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+/* On the dark board the app's warning pair is too low-contrast to read at
+   arm's length, so it gets the yellow the board already uses for 'booked'. */
+.crew-board .call-keys-alert {
+  background: rgba(232, 197, 71, 0.14);
+  color: var(--run-booked);
+}
+
+/* Where it is picked up, when, and where it goes back. */
+.call-leg-run {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  color: var(--call-muted);
+}
+.call-leg-driver {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  color: var(--call-muted);
+}
+
 /* ---------------------------------------- today, on the office dispatch board */
 
 /* The office board leads with the same day the crew board does, so the yard
@@ -1070,6 +1111,50 @@ input:focus, select:focus, textarea:focus {
 .today-stat-note { font-size: 0.72rem; color: var(--text-muted); }
 .today-calls { display: grid; gap: 0.6rem; margin-top: 0.5rem; }
 .today-empty { margin: 0.5rem 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+.shows-out { margin-top: 0.75rem; }
+.shows-out-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.6rem;
+}
+.shows-out-head h2 { font-size: 1.05rem; }
+
+/* Segmented rather than the app's underlined tabs: these switch a list inside
+   a card, and an underline here reads as a second page-level navigation. */
+.shows-out-tabs {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+.shows-out-tabs button {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.shows-out-tabs button:hover { color: var(--text); }
+.shows-out-tabs button.is-on {
+  background: var(--surface);
+  color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+.shows-out-days { display: grid; gap: 1rem; }
+.shows-out-days section { display: grid; gap: 0.45rem; }
+.shows-out-quiet { margin: 0; font-size: 0.82rem; color: var(--text-faint); }
 
 /* The card already sits on a card, so it drops the second shadow. */
 .today-calls .call-card { --call-edge: none; border: 1px solid var(--border); }
@@ -1336,6 +1421,61 @@ html:has(.crew-board), body:has(.crew-board) { background: #0c0c0d; }
 
 @media (max-width: 420px) {
   .shop-list > div { grid-template-columns: 1fr; gap: 0.1rem; }
+}
+
+/* ------------------------------------------------- the shows-out form */
+
+/* A yes/no that has to be answered rather than left unticked, so it is two
+   radios and not a checkbox. */
+.field-choice {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.field-choice legend {
+  padding: 0 0.35rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.field-choice label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
+.warn-text { color: var(--warning); }
+
+.field-check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; }
+
+/* The days after the first. Folded away behind "same as the first day",
+   because that is the answer almost every time and a week of empty fields
+   between somebody and the save button is a form nobody finishes. */
+.run-days {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.run-days legend {
+  padding: 0 0.35rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.run-days-list { display: grid; gap: 0.85rem; margin-top: 0.85rem; }
+.run-day {
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+}
+.run-day-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 0.5rem;
 }
 
 /* The add-to-home-screen offer. Sits inline rather than floating over the

@@ -5,6 +5,8 @@ import { requireArea } from "@/lib/auth";
 import { asActor } from "@/lib/audit";
 import { recordAction, recordChanges, vehicleSubject } from "@/lib/activity";
 import { COMMITTED } from "@/lib/dispatch-types";
+import { daysBetween } from "@/lib/dates";
+import { listDjs } from "@/lib/team";
 import {
   clashesFor,
   createRun,
@@ -12,9 +14,11 @@ import {
   deleteRun,
   getRun,
   getVehicle,
+  runDays,
   setVehicleActive,
   updateRun,
   updateVehicle,
+  type RunDay,
   type RunInput,
   type VehicleInput,
 } from "@/lib/dispatch";
@@ -152,7 +156,76 @@ export async function toggleVehicle(formData: FormData): Promise<void> {
 
 /* -------------------------------------------------------------------- runs */
 
-function readRun(formData: FormData): RunInput | null {
+const yes = (formData: FormData, key: string) => {
+  const raw = String(formData.get(key) ?? "");
+  return raw === "yes" || raw === "on" || raw === "1" || raw === "true";
+};
+
+/**
+ * The driver, typed rather than picked.
+ *
+ * A name that matches a Piper user exactly becomes that user, so the who-drove
+ * search keeps finding them. Anything else is kept as written — half the
+ * drivers on a busy Saturday are a hire company's, and refusing to record them
+ * because they have no login is how a board stops being the real one.
+ */
+function readDriver(
+  typed: string | null,
+  drivers: { id: number; name: string }[],
+): { driver_id: number | null; driver_text: string | null } {
+  if (!typed) return { driver_id: null, driver_text: null };
+  const match = drivers.find((d) => d.name.toLowerCase() === typed.toLowerCase());
+  return match ? { driver_id: match.id, driver_text: null } : { driver_id: null, driver_text: typed };
+}
+
+/**
+ * The per-day rows, when a run spans days and is not the same each day.
+ *
+ * "Same as the first day" is stored as no rows at all rather than as a flag,
+ * so nothing can drift out of step with it. A day whose fields all come back
+ * empty is dropped for the same reason: an empty row and no row mean the same
+ * thing, and keeping the empty one would be a second way to say it.
+ */
+function readRunDays(
+  formData: FormData,
+  days: string[],
+  drivers: { id: number; name: string }[],
+): RunDay[] {
+  if (yes(formData, "days_same")) return [];
+
+  const rows: RunDay[] = [];
+  // The first day is the run's own values, so per-day rows start at the second.
+  for (const day of days.slice(1)) {
+    const at = (field: string) => text(formData, `day_${day}_${field}`);
+    const driver = readDriver(at("driver"), drivers);
+    const row: RunDay = {
+      day,
+      pickup_from: at("pickup_from"),
+      dropoff_to: at("dropoff_to"),
+      pickup_time: at("pickup_time"),
+      keys_at_shop: yes(formData, `day_${day}_keys_at_shop`) ? 1 : 0,
+      // A day row records the name as typed. Attributing a day of a run to a
+      // user is the run's business, not a day's.
+      driver_text: driver.driver_text ?? at("driver"),
+      meeting_on_site: at("meeting_on_site"),
+    };
+
+    const empty =
+      !row.pickup_from &&
+      !row.dropoff_to &&
+      !row.pickup_time &&
+      !row.driver_text &&
+      !row.meeting_on_site &&
+      row.keys_at_shop === 0;
+    if (!empty) rows.push(row);
+  }
+  return rows;
+}
+
+function readRun(
+  formData: FormData,
+  drivers: { id: number; name: string }[],
+): RunInput | null {
   const vehicleId = Number(formData.get("vehicle_id"));
   const startsOn = text(formData, "starts_on");
   if (!Number.isInteger(vehicleId) || !isDate(startsOn) || startsOn === null) return null;
@@ -162,11 +235,15 @@ function readRun(formData: FormData): RunInput | null {
   const endsOn = text(formData, "ends_on") ?? startsOn;
   const eventIdRaw = formData.get("event_id");
   const eventId = eventIdRaw && String(eventIdRaw) !== "" ? Number(eventIdRaw) : null;
-  const driverRaw = formData.get("driver_id");
-  const driverId = driverRaw && String(driverRaw) !== "" ? Number(driverRaw) : null;
 
   const statusRaw = formData.get("status");
   const status: RunStatus = isRunStatus(statusRaw) ? statusRaw : "booked";
+
+  const driver = readDriver(text(formData, "driver"), drivers);
+
+  // The show is usually the day the van goes out, so a blank show date means
+  // the pickup date rather than nothing.
+  const showDate = text(formData, "show_date");
 
   return {
     vehicle_id: vehicleId,
@@ -178,9 +255,19 @@ function readRun(formData: FormData): RunInput | null {
     meet_time: text(formData, "meet_time"),
     crew: text(formData, "crew"),
     site: text(formData, "site"),
-    driver_id: driverId,
+    driver_id: driver.driver_id,
+    driver_text: driver.driver_text,
     keys_with: text(formData, "keys_with"),
+    show_date: isDate(showDate) ? showDate : startsOn,
+    pickup_from: text(formData, "pickup_from"),
+    dropoff_to: text(formData, "dropoff_to"),
+    pickup_time: text(formData, "pickup_time"),
+    keys_at_shop: yes(formData, "keys_at_shop"),
+    meeting_on_site: text(formData, "meeting_on_site"),
     notes: text(formData, "notes"),
+    days: isDate(endsOn) && endsOn > startsOn
+      ? readRunDays(formData, daysBetween(startsOn, endsOn), drivers)
+      : [],
   };
 }
 
@@ -206,7 +293,7 @@ function readRun(formData: FormData): RunInput | null {
 export async function saveRun(_prev: DispatchState, formData: FormData): Promise<DispatchState> {
   const admin = await requireArea("dispatch", "edit");
 
-  const input = readRun(formData);
+  const input = readRun(formData, listDjs().map((d) => ({ id: d.id, name: d.name })));
   if (!input) return { error: "Pick a vehicle and a date." };
   if (!isDate(input.ends_on)) return { error: "The end date isn't a real date." };
   if (input.ends_on < input.starts_on) return { error: "It can't come back before it goes out." };
@@ -328,18 +415,13 @@ export async function resizeRun(formData: FormData): Promise<void> {
   }
 
   updateRun(id, {
-    vehicle_id: run.vehicle_id,
-    event_id: run.event_id,
-    label: run.label,
-    status: run.status,
+    ...run,
     starts_on: startsOn,
     ends_on: endsOn,
-    meet_time: run.meet_time,
-    crew: run.crew,
-    site: run.site,
-    driver_id: run.driver_id,
-    keys_with: run.keys_with,
-    notes: run.notes,
+    keys_at_shop: run.keys_at_shop === 1,
+    // A drag moves two dates and nothing else, so the per-day rows come along
+    // as they are. `writeRunDays` drops any that now fall outside the run.
+    days: runDays(id).filter((d) => d.day >= startsOn && d.day <= endsOn),
   });
 
   const vehicle = getVehicle(run.vehicle_id);

@@ -144,6 +144,20 @@ export function formatTime(time: string | null | undefined): string {
   return `${hour}:${String(m ?? 0).padStart(2, "0")} ${period}`;
 }
 
+/** Every date from `from` to `to` inclusive, in order. */
+export function daysBetween(from: string, to: string): string[] {
+  const out: string[] = [];
+  const cursor = parseIso(from);
+  const end = parseIso(to);
+  // Guarded rather than trusted: a reversed pair would otherwise spin here,
+  // and the dates arrive from a form.
+  while (cursor <= end && out.length < 400) {
+    out.push(toIso(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
 export function daysUntil(iso: string): number {
   const target = parseIso(iso).getTime();
   const today = parseIso(todayIso()).getTime();

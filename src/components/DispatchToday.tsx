@@ -1,27 +1,27 @@
 import Link from "next/link";
-import { groupCalls, needed, rentalsDue, runsOn } from "@/lib/dispatch";
-import { COMMITTED } from "@/lib/dispatch-types";
+import { needed, rentalsDue } from "@/lib/dispatch";
+import { showsOutTabs } from "@/lib/shows-out";
 import { formatDate, formatDateShort, todayIso } from "@/lib/dates";
-import CallCard from "@/components/CallCard";
+import ShowsOut from "@/components/ShowsOut";
 
 /**
- * What is on the road today, on the dashboard.
+ * Shows out, on the dashboard.
  *
  * The dashboard is the page people leave open, so this is the half of dispatch
- * worth putting there: what is out right now, what is about to be late back,
- * and any day somebody has flagged as needing a vehicle without booking one.
- * Planning a month happens on the board; noticing that a hire was due
- * yesterday has to happen wherever you already are.
+ * worth putting there: what is out — today, tomorrow, or across the week — what
+ * is about to be late back, and any day somebody has flagged as needing a
+ * vehicle without booking one. Planning a month happens on the board;
+ * noticing that a hire was due yesterday has to happen wherever you already
+ * are.
  *
- * The calls are drawn with the same card the two dispatch boards use, so the
- * dashboard, the office board and the yard are all showing one thing rather
+ * The calls are drawn with the same card and the same tabs as the office
+ * board, so the dashboard, the board and the yard are showing one thing rather
  * than three versions of it.
  *
  * Admin-only at the caller — vehicles and hire dates are office business.
  */
 export default function DispatchToday() {
   const today = todayIso();
-  const out = runsOn(today).filter((r) => COMMITTED.includes(r.status));
   const due = rentalsDue(today, 7);
   const overdue = due.filter((v) => v.rental_due && v.rental_due < today);
 
@@ -30,29 +30,15 @@ export default function DispatchToday() {
   const ahead = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
   const gaps = needed(today, ahead);
 
-  if (out.length === 0 && due.length === 0 && gaps.length === 0) return null;
+  const tabs = showsOutTabs(today);
+  const anything = tabs.some((t) => t.days.some((d) => d.calls.length > 0));
 
-  const calls = groupCalls(
-    out.map((run) => ({
-      runId: run.id,
-      label: run.label,
-      status: run.status,
-      meet: run.meet_time,
-      site: run.site,
-      crew: run.crew ?? run.driver_name,
-      keys: run.keys_with,
-      endsOn: run.ends_on,
-      eventId: run.event_id,
-      vehicleId: run.vehicle_id,
-      vehicleName: run.vehicle_name,
-      vehicleClass: run.vehicle_class,
-    })),
-  );
+  if (!anything && due.length === 0 && gaps.length === 0) return null;
 
   return (
     <div className="card">
       <div className="card-head">
-        <h2>On the road today</h2>
+        <h2>Shows out</h2>
         <Link className="btn btn-sm" href="/dispatch">
           Dispatch board
         </Link>
@@ -68,20 +54,13 @@ export default function DispatchToday() {
           </div>
         )}
 
-        {calls.length === 0 ? (
-          <p className="today-empty" style={{ marginBottom: due.length ? "0.75rem" : 0 }}>
-            No vehicles out. Shop day.
-          </p>
-        ) : (
-          <div className="today-calls" style={{ marginBottom: due.length ? "1rem" : 0 }}>
-            {calls.map((call) => (
-              <CallCard key={call.key} call={call} today={today} linkEvents />
-            ))}
-          </div>
-        )}
+        <ShowsOut tabs={tabs} />
 
         {due.length > 0 && (
-          <div className={overdue.length > 0 ? "alert alert-warn" : "small muted"}>
+          <div
+            className={overdue.length > 0 ? "alert alert-warn" : "small muted"}
+            style={{ marginTop: "1rem" }}
+          >
             {overdue.length > 0 ? (
               <>
                 <strong>Overdue:</strong>{" "}

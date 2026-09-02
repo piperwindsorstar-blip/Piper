@@ -484,6 +484,48 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 19,
+    label: "shows out: pickup and drop-off, keys at the shop, per-day detail",
+    up: `
+      -- The show is not always the day the van moves. A Saturday wedding can
+      -- be a Friday pickup and a Monday return, so the date of the show is its
+      -- own field and starts_on/ends_on go on meaning what the board draws:
+      -- the days the vehicle is spoken for.
+      ALTER TABLE dispatch_runs ADD COLUMN show_date TEXT;
+      ALTER TABLE dispatch_runs ADD COLUMN pickup_from TEXT;
+      ALTER TABLE dispatch_runs ADD COLUMN dropoff_to TEXT;
+      ALTER TABLE dispatch_runs ADD COLUMN pickup_time TEXT;
+      -- Whether the keys are already at the shop. Stored as a flag rather than
+      -- read out of the keys_with note, because the board has to colour on it
+      -- and matching the word "shop" in free text would colour "not at the
+      -- shop" the same as "at the shop".
+      ALTER TABLE dispatch_runs ADD COLUMN keys_at_shop INTEGER NOT NULL DEFAULT 0;
+      -- A driver who is not a Piper user. driver_id stays for the ones who
+      -- are, so the who-drove search keeps working on them.
+      ALTER TABLE dispatch_runs ADD COLUMN driver_text TEXT;
+      ALTER TABLE dispatch_runs ADD COLUMN meeting_on_site TEXT;
+
+      -- A run that spans days can differ day to day: picked up Friday from
+      -- Pencar, back Monday to the yard, a different driver on the Sunday.
+      --
+      -- A row here exists only for a day that differs. No rows at all means
+      -- every day is the run's own values, which is the common case and the
+      -- one the form defaults to -- so "same as the first day" costs nothing
+      -- to store and needs no flag of its own to read back.
+      CREATE TABLE IF NOT EXISTS dispatch_run_days (
+        run_id          INTEGER NOT NULL REFERENCES dispatch_runs(id) ON DELETE CASCADE,
+        day             TEXT NOT NULL,
+        pickup_from     TEXT,
+        dropoff_to      TEXT,
+        pickup_time     TEXT,
+        keys_at_shop    INTEGER NOT NULL DEFAULT 0,
+        driver_text     TEXT,
+        meeting_on_site TEXT,
+        PRIMARY KEY (run_id, day)
+      );
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

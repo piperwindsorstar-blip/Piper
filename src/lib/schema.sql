@@ -401,9 +401,39 @@ CREATE TABLE IF NOT EXISTS dispatch_runs (
   crew       TEXT,                       -- who is on it, as the shop writes it
   site       TEXT,                       -- city or site, when it isn't a booking
   driver_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  driver_text TEXT,                      -- a driver who isn't a Piper user
   keys_with  TEXT,
+  -- The show is not always the day the van moves: a Saturday wedding can be a
+  -- Friday pickup and a Monday return. starts_on/ends_on stay the days the
+  -- vehicle is spoken for, which is what the board draws.
+  show_date  TEXT,
+  pickup_from TEXT,                      -- where the vehicle is collected
+  dropoff_to  TEXT,                      -- where it goes back
+  pickup_time TEXT,                      -- when it is collected, 'HH:MM'
+  -- A flag rather than a word in keys_with: the board colours on this, and
+  -- matching "shop" in free text would colour "not at the shop" the same way.
+  keys_at_shop INTEGER NOT NULL DEFAULT 0,
+  meeting_on_site TEXT,
   notes      TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- A run that spans days can differ day to day: picked up Friday from Pencar,
+-- back Monday to the yard, a different driver on the Sunday.
+--
+-- A row exists only for a day that differs. No rows at all means every day is
+-- the run's own values -- the common case, and the one the form defaults to,
+-- so "same as the first day" costs nothing to store and needs no flag to read.
+CREATE TABLE IF NOT EXISTS dispatch_run_days (
+  run_id          INTEGER NOT NULL REFERENCES dispatch_runs(id) ON DELETE CASCADE,
+  day             TEXT NOT NULL,
+  pickup_from     TEXT,
+  dropoff_to      TEXT,
+  pickup_time     TEXT,
+  keys_at_shop    INTEGER NOT NULL DEFAULT 0,
+  driver_text     TEXT,
+  meeting_on_site TEXT,
+  PRIMARY KEY (run_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_runs_status ON dispatch_runs(status, starts_on);
 CREATE INDEX IF NOT EXISTS idx_runs_vehicle ON dispatch_runs(vehicle_id, starts_on);

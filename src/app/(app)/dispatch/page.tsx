@@ -7,7 +7,6 @@ import { listDjs } from "@/lib/team";
 import {
   boardLanes,
   COMMITTED,
-  groupCalls,
   listVehicles,
   neededCounts,
   monthDays,
@@ -29,9 +28,10 @@ import {
   parseIso,
   todayIso,
 } from "@/lib/dates";
+import { showsOutTabs } from "@/lib/shows-out";
 import RunForm from "./RunForm";
 import BoardGrid from "./BoardGrid";
-import CallCard from "@/components/CallCard";
+import ShowsOut from "@/components/ShowsOut";
 import Icon from "@/components/Icon";
 
 /**
@@ -76,22 +76,6 @@ export default async function DispatchPage({
   // free on the 19th"; this answers "what is going out in an hour", and the
   // second question does not wait while somebody pages back from November.
   const todayRuns = runsOn(today);
-  const todayCalls = groupCalls(
-    todayRuns.map((run) => ({
-      runId: run.id,
-      label: run.label,
-      status: run.status,
-      meet: run.meet_time,
-      site: run.site,
-      crew: run.crew ?? run.driver_name,
-      keys: run.keys_with,
-      endsOn: run.ends_on,
-      eventId: run.event_id,
-      vehicleId: run.vehicle_id,
-      vehicleName: run.vehicle_name,
-      vehicleClass: run.vehicle_class,
-    })),
-  );
   const outToday = new Set(
     todayRuns.filter((r) => COMMITTED.includes(r.status)).map((r) => r.vehicle_id),
   ).size;
@@ -118,8 +102,7 @@ export default async function DispatchPage({
       {/* The same shape the crew reads on the public board, so the office and
           the yard are looking at one thing rather than two. */}
       <section className="card today-panel">
-        <p className="today-eyebrow">On the road today</p>
-        <h2 className="today-date">{formatDayTitle(today)}</h2>
+        <p className="today-eyebrow">{formatDayTitle(today)}</p>
 
         <div className="today-stats">
           <Stat label="Vehicles out today" value={outToday} />
@@ -127,15 +110,7 @@ export default async function DispatchPage({
           <Stat label="Needed the rest of the week" value={counts.week} note="phoning still to do" warn />
         </div>
 
-        {todayCalls.length === 0 ? (
-          <p className="today-empty">No vehicles out. Shop day.</p>
-        ) : (
-          <div className="today-calls">
-            {todayCalls.map((call) => (
-              <CallCard key={call.key} call={call} today={today} linkEvents />
-            ))}
-          </div>
-        )}
+        <ShowsOut tabs={showsOutTabs(today)} />
       </section>
 
       {gaps.length > 0 && (

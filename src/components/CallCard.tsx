@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { CLASS_SHORT, STATUS_SHORT, type Call } from "@/lib/dispatch";
+// From dispatch-types, not dispatch: this renders inside a Client Component,
+// and dispatch.ts reaches the database — importing it here would drag
+// better-sqlite3 into the browser bundle and fail the build.
+import { CLASS_SHORT, STATUS_SHORT, type Call } from "@/lib/dispatch-types";
 import { formatDateShort, formatTime } from "@/lib/dates";
 import Icon from "@/components/Icon";
 
@@ -16,19 +19,20 @@ import Icon from "@/components/Icon";
  * than works from them, and ten days of full cards is a page nobody scrolls to
  * the end of.
  *
- * `today` is passed rather than read so a card can say a run goes back later in
- * the week; a card that computed its own idea of today would disagree with the
- * page around it at midnight.
+ * `onDay` is the day being looked at, so a card can say a run goes back later
+ * than that. Passed rather than read: a card that computed its own idea of
+ * today would say "back Sep 3" about a Sep 3 run on the Tomorrow tab, and
+ * would disagree with the page around it at midnight.
  */
 export default function CallCard({
   call,
   compact = false,
-  today,
+  onDay,
   linkEvents = false,
 }: {
   call: Call;
   compact?: boolean;
-  today?: string;
+  onDay?: string;
   linkEvents?: boolean;
 }) {
   const note = call.legs.find((leg) => leg.keys)?.keys ?? null;
@@ -42,6 +46,14 @@ export default function CallCard({
 
       <h3 className="call-title">{call.label}</h3>
 
+      {/* The one thing on a card that changes where a crew goes first. */}
+      {call.keysAtShop && (
+        <p className="call-keys-alert">
+          <Icon name="alert" size={13} />
+          Keys are at the shop
+        </p>
+      )}
+
       <p className="call-meta">
         {call.crew && <span className="call-crew">{call.crew}</span>}
         {call.meet && (
@@ -54,6 +66,12 @@ export default function CallCard({
           <span className="call-where">
             <Icon name="pin" size={12} />
             {call.site}
+          </span>
+        )}
+        {call.meetingOnSite && (
+          <span className="call-where">
+            <Icon name="person" size={12} />
+            Meeting {call.meetingOnSite}
           </span>
         )}
       </p>
@@ -80,8 +98,23 @@ export default function CallCard({
                     leg.vehicleName
                   )}
                 </span>
-                {today && leg.endsOn !== today && (
+                {onDay && leg.endsOn > onDay && (
                   <span className="call-leg-back">back {formatDateShort(leg.endsOn)}</span>
+                )}
+                {/* Where it is collected and returned, and when — the three
+                    things somebody has to leave the building knowing. */}
+                {(leg.pickupFrom || leg.dropoffTo || leg.pickupTime) && (
+                  <span className="call-leg-run">
+                    {leg.pickupTime && <span>{formatTime(leg.pickupTime)}</span>}
+                    {leg.pickupFrom && <span>from {leg.pickupFrom}</span>}
+                    {leg.dropoffTo && <span>back to {leg.dropoffTo}</span>}
+                  </span>
+                )}
+                {leg.driver && (
+                  <span className="call-leg-driver">
+                    <Icon name="person" size={12} />
+                    {leg.driver}
+                  </span>
                 )}
                 {leg.keys && (
                   <span className="call-leg-keys">

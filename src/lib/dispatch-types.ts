@@ -128,3 +128,100 @@ export function isRunStatus(value: unknown): value is RunStatus {
 export function isOwnership(value: unknown): value is Ownership {
   return typeof value === "string" && (OWNERSHIPS as readonly string[]).includes(value);
 }
+
+/* ------------------------------------------------------------------ calls */
+
+/**
+ * A run, reduced to what it takes to draw it as a call.
+ *
+ * Both boards map into this: the crew board from `PublicRun`, the office board
+ * from `RunWithRefs`. Neither hands its own row shape to the grouper, so the
+ * public board keeps deciding for itself which columns it is willing to
+ * publish — the thing that would otherwise leak the moment a shared helper
+ * started reading straight off the database row.
+ */
+export type CallRun = {
+  runId: number;
+  label: string;
+  status: RunStatus;
+  meet: string | null;
+  site: string | null;
+  crew: string | null;
+  keys: string | null;
+  endsOn: string;
+  eventId: number | null;
+  vehicleId: number;
+  vehicleName: string;
+  vehicleClass: VehicleClass;
+  /** Where the vehicle is collected and returned, when it is not the yard. */
+  pickupFrom: string | null;
+  dropoffTo: string | null;
+  pickupTime: string | null;
+  /** Warned about on every board: the crew has one fewer stop to make. */
+  keysAtShop: boolean;
+  driver: string | null;
+  meetingOnSite: string | null;
+};
+
+/** One job, and every vehicle going out on it. */
+export type Call = {
+  key: string;
+  label: string;
+  status: RunStatus;
+  meet: string | null;
+  site: string | null;
+  crew: string | null;
+  meetingOnSite: string | null;
+  /** True if any vehicle on the call has its keys waiting at the shop. */
+  keysAtShop: boolean;
+  legs: CallRun[];
+};
+
+/**
+ * Gather runs into calls, by the name of the job.
+ *
+ * A run is one vehicle for one job, so a show that takes the cargo van and the
+ * cube van is two rows. Drawn separately they read as two calls to the same
+ * place at the same time, which is how a crew ends up in the wrong van.
+ *
+ * An unnamed run stays its own call: grouping every blank label together would
+ * file unrelated vehicles under one heading of nothing.
+ */
+export function groupCalls(runs: CallRun[]): Call[] {
+  const calls = new Map<string, Call>();
+
+  for (const run of runs) {
+    const key = run.label.trim() ? `label:${run.label.trim().toLowerCase()}` : `run:${run.runId}`;
+    const existing = calls.get(key);
+
+    if (existing) {
+      existing.legs.push(run);
+      // Whichever leg carries the detail wins; a second van on the same job
+      // usually carries none of it.
+      existing.meet ??= run.meet;
+      existing.site ??= run.site;
+      existing.crew ??= run.crew;
+      existing.meetingOnSite ??= run.meetingOnSite;
+      // One van with its keys at the shop is enough to warn the whole call:
+      // somebody is going to the shop either way.
+      existing.keysAtShop ||= run.keysAtShop;
+      continue;
+    }
+
+    calls.set(key, {
+      key,
+      label: run.label.trim() || run.vehicleName,
+      status: run.status,
+      meet: run.meet,
+      site: run.site,
+      crew: run.crew,
+      meetingOnSite: run.meetingOnSite,
+      keysAtShop: run.keysAtShop,
+      legs: [run],
+    });
+  }
+
+  // Earliest meeting time first. Anything without one is an all-day call and
+  // sits under the calls that have a clock on them.
+  return [...calls.values()].sort((a, b) => (a.meet ?? "99:99").localeCompare(b.meet ?? "99:99"));
+}
