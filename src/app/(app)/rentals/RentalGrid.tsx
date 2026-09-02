@@ -116,7 +116,7 @@ export default function RentalGrid({
                     } as CSSProperties
                   }
                 >
-                  {band.label}
+                  <span className="board-grid-month-label">{band.label}</span>
                 </div>
               ))}
             </div>

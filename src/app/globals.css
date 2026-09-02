@@ -1084,11 +1084,24 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Deliberately not overflow: hidden. It would clip a long name in a narrow
+     band, which is tidier — and it also makes the band a scrollport, which
+     stops the label inside it from sticking at all. Keeping the name visible
+     is worth more than clipping the odd two-day band at a quarter's edge. */
   border-left: 1px solid var(--border);
   color: hsl(var(--month-hue, 260) 52% 36%);
   background: hsl(var(--month-hue, 260) 60% 96%);
+}
+
+/* The month name rides along inside its own band.
+   Sticky on the band itself would do nothing: a grid item's containing block
+   is its grid area, so it has no room to travel. The label is a child of the
+   band instead, and the band is as wide as the month — so the name slides
+   across it and stays on screen for as long as any of that month is. */
+.board-grid-month-label {
+  position: sticky;
+  left: 0;
+  display: inline-block;
 }
 
 .board-grid-day .board-grid-dow { color: inherit; }

@@ -153,7 +153,7 @@ export default function GanttGrid({
                     } as CSSProperties
                   }
                 >
-                  {band.label}
+                  <span className="board-grid-month-label">{band.label}</span>
                 </div>
               ))}
             </div>
