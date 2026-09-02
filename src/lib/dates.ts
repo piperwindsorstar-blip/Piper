@@ -26,6 +26,22 @@ export function parseIso(iso: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+/**
+ * One letter for the day of the week: M T W T F S S.
+ *
+ * A letter rather than a name because a month of columns leaves about
+ * twenty-eight pixels each, and a quarter leaves a third of that. In a run of
+ * dates the position disambiguates the two Ts and the two Ss, which is why
+ * every paper calendar does it this way.
+ *
+ * parseIso builds a local date from the parts rather than parsing the string,
+ * so this cannot slip a day the way new Date("2026-08-29").getDay() does west
+ * of Greenwich — that reads as UTC midnight and comes back as the day before.
+ */
+export function weekdayLetter(iso: string): string {
+  return ["S", "M", "T", "W", "T", "F", "S"][parseIso(iso).getDay()];
+}
+
 export function formatDate(iso: string): string {
   const date = parseIso(iso);
   return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;

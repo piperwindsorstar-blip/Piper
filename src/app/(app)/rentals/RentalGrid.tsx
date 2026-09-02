@@ -1,5 +1,6 @@
 "use client";
 
+import { weekdayLetter } from "@/lib/dates";
 import { useActionState, useRef, useState } from "react";
 import { RENTAL_LABELS, RENTAL_SHORT, RENTAL_STATES, type RentalState } from "@/lib/rentals-types";
 import Icon from "@/components/Icon";
@@ -102,6 +103,7 @@ export default function RentalGrid({
             >
               {days.map((day) => (
                 <div key={day} className={`board-grid-day${day === today ? " board-today" : ""}`}>
+                  <span className="board-grid-dow">{weekdayLetter(day)}</span>
                   {day.endsWith("-01") ? day.slice(5, 7) + "/" : ""}
                   {Number(day.slice(8))}
                 </div>

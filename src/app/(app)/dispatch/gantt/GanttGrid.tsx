@@ -1,5 +1,6 @@
 "use client";
 
+import { weekdayLetter } from "@/lib/dates";
 import { useRef, useState, useTransition, type CSSProperties } from "react";
 import { STATUS_LABELS, STATUS_SHORT, type RunStatus } from "@/lib/dispatch-types";
 import Icon from "@/components/Icon";
@@ -140,6 +141,7 @@ export default function GanttGrid({
             >
               {days.map((day) => (
                 <div key={day} className={`board-grid-day${day === today ? " board-today" : ""}`}>
+                  <span className="board-grid-dow">{weekdayLetter(day)}</span>
                   {/* On a quarter the month has to appear somewhere, so it
                       rides on the first of each. */}
                   {day.endsWith("-01") ? day.slice(5, 7) + "/" : ""}

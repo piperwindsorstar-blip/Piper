@@ -1046,6 +1046,18 @@ input:focus, select:focus, textarea:focus {
   border-left: 1px solid var(--border);
 }
 
+/* The weekday letter, on its own line above the date.
+   Fainter and a size down, so a glance reads the numbers and a look reads the
+   week. Line-height 1 keeps the two lines inside the row height the grid
+   already reserved, rather than pushing every track down by a line. */
+.board-grid-dow {
+  display: block;
+  font-size: 0.62rem;
+  line-height: 1;
+  opacity: 0.62;
+  margin-bottom: 0.12rem;
+}
+
 .board-grid-track {
   display: grid;
   position: relative;
