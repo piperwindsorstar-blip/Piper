@@ -159,6 +159,8 @@ export type CallRun = {
   pickupTime: string | null;
   /** Warned about on every board: the crew has one fewer stop to make. */
   keysAtShop: boolean;
+  /** And whether they have one more at the end of it. */
+  keysBackToShop: boolean;
   driver: string | null;
   meetingOnSite: string | null;
 };
@@ -172,8 +174,14 @@ export type Call = {
   site: string | null;
   crew: string | null;
   meetingOnSite: string | null;
+  /**
+   * When the call starts: the crew meeting time if there is one, else the
+   * earliest vehicle pick-up. Filled in by `groupCalls`.
+   */
+  startsAt: string | null;
   /** True if any vehicle on the call has its keys waiting at the shop. */
   keysAtShop: boolean;
+  keysBackToShop: boolean;
   legs: CallRun[];
 };
 
@@ -205,6 +213,7 @@ export function groupCalls(runs: CallRun[]): Call[] {
       // One van with its keys at the shop is enough to warn the whole call:
       // somebody is going to the shop either way.
       existing.keysAtShop ||= run.keysAtShop;
+      existing.keysBackToShop ||= run.keysBackToShop;
       continue;
     }
 
@@ -217,11 +226,28 @@ export function groupCalls(runs: CallRun[]): Call[] {
       crew: run.crew,
       meetingOnSite: run.meetingOnSite,
       keysAtShop: run.keysAtShop,
+      keysBackToShop: run.keysBackToShop,
+      startsAt: null,
       legs: [run],
     });
   }
 
-  // Earliest meeting time first. Anything without one is an all-day call and
-  // sits under the calls that have a clock on them.
-  return [...calls.values()].sort((a, b) => (a.meet ?? "99:99").localeCompare(b.meet ?? "99:99"));
+  // The time a call actually starts: when the crew meets if that was recorded,
+  // otherwise the earliest vehicle pick-up on it. Without this a board full of
+  // runs that have a pick-up time and no meeting time reads as "All day".
+  for (const call of calls.values()) {
+    call.startsAt =
+      call.meet ??
+      call.legs
+        .map((leg) => leg.pickupTime)
+        .filter((t): t is string => Boolean(t))
+        .sort()[0] ??
+      null;
+  }
+
+  // Earliest first. Anything with no time at all is an all-day call and sits
+  // under the calls that have a clock on them.
+  return [...calls.values()].sort((a, b) =>
+    (a.startsAt ?? "99:99").localeCompare(b.startsAt ?? "99:99"),
+  );
 }

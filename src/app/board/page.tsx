@@ -90,6 +90,7 @@ function callsOn(
         dropoffTo: run.dropoff_to,
         pickupTime: run.pickup_time,
         keysAtShop: run.keys_at_shop === 1,
+        keysBackToShop: run.keys_back_to_shop === 1,
         driver: run.driver_first_name,
         meetingOnSite: run.meeting_on_site,
       })),
@@ -128,9 +129,10 @@ export default async function CrewBoardPage() {
       ),
     0,
   );
-  const keysFirst = (byDay[0]?.calls ?? []).some((call) =>
-    call.legs.some((leg) => (leg.keys ?? "").toLowerCase().includes("shop")),
-  );
+  // The flag, not the free-text note it used to read. Matching the word
+  // "shop" in a note flagged "not at the shop" the same way, and the note is
+  // no longer something the form writes.
+  const keysFirst = (byDay[0]?.calls ?? []).some((call) => call.keysAtShop);
 
   // Already stripped of the codes unless they were deliberately published —
   // decided in publicShopDetails rather than here, so the markup never has to

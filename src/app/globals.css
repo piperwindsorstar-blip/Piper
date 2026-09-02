@@ -1449,6 +1449,9 @@ html:has(.crew-board), body:has(.crew-board) { background: #0c0c0d; }
 .warn-text { color: var(--warning); }
 
 .field-check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; }
+/* Two tick boxes sharing one cell of the day grid, stacked so they line up
+   with the labelled fields beside them rather than floating mid-cell. */
+.field-checks { display: grid; gap: 0.35rem; align-content: end; padding-bottom: 0.4rem; }
 
 /* The days after the first. Folded away behind "same as the first day",
    because that is the answer almost every time and a week of empty fields

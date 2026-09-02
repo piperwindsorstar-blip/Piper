@@ -216,6 +216,7 @@ export function ganttRows(days: string[], vehicles: Vehicle[]): GanttRow[] {
           dropoff_to: null,
           pickup_time: null,
           keys_at_shop: 0,
+          keys_back_to_shop: 0,
           meeting_on_site: null,
           notes: null,
           vehicle_name: vehicle.name,

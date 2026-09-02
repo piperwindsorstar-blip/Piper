@@ -413,6 +413,8 @@ CREATE TABLE IF NOT EXISTS dispatch_runs (
   -- A flag rather than a word in keys_with: the board colours on this, and
   -- matching "shop" in free text would colour "not at the shop" the same way.
   keys_at_shop INTEGER NOT NULL DEFAULT 0,
+  -- The other half of it: whether the keys go back to the shop afterwards.
+  keys_back_to_shop INTEGER NOT NULL DEFAULT 0,
   meeting_on_site TEXT,
   notes      TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -431,6 +433,7 @@ CREATE TABLE IF NOT EXISTS dispatch_run_days (
   dropoff_to      TEXT,
   pickup_time     TEXT,
   keys_at_shop    INTEGER NOT NULL DEFAULT 0,
+  keys_back_to_shop INTEGER NOT NULL DEFAULT 0,
   driver_text     TEXT,
   meeting_on_site TEXT,
   PRIMARY KEY (run_id, day)

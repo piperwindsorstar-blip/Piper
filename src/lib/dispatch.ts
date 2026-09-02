@@ -95,6 +95,7 @@ export type Run = {
   dropoff_to: string | null;
   pickup_time: string | null;
   keys_at_shop: number;
+  keys_back_to_shop: number;
   meeting_on_site: string | null;
   notes: string | null;
   created_at: string;
@@ -205,6 +206,7 @@ export type RunDay = {
   dropoff_to: string | null;
   pickup_time: string | null;
   keys_at_shop: number;
+  keys_back_to_shop: number;
   driver_text: string | null;
   meeting_on_site: string | null;
 };
@@ -227,6 +229,7 @@ export type RunInput = {
   dropoff_to: string | null;
   pickup_time: string | null;
   keys_at_shop: boolean;
+  keys_back_to_shop: boolean;
   meeting_on_site: string | null;
   notes: string | null;
   /** Empty means every day is the same as the first. */
@@ -239,7 +242,7 @@ export function getRun(id: number): Run | null {
 
 const RUN_COLUMNS = `vehicle_id, event_id, label, status, starts_on, ends_on, meet_time,
    crew, site, driver_id, driver_text, keys_with, show_date, pickup_from, dropoff_to,
-   pickup_time, keys_at_shop, meeting_on_site, notes`;
+   pickup_time, keys_at_shop, keys_back_to_shop, meeting_on_site, notes`;
 
 function runValues(input: RunInput) {
   return [
@@ -260,6 +263,7 @@ function runValues(input: RunInput) {
     input.dropoff_to,
     input.pickup_time,
     input.keys_at_shop ? 1 : 0,
+    input.keys_back_to_shop ? 1 : 0,
     input.meeting_on_site,
     input.notes,
   ];
@@ -278,8 +282,9 @@ function writeRunDays(runId: number, days: RunDay[]): void {
 
   const insert = db().prepare(
     `INSERT INTO dispatch_run_days
-       (run_id, day, pickup_from, dropoff_to, pickup_time, keys_at_shop, driver_text, meeting_on_site)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (run_id, day, pickup_from, dropoff_to, pickup_time, keys_at_shop, keys_back_to_shop,
+        driver_text, meeting_on_site)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   for (const d of days) {
     insert.run(
@@ -289,6 +294,7 @@ function writeRunDays(runId: number, days: RunDay[]): void {
       d.dropoff_to,
       d.pickup_time,
       d.keys_at_shop ? 1 : 0,
+      d.keys_back_to_shop ? 1 : 0,
       d.driver_text,
       d.meeting_on_site,
     );
@@ -307,6 +313,7 @@ export function runDays(runId: number): RunDay[] {
         dropoff_to: row.dropoff_to,
         pickup_time: row.pickup_time,
         keys_at_shop: row.keys_at_shop,
+        keys_back_to_shop: row.keys_back_to_shop,
         driver_text: row.driver_text,
         meeting_on_site: row.meeting_on_site,
       };
@@ -330,6 +337,7 @@ export function runOnDay<T extends RunWithRefs>(run: T, day: string, days: RunDa
     dropoff_to: override.dropoff_to ?? run.dropoff_to,
     pickup_time: override.pickup_time ?? run.pickup_time,
     keys_at_shop: override.keys_at_shop,
+    keys_back_to_shop: override.keys_back_to_shop,
     driver_text: override.driver_text ?? run.driver_text,
     meeting_on_site: override.meeting_on_site ?? run.meeting_on_site,
   };
@@ -339,7 +347,7 @@ export function createRun(input: RunInput): number {
   const result = db()
     .prepare(
       `INSERT INTO dispatch_runs (${RUN_COLUMNS})
-       VALUES (${new Array(19).fill("?").join(", ")})`,
+       VALUES (${new Array(20).fill("?").join(", ")})`,
     )
     .run(...runValues(input));
   const id = Number(result.lastInsertRowid);
@@ -354,7 +362,7 @@ export function updateRun(id: number, input: RunInput): void {
          vehicle_id = ?, event_id = ?, label = ?, status = ?, starts_on = ?, ends_on = ?,
          meet_time = ?, crew = ?, site = ?, driver_id = ?, driver_text = ?, keys_with = ?,
          show_date = ?, pickup_from = ?, dropoff_to = ?, pickup_time = ?, keys_at_shop = ?,
-         meeting_on_site = ?, notes = ?
+         keys_back_to_shop = ?, meeting_on_site = ?, notes = ?
        WHERE id = ?`,
     )
     .run(...runValues(input), id);
@@ -493,6 +501,7 @@ export type PublicRun = {
   dropoff_to: string | null;
   pickup_time: string | null;
   keys_at_shop: number;
+  keys_back_to_shop: number;
   meeting_on_site: string | null;
 };
 
@@ -518,7 +527,7 @@ export function publicRuns(from: string, to: string): PublicRun[] {
       `SELECT r.id, r.vehicle_id, v.name AS vehicle_name, r.label, r.status,
               r.starts_on, r.ends_on, r.meet_time, r.crew, r.site, r.keys_with,
               r.pickup_from, r.dropoff_to, r.pickup_time, r.keys_at_shop,
-              r.meeting_on_site, r.driver_text,
+              r.keys_back_to_shop, r.meeting_on_site, r.driver_text,
               u.name AS driver_name
          FROM dispatch_runs r
          JOIN vehicles v ON v.id = r.vehicle_id
@@ -580,6 +589,7 @@ export function publicBoardRows(days: string[]): PublicRow[] {
                 dropoff_to: override.dropoff_to ?? run.dropoff_to,
                 pickup_time: override.pickup_time ?? run.pickup_time,
                 keys_at_shop: override.keys_at_shop,
+                keys_back_to_shop: override.keys_back_to_shop,
                 meeting_on_site: override.meeting_on_site ?? run.meeting_on_site,
                 driver_first_name: override.driver_text ?? run.driver_first_name,
               }
@@ -621,6 +631,7 @@ export function callsForDay(runs: RunWithRefs[], day: string): Call[] {
           dropoffTo: onDay.dropoff_to,
           pickupTime: onDay.pickup_time,
           keysAtShop: onDay.keys_at_shop === 1,
+          keysBackToShop: onDay.keys_back_to_shop === 1,
           driver: onDay.driver_text ?? run.driver_name,
           meetingOnSite: onDay.meeting_on_site,
         };

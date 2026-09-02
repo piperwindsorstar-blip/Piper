@@ -2,7 +2,6 @@ import { can } from "@/lib/permissions";
 import ReadOnly from "@/components/ReadOnly";
 import Link from "next/link";
 import { requireArea } from "@/lib/auth";
-import { listEvents } from "@/lib/events";
 import { listDjs } from "@/lib/team";
 import {
   boardLanes,
@@ -87,15 +86,6 @@ export default async function DispatchPage({
   const heading = monthly
     ? monthLabel(anchorDate.getFullYear(), anchorDate.getMonth())
     : `${formatDate(from)} – ${formatDate(to)}`;
-
-  // Bookings worth offering in the picker: this window and a little past it, so
-  // the list stays short enough to scan.
-  const soon = listEvents(admin, {}).filter(
-    (e) => e.event_date >= from && e.event_date <= shiftWeek(to, 6),
-  );
-
-  const couple = (e: (typeof soon)[number]) =>
-    e.partner_two_name ? `${e.partner_one_name} & ${e.partner_two_name}` : e.partner_one_name;
 
   return (
     <>
@@ -255,11 +245,6 @@ export default async function DispatchPage({
         </div>
         <RunForm
           vehicles={vehicles.map((v) => ({ id: v.id, name: v.name }))}
-          events={soon.map((e) => ({
-            id: e.id,
-            label: `${couple(e)} — ${formatDate(e.event_date)}`,
-            event_date: e.event_date,
-          }))}
           drivers={listDjs().map((d) => ({ id: d.id, name: d.name }))}
           defaultDate={from > today ? from : today}
         />

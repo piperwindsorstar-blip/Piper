@@ -40,17 +40,25 @@ export default function CallCard({
   return (
     <article className={`call-card run-${call.status}${compact ? " call-card-compact" : ""}`}>
       <div className="call-top">
-        <span className="call-time">{call.meet ? formatTime(call.meet) : "All day"}</span>
+        <span className="call-time">
+          {call.startsAt ? formatTime(call.startsAt) : "All day"}
+        </span>
         <span className="call-tag">{STATUS_SHORT[call.status]}</span>
       </div>
 
       <h3 className="call-title">{call.label}</h3>
 
-      {/* The one thing on a card that changes where a crew goes first. */}
-      {call.keysAtShop && (
+      {/* The one thing on a card that changes where a crew drives first — or
+          last. Both halves share a strip: two yellow bars on one card is a
+          card people stop reading. */}
+      {(call.keysAtShop || call.keysBackToShop) && (
         <p className="call-keys-alert">
           <Icon name="alert" size={13} />
-          Keys are at the shop
+          {call.keysAtShop && call.keysBackToShop
+            ? "Keys are at the shop, and go back there"
+            : call.keysAtShop
+              ? "Keys are at the shop"
+              : "Take the keys back to the shop"}
         </p>
       )}
 

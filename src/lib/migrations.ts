@@ -526,6 +526,17 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 20,
+    label: "take the keys back to the shop",
+    up: `
+      -- The other half of the keys question. "They are at the shop" is about
+      -- the start of the day; this is about the end of it, and a crew that is
+      -- told one and not the other still ends up driving back across town.
+      ALTER TABLE dispatch_runs ADD COLUMN keys_back_to_shop INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE dispatch_run_days ADD COLUMN keys_back_to_shop INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

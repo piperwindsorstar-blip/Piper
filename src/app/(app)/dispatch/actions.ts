@@ -204,6 +204,7 @@ function readRunDays(
       dropoff_to: at("dropoff_to"),
       pickup_time: at("pickup_time"),
       keys_at_shop: yes(formData, `day_${day}_keys_at_shop`) ? 1 : 0,
+      keys_back_to_shop: yes(formData, `day_${day}_keys_back_to_shop`) ? 1 : 0,
       // A day row records the name as typed. Attributing a day of a run to a
       // user is the run's business, not a day's.
       driver_text: driver.driver_text ?? at("driver"),
@@ -214,6 +215,7 @@ function readRunDays(
       !row.pickup_from &&
       !row.dropoff_to &&
       !row.pickup_time &&
+      row.keys_back_to_shop === 0 &&
       !row.driver_text &&
       !row.meeting_on_site &&
       row.keys_at_shop === 0;
@@ -263,6 +265,7 @@ function readRun(
     dropoff_to: text(formData, "dropoff_to"),
     pickup_time: text(formData, "pickup_time"),
     keys_at_shop: yes(formData, "keys_at_shop"),
+    keys_back_to_shop: yes(formData, "keys_back_to_shop"),
     meeting_on_site: text(formData, "meeting_on_site"),
     notes: text(formData, "notes"),
     days: isDate(endsOn) && endsOn > startsOn
@@ -419,6 +422,7 @@ export async function resizeRun(formData: FormData): Promise<void> {
     starts_on: startsOn,
     ends_on: endsOn,
     keys_at_shop: run.keys_at_shop === 1,
+    keys_back_to_shop: run.keys_back_to_shop === 1,
     // A drag moves two dates and nothing else, so the per-day rows come along
     // as they are. `writeRunDays` drops any that now fall outside the run.
     days: runDays(id).filter((d) => d.day >= startsOn && d.day <= endsOn),
