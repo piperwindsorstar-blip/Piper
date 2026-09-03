@@ -1597,6 +1597,42 @@ export const SHOPS = {
     name: "Charm-seller Perrin's",
     stock: ['potion', 'antidote', 'tent'],
   },
+  ashfall_store: {
+    name: "Cinderwright Tavik's",
+    stock: ['potion', 'hipotion', 'antidote', 'firebomb', 'tent'],
+  },
+  windmere_store: {
+    name: "Chandler Bett's",
+    stock: ['potion', 'antidote', 'tent', 'wingfeather'],
+  },
+  tidewatch_store: {
+    name: "Netmender Course's",
+    stock: ['potion', 'hipotion', 'antidote', 'holywater', 'tent'],
+  },
+  duskwell_store: {
+    name: "Warden Ilse's",
+    stock: ['potion', 'hipotion', 'antidote', 'goldneedle', 'tent'],
+  },
+  harrowsrest_arms: {
+    name: "Smith Talia's",
+    stock: ['flametongue', 'frostbrand', 'ruinaxe', 'shadowedge', 'wyvernlance',
+            'stormrod', 'aegisshield', 'knightplate', 'bishopvest', 'greathelm'],
+  },
+  harrowsrest_items: {
+    name: "Pedlar Once's",
+    stock: ['potion', 'hipotion', 'ether', 'antidote', 'goldneedle', 'holywater',
+            'revivalleaf', 'tent', 'elemcharm', 'voidring', 'ipband'],
+  },
+  glasshaven_arms: {
+    name: "Armourer Kest's",
+    stock: ['sunblade', 'dragonfists', 'gungnir', 'worldstaff', 'artemisbow',
+            'adamantplate', 'crownofstars', 'scalemail'],
+  },
+  glasshaven_items: {
+    name: "Pedlar Sorin's",
+    stock: ['hipotion', 'xpotion', 'ether', 'elixir', 'revivalleaf', 'holywater',
+            'goldneedle', 'tent'],
+  },
 };
 
 export function getMap(id) {
