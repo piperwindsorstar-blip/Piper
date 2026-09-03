@@ -18,7 +18,7 @@ import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
-import { mix } from '../../engine/pixel.js';
+import { mix, shade } from '../../engine/pixel.js';
 import * as THREE from '../../vendor/three.module.js';
 
 // The arena, in world units (roughly metres) rather than pixels: lanes run
@@ -36,6 +36,12 @@ import * as THREE from '../../vendor/three.module.js';
 // instead of a battlefield with a gap in it. 1.1 doubles that gap without
 // touching rank spacing within a side.
 const WORLD_LANE_STEP = 2.0, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 1.1;
+// Each back rank stands a literal step higher than the one in front of it —
+// real 3D risers (see setup3D), not just a further/smaller billboard. Under
+// this orthographic camera, depth alone was reading fairly flat; an actual
+// stepped platform with a lit top and a shaded riser face gives the eye
+// something with real volume to confirm the depth with.
+const RISER_STEP_H = 0.32;
 const ACTOR_WORLD_H = 1.7;   // world height of a standard 48px-tall actor sprite
 // Orthographic, not perspective, and for the same reason field.js's camera
 // is: fitting every rank of a full 9-a-side battle (front to back, both
@@ -175,6 +181,29 @@ export class BattleScene {
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, 0, 9.8);
     scene.add(ground);
+
+    // Real 3D risers under ranks B and C (rank A stays at ground level) —
+    // solid boxes, not another billboard, so the formation reads as
+    // standing on an actual stepped platform instead of just being drawn
+    // smaller/higher for "depth". A directional key light makes the top and
+    // front faces of each step shade differently on their own, no extra
+    // texture work needed. Colour matches the ground so it reads as the
+    // ground itself stepping up, darkened slightly per step so the risers
+    // don't just vanish into the floor.
+    const riserWidth = WORLD_LANE_STEP * 3 + 1.2;
+    for (const side of ['enemy', 'party']) {
+      const sign = side === 'enemy' ? -1 : 1;
+      for (let col = 1; col <= 2; col++) {
+        const topY = col * RISER_STEP_H;
+        const z = sign * (WORLD_FRONT_Z + col * WORLD_RANK_STEP);
+        const riser = new THREE.Mesh(
+          new THREE.BoxGeometry(riserWidth, topY, WORLD_RANK_STEP * 1.05),
+          new THREE.MeshLambertMaterial({ color: shade(T.ground, -0.1 * col) }),
+        );
+        riser.position.set(0, topY / 2, z);
+        scene.add(riser);
+      }
+    }
 
     // A jagged skyline silhouette plus a glowing focal orb, filling the sky
     // strip the ground pullback above just opened up. Placed by working
@@ -346,7 +375,7 @@ export class BattleScene {
     const x = (row - 1) * WORLD_LANE_STEP;
     const sign = side === 'enemy' ? -1 : 1;
     const z = sign * (WORLD_FRONT_Z + col * WORLD_RANK_STEP);
-    return { x, y: 0, z };
+    return { x, y: col * RISER_STEP_H, z };
   }
 
   /** A unit's current 3D position (feet/ground point, not its visual centre)
