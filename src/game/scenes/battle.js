@@ -31,7 +31,11 @@ import * as THREE from '../../vendor/three.module.js';
 // smaller than the 1.7-tall sprite standing on it, which is what made a
 // full 9-member party read as one overlapping cluster per lane instead of
 // three distinct ranks.
-const WORLD_LANE_STEP = 2.0, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 0.5;
+// FRONT_Z was 0.5 (a 1.0 gap between the two front ranks) — barely more
+// than a sprite's own width, so the two sides read as one huddled cluster
+// instead of a battlefield with a gap in it. 1.1 doubles that gap without
+// touching rank spacing within a side.
+const WORLD_LANE_STEP = 2.0, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 1.1;
 const ACTOR_WORLD_H = 1.7;   // world height of a standard 48px-tall actor sprite
 // Orthographic, not perspective, and for the same reason field.js's camera
 // is: fitting every rank of a full 9-a-side battle (front to back, both
