@@ -134,6 +134,15 @@ export class BattleScene {
     );
     this.camera3D.position.set(CAM_POS.x, CAM_POS.y, CAM_POS.z);
     this.camera3D.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
+    // Orthographic view rays are parallel, so every billboard should face
+    // the same fixed direction — back along the camera's look vector — not
+    // the direction to the camera's literal position (that's a perspective-
+    // camera formula). Using per-unit atan2-to-camera-position here was
+    // fine near the centre lane (x ~= CAM_POS.x, angle ~= 0) but blew up
+    // for units far off to a side *and* deep in a back rank, where it
+    // rotated the billboard nearly edge-on to the camera — the "warped
+    // diagonal sliver" units in outer lanes/back ranks were rendering as.
+    this.billboardYaw = Math.atan2(CAM_POS.x - CAM_LOOK.x, CAM_POS.z - CAM_LOOK.z);
 
     const T = this.regionPalette();
     scene.background = new THREE.Color(T.sky1);
@@ -273,7 +282,16 @@ export class BattleScene {
         tex.minFilter = THREE.NearestMipmapNearestFilter;
         tex.generateMipmaps = true;
         tex.colorSpace = THREE.SRGBColorSpace;
-        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+        // alphaTest just above zero, not 0.5: these sprite canvases bake in
+        // their own soft contact shadow (a ~30% alpha ellipse at the feet)
+        // and antialiased silhouette edges. A 0.5 cutoff discarded every
+        // pixel that faint, so units rendered as flat, edge-aliased cutouts
+        // with no shadow grounding them — a hard-edge look this pixel art
+        // was never drawn for. A near-zero threshold still discards the
+        // fully transparent padding around the sprite (so the billboard's
+        // rectangular bounds don't occlude things behind it) while letting
+        // every genuinely-drawn pixel blend at its real alpha.
+        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide });
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
         this.scene3D.add(mesh);
         b = { mesh, tex, mat, canvas: null };
@@ -294,9 +312,7 @@ export class BattleScene {
       const pos = this.unit3DPos(u);
       const worldH = b.mesh.scale.y;
       b.mesh.position.set(pos.x, pos.y + worldH / 2, pos.z);
-      b.mesh.rotation.y = Math.atan2(
-        this.camera3D.position.x - pos.x, this.camera3D.position.z - pos.z,
-      );
+      b.mesh.rotation.y = this.billboardYaw;
     }
   }
 

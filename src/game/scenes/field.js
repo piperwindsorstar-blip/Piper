@@ -129,6 +129,12 @@ export class FieldScene {
     );
     this.camera3D.position.set(FIELD_CAM_POS.x, FIELD_CAM_POS.y, FIELD_CAM_POS.z);
     this.camera3D.lookAt(FIELD_CAM_LOOK.x, FIELD_CAM_LOOK.y, FIELD_CAM_LOOK.z);
+    // Orthographic view rays are parallel, so every billboard should face
+    // one fixed direction — back along the camera's look vector — not the
+    // direction to the camera's literal position (a perspective-camera
+    // formula). See battle.js's setup3D for the full explanation and the
+    // warped-sprite bug this fixes for anyone off-centre and deep in Z.
+    this.billboardYaw = Math.atan2(FIELD_CAM_POS.x - FIELD_CAM_LOOK.x, FIELD_CAM_POS.z - FIELD_CAM_LOOK.z);
 
     this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
     this.sun.position.set(-3, 6, 4);
@@ -292,7 +298,10 @@ export class FieldScene {
         tex.minFilter = THREE.NearestMipmapNearestFilter;
         tex.generateMipmaps = true;
         tex.colorSpace = THREE.SRGBColorSpace;
-        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+        // See battle.js's billboard material for why this is 0.04, not 0.5:
+        // sprites bake in a faint contact shadow and antialiased edges that
+        // a 0.5 cutoff was discarding outright.
+        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide });
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
         this.scene3D.add(mesh);
         b = { mesh, tex, canvas: null };
@@ -305,9 +314,7 @@ export class FieldScene {
         b.mesh.scale.set(w, h, 1);
       }
       b.mesh.position.set(world.x, world.y + h / 2 + footYOffset, world.z);
-      b.mesh.rotation.y = Math.atan2(
-        this.camera3D.position.x - world.x, this.camera3D.position.z - world.z,
-      );
+      b.mesh.rotation.y = this.billboardYaw;
     };
 
     for (const n of this.map.npcs ?? []) {
