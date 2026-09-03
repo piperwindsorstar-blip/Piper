@@ -18,18 +18,23 @@ import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
+import * as THREE from '../../vendor/three.module.js';
 
-// Two stacked bands on a 480x270 stage: the enemy formation across the top
-// 39%, the party's own 3x3 grid across the bottom 60% (the leftover 1% is
-// the horizon seam between them). Column 0 is still "the front rank" for
-// both sides — it just now reads as *nearest the seam* rather than nearest
-// the middle of the screen, so the two front ranks face each other directly
-// across the divide instead of down a shared horizontal lane.
+// The arena, in world units (roughly metres) rather than pixels: lanes run
+// along X, rank depth runs along Z, enemies sit at negative Z and the party
+// at positive Z so both front ranks (col 0) face each other across Z=0 —
+// the exact same "front ranks meet at a seam" arrangement the 2D grid used,
+// now with actual depth instead of a screen-space illusion of it.
+const WORLD_LANE_STEP = 1.55, WORLD_RANK_STEP = 1.05, WORLD_FRONT_Z = 0.55;
+const ACTOR_WORLD_H = 1.7;   // world height of a standard 48px-tall actor sprite
+const CAM_POS = { x: 0, y: 5.6, z: 7.4 };
+const CAM_LOOK = { x: 0, y: 1.1, z: -1.2 };
+
+// CELL_W/CELL_H are the nominal 2D box every overlay (HP bars, popups, the
+// wheel) is still positioned against — see cellPos/unitPos below for how
+// that box now comes from a 3D projection instead of flat pixel math.
 const CELL_W = 48, CELL_H = 40;
-const SEAM_TOP = Math.round(H * 0.39), SEAM_BOTTOM = H - Math.round(H * 0.60);
-const CENTER_X = W / 2, FILE_STEP = 108;
-const ENEMY_GROUND = [95, 71, 47];      // ground-line y per column, front to back
-const PARTY_GROUND = [156, 198, 240];
+const SEAM_TOP = Math.round(H * 0.39);   // roughly where the two grids meet on screen; used to place the message strip
 
 // Formation labels: rows A/B/C run front-to-back (column 0 = row A = the
 // front rank); lanes 1/2/3 run left-to-right (grid.row = lane index). Only
@@ -79,6 +84,7 @@ export class BattleScene {
     this.introDur = 1.1;
     this.introT = this.introDur;
     this.hitPause = 0;
+    this.setup3D();
     playMusic(this.battle.isBoss ? 'boss' : 'battle', this.battle.isBoss ? BOSS_THEME : BATTLE_THEME);
     // a small impact as the fight opens: a jolt, a white flash, and both
     // sides slide in from off-screen (see unitPos) instead of just appearing
@@ -86,6 +92,196 @@ export class BattleScene {
     this.flash = 0.16;
     sfx.encounter();
     this.flushLog();
+  }
+
+  /**
+   * Builds the 3D arena once per battle: an offscreen WebGL canvas rendered
+   * at the same native 480x270 as the rest of the game (so billboards stay
+   * pixel-crisp and the arena reads as part of the same chunky-pixel world,
+   * not a smoother layer bolted on top), a region-tinted ground and sky, and
+   * a lazily-populated billboard per unit. The render is blitted into the
+   * normal 2D framebuffer as the backdrop (see render3D/draw); every other
+   * piece of UI in this file — HP bars, popups, the command wheel — is still
+   * plain 2D, positioned by projecting each unit's 3D position back to
+   * screen space (see project/unitPos), so none of that code had to change.
+   */
+  setup3D() {
+    if (!this.canvas3D) this.canvas3D = document.createElement('canvas');
+    this.canvas3D.width = W;
+    this.canvas3D.height = H;
+    this.renderer3D = new THREE.WebGLRenderer({ canvas: this.canvas3D, antialias: false, alpha: false });
+    this.renderer3D.setPixelRatio(1);
+    this.renderer3D.setSize(W, H, false);
+
+    const scene = new THREE.Scene();
+    this.scene3D = scene;
+    this.camera3D = new THREE.PerspectiveCamera(32, W / H, 0.1, 60);
+    this.camera3D.position.set(CAM_POS.x, CAM_POS.y, CAM_POS.z);
+    this.camera3D.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
+
+    const T = this.regionPalette();
+    scene.background = new THREE.Color(T.sky1);
+    scene.fog = new THREE.Fog(T.far, 6, 15);
+
+    const sun = new THREE.DirectionalLight(0xfff2df, 1.9);
+    sun.position.set(-3, 6, 4);
+    scene.add(sun);
+    scene.add(new THREE.AmbientLight(T.grade, 0.6));
+    scene.add(new THREE.HemisphereLight(T.sky1, T.gdark, 0.5));
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 30),
+      new THREE.MeshLambertMaterial({ color: T.ground }),
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = 0;
+    scene.add(ground);
+
+    // a simple back wall standing in for the old 2D silhouette/treeline —
+    // just distant enough, and faded by the fog, to read as scenery rather
+    // than a wall the party could ever reach
+    const far = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 8),
+      new THREE.MeshLambertMaterial({ color: T.far, fog: true }),
+    );
+    far.position.set(0, 4, -12);
+    scene.add(far);
+
+    this.billboards = new Map();
+  }
+
+  /** The same region -> palette table the old 2D backdrop used, kept as one
+   *  source of truth for both the 3D arena's colours and the post-process
+   *  grade/vignette/bloom settings applied on top of it. */
+  regionPalette() {
+    const region = this.battle.formation.region;
+    return {
+      greenfield: { sky1: '#86a2c4', far: '#2c4a34', ground: '#4a7a3e', gdark: '#2f5029', grade: '#a8d0ff' },
+      caverns:    { sky1: '#241d34', far: '#1d1628', ground: '#5a5040', gdark: '#332d24', grade: '#7f9ad8' },
+      ruins:      { sky1: '#3c2450', far: '#241531', ground: '#4e4860', gdark: '#2d2839', grade: '#b088ff' },
+      abyss:      { sky1: '#241040', far: '#170a28', ground: '#3a2c52', gdark: '#211838', grade: '#a86cff' },
+      boss:       { sky1: '#3a1834', far: '#200f26', ground: '#403050', gdark: '#241a34', grade: '#ff8ad0' },
+    }[region] ?? { sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', grade: '#9ab0e0' };
+  }
+
+  /** Grid slot -> world position, with no per-unit animation offset — used
+   *  both as the base for unit3DPos and directly by cellPos for the empty-
+   *  cell ground markers. */
+  worldBase(side, row, col) {
+    const x = (row - 1) * WORLD_LANE_STEP;
+    const sign = side === 'enemy' ? -1 : 1;
+    const z = sign * (WORLD_FRONT_Z + col * WORLD_RANK_STEP);
+    return { x, y: 0, z };
+  }
+
+  /** A unit's current 3D position (feet/ground point, not its visual centre)
+   *  — the direct 3D translation of the old 2D unitPos's animation offsets:
+   *  the intro slide is now a depth slide, the attack lunge moves along Z
+   *  toward the opposing side, and death/victory use height instead of a
+   *  vertical pixel nudge. */
+  unit3DPos(u) {
+    const base = this.worldBase(u.side, u.grid.row, u.grid.col);
+    let { x, y, z } = base;
+    if (this.state === 'intro') {
+      const k = (this.introT / this.introDur) ** 2;
+      const dir = u.side === 'enemy' ? -1 : 1;
+      z += dir * 3.4 * k;
+    }
+    if (this.attackAnim && this.attackAnim.uid === u.uid && this.attackAnim.foe) {
+      const a = this.attackAnim;
+      const dir = u.side === 'party' ? -1 : 1;
+      let k = 0;
+      if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
+      else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);
+      else k = 1 - (a.t / ATK_RECOIL);
+      z += dir * 0.5 * k;
+    }
+    const dying = this.deathAnims.get(u.uid);
+    if (dying) {
+      y -= (dying.t / dying.dur) * 0.3;
+    } else if (this.state === 'victoryPose' && u.isPC && u.alive) {
+      y += Math.abs(Math.sin(this.victoryT * 9 + x * 3)) * 0.18;
+    }
+    return { x, y, z };
+  }
+
+  /** Projects a 3D world point to 2D screen-space pixels in the same
+   *  480x270 buffer the rest of this scene draws into. */
+  project(world) {
+    const v = new THREE.Vector3(world.x, world.y, world.z);
+    v.project(this.camera3D);
+    return { x: (v.x * 0.5 + 0.5) * W, y: (1 - (v.y * 0.5 + 0.5)) * H };
+  }
+
+  /** The sprite canvas a unit should currently show — factored out of the
+   *  old drawUnit so both the 3D billboard and (nowhere else, but kept as
+   *  one place) any future 2D fallback pick the same frame. */
+  spriteFor(u, isActor) {
+    if (u.isPC) {
+      const ch = u.ref;
+      const hurtFrame = ch.hp / stats(ch).maxHp < 0.25 ? 2 : 0;
+      const breathe = Math.round(Math.sin(this.t * 2.2 + u.grid.row) * 0.5);
+      return actorSprite({
+        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
+        skin: ch.skin, hair: ch.hair, equip: ch.equip,
+        frame: isActor ? 3 : (hurtFrame || (breathe ? 1 : 0)),
+      });
+    }
+    return monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
+  }
+
+  /** Creates/updates one billboard mesh per living-or-recently-dead unit: a
+   *  camera-facing plane (rotated around Y only, so sprites stay upright —
+   *  the standard "cylindrical billboard" HD-2D games use) textured with
+   *  that unit's current sprite canvas via a CanvasTexture, nearest-filtered
+   *  so the pixel art stays crisp instead of smoothing into a blur. */
+  syncBillboards() {
+    for (const u of this.battle.units()) {
+      const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'move'].includes(this.state))
+        || this.attackAnim?.uid === u.uid;
+      const cv = this.spriteFor(u, isActor);
+      let b = this.billboards.get(u.uid);
+      if (!b) {
+        const tex = new THREE.CanvasTexture(cv);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+        this.scene3D.add(mesh);
+        b = { mesh, tex, mat, canvas: null };
+        this.billboards.set(u.uid, b);
+      }
+      if (b.canvas !== cv) {
+        b.canvas = cv;
+        b.tex.image = cv;
+        b.tex.needsUpdate = true;
+        const worldH = u.isPC ? ACTOR_WORLD_H : ACTOR_WORLD_H * (cv.height / 48);
+        b.mesh.scale.set(worldH * (cv.width / cv.height), worldH, 1);
+      }
+      const dying = this.deathAnims.get(u.uid);
+      const dim = this.state === 'target' && this.targetSpec && u.side !== this.actor.side
+        && !this.battle.inReach(this.actor, u, this.targetSpec.reach ?? this.targetSpec.range ?? 9);
+      b.mat.opacity = dying ? 1 - dying.t / dying.dur : (!u.alive ? 0.25 : dim ? 0.4 : 1);
+
+      const pos = this.unit3DPos(u);
+      const worldH = b.mesh.scale.y;
+      b.mesh.position.set(pos.x, pos.y + worldH / 2, pos.z);
+      b.mesh.rotation.y = Math.atan2(
+        this.camera3D.position.x - pos.x, this.camera3D.position.z - pos.z,
+      );
+    }
+  }
+
+  /** Renders the arena to the offscreen WebGL canvas; draw() blits the
+   *  result into the 2D framebuffer as this frame's backdrop. */
+  render3D() {
+    const T = this.regionPalette();
+    this.app.screen.setGrade(T.grade, this.battle.formation.region === 'greenfield' ? 0.08 : 0.18);
+    this.app.screen.vignette = this.battle.formation.region === 'greenfield' ? 0.48 : 0.68;
+    this.app.screen.bloom = this.battle.formation.region === 'greenfield' ? 0.3 : 0.6;
+    this.syncBillboards();
+    this.renderer3D.render(this.scene3D, this.camera3D);
   }
 
   flushLog() {
@@ -141,33 +337,21 @@ export class BattleScene {
     this.battle.fx.length = 0;
   }
 
-  // --- layout --------------------------------------------------------------
+  // --- layout ----------------------------------------------------------------
+  // Both of these keep their old signature and return shape — {x, y} for the
+  // top-left of a nominal CELL_W x CELL_H box, ground line at y+CELL_H,
+  // horizontal centre at x+CELL_W/2 — so every 2D overlay call site below
+  // (HP bars, popups, the wheel, targeting) needed no changes at all. What
+  // changed is where that {x, y} comes from: the 3D world position, run
+  // through the same camera the arena itself renders with.
   cellPos(side, row, col) {
-    const ground = (side === 'enemy' ? ENEMY_GROUND : PARTY_GROUND)[col];
-    const fileCenterX = CENTER_X + (row - 1) * FILE_STEP;
-    return { x: fileCenterX - CELL_W / 2, y: ground - CELL_H };
+    const p = this.project(this.worldBase(side, row, col));
+    return { x: p.x - CELL_W / 2, y: p.y - CELL_H };
   }
 
   unitPos(u) {
-    const p = this.cellPos(u.side, u.grid.row, u.grid.col);
-    if (this.state === 'intro') {
-      // both ranks slide in from off-screen — enemies down from above the
-      // top edge, the party up from below the bottom edge — and settle as
-      // the intro banner reads, rather than simply appearing in formation
-      const k = (this.introT / this.introDur) ** 2;
-      const dir = u.side === 'enemy' ? -1 : 1;
-      return { x: p.x, y: p.y + dir * 90 * k };
-    }
-    if (this.attackAnim && this.attackAnim.uid === u.uid && this.attackAnim.foe) {
-      const a = this.attackAnim;
-      const dir = u.side === 'party' ? -1 : 1;   // lunge toward the opposing side, across the seam
-      let k = 0;
-      if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
-      else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);   // continues from windup's -0.35 up to a full 1.0 lunge
-      else k = 1 - (a.t / ATK_RECOIL);
-      return { x: p.x, y: p.y + dir * 11 * k };
-    }
-    return p;
+    const p = this.project(this.unit3DPos(u));
+    return { x: p.x - CELL_W / 2, y: p.y - CELL_H };
   }
 
   // --- update --------------------------------------------------------------
@@ -587,7 +771,8 @@ export class BattleScene {
   // --- draw ----------------------------------------------------------------
   draw(scr) {
     const b = this.battle;
-    this.drawBackdrop(scr);
+    this.render3D();
+    scr.ctx.drawImage(this.canvas3D, 0, 0, W, H);
 
     this.drawGrid(scr, 'enemy');
     this.drawGrid(scr, 'party');
@@ -622,55 +807,6 @@ export class BattleScene {
     }
   }
 
-  /**
-   * Battle backdrop: a sky gradient, a distant treeline or ridge silhouette,
-   * and a textured ground plane. The palette follows the region the encounter
-   * came from, so a cave fight does not happen under open sky.
-   */
-  drawBackdrop(scr) {
-    const region = this.battle.formation.region;
-    const T = {
-      greenfield: { sky0: '#27406f', sky1: '#86a2c4', far: '#2c4a34', ground: '#4a7a3e', gdark: '#2f5029', speck: '#568c48', grade: '#a8d0ff' },
-      caverns:    { sky0: '#0e0c18', sky1: '#241d34', far: '#1d1628', ground: '#5a5040', gdark: '#332d24', speck: '#6a5e4a', grade: '#7f9ad8' },
-      ruins:      { sky0: '#150c26', sky1: '#3c2450', far: '#241531', ground: '#4e4860', gdark: '#2d2839', speck: '#5e5870', grade: '#b088ff' },
-      abyss:      { sky0: '#0a0616', sky1: '#241040', far: '#170a28', ground: '#3a2c52', gdark: '#211838', speck: '#4e3c72', grade: '#a86cff' },
-      boss:       { sky0: '#120818', sky1: '#3a1834', far: '#200f26', ground: '#403050', gdark: '#241a34', speck: '#4e3c60', grade: '#ff8ad0' },
-    }[region] ?? { sky0: '#101020', sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', speck: '#5a5468', grade: '#9ab0e0' };
-    scr.setGrade(T.grade, region === 'greenfield' ? 0.08 : 0.18);
-    scr.vignette = region === 'greenfield' ? 0.48 : 0.68;
-    scr.bloom = region === 'greenfield' ? 0.3 : 0.6;
-
-    const HORIZON = SEAM_TOP;   // the sky/ground line matches the enemy/party seam exactly
-    scr.clear(T.gdark);
-    scr.vgrad(0, 0, W, HORIZON, T.sky0, T.sky1);
-    if (region === 'caverns' || region === 'ruins' || region === 'boss') {
-      for (let i = 0; i < 34; i++) scr.px((i * 97) % W, (i * 53) % HORIZON, 'rgba(190,190,240,0.16)');
-    }
-
-    // far silhouette: rolling hills outdoors, a jagged ceiling underground
-    for (let x = 0; x < W; x++) {
-      const h = region === 'caverns' || region === 'boss'
-        ? 16 + Math.round(9 * Math.sin(x * 0.11) + 5 * Math.sin(x * 0.31 + 1.7))
-        : 18 + Math.round(11 * Math.sin(x * 0.035) + 6 * Math.sin(x * 0.09 + 2));
-      scr.rect(x, HORIZON - h, 1, h, T.far);
-    }
-    scr.rect(0, HORIZON - 1, W, 1, scr.lighten(T.far, 0.1));
-
-    // ground plane, lit at the horizon and falling into shadow at the front
-    scr.vgrad(0, HORIZON, W, H - HORIZON, scr.lighten(T.ground, 0.08), T.gdark);
-    for (let i = 0; i < 190; i++) {
-      const x = (i * 71 + 13) % W;
-      const y = HORIZON + 2 + ((i * 37) % (H - HORIZON - 2));
-      scr.px(x, y, i % 3 === 0 ? T.gdark : T.speck);
-    }
-    // receding scanlines: tight at the horizon, open at the front
-    let sy = HORIZON + 3, step = 2;
-    while (sy < H) { scr.rect(0, sy, W, 1, 'rgba(0,0,0,0.13)'); sy += step; step += 0.42; }
-    // depth haze along the horizon, and a key light from the upper left
-    scr.vgrad(0, HORIZON - 26, W, 34, 'rgba(0,0,0,0)', `${T.far}bb`);
-    scr.light(W * 0.22, HORIZON - 30, 190, 'rgba(150,185,255,0.16)', 0.55);
-  }
-
   drawGrid(scr, side) {
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 3; col++) {
@@ -696,33 +832,34 @@ export class BattleScene {
 
   /** Rank letters (A/B/C, front to back) along the outer edge of one side's
    *  grid, so "row A is the front" is something the player can just read
-   *  off the field rather than remember. */
+   *  off the field rather than remember. Positioned off the leftmost file's
+   *  own projected ground line, so they track the 3D camera automatically. */
   drawGridLabels(scr, side) {
-    const ground = side === 'enemy' ? ENEMY_GROUND : PARTY_GROUND;
-    // Tucked in from the very edge, clear of the leftmost file's own stat
-    // card (which reaches left to about CENTER_X - FILE_STEP*1.5 - 16).
-    const labelX = CENTER_X - FILE_STEP * 1.5 - 44;
     for (let col = 0; col < 3; col++) {
-      scr.textCenter(RANK_LABELS[col], labelX, ground[col] - CELL_H / 2 - 4, PAL.textFaint);
+      const p = this.cellPos(side, 0, col);
+      scr.textCenter(RANK_LABELS[col], p.x + CELL_W / 2 - 44, p.y + CELL_H / 2 - 4, PAL.textFaint);
     }
   }
 
-  /** Lane numbers (1/2/3, left to right) shared by both grids at the seam —
+  /** Lane numbers (1/2/3, left to right) at the seam between the two grids —
    *  a lane already used this round dims out, since only one unit per lane
    *  may act per round (Battle.actedLane). Shown for the party's own lanes,
-   *  which is the discipline a player actually has to plan around. */
+   *  which is the discipline a player actually has to plan around. The seam
+   *  y is the midpoint between each side's own projected front rank, so it
+   *  tracks the 3D camera rather than assuming a fixed horizon line. */
   drawLaneNumbers(scr) {
     const b = this.battle;
     for (let lane = 0; lane < 3; lane++) {
-      const fx = CENTER_X + (lane - 1) * FILE_STEP;
+      const enemyFront = this.cellPos('enemy', lane, 0).y + CELL_H;
+      const partyFront = this.cellPos('party', lane, 0).y + CELL_H;
+      const fx = this.cellPos('party', lane, 0).x + CELL_W / 2;
       const locked = b.actedLane.party.has(lane);
-      scr.textCenter(LANE_LABELS[lane], fx, SEAM_TOP + 1, locked ? PAL.textFaint : PAL.accent);
+      scr.textCenter(LANE_LABELS[lane], fx, (enemyFront + partyFront) / 2, locked ? PAL.textFaint : PAL.accent);
     }
   }
 
   drawUnit(scr, u) {
     const p = this.unitPos(u);
-    const dead = !u.alive;
     const isTarget = this.state === 'target' && this.targetPool[this.targetIndex]?.uid === u.uid;
     const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'move'].includes(this.state))
       || this.attackAnim?.uid === u.uid;
@@ -736,47 +873,9 @@ export class BattleScene {
       scr.textCenter('!', p.x + CELL_W / 2 - 4, p.y - 10, PAL.red, { size: 12 });
     }
 
-    // reach shading while choosing a target
-    let dim = false;
-    if (this.state === 'target' && this.targetSpec && u.side !== this.actor.side) {
-      const reach = this.targetSpec.reach ?? this.targetSpec.range ?? 9;
-      dim = !this.battle.inReach(this.actor, u, reach);
-    }
-
-    // a defeated unit staggers and dissolves over half a second rather than
-    // instantly snapping to its resting "already dead" look
-    const dying = this.deathAnims.get(u.uid);
-    let offsetX = 0, offsetY = 0;
-    if (dying) {
-      const k = dying.t / dying.dur;
-      offsetY = k * 7;
-      offsetX = Math.sin(dying.t * 46) * (1 - k) * 3;
-    } else if (this.state === 'victoryPose' && u.isPC && u.alive) {
-      // a little hop for everyone still standing, staggered per unit so the
-      // whole party doesn't bounce in lockstep
-      offsetY = -Math.abs(Math.sin(this.victoryT * 9 + p.x * 0.05)) * 4;
-    }
-
-    scr.ctx.save();
-    if (dying) scr.ctx.globalAlpha = 1 - dying.t / dying.dur;
-    else if (dead) scr.ctx.globalAlpha = 0.25;
-    else if (dim) scr.ctx.globalAlpha = 0.4;
-
-    const breathe = Math.round(Math.sin(this.t * 2.2 + p.x * 0.1) * 0.5);
-    if (u.isPC) {
-      const ch = u.ref;
-      const hurtFrame = ch.hp / stats(ch).maxHp < 0.25 ? 2 : 0;
-      const cv = actorSprite({
-        classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-        skin: ch.skin, hair: ch.hair, equip: ch.equip,
-        frame: isActor ? 3 : (hurtFrame || (breathe ? 1 : 0)),
-      });
-      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2 + offsetX), Math.round(p.y + CELL_H - cv.height + offsetY));
-    } else {
-      const cv = monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
-      scr.ctx.drawImage(cv, Math.round(p.x + CELL_W / 2 - cv.width / 2 + offsetX), Math.round(p.y + CELL_H + 3 - cv.height + offsetY));
-    }
-    scr.ctx.restore();
+    // the sprite itself is a 3D billboard now (see syncBillboards) — this
+    // function only draws the 2D overlays (HP, status, popups, glows) at
+    // that same billboard's projected screen position.
 
     if (this.state === 'victoryPose' && u.alive && this.leveledUids.has(u.uid)) {
       const pulse = 0.5 + 0.5 * Math.sin(this.t * 12);
