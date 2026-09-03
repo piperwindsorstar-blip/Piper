@@ -159,10 +159,16 @@ export type CallRun = {
   pickupTime: string | null;
   /** Warned about on every board: the crew has one fewer stop to make. */
   keysAtShop: boolean;
-  /** And whether they have one more at the end of it. */
+  /** And where they have to be left at the end of it. */
   keysBackToShop: boolean;
+  keysBackToPencar: boolean;
   driver: string | null;
   meetingOnSite: string | null;
+  /** Whatever the office wrote on the run. */
+  notes: string | null;
+  /** So a crew can find the van in a lot, and knows where it lives. */
+  plate: string | null;
+  homeBase: string | null;
 };
 
 /** One job, and every vehicle going out on it. */
@@ -182,6 +188,7 @@ export type Call = {
   /** True if any vehicle on the call has its keys waiting at the shop. */
   keysAtShop: boolean;
   keysBackToShop: boolean;
+  keysBackToPencar: boolean;
   legs: CallRun[];
 };
 
@@ -214,6 +221,7 @@ export function groupCalls(runs: CallRun[]): Call[] {
       // somebody is going to the shop either way.
       existing.keysAtShop ||= run.keysAtShop;
       existing.keysBackToShop ||= run.keysBackToShop;
+      existing.keysBackToPencar ||= run.keysBackToPencar;
       continue;
     }
 
@@ -227,6 +235,7 @@ export function groupCalls(runs: CallRun[]): Call[] {
       meetingOnSite: run.meetingOnSite,
       keysAtShop: run.keysAtShop,
       keysBackToShop: run.keysBackToShop,
+      keysBackToPencar: run.keysBackToPencar,
       startsAt: null,
       legs: [run],
     });

@@ -6,6 +6,12 @@ import { CLASS_SHORT, STATUS_SHORT, type Call } from "@/lib/dispatch-types";
 import { formatDateShort, formatTime } from "@/lib/dates";
 import Icon from "@/components/Icon";
 
+/** Whatever the office wrote on any leg of the call, joined once. */
+function runNotes(call: Call): string | null {
+  const all = [...new Set(call.legs.map((leg) => leg.notes).filter(Boolean))];
+  return all.length > 0 ? all.join(" · ") : null;
+}
+
 /**
  * One call, drawn the same on both boards.
  *
@@ -48,18 +54,32 @@ export default function CallCard({
 
       <h3 className="call-title">{call.label}</h3>
 
-      {/* The one thing on a card that changes where a crew drives first — or
-          last. Both halves share a strip: two yellow bars on one card is a
-          card people stop reading. */}
-      {(call.keysAtShop || call.keysBackToShop) && (
-        <p className="call-keys-alert">
-          <Icon name="alert" size={13} />
-          {call.keysAtShop && call.keysBackToShop
-            ? "Keys are at the shop, and go back there"
-            : call.keysAtShop
-              ? "Keys are at the shop"
-              : "Take the keys back to the shop"}
-        </p>
+      {/* The keys, one warning each and one colour each. They are separate
+          errands — collect from the shop, drop at the shop, drop at Pencar —
+          and a crew can be given any combination of the three, so folding them
+          into one sentence made somebody parse a sentence at six in the
+          morning. The colours are what tells them apart at a glance. */}
+      {(call.keysAtShop || call.keysBackToShop || call.keysBackToPencar) && (
+        <div className="call-keys">
+          {call.keysAtShop && (
+            <p className="call-keys-alert keys-at-shop">
+              <Icon name="key" size={13} />
+              Keys are at the shop — collect them first
+            </p>
+          )}
+          {call.keysBackToShop && (
+            <p className="call-keys-alert keys-back-shop">
+              <Icon name="alert" size={13} />
+              Take the keys back to the shop
+            </p>
+          )}
+          {call.keysBackToPencar && (
+            <p className="call-keys-alert keys-back-pencar">
+              <Icon name="alert" size={13} />
+              Take the keys back to Pencar
+            </p>
+          )}
+        </div>
       )}
 
       <p className="call-meta">
@@ -106,6 +126,7 @@ export default function CallCard({
                     leg.vehicleName
                   )}
                 </span>
+                {leg.plate && <span className="call-leg-plate">{leg.plate}</span>}
                 {onDay && leg.endsOn > onDay && (
                   <span className="call-leg-back">back {formatDateShort(leg.endsOn)}</span>
                 )}
@@ -124,6 +145,7 @@ export default function CallCard({
                     {leg.driver}
                   </span>
                 )}
+                {leg.homeBase && <span className="call-leg-home">Kept at {leg.homeBase}</span>}
                 {leg.keys && (
                   <span className="call-leg-keys">
                     <Icon name="key" size={12} />
@@ -135,6 +157,8 @@ export default function CallCard({
           ))}
         </ol>
       )}
+
+      {!compact && runNotes(call) && <p className="call-notes">{runNotes(call)}</p>}
     </article>
   );
 }

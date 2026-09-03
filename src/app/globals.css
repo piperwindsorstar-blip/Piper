@@ -20,6 +20,16 @@
   --danger: #b3261e;
   --danger-soft: #fdeceb;
 
+  /* The keys warnings. Three separate errands — collect from the shop, drop at
+     the shop, drop at Pencar — so three colours rather than three shades of
+     one. Amber is the one that changes where a crew drives first. */
+  --keys-shop: #9a5b00;
+  --keys-shop-soft: #fdf0dd;
+  --keys-back: #1d5c99;
+  --keys-back-soft: #e4effb;
+  --keys-pencar: #6b3fb5;
+  --keys-pencar-soft: #efe9fb;
+
   /* Radii climb with the size of the thing: a pill on a badge, a soft corner
      on a card, and something in between for controls. One value for all three
      makes small elements look bloated and large ones look sharp. */
@@ -59,6 +69,12 @@
     --warning-soft: #33280f;
     --danger: #f4867d;
     --danger-soft: #3a1d1c;
+    --keys-shop: #e0a95c;
+    --keys-shop-soft: #33280f;
+    --keys-back: #7fb6e8;
+    --keys-back-soft: #14263a;
+    --keys-pencar: #b49af0;
+    --keys-pencar-soft: #251b3a;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
     --shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.4);
   }
@@ -1028,27 +1044,38 @@ input:focus, select:focus, textarea:focus {
   color: var(--call-faint);
 }
 
-/* The keys warning. Yellow because it changes where somebody drives first, and
-   inside the card rather than above the list: it belongs to one show, and a
-   banner over the lot would say it about all of them. */
+/* The keys warnings: one per errand, one colour per errand, inside the card
+   rather than above the list — they belong to one show, and a banner over the
+   lot would say it about all of them. */
+.call-keys { display: grid; gap: 0.3rem; margin-top: 0.5rem; }
 .call-keys-alert {
-  margin: 0.5rem 0 0;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.3rem 0.55rem;
   border-radius: var(--radius-sm);
-  background: var(--warning-soft);
-  color: var(--warning);
   font-size: 0.78rem;
   font-weight: 600;
   box-shadow: inset 0 0 0 1px currentColor;
 }
-/* On the dark board the app's warning pair is too low-contrast to read at
-   arm's length, so it gets the yellow the board already uses for 'booked'. */
-.crew-board .call-keys-alert {
+.keys-at-shop     { background: var(--keys-shop-soft);   color: var(--keys-shop); }
+.keys-back-shop   { background: var(--keys-back-soft);   color: var(--keys-back); }
+.keys-back-pencar { background: var(--keys-pencar-soft); color: var(--keys-pencar); }
+
+/* On the dark board the app's pairs are too low-contrast to read at arm's
+   length, so each takes the board's own colour for that idea. */
+.crew-board .keys-at-shop {
   background: rgba(232, 197, 71, 0.14);
   color: var(--run-booked);
+}
+.crew-board .keys-back-shop {
+  background: rgba(77, 157, 224, 0.16);
+  color: var(--run-idle);
+}
+.crew-board .keys-back-pencar {
+  background: rgba(139, 108, 201, 0.2);
+  color: var(--run-needed);
 }
 
 /* Where it is picked up, when, and where it goes back. */
@@ -1058,6 +1085,21 @@ input:focus, select:focus, textarea:focus {
   gap: 0.15rem 0.6rem;
   margin-top: 0.15rem;
   font-size: 0.76rem;
+  color: var(--call-muted);
+}
+.call-leg-plate {
+  margin-left: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--call-muted);
+}
+.call-leg-home { display: block; margin-top: 0.1rem; font-size: 0.74rem; color: var(--call-faint); }
+.call-notes {
+  margin: 0.75rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--call-muted);
+  font-size: 0.78rem;
   color: var(--call-muted);
 }
 .call-leg-driver {

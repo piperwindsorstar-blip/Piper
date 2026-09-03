@@ -91,8 +91,12 @@ function callsOn(
         pickupTime: run.pickup_time,
         keysAtShop: run.keys_at_shop === 1,
         keysBackToShop: run.keys_back_to_shop === 1,
+        keysBackToPencar: run.keys_back_to_pencar === 1,
         driver: run.driver_first_name,
         meetingOnSite: run.meeting_on_site,
+        notes: run.notes,
+        plate: vehicle.plate,
+        homeBase: vehicle.home_base,
       })),
     ),
   );
@@ -221,8 +225,12 @@ export default async function CrewBoardPage() {
                     {index === 0 ? "No vehicles out. Shop day." : "No calls."}
                   </p>
                 ) : (
+                  // Every day in full, not just today. A crew reads this
+                  // standing next to a van and cannot ring the office, so
+                  // nothing the office knows about the run is worth hiding
+                  // behind a shorter card.
                   calls.map((call) => (
-                    <CallCard key={`${day}-${call.key}`} call={call} compact={index !== 0} />
+                    <CallCard key={`${day}-${call.key}`} call={call} onDay={day} />
                   ))
                 )}
               </section>
@@ -290,7 +298,11 @@ export default async function CrewBoardPage() {
                     <div className="board-fleet-name">{vehicle.name}</div>
                     <div className="board-fleet-sub">
                       {CLASS_SHORT[vehicle.class]} · {OWNERSHIP_LABELS[vehicle.ownership]}
+                      {vehicle.plate && <> · {vehicle.plate}</>}
                     </div>
+                    {vehicle.home_base && (
+                      <div className="board-fleet-sub">Kept at {vehicle.home_base}</div>
+                    )}
                   </div>
                   <span className={outToday.has(vehicle.id) ? "board-out" : "board-yard"}>
                     {outToday.has(vehicle.id) ? "Out" : "Yard"}

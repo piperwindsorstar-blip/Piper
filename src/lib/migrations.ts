@@ -537,6 +537,18 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE dispatch_run_days ADD COLUMN keys_back_to_shop INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 21,
+    label: "take the keys back to Pencar",
+    up: `
+      -- The third place keys go. Kept apart from keys_back_to_shop rather than
+      -- folded into one "where do they go" column: a run can hand one set back
+      -- to the shop and another to the hire company on the same day, and a
+      -- single field would force somebody to pick which half to record.
+      ALTER TABLE dispatch_runs ADD COLUMN keys_back_to_pencar INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE dispatch_run_days ADD COLUMN keys_back_to_pencar INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);

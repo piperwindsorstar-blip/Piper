@@ -49,6 +49,7 @@ export default function RunForm({
   const [endsOn, setEndsOn] = useState("");
   const [keysAtShop, setKeysAtShop] = useState(false);
   const [keysBack, setKeysBack] = useState(false);
+  const [keysPencar, setKeysPencar] = useState(false);
   const [sameEachDay, setSameEachDay] = useState(true);
 
   // The days after the first, which are the ones that can differ. A drop-off
@@ -189,7 +190,7 @@ export default function RunForm({
         </div>
       </div>
 
-      <div className="form-grid cols-2">
+      <div className="form-grid cols-3">
         {/* Two radios rather than a checkbox: one of them is always checked, so
             the answer is always posted. A hidden default alongside them would
             be read *instead* of the radio — formData.get returns the first
@@ -241,11 +242,36 @@ export default function RunForm({
             No
           </label>
         </fieldset>
+
+        <fieldset className="field-choice">
+          <legend>Take keys back to Pencar?</legend>
+          <label>
+            <input
+              type="radio"
+              name="keys_back_to_pencar"
+              value="yes"
+              checked={keysPencar}
+              onChange={() => setKeysPencar(true)}
+            />
+            Yes
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="keys_back_to_pencar"
+              value="no"
+              checked={!keysPencar}
+              onChange={() => setKeysPencar(false)}
+            />
+            No
+          </label>
+        </fieldset>
       </div>
 
-      {(keysAtShop || keysBack) && (
+      {(keysAtShop || keysBack || keysPencar) && (
         <p className="small warn-text">
-          The show will carry a keys warning on every board.
+          The show will carry a keys warning on every board — one per errand,
+          each its own colour.
         </p>
       )}
 
@@ -332,6 +358,10 @@ export default function RunForm({
                       <label className="field-check">
                         <input type="checkbox" name={`day_${day}_keys_back_to_shop`} value="yes" />
                         Keys back to the shop
+                      </label>
+                      <label className="field-check">
+                        <input type="checkbox" name={`day_${day}_keys_back_to_pencar`} value="yes" />
+                        Keys back to Pencar
                       </label>
                     </div>
                   </div>
