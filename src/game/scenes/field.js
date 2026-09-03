@@ -20,9 +20,34 @@ import { STORY } from '../../data/story.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 import { QUESTS, questState, questReady, startQuest, completeQuest } from '../../data/quests.js';
+import * as THREE from '../../vendor/three.module.js';
 
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+// One world unit = one tile (TS pixels), so every existing pixel-space
+// measurement (tile positions, sprite dimensions) converts to 3D world
+// units just by dividing by TS — no separate scale to keep in sync.
+// MARGIN_PX bakes extra tiles around the old visible window into the ground
+// texture, since the angled 3D camera reveals more than the flat 480x270
+// view used to show; the plane is sized to match.
+const MARGIN_PX = 7 * TS;
+// The camera must look exactly at the world origin — worldFromScreenPx maps
+// the old visible window's own screen centre to (0,0,0), and lookAt's target
+// is by construction what a camera projects back to screen centre, so any
+// other target would desync where a tile "is" on the ground texture from
+// where a billboard standing on it actually renders.
+//
+// Orthographic, not perspective: the old flat view spans about 11 world
+// units of depth (270px / TS), which at any perspective camera close enough
+// to keep a real 3D angle blows up hugely in size near the camera and
+// vanishes near the horizon — fine for the battle arena's few units of
+// depth, badly wrong at overworld scale. An angled orthographic camera
+// still compresses the far edge relative to the near one (the actual depth
+// cue this is for), just linearly instead of by 1/distance.
+const FIELD_CAM_POS = { x: 0, y: 9, z: 7 };
+const FIELD_CAM_LOOK = { x: 0, y: 0, z: 0 };
+const FIELD_VIEW_SIZE = 6.3;
 
 // A full day/night cycle, in real seconds of played time — long enough that
 // it reads as weather rather than a strobing gimmick, short enough to see
@@ -58,6 +83,7 @@ export class FieldScene {
     this.rainT = 0;
     this.thunderFlash = 0;
     this.rollWeather();
+    this.setup3D();
     if (opts.message) this.dlg.say(opts.message);
     // returning from a battle we won on a boss tile
     if (opts.afterBossFlag) this.g.setFlag(opts.afterBossFlag);
@@ -74,6 +100,236 @@ export class FieldScene {
   }
 
   get map() { return this.g.map; }
+
+  /**
+   * Builds the 3D field once per scene push: an offscreen WebGL canvas
+   * rendered at the native 480x270, a single ground plane, a fixed camera,
+   * and a lazily-populated billboard per NPC/player. The ground plane's
+   * texture is *baked from the existing 2D tile renderer* — renderWorldTexture
+   * below is the old draw()'s ground/mass/building/chest passes, verbatim,
+   * just retargeted at a dedicated canvas instead of the screen buffer —
+   * so terrain.js/building.js/tileSprite never had to change at all. Because
+   * the camera never moves (all scrolling already happens by re-baking the
+   * texture at a new camera() offset each frame, exactly as the flat 2D
+   * version scrolled it), a tile's position on that texture and a billboard's
+   * projected position always agree without any extra bookkeeping.
+   */
+  setup3D() {
+    if (!this.canvas3D) this.canvas3D = document.createElement('canvas');
+    this.canvas3D.width = W;
+    this.canvas3D.height = H;
+    this.renderer3D = new THREE.WebGLRenderer({ canvas: this.canvas3D, antialias: false, alpha: false });
+    this.renderer3D.setPixelRatio(1);
+    this.renderer3D.setSize(W, H, false);
+
+    this.scene3D = new THREE.Scene();
+    const aspect = W / H;
+    this.camera3D = new THREE.OrthographicCamera(
+      -FIELD_VIEW_SIZE * aspect, FIELD_VIEW_SIZE * aspect, FIELD_VIEW_SIZE, -FIELD_VIEW_SIZE, 0.1, 60,
+    );
+    this.camera3D.position.set(FIELD_CAM_POS.x, FIELD_CAM_POS.y, FIELD_CAM_POS.z);
+    this.camera3D.lookAt(FIELD_CAM_LOOK.x, FIELD_CAM_LOOK.y, FIELD_CAM_LOOK.z);
+
+    this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
+    this.sun.position.set(-3, 6, 4);
+    this.scene3D.add(this.sun);
+    this.ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    this.scene3D.add(this.ambient);
+
+    if (!this.worldCanvas) this.worldCanvas = document.createElement('canvas');
+    this.worldCanvas.width = W + MARGIN_PX * 2;
+    this.worldCanvas.height = H + MARGIN_PX * 2;
+    this.worldTex = new THREE.CanvasTexture(this.worldCanvas);
+    this.worldTex.magFilter = THREE.NearestFilter;
+    this.worldTex.minFilter = THREE.NearestFilter;
+    this.worldTex.colorSpace = THREE.SRGBColorSpace;
+    const planeW = this.worldCanvas.width / TS, planeH = this.worldCanvas.height / TS;
+    this.groundMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(planeW, planeH),
+      new THREE.MeshLambertMaterial({ map: this.worldTex }),
+    );
+    this.groundMesh.rotation.x = -Math.PI / 2;
+    this.scene3D.add(this.groundMesh);
+
+    this.fieldBillboards = new Map();
+  }
+
+  /**
+   * A tile-space pixel position (already offset by camera(), exactly the
+   * coordinates the old 2D drawImage calls used) -> that same point's 3D
+   * world position, ground level. The ground plane spans the baked
+   * MARGIN_PX-padded texture, so a point at the visible window's own centre
+   * (screen-space W/2, H/2) lands at world (0, 0, 0) under the fixed camera.
+   */
+  worldFromScreenPx(px, py) {
+    return { x: (px - W / 2) / TS, y: 0, z: (py - H / 2) / TS };
+  }
+
+  /** Projects a 3D world point to 2D screen-space pixels in the 480x270
+   *  buffer, for the 2D overlays (boss glow, NPC glyphs, player light) that
+   *  still draw on top of the 3D-rendered backdrop. */
+  project(world) {
+    const v = new THREE.Vector3(world.x, world.y, world.z);
+    v.project(this.camera3D);
+    return { x: (v.x * 0.5 + 0.5) * W, y: (1 - (v.y * 0.5 + 0.5)) * H };
+  }
+
+  /** A raw pixel position (pre-camera-offset, same coordinate space
+   *  playerPixel()/npc.x*TS use) -> its projected screen position — the
+   *  3D-aware replacement for the old flat `px - cam.x`. */
+  pixelScreenPos(px, py) {
+    const cam = this.camera();
+    return this.project(this.worldFromScreenPx(px - cam.x, py - cam.y));
+  }
+
+  /** Same, addressed by tile coordinate. */
+  tileScreenPos(tileX, tileY) {
+    return this.pixelScreenPos(tileX * TS, tileY * TS);
+  }
+
+  /**
+   * Bakes the ground/mass/building/feature/closed-chest layers into
+   * `this.worldCanvas`, for a window MARGIN_PX wider than the screen on
+   * every side (see the constant's comment) — identical to the old draw()'s
+   * two tile passes, just widened and pointed at ctx instead of scr.ctx.
+   */
+  renderWorldTexture() {
+    const ctx = this.worldCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    const m = this.map;
+    const cam = this.camera();
+    const ox = cam.x - MARGIN_PX, oy = cam.y - MARGIN_PX;
+    // Filled, not cleared: on a map smaller than the margin-padded window
+    // (most towns), the baked area can reach past the map's real edge —
+    // camera() only ever clamps the old, narrower 480x270 window in-bounds.
+    // A cleared (fully transparent) canvas would read as flat black there
+    // since the ground material isn't alpha-blended; a fill reads as the
+    // same void colour draw() already uses past the plane's own edge.
+    ctx.fillStyle = m.bg ?? '#0b0e18';
+    ctx.fillRect(0, 0, this.worldCanvas.width, this.worldCanvas.height);
+    const { w, h } = mapSize(m);
+    const x0 = Math.max(0, Math.floor(ox / TS));
+    const y0 = Math.max(0, Math.floor(oy / TS));
+    const x1 = Math.min(w - 1, Math.ceil((ox + this.worldCanvas.width) / TS));
+    const y1 = Math.min(h - 1, Math.ceil((oy + this.worldCanvas.height) / TS));
+    const theme = m.theme ?? 'green';
+
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const t = tileAt(m, x, y);
+        if (!t) continue;
+        const px = x * TS - ox, py = y * TS - oy;
+        if (isOutdoor(t.tile)) {
+          ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sampler(m, x, y), theme), px, py);
+        } else if (isStructure(t.tile)) {
+          ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, groundUnder(m, x, y), theme), px, py);
+        } else {
+          ctx.drawImage(tileSprite(t.tile), px, py);
+        }
+      }
+    }
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const t = tileAt(m, x, y);
+        if (!t) continue;
+        const px2 = x * TS - ox, py2 = y * TS - oy;
+        const smp = sampler(m, x, y);
+        if (hasStructure(smp)) {
+          ctx.drawImage(buildingSprite(`${m.id}|${x}|${y}`, smp, theme), px2, py2);
+        }
+        if (!isOutdoor(t.tile)) continue;
+        const px = x * TS - ox, py = y * TS - oy;
+        if (hasMass(smp)) {
+          ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, smp), px, py);
+        }
+        if (FEATURE.has(t.tile)) ctx.drawImage(tileSprite(t.tile), px, py);
+      }
+    }
+    for (const c of m.chests ?? []) {
+      if (this.g.flag(`chest.${c.id}`)) continue;
+      ctx.drawImage(tileSprite('chest'), c.x * TS - ox, c.y * TS - oy);
+    }
+    this.worldTex.needsUpdate = true;
+  }
+
+  /** The sprite canvas + billboard world size for one field actor (the
+   *  player or an NPC) — factored out so syncFieldBillboards treats both
+   *  the same way. */
+  billboardFor(cv, pixelX, pixelY) {
+    const cam = this.camera();
+    const world = this.worldFromScreenPx(pixelX - cam.x, pixelY - cam.y);
+    return { world, w: cv.width / TS, h: cv.height / TS };
+  }
+
+  /** Creates/updates one camera-facing billboard per NPC plus the player,
+   *  keyed by a stable id — same CanvasTexture + cylindrical-billboard
+   *  technique as the battle scene's units. */
+  syncFieldBillboards() {
+    const seen = new Set();
+    const sync = (key, cv, pixelX, pixelY, footYOffset = 0) => {
+      seen.add(key);
+      const { world, w, h } = this.billboardFor(cv, pixelX, pixelY);
+      let b = this.fieldBillboards.get(key);
+      if (!b) {
+        const tex = new THREE.CanvasTexture(cv);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+        this.scene3D.add(mesh);
+        b = { mesh, tex, canvas: null };
+        this.fieldBillboards.set(key, b);
+      }
+      if (b.canvas !== cv) {
+        b.canvas = cv;
+        b.tex.image = cv;
+        b.tex.needsUpdate = true;
+        b.mesh.scale.set(w, h, 1);
+      }
+      b.mesh.position.set(world.x, world.y + h / 2 + footYOffset, world.z);
+      b.mesh.rotation.y = Math.atan2(
+        this.camera3D.position.x - world.x, this.camera3D.position.z - world.z,
+      );
+    };
+
+    for (const n of this.map.npcs ?? []) {
+      const cv = npcSprite(n.kind, (n.x + n.y) % 4, Math.floor(this.animT * 1.6 + n.x * 0.7 + n.y * 0.3) % 2);
+      sync(`npc:${n.x},${n.y}`, cv, n.x * TS, n.y * TS + TS);
+    }
+    const leader = this.g.leader;
+    const pcv = actorSprite({
+      classId: leader.classId, raceId: leader.raceId, elementId: leader.elementId,
+      skin: leader.skin, hair: leader.hair, equip: leader.equip,
+      frame: this.moving ? (Math.floor(this.animT * 8) % 2) : 0,
+    });
+    const pp = this.playerPixel();
+    sync('player', pcv, pp.x, pp.y + TS);
+
+    for (const [key, b] of this.fieldBillboards) {
+      if (!seen.has(key)) { this.scene3D.remove(b.mesh); this.fieldBillboards.delete(key); }
+    }
+  }
+
+  /** Re-bakes the ground texture, syncs billboards and renders the arena to
+   *  the offscreen canvas; draw() blits the result in as this frame's
+   *  backdrop. Lighting follows `look` so night/rain/indoor darkening still
+   *  reads on the 3D scene the same way it tinted the flat 2D one. */
+  render3D() {
+    this.renderWorldTexture();
+    this.syncFieldBillboards();
+    const look = this.look;
+    this.sun.intensity = look.dark ? 0.5 : 1.6;
+    this.ambient.intensity = look.dark ? 0.55 : 0.85;
+    this.ambient.color.set(look.dark ? 0x8890c0 : 0xffffff);
+    // fills anywhere past the (deliberately oversized) ground plane's edge —
+    // matches the map's own background colour instead of showing through
+    // as flat black
+    if (!this.scene3DBg) this.scene3DBg = new THREE.Color();
+    this.scene3DBg.set(this.map.bg ?? '#0b0e18');
+    this.scene3D.background = this.scene3DBg;
+    this.renderer3D.render(this.scene3D, this.camera3D);
+  }
 
   /** Called every frame; playMusic() is a no-op once the named track is
    *  already playing, so this is a cheap way to pick up a town/wild switch
@@ -566,92 +822,36 @@ export class FieldScene {
     scr.setGrade(look.grade, look.amount);
     scr.vignette = look.vignette;
     scr.bloom = look.dark ? 0.62 : 0.22;
-    scr.clear(m.bg ?? '#0b0e18');
-    const cam = this.camera();
-    const { w, h } = mapSize(m);
 
-    const x0 = Math.max(0, Math.floor(cam.x / TS));
-    const y0 = Math.max(0, Math.floor(cam.y / TS));
-    const x1 = Math.min(w - 1, Math.ceil((cam.x + W) / TS));
-    const y1 = Math.min(h - 1, Math.ceil((cam.y + H) / TS));
-    const theme = m.theme ?? 'green';
+    // the 3D arena (ground, buildings, mass, closed chests, the player and
+    // every NPC as camera-facing billboards) renders to its own offscreen
+    // canvas and gets blitted in as this frame's whole backdrop — see
+    // setup3D/render3D/renderWorldTexture for how that's built.
+    this.render3D();
+    scr.ctx.drawImage(this.canvas3D, 0, 0, W, H);
 
-    // Two passes. Ground first for the whole view, then the masses on top of it
-    // — a peak that spills into the cell above must not be painted over by that
-    // cell's own ground.
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const t = tileAt(m, x, y);
-        if (!t) continue;
-        const px = x * TS - cam.x, py = y * TS - cam.y;
-        if (isOutdoor(t.tile)) {
-          scr.ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sampler(m, x, y), theme), px, py);
-        } else if (isStructure(t.tile)) {
-          // A house stands on ground, so lay ground under it first. The building
-          // itself reads as grass, but its neighbours are sampled for real, so a
-          // house beside a road still gets the road running up to its wall.
-          scr.ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS,
-            groundUnder(m, x, y), theme), px, py);
-        } else {
-          scr.ctx.drawImage(tileSprite(t.tile), px, py);
-        }
-      }
-    }
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const t = tileAt(m, x, y);
-        if (!t) continue;
-        const px2 = x * TS - cam.x, py2 = y * TS - cam.y;
-        const smp = sampler(m, x, y);
-        // buildings draw over the ground, and over the cells they overhang
-        if (hasStructure(smp)) {
-          scr.ctx.drawImage(buildingSprite(`${m.id}|${x}|${y}`, smp, theme), px2, py2);
-        }
-        if (!isOutdoor(t.tile)) continue;
-        const sample = smp;
-        const px = x * TS - cam.x, py = y * TS - cam.y;
-        if (hasMass(sample)) {
-          scr.ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sample), px, py);
-        }
-        // features that belong to this cell alone still use their own stamp
-        if (FEATURE.has(t.tile)) scr.ctx.drawImage(tileSprite(t.tile), px, py);
-      }
-    }
-
-    // chests still closed
-    for (const c of m.chests ?? []) {
-      if (this.g.flag(`chest.${c.id}`)) continue;
-      scr.ctx.drawImage(tileSprite('chest'), c.x * TS - cam.x, c.y * TS - cam.y);
-    }
-
-    // NPCs
-    for (const n of m.npcs ?? []) {
-      const px = n.x * TS - cam.x, py = n.y * TS - cam.y;
-      if (px < -TS || py < -TS || px > W || py > H) continue;
-      drawNpc(scr, px, py, n, this.animT, this.g);
-    }
-
-    // boss markers
+    // boss markers — 2D glow/outline overlays, positioned by projecting
+    // their tile through the same camera the arena itself rendered with
     for (const key of BOSS_SLOTS) {
       const b = m[key];
       if (!b || this.g.flag(`boss.${b.flag}`)) continue;
-      const px = b.x * TS - cam.x, py = b.y * TS - cam.y;
+      const p = this.tileScreenPos(b.x, b.y);
       const pulse = 0.5 + 0.5 * Math.sin(this.animT * 3);
-      scr.light(px + TS / 2, py + TS / 2, 18 + pulse * 6, 'rgba(255,70,90,0.6)', 0.35 + pulse * 0.25);
-      scr.outline(px + 5, py + 5, TS - 10, TS - 10, PAL.red);
+      scr.light(p.x, p.y, 18 + pulse * 6, 'rgba(255,70,90,0.6)', 0.35 + pulse * 0.25);
+      scr.outline(p.x - TS / 2 + 5, p.y - TS / 2 + 5, TS - 10, TS - 10, PAL.red);
     }
 
-    // player
-    const px = this.playerPixel();
-    const cv = actorSprite({
-      classId: this.g.leader.classId, raceId: this.g.leader.raceId, elementId: this.g.leader.elementId,
-      skin: this.g.leader.skin, hair: this.g.leader.hair, equip: this.g.leader.equip,
-      frame: this.moving ? (Math.floor(this.animT * 8) % 2) : 0,
-    });
-    scr.ctx.drawImage(cv, Math.round(px.x - cam.x - (cv.width - TS) / 2), Math.round(px.y - cam.y - (cv.height - TS) - 4));
+    // NPC glyphs (recruit "*", service marks) — same projection, drawn over
+    // each NPC's own billboard
+    for (const n of m.npcs ?? []) {
+      const p = this.tileScreenPos(n.x, n.y);
+      drawNpcGlyph(scr, p.x, p.y, n, this.animT, this.g);
+    }
 
     // lighting: a warm pool on the player, torches in the dark, ambient motes
-    const lx = Math.round(px.x - cam.x + TS / 2), ly = Math.round(px.y - cam.y + TS / 2);
+    const pp = this.playerPixel();
+    const lp = this.pixelScreenPos(pp.x + TS / 2, pp.y + TS / 2);
+    const lx = Math.round(lp.x), ly = Math.round(lp.y);
     if (look.dark) {
       scr.ctx.save();
       scr.ctx.globalCompositeOperation = 'multiply';
@@ -739,12 +939,10 @@ const groundUnder = (m, x, y) => (dx, dy) => {
   return isStructure(t) ? 'grass' : t;
 };
 
-function drawNpc(scr, x, y, npc, t, g) {
-  // a slow two-frame idle, offset per NPC so a street does not breathe in unison
-  const frame = Math.floor(t * 1.6 + npc.x * 0.7 + npc.y * 0.3) % 2;
-  const cv = npcSprite(npc.kind, (npc.x + npc.y) % 4, frame);
-  scr.ctx.drawImage(cv, Math.round(x + (TS - cv.width) / 2), Math.round(y + TS - cv.height));
-  // a small marker over service NPCs, or a still-recruitable ally
+/** A small marker over service NPCs, or a still-recruitable ally — the NPC's
+ *  own sprite is a 3D billboard now (see syncFieldBillboards); this just
+ *  draws the 2D glyph over wherever that billboard projects to. */
+function drawNpcGlyph(scr, x, y, npc, t, g) {
   if (npc.kind === 'recruit') {
     if (!g.flag(`story.recruited.${npc.id}`)) {
       scr.text('*', x + 6, y - 7 + Math.round(Math.sin(t * 3)), PAL.accent);
