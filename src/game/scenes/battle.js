@@ -197,6 +197,29 @@ export class BattleScene {
     this.billboards = new Map();
   }
 
+  /** Releases the offscreen WebGL context and every GPU resource this scene
+   *  allocated. Every battle builds its own renderer (see setup3D) rather
+   *  than sharing one, and the scene stack doesn't call this on its own —
+   *  without it, popping back to the field after a fight leaves the old
+   *  context and its textures/geometries permanently allocated, unreachable
+   *  and un-freeable by ordinary JS garbage collection. A few battles in,
+   *  the browser starts forcibly evicting the oldest live WebGL contexts to
+   *  stay under its per-page limit, which is what a corrupted/blank battle
+   *  backdrop and a steadily slowing game after a while of play were: not
+   *  jank, a real resource leak. The app's scene stack calls this whenever
+   *  this scene is popped or replaced — see main.js. */
+  dispose3D() {
+    this.scene3D.traverse((obj) => {
+      obj.geometry?.dispose();
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material].filter(Boolean);
+      for (const m of mats) { m.map?.dispose(); m.dispose(); }
+    });
+    this.scene3D.background?.dispose?.();
+    this.renderer3D.dispose();
+    this.renderer3D.forceContextLoss();
+    this.billboards.clear();
+  }
+
   /** The same region -> palette table the old 2D backdrop used, kept as one
    *  source of truth for both the 3D arena's colours and the post-process
    *  grade/vignette/bloom settings applied on top of it. */

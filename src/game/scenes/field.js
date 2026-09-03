@@ -170,6 +170,25 @@ export class FieldScene {
     this.fieldBillboards = new Map();
   }
 
+  /** Releases the offscreen WebGL context and every GPU resource this scene
+   *  allocated — see battle.js's dispose3D for why this matters. This field
+   *  scene is usually reused across map warps (setup3D only runs once per
+   *  push), so it leaks far less often in practice than a battle does, but
+   *  it still needs disposing on the rarer full exits (e.g. game over). The
+   *  app's scene stack calls this whenever this scene is popped or replaced
+   *  — see main.js. */
+  dispose3D() {
+    this.scene3D.traverse((obj) => {
+      obj.geometry?.dispose();
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material].filter(Boolean);
+      for (const m of mats) { m.map?.dispose(); m.dispose(); }
+    });
+    this.scene3D.background?.dispose?.();
+    this.renderer3D.dispose();
+    this.renderer3D.forceContextLoss();
+    this.fieldBillboards.clear();
+  }
+
   /**
    * A tile-space pixel position (already offset by camera(), exactly the
    * coordinates the old 2D drawImage calls used) -> that same point's 3D

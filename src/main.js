@@ -98,12 +98,12 @@ class App {
 
   applyPop(result) {
     if (this.stack.length <= 1) return;
-    this.stack.pop();
+    this.stack.pop().dispose3D?.();
     this.current?.onResume?.(result);
   }
 
   applyReplace(id, opts) {
-    this.stack.pop();
+    this.stack.pop().dispose3D?.();
     return this.applyPush(id, opts);
   }
 
