@@ -141,14 +141,17 @@ export class FieldScene {
     this.worldCanvas.height = H + MARGIN_PX * 2;
     this.worldTex = new THREE.CanvasTexture(this.worldCanvas);
     this.worldTex.magFilter = THREE.NearestFilter;
-    // Linear rather than nearest-with-mipmaps here specifically: this
-    // texture is re-uploaded every frame (renderWorldTexture scrolls it),
-    // and regenerating mipmaps for an 800x600-ish canvas every frame is
-    // real GPU cost the billboards (which only change texture when their
-    // sprite frame does) don't pay. A single linear sample still trades
-    // away the nearest-neighbour shimmer on distant tiles that mipmapping
-    // would have fixed properly, just without the per-frame cost.
-    this.worldTex.minFilter = THREE.LinearFilter;
+    // Plain nearest minification, no mipmaps: this texture is re-uploaded
+    // every frame (renderWorldTexture scrolls it), so mipmap regeneration
+    // here is real GPU cost billboard textures (which only change texture
+    // when their owner's sprite frame does) don't pay. Linear minification
+    // was tried first to fight shimmer on distant tiles, but it softened
+    // the whole ground plane every frame ("squishy") for a texel-aliasing
+    // risk that's minor here — the ground stays close to native scale
+    // across most of the view, unlike the billboards, which really did
+    // need mipmaps. Crisp now; revisit with mipmaps only if ground shimmer
+    // turns out to be a real problem.
+    this.worldTex.minFilter = THREE.NearestFilter;
     this.worldTex.colorSpace = THREE.SRGBColorSpace;
     const planeW = this.worldCanvas.width / TS, planeH = this.worldCanvas.height / TS;
     this.groundMesh = new THREE.Mesh(
@@ -279,12 +282,14 @@ export class FieldScene {
       let b = this.fieldBillboards.get(key);
       if (!b) {
         const tex = new THREE.CanvasTexture(cv);
-        // Nearest magnification keeps the sprite crisp at native size;
-        // mipmapped linear minification avoids nearest-neighbour shimmer
-        // when it renders smaller (a zoomed-out or crowded view) — see the
-        // battle scene's billboards for the same fix and why.
+        // Nearest magnification keeps the sprite crisp at native size.
+        // Nearest-filtered mipmaps for minification: plain nearest with no
+        // mipmaps aliases into shimmer when a sprite renders smaller than
+        // native size, and linear-filtered mipmaps fix that but blur the
+        // pixel art ("squishy") — nearest mipmaps avoid both, same as the
+        // battle scene's billboards.
         tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.minFilter = THREE.NearestMipmapNearestFilter;
         tex.generateMipmaps = true;
         tex.colorSpace = THREE.SRGBColorSpace;
         const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });

@@ -259,15 +259,18 @@ export class BattleScene {
       let b = this.billboards.get(u.uid);
       if (!b) {
         const tex = new THREE.CanvasTexture(cv);
-        // Nearest for magnification keeps pixel edges crisp when a sprite is
-        // at or above native size; nearest for *minification* is what made a
-        // zoomed-out formation look like noisy smudges instead of small
-        // clean sprites — with no mipmaps, it samples one texel per screen
-        // pixel with no averaging, so fine pixel-art detail aliases into
-        // shimmer. Mipmapped linear filtering only kicks in once a sprite
-        // actually renders smaller than native, so nothing changes up close.
+        // Nearest magnification keeps pixel edges crisp at native size.
+        // Plain nearest *minification* (no mipmaps) is what made a shrunk
+        // formation look like noisy smudges — one texel per screen pixel,
+        // no averaging, so fine pixel-art detail aliases into shimmer.
+        // Linear-filtered mipmaps fix that but *blur* the art instead —
+        // exactly the "squishy" softness pixel art can't afford. Nearest-
+        // filtered mipmaps keep both: each mip level is still a crisp,
+        // blocky pixel-art image, just a properly pre-downsampled one, so
+        // a shrunk sprite looks like a smaller clean sprite instead of
+        // either shimmering noise or a smear.
         tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.minFilter = THREE.NearestMipmapNearestFilter;
         tex.generateMipmaps = true;
         tex.colorSpace = THREE.SRGBColorSpace;
         const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
