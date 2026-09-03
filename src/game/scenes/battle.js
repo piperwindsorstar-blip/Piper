@@ -31,11 +31,10 @@ import * as THREE from '../../vendor/three.module.js';
 // smaller than the 1.7-tall sprite standing on it, which is what made a
 // full 9-member party read as one overlapping cluster per lane instead of
 // three distinct ranks.
-// FRONT_Z was 0.5 (a 1.0 gap between the two front ranks) — barely more
-// than a sprite's own width, so the two sides read as one huddled cluster
-// instead of a battlefield with a gap in it. 1.1 doubles that gap without
-// touching rank spacing within a side.
-const WORLD_LANE_STEP = 2.0, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 1.1;
+// FRONT_Z started at 0.5 (a 1.0 gap), then 1.1 (2.2) — still read as too
+// close. 1.8 puts a real 3.6-unit no-man's-land between the front ranks,
+// over two sprite-widths, without touching rank spacing within a side.
+const WORLD_LANE_STEP = 2.0, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 1.8;
 // Each back rank stands a literal step higher than the one in front of it —
 // real 3D risers (see setup3D), not just a further/smaller billboard. Under
 // this orthographic camera, depth alone was reading fairly flat; an actual
@@ -173,13 +172,14 @@ export class BattleScene {
     // placed further away was ever visible behind it. Pushed forward here so
     // its far edge stops a bit past the back rank instead of at the world
     // origin, opening an actual strip of sky for the horizon plane below to
-    // occupy — still comfortably past the deepest occupied rank (z ~= -4.3).
+    // occupy — still comfortably past the deepest occupied rank (z ~= -5.6,
+    // widened along with WORLD_FRONT_Z above).
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(30, 30),
       new THREE.MeshLambertMaterial({ color: T.ground }),
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, 0, 9.8);
+    ground.position.set(0, 0, 9.1);
     scene.add(ground);
 
     // Real 3D risers under ranks B and C (rank A stays at ground level) —
@@ -218,13 +218,13 @@ export class BattleScene {
       // an oversized plane here would push most of the horizon texture's
       // width outside the frame, clipping the orb and thinning out the
       // skyline to whatever few peaks happened to land in view.
-      new THREE.PlaneGeometry(22, 2.96),
+      new THREE.PlaneGeometry(22, 2.12),
       new THREE.MeshLambertMaterial({
         map: this.horizonTexture(T, this.battle.formation.region ?? 'default'),
         transparent: true, alphaTest: 0.04, fog: false,
       }),
     );
-    far.position.set(0, -3.74, -9.5);
+    far.position.set(0, -3.32, -9.5);
     scene.add(far);
 
     this.billboards = new Map();
@@ -312,7 +312,7 @@ export class BattleScene {
     // Match the canvas's aspect ratio to the far plane's actual world
     // width:height (see setup3D) so the orb renders as a circle rather
     // than getting stretched into an ellipse by a mismatched texture.
-    const w = 142, h = 20;
+    const w = 142, h = 14;
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d');
