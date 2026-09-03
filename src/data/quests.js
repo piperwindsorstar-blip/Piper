@@ -94,6 +94,44 @@ export const QUESTS = {
     type: 'kill', family: 'aberration', count: 3,
     reward: { gold: 260, lp: 5 },
   },
+  emberWisps: {
+    id: 'emberWisps',
+    npc: 'Ashfall Warden',
+    title: 'Ember-Wisps',
+    hook: "The reach breeds these ash-wraiths faster than we can ward them off. Three dead and this "
+      + "town gets a quiet night for once.",
+    accept: "Three wisps. Watch your hands — they don't cool the way smoke should.",
+    reminder: "Still three ash-wraiths short. The reach isn't getting any quieter without you.",
+    turnIn: "Three down. First quiet night this reach has had since Kharos started dreaming out loud.",
+    type: 'kill', family: 'spirit', count: 3,
+    reward: { gold: 320, lp: 5 },
+  },
+  riverToll: {
+    id: 'riverToll',
+    npc: 'Tidewatch Vigil',
+    title: 'The River Toll',
+    hook: "Everything the Vale drowns eventually washes up as pearl. Bring me three and I'll tell "
+      + "you what the congregation used to trade them for.",
+    accept: "Three river pearls. I'll be here — I'm always here.",
+    reminder: "Still short on pearls. The Vale isn't shy about giving them up, if you go looking.",
+    turnIn: "Three. They used to trade these for absolution, before the Vicar decided he'd rather "
+      + "keep both the pearls and the sinners. Small mercy, undoing that.",
+    type: 'item', itemId: 'riverpearl', count: 3,
+    reward: { gold: 420, lp: 6 },
+  },
+  lastVigilLight: {
+    id: 'lastVigilLight',
+    npc: 'Glazier Enna',
+    title: "What the Fields Grow",
+    hook: "Four of whatever's out there in the Fields, dead, and brought back whole enough to prove "
+      + "it. I want to know if Vessia's warden-shapes still count as her subjects with her gone.",
+    accept: "Four. Whole enough to study, if the fight allows it.",
+    reminder: "Still four short. The Fields aren't running out of them any time soon.",
+    turnIn: "They still count. Whatever she was warden of, it didn't end when she did. That's either "
+      + "reassuring or the opposite — I haven't decided.",
+    type: 'kill', family: 'aberration', count: 4,
+    reward: { gold: 900, lp: 8 },
+  },
 };
 
 function familyKills(g, family) {
