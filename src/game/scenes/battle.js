@@ -25,10 +25,23 @@ import * as THREE from '../../vendor/three.module.js';
 // at positive Z so both front ranks (col 0) face each other across Z=0 —
 // the exact same "front ranks meet at a seam" arrangement the 2D grid used,
 // now with actual depth instead of a screen-space illusion of it.
-const WORLD_LANE_STEP = 1.55, WORLD_RANK_STEP = 1.05, WORLD_FRONT_Z = 0.55;
+// Rank spacing must clear a standing sprite's own height (ACTOR_WORLD_H) or
+// consecutive ranks' billboards overlap on screen — the original 1.05 was
+// smaller than the 1.7-tall sprite standing on it, which is what made a
+// full 9-member party read as one overlapping cluster per lane instead of
+// three distinct ranks.
+const WORLD_LANE_STEP = 2.0, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 0.5;
 const ACTOR_WORLD_H = 1.7;   // world height of a standard 48px-tall actor sprite
-const CAM_POS = { x: 0, y: 5.6, z: 7.4 };
-const CAM_LOOK = { x: 0, y: 1.1, z: -1.2 };
+// Orthographic, not perspective, and for the same reason field.js's camera
+// is: fitting every rank of a full 9-a-side battle (front to back, both
+// sides) is a wide enough world-Z range that a perspective camera close
+// enough to feel "angled" either crops the far side or blows up the near
+// one. Orthographic keeps every rank a consistent, fully-visible size —
+// the tilt alone still reads as depth (the back ranks sit higher and
+// tighter on screen), it just doesn't also scale them down.
+const CAM_POS = { x: 0, y: 6, z: 5 };
+const CAM_LOOK = { x: 0, y: 0, z: 0 };
+const BATTLE_VIEW_SIZE = 5.6;
 
 // CELL_W/CELL_H are the nominal 2D box every overlay (HP bars, popups, the
 // wheel) is still positioned against — see cellPos/unitPos below for how
@@ -115,7 +128,10 @@ export class BattleScene {
 
     const scene = new THREE.Scene();
     this.scene3D = scene;
-    this.camera3D = new THREE.PerspectiveCamera(32, W / H, 0.1, 60);
+    const aspect = W / H;
+    this.camera3D = new THREE.OrthographicCamera(
+      -BATTLE_VIEW_SIZE * aspect, BATTLE_VIEW_SIZE * aspect, BATTLE_VIEW_SIZE, -BATTLE_VIEW_SIZE, 0.1, 60,
+    );
     this.camera3D.position.set(CAM_POS.x, CAM_POS.y, CAM_POS.z);
     this.camera3D.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
 
@@ -243,8 +259,16 @@ export class BattleScene {
       let b = this.billboards.get(u.uid);
       if (!b) {
         const tex = new THREE.CanvasTexture(cv);
+        // Nearest for magnification keeps pixel edges crisp when a sprite is
+        // at or above native size; nearest for *minification* is what made a
+        // zoomed-out formation look like noisy smudges instead of small
+        // clean sprites — with no mipmaps, it samples one texel per screen
+        // pixel with no averaging, so fine pixel-art detail aliases into
+        // shimmer. Mipmapped linear filtering only kicks in once a sprite
+        // actually renders smaller than native, so nothing changes up close.
         tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.generateMipmaps = true;
         tex.colorSpace = THREE.SRGBColorSpace;
         const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);

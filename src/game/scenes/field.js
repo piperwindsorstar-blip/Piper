@@ -141,7 +141,14 @@ export class FieldScene {
     this.worldCanvas.height = H + MARGIN_PX * 2;
     this.worldTex = new THREE.CanvasTexture(this.worldCanvas);
     this.worldTex.magFilter = THREE.NearestFilter;
-    this.worldTex.minFilter = THREE.NearestFilter;
+    // Linear rather than nearest-with-mipmaps here specifically: this
+    // texture is re-uploaded every frame (renderWorldTexture scrolls it),
+    // and regenerating mipmaps for an 800x600-ish canvas every frame is
+    // real GPU cost the billboards (which only change texture when their
+    // sprite frame does) don't pay. A single linear sample still trades
+    // away the nearest-neighbour shimmer on distant tiles that mipmapping
+    // would have fixed properly, just without the per-frame cost.
+    this.worldTex.minFilter = THREE.LinearFilter;
     this.worldTex.colorSpace = THREE.SRGBColorSpace;
     const planeW = this.worldCanvas.width / TS, planeH = this.worldCanvas.height / TS;
     this.groundMesh = new THREE.Mesh(
@@ -272,8 +279,13 @@ export class FieldScene {
       let b = this.fieldBillboards.get(key);
       if (!b) {
         const tex = new THREE.CanvasTexture(cv);
+        // Nearest magnification keeps the sprite crisp at native size;
+        // mipmapped linear minification avoids nearest-neighbour shimmer
+        // when it renders smaller (a zoomed-out or crowded view) — see the
+        // battle scene's billboards for the same fix and why.
         tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.generateMipmaps = true;
         tex.colorSpace = THREE.SRGBColorSpace;
         const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
