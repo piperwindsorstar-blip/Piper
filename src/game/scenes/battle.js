@@ -31,6 +31,12 @@ const CENTER_X = W / 2, FILE_STEP = 108;
 const ENEMY_GROUND = [95, 71, 47];      // ground-line y per column, front to back
 const PARTY_GROUND = [156, 198, 240];
 
+// Formation labels: rows A/B/C run front-to-back (column 0 = row A = the
+// front rank); lanes 1/2/3 run left-to-right (grid.row = lane index). Only
+// one unit per lane may act each round — see Battle.actedLane.
+const RANK_LABELS = ['A', 'B', 'C'];
+const LANE_LABELS = ['1', '2', '3'];
+
 // a message/status strip straddling the seam, used for turn narration
 const MSG_Y = SEAM_TOP - 11, MSG_H = 40;
 
@@ -416,9 +422,13 @@ export class BattleScene {
   }
 
   updateMove(input) {
+    // Depth (rank A/B/C) now runs vertically on screen and lanes (1/2/3) run
+    // horizontally, so up/down steps the rank and left/right steps the lane
+    // — matching what the cursor actually does on the grid, not the engine's
+    // internal row/col naming.
     const d = input.dir();
-    if (d.y) { this.moveCursor.row = Math.max(0, Math.min(2, this.moveCursor.row + d.y)); sfx.move(); }
-    if (d.x) { this.moveCursor.col = Math.max(0, Math.min(2, this.moveCursor.col + d.x)); sfx.move(); }
+    if (d.y) { this.moveCursor.col = Math.max(0, Math.min(2, this.moveCursor.col + d.y)); sfx.move(); }
+    if (d.x) { this.moveCursor.row = Math.max(0, Math.min(2, this.moveCursor.row + d.x)); sfx.move(); }
     if (input.tap('cancel')) { sfx.cancel(); this.state = 'command'; return; }
     if (input.tap('confirm')) {
       sfx.confirm();
@@ -581,6 +591,9 @@ export class BattleScene {
 
     this.drawGrid(scr, 'enemy');
     this.drawGrid(scr, 'party');
+    this.drawGridLabels(scr, 'enemy');
+    this.drawGridLabels(scr, 'party');
+    this.drawLaneNumbers(scr);
 
     // units, back column first so front overlaps
     const all = [...b.enemies, ...b.party].sort((a, z) => z.grid.col - a.grid.col);
@@ -678,6 +691,32 @@ export class BattleScene {
           scr.outline(x - 2, y + CELL_H - 9, CELL_W - 2, 9, PAL.gold);
         }
       }
+    }
+  }
+
+  /** Rank letters (A/B/C, front to back) along the outer edge of one side's
+   *  grid, so "row A is the front" is something the player can just read
+   *  off the field rather than remember. */
+  drawGridLabels(scr, side) {
+    const ground = side === 'enemy' ? ENEMY_GROUND : PARTY_GROUND;
+    // Tucked in from the very edge, clear of the leftmost file's own stat
+    // card (which reaches left to about CENTER_X - FILE_STEP*1.5 - 16).
+    const labelX = CENTER_X - FILE_STEP * 1.5 - 44;
+    for (let col = 0; col < 3; col++) {
+      scr.textCenter(RANK_LABELS[col], labelX, ground[col] - CELL_H / 2 - 4, PAL.textFaint);
+    }
+  }
+
+  /** Lane numbers (1/2/3, left to right) shared by both grids at the seam —
+   *  a lane already used this round dims out, since only one unit per lane
+   *  may act per round (Battle.actedLane). Shown for the party's own lanes,
+   *  which is the discipline a player actually has to plan around. */
+  drawLaneNumbers(scr) {
+    const b = this.battle;
+    for (let lane = 0; lane < 3; lane++) {
+      const fx = CENTER_X + (lane - 1) * FILE_STEP;
+      const locked = b.actedLane.party.has(lane);
+      scr.textCenter(LANE_LABELS[lane], fx, SEAM_TOP + 1, locked ? PAL.textFaint : PAL.accent);
     }
   }
 
@@ -920,8 +959,8 @@ export class BattleScene {
     } else if (this.state === 'move') {
       scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
       scr.text('REPOSITION', 24, MSG_Y + 9, PAL.accent);
-      scr.text('Column 0 is the front rank: it reaches, and it is reached.', 24, MSG_Y + 24, PAL.textDim);
-      scr.textRight(`row ${this.moveCursor.row}   column ${this.moveCursor.col}`, W - 24, MSG_Y + 24, PAL.text);
+      scr.text('Row A is the front rank: it reaches, and it is reached.', 24, MSG_Y + 24, PAL.textDim);
+      scr.textRight(`lane ${LANE_LABELS[this.moveCursor.row]}   row ${RANK_LABELS[this.moveCursor.col]}`, W - 24, MSG_Y + 24, PAL.text);
       cmdBox();
     }
   }

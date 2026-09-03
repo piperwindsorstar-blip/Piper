@@ -176,6 +176,14 @@ export class Battle {
     this.round = 0;
     this.order = [];
     this.turnIndex = 0;
+    // Lane discipline: only one unit per formation column (a "1", "2" or "3"
+    // lane running front-to-back through rows A/B/C) may act per round.
+    // Keyed by lane -> the uid that used it, not just a Set, so a boss's own
+    // follow-up turn (see buildOrder's `extra` slot) can still fire — it's
+    // the same unit re-using its own lane, not a second unit crowding in.
+    // Reset each time buildOrder() opens a new round, so the lock never
+    // outlives the round it was earned in.
+    this.actedLane = { party: new Map(), enemy: new Map() };
     this.escapeAttempts = 0;
     this.guaranteedEscape = false;
     this.preemptive = opts.preemptive ?? false;
@@ -282,12 +290,18 @@ export class Battle {
     }
     this.turnIndex = 0;
     this.round++;
+    this.actedLane = { party: new Map(), enemy: new Map() };
   }
+
+  /** The formation column (1/2/3, drawn left-to-right) a unit's lane belongs
+   *  to — labelled rows A/B/C run front-to-back within it. */
+  lane(unit) { return unit.grid.row; }
 
   current() {
     while (this.turnIndex < this.order.length) {
       const { u } = this.order[this.turnIndex];
-      if (u.alive && canAct(u.ref ?? u)) return u;
+      const lockedBy = this.actedLane[u.side].get(this.lane(u));
+      if (u.alive && canAct(u.ref ?? u) && (lockedBy === undefined || lockedBy === u.uid)) return u;
       this.turnIndex++;
     }
     return null;
@@ -495,6 +509,7 @@ export class Battle {
    */
   act(actor, action) {
     this.fx.length = 0;
+    this.actedLane[actor.side].set(this.lane(actor), actor.uid);
     if (actor.statuses.confuse && this.rng.chance(0.5)) {
       const pool = this.units().filter((u) => u.alive && u.uid !== actor.uid);
       if (pool.length) {
