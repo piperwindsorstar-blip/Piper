@@ -7,9 +7,9 @@
 //  target, everything out of reach for the chosen action is greyed out.
 // ============================================================================
 
-import { PAL, W, H, drawFit } from '../../engine/screen.js';
+import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
-import { actorSprite, actorPortraitSprite, monsterSprite } from '../../engine/sprites.js';
+import { actorSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE, gridNeighbors } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '../character.js';
@@ -19,19 +19,20 @@ import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
 
-// Two facing grids on a 480x270 stage. Rows are staggered rather than square:
-// each row further from the centre is pushed outward, so three ranks in one
-// column read as depth instead of a totem pole of overlapping sprites.
+// Two stacked bands on a 480x270 stage: the enemy formation across the top
+// 39%, the party's own 3x3 grid across the bottom 60% (the leftover 1% is
+// the horizon seam between them). Column 0 is still "the front rank" for
+// both sides — it just now reads as *nearest the seam* rather than nearest
+// the middle of the screen, so the two front ranks face each other directly
+// across the divide instead of down a shared horizontal lane.
 const CELL_W = 48, CELL_H = 40;
-const GRID_Y = 26;
-const ENEMY_X = 176, PARTY_X = 268;
-const ROW_SHIFT = [-14, 0, 14];
+const SEAM_TOP = Math.round(H * 0.39), SEAM_BOTTOM = H - Math.round(H * 0.60);
+const CENTER_X = W / 2, FILE_STEP = 108;
+const ENEMY_GROUND = [95, 71, 47];      // ground-line y per column, front to back
+const PARTY_GROUND = [156, 198, 240];
 
-// bottom bar — a command box on the left, the party roster on the right, and
-// a message/target strip above both
-const BAR_Y = 194, BAR_H = 66;
-const PANEL_X = 168;
-const MSG_Y = 148, MSG_H = 40;
+// a message/status strip straddling the seam, used for turn narration
+const MSG_Y = SEAM_TOP - 11, MSG_H = 40;
 
 const MSG_TIME = 0.85;
 
@@ -61,7 +62,7 @@ export class BattleScene {
     this.targetPool = [];
     this.moveCursor = { row: 1, col: 0 };
     this.flash = 0;
-    this.cmdWheel = new CommandWheel({ x: 34, y: BAR_Y + 10, cell: 22 });
+    this.cmdWheel = new CommandWheel({ cell: 32 });
     this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
     this.fxp = new Particles(360);
     this.projectiles = [];
@@ -136,28 +137,29 @@ export class BattleScene {
 
   // --- layout --------------------------------------------------------------
   cellPos(side, row, col) {
-    const shift = ROW_SHIFT[row] * (side === 'enemy' ? -1 : 1);
-    const x = side === 'enemy' ? ENEMY_X - col * CELL_W : PARTY_X + col * CELL_W;
-    return { x: x + shift, y: GRID_Y + row * CELL_H };
+    const ground = (side === 'enemy' ? ENEMY_GROUND : PARTY_GROUND)[col];
+    const fileCenterX = CENTER_X + (row - 1) * FILE_STEP;
+    return { x: fileCenterX - CELL_W / 2, y: ground - CELL_H };
   }
 
   unitPos(u) {
     const p = this.cellPos(u.side, u.grid.row, u.grid.col);
     if (this.state === 'intro') {
-      // both ranks slide in from off-screen and settle as the intro banner
-      // reads, rather than simply appearing already in formation
+      // both ranks slide in from off-screen — enemies down from above the
+      // top edge, the party up from below the bottom edge — and settle as
+      // the intro banner reads, rather than simply appearing in formation
       const k = (this.introT / this.introDur) ** 2;
       const dir = u.side === 'enemy' ? -1 : 1;
-      return { x: p.x + dir * 90 * k, y: p.y };
+      return { x: p.x, y: p.y + dir * 90 * k };
     }
     if (this.attackAnim && this.attackAnim.uid === u.uid && this.attackAnim.foe) {
       const a = this.attackAnim;
-      const dir = u.side === 'party' ? -1 : 1;   // lunge toward the opposing side
+      const dir = u.side === 'party' ? -1 : 1;   // lunge toward the opposing side, across the seam
       let k = 0;
       if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
       else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);   // continues from windup's -0.35 up to a full 1.0 lunge
       else k = 1 - (a.t / ATK_RECOIL);
-      return { x: p.x + dir * 11 * k, y: p.y };
+      return { x: p.x, y: p.y + dir * 11 * k };
     }
     return p;
   }
@@ -597,7 +599,6 @@ export class BattleScene {
 
     if (this.flash > 0) scr.fade(this.flash * 1.4, '#ffffff');
 
-    this.drawStatusBar(scr);
     this.drawUi(scr);
 
     if (this.state === 'intro') {
@@ -626,7 +627,7 @@ export class BattleScene {
     scr.vignette = region === 'greenfield' ? 0.48 : 0.68;
     scr.bloom = region === 'greenfield' ? 0.3 : 0.6;
 
-    const HORIZON = 60;   // above the front rank's feet, so the ranks stand on it
+    const HORIZON = SEAM_TOP;   // the sky/ground line matches the enemy/party seam exactly
     scr.clear(T.gdark);
     scr.vgrad(0, 0, W, HORIZON, T.sky0, T.sky1);
     if (region === 'caverns' || region === 'ruins' || region === 'boss') {
@@ -761,6 +762,34 @@ export class BattleScene {
     st.slice(0, 3).forEach((k, i) => {
       scr.rect(p.x + CELL_W / 2 - 10 + i * 7, p.y + 2, 5, 5, STATUS[k].kind === 'bad' ? PAL.magenta : PAL.cyan);
     });
+
+    // party stat card: name, HP, MP and IP, pinned beside each member's own
+    // sprite (leaning outward, away from the centre file, so it never runs
+    // off the side of the screen) — replaces the old side roster panel, so
+    // the numbers that matter live wherever that character is standing,
+    // not off in a corner the player has to glance away to read.
+    if (u.isPC) {
+      const ch = u.ref;
+      const s = u.stats();
+      const ratio = ch.hp / s.maxHp;
+      const outward = u.grid.row < 1 ? -1 : 1;
+      const cardW = 42;
+      const cx = outward > 0 ? p.x + CELL_W + 8 : p.x - 8 - cardW;
+      const cy = p.y + CELL_H - 32;
+      scr.ctx.save();
+      if (!u.alive) scr.ctx.globalAlpha = 0.4;
+      // a grid-adjacent ally shares a fraction of its own element bias with
+      // this unit — a thin tint names which element is currently helping
+      const boosters = gridNeighbors(u, this.battle);
+      if (boosters.length) {
+        scr.rect(cx, cy - 2, cardW, 2, ELEMENT_BY_ID[boosters[0].element]?.color ?? PAL.accent);
+      }
+      scr.text(ch.name.slice(0, 7), cx, cy, isActor ? PAL.accent : PAL.text);
+      scr.bar(cx, cy + 9, cardW, 3, ratio, hpColor(ratio));
+      scr.bar(cx, cy + 13, cardW, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      scr.bar(cx, cy + 16, cardW, 2, ch.ip / 100, PAL.magenta);
+      scr.ctx.restore();
+    }
   }
 
   /** A travelling bolt — an arced streak with a bright glowing head — for
@@ -775,77 +804,27 @@ export class BattleScene {
     }
   }
 
-  /**
-   * The party roster, on the right: one card per member. During 'command' —
-   * the state a player actually spends time reading this in — the panel
-   * grows upward to make room for a small bust portrait per card, the same
-   * sprite the field and menu scenes already generate, cropped to head and
-   * shoulders and drawn at 2x rather than shown as plain text rows.
-   */
-  drawStatusBar(scr) {
-    const b = this.battle;
-    const tall = this.state === 'command';
-    const px = PANEL_X, pw = W - PANEL_X - 12;
-    const py = tall ? MSG_Y : BAR_Y;
-    const ph = tall ? BAR_Y + BAR_H - MSG_Y : BAR_H;
-    scr.panel(px, py, pw, ph);
-    // Up to 5 cards per row before wrapping to a second row — a party of 4
-    // (still what creation itself builds) lays out exactly as it always did;
-    // a fuller roster of up to 9 (the formation grid's own capacity) wraps
-    // instead of squeezing every card down to an unreadable sliver.
-    const n = b.party.length;
-    const cols = Math.min(n, 5);
-    const rows = Math.ceil(n / cols);
-    const cardW = Math.floor((pw - 16) / cols);
-    const cardH = Math.floor(ph / rows);
-    b.party.forEach((u, i) => {
-      const col = i % cols, row = Math.floor(i / cols);
-      const x = px + 8 + col * cardW;
-      const rowY = py + row * cardH;
-      const ch = u.ref;
-      const s = u.stats();
-      const active = this.actor?.uid === u.uid;
-      const ratio = ch.hp / s.maxHp;
-      const y = rowY + 9;
-      if (active) {
-        scr.rect(x - 3, y - 4, cardW - 4, cardH - 12, 'rgba(120,155,235,0.16)');
-        scr.rect(x - 3, y - 4, 2, cardH - 12, PAL.accent);
-      }
-      // a grid-adjacent ally shares a fraction of its own element bias with
-      // this unit — a thin tint names which element is currently helping
-      const boosters = tall ? gridNeighbors(u, b) : [];
-      if (boosters.length) {
-        const tint = ELEMENT_BY_ID[boosters[0].element]?.color ?? PAL.accent;
-        scr.rect(x - 3, y - 4, cardW - 4, 2, tint);
-      }
-      let ty = y;
-      if (tall && rows === 1) {
-        const boxW = cardW - 16, boxH = Math.min(cardH - 40, 84);
-        const bust = actorPortraitSprite({
-          classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
-          skin: ch.skin, hair: ch.hair,
-        });
-        scr.ctx.save();
-        if (!u.alive) scr.ctx.globalAlpha = 0.35;
-        drawFit(scr, x + (cardW - 12 - boxW) / 2, ty, boxW, boxH, bust);
-        scr.ctx.restore();
-        ty += boxH + 3;
-      }
-      const nameChars = Math.max(3, Math.floor((cardW - 4) / 5));
-      const compact = cardH < 45;               // a wrapped second row of small cards
-      scr.text(ch.name.slice(0, nameChars), x, ty, !u.alive ? PAL.grey : active ? PAL.accent : PAL.text);
-      scr.text(`${ch.hp}`, x, ty + (compact ? 10 : 13), hpColor(ratio));
-      scr.text(`/${s.maxHp}`, x + scr.textWidth(`${ch.hp}`) + 2, ty + (compact ? 10 : 13), PAL.textFaint);
-      scr.bar(x, ty + (compact ? 18 : 25), cardW - 12, compact ? 3 : 4, ratio, hpColor(ratio));
-      scr.bar(x, ty + (compact ? 22 : 31), cardW - 12, 3, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-      scr.bar(x, ty + (compact ? 26 : 36), cardW - 12, 3, ch.ip / 100, PAL.magenta);
-    });
-  }
-
-  /** A message strip above the bottom bar; used by every transient line. */
+  /** A message strip straddling the seam; used by every transient line. */
   msgBox(scr, text, color = PAL.text) {
     scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
     scr.textWrap(text, 24, MSG_Y + 11, W - 48, color, { maxLines: 2, lineHeight: 12 });
+  }
+
+  /**
+   * Where the command wheel should sit for whoever is acting: right beside
+   * their own sprite, on whichever side of it has room, clamped so it never
+   * runs off the edge of the screen. `size` is the wheel's full width/height
+   * (three cells square) at the cell size the caller is about to draw it at.
+   */
+  wheelPosNearActor(size) {
+    const p = this.unitPos(this.actor);
+    const cx = p.x + CELL_W / 2, cy = p.y + CELL_H / 2;
+    let x = cx + 26;
+    if (x + size > W - 6) x = cx - 26 - size;
+    x = Math.max(6, Math.min(W - 6 - size, x));
+    let y = cy - size / 2;
+    y = Math.max(6, Math.min(H - 6 - size, y));
+    return { x, y };
   }
 
   drawUi(scr) {
@@ -862,65 +841,60 @@ export class BattleScene {
 
     // The compact, non-interactive wheel shown during target/move selection —
     // just enough to remember what was chosen. The active picker below is a
-    // different, taller rendering entirely, not this box made bigger.
+    // different, bigger rendering entirely, not this box made bigger.
     const cmdBox = () => {
-      scr.panel(12, BAR_Y, PANEL_X - 24, BAR_H);
-      scr.text(this.actor?.name ?? '', 24, BAR_Y + 8, PAL.textDim);
-      scr.rect(24, BAR_Y + 18, PANEL_X - 48, 1, PAL.line);
-      const cell = 14;
+      const cell = 15, size = cell * 3;
+      const { x, y } = this.wheelPosNearActor(size);
+      scr.panel(x - 6, y - 18, size + 12, size + 24);
+      scr.text(this.actor?.name ?? '', x - 2, y - 12, PAL.textDim);
       this.cmdWheel.cell = cell;
-      this.cmdWheel.x = 12 + (PANEL_X - 24 - 3 * cell) / 2;
-      this.cmdWheel.y = BAR_Y + 22;
+      this.cmdWheel.x = x;
+      this.cmdWheel.y = y;
       this.cmdWheel.draw(scr, { inactive: true });
     };
 
     if (this.state === 'command') {
-      // One tall panel spanning what is normally the message strip and the
-      // bar beneath it — the wheel needs the room, and HP/MP already live on
-      // this character's own card in the status panel to the right, so the
-      // header here only needs to name the actor and show IP.
-      const y0 = MSG_Y, h0 = BAR_Y + BAR_H - MSG_Y;
-      scr.panel(12, y0, PANEL_X - 24, h0, { accent: true });
+      // The wheel opens right beside whoever's turn it is, at a noticeably
+      // bigger size than the reminder box above — this is the picker a
+      // player actually spends time reading, so it gets the room.
+      const cell = 32, size = cell * 3;
+      const { x, y } = this.wheelPosNearActor(size);
       const ch = this.actor.ref;
-      scr.text(this.actor.name, 24, y0 + 8, PAL.accent);
-      scr.textRight(ELEMENT_BY_ID[ch.elementId].name, PANEL_X - 36, y0 + 8, ELEMENT_BY_ID[ch.elementId].color);
-      scr.text('IP', 24, y0 + 19, PAL.magenta);
-      scr.bar(38, y0 + 20, 62, 5, ch.ip / 100, PAL.magenta);
-      scr.textRight(this.cmdWheel.current?.label ?? '', PANEL_X - 36, y0 + 19, PAL.text);
-      scr.rect(24, y0 + 29, PANEL_X - 48, 1, PAL.line);
-      const cell = 22;
+      scr.panel(x - 8, y - 24, size + 16, size + 34, { accent: true });
+      scr.text(this.actor.name, x - 2, y - 18, PAL.accent);
+      scr.textRight(ELEMENT_BY_ID[ch.elementId].name, x + size + 6, y - 18, ELEMENT_BY_ID[ch.elementId].color);
+      scr.textRight(this.cmdWheel.current?.label ?? '', x + size + 6, y - 6, PAL.text);
       this.cmdWheel.cell = cell;
-      this.cmdWheel.x = 12 + (PANEL_X - 24 - 3 * cell) / 2;
-      this.cmdWheel.y = y0 + 34;
+      this.cmdWheel.x = x;
+      this.cmdWheel.y = y;
       this.cmdWheel.draw(scr);
-      // the gold border on the chosen tile already says which one is selected
-      scr.textCenter('Z select · X back', 12 + (PANEL_X - 24) / 2, y0 + h0 - 10, PAL.textFaint);
+      scr.textCenter('Z select · X back', x + size / 2, y + size + 10, PAL.textFaint);
     } else if (this.state === 'skill' || this.state === 'item') {
-      scr.panel(12, 104, 208, 152, { accent: true });
-      scr.heading(this.state === 'skill' ? 'ARTS' : 'ITEMS', 26, 114, 180);
-      scr.textRight(this.actor.name, 208, 114, PAL.textDim);
-      this.listMenu.x = 36; this.listMenu.y = 132;
+      scr.panel(12, 90, 208, 152, { accent: true });
+      scr.heading(this.state === 'skill' ? 'ARTS' : 'ITEMS', 26, 100, 180);
+      scr.textRight(this.actor.name, 208, 100, PAL.textDim);
+      this.listMenu.x = 36; this.listMenu.y = 118;
       this.listMenu.cellW = 172; this.listMenu.rows = 8; this.listMenu.cellH = 14;
       this.listMenu.draw(scr);
       if (this.listMenu.length) {
-        scr.panel(228, 104, W - 240, 92, { accent: true });
+        scr.panel(228, 90, W - 240, 92, { accent: true });
         const bx = 242, bw = W - 268;
         if (this.state === 'skill') {
           const k = getSkill(this.listMenu.current.id);
-          scr.text(k.name, bx, 114, PAL.accent);
-          scr.rect(bx, 124, bw, 1, PAL.line);
-          scr.textWrap(k.blurb ?? '', bx, 132, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+          scr.text(k.name, bx, 100, PAL.accent);
+          scr.rect(bx, 110, bw, 1, PAL.line);
+          scr.textWrap(k.blurb ?? '', bx, 118, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
           const el = k.element === 'attuned' ? this.actor.ref.elementId : k.element;
-          scr.text(`reach ${k.range}`, bx, 170, PAL.text);
-          scr.text(k.target, bx + 76, 170, PAL.text);
-          if (el && el !== 'none') scr.textRight(ELEMENT_BY_ID[el].name, bx + bw, 170, ELEMENT_BY_ID[el].color);
+          scr.text(`reach ${k.range}`, bx, 156, PAL.text);
+          scr.text(k.target, bx + 76, 156, PAL.text);
+          if (el && el !== 'none') scr.textRight(ELEMENT_BY_ID[el].name, bx + bw, 156, ELEMENT_BY_ID[el].color);
         } else {
           const it = getItem(this.listMenu.current.id);
-          scr.text(it.name, bx, 114, PAL.accent);
-          scr.rect(bx, 124, bw, 1, PAL.line);
+          scr.text(it.name, bx, 100, PAL.accent);
+          scr.rect(bx, 110, bw, 1, PAL.line);
           const d = it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
             : it.cures ? `Cures ${it.cures.join(', ')}.` : it.damage ? `${it.damage} damage.` : '';
-          scr.textWrap(d, bx, 132, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+          scr.textWrap(d, bx, 118, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
         }
       }
     } else if (this.state === 'target') {
