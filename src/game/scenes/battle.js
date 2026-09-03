@@ -18,6 +18,7 @@ import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
+import { mix } from '../../engine/pixel.js';
 import * as THREE from '../../vendor/three.module.js';
 
 // The arena, in world units (roughly metres) rather than pixels: lanes run
@@ -89,6 +90,7 @@ export class BattleScene {
     this.cmdWheel = new CommandWheel({ cell: 32 });
     this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
     this.fxp = new Particles(360);
+    this.moteTimer = 0;
     this.projectiles = [];
     this.deathAnims = new Map();
     this.statusFxT = 0;
@@ -145,7 +147,7 @@ export class BattleScene {
     this.billboardYaw = Math.atan2(CAM_POS.x - CAM_LOOK.x, CAM_POS.z - CAM_LOOK.z);
 
     const T = this.regionPalette();
-    scene.background = new THREE.Color(T.sky1);
+    scene.background = this.skyTexture(T);
     scene.fog = new THREE.Fog(T.far, 6, 15);
 
     const sun = new THREE.DirectionalLight(0xfff2df, 1.9);
@@ -154,22 +156,42 @@ export class BattleScene {
     scene.add(new THREE.AmbientLight(T.grade, 0.6));
     scene.add(new THREE.HemisphereLight(T.sky1, T.gdark, 0.5));
 
+    // This camera looks down at a steep angle, so a ground plane centred on
+    // the origin (the old 30x30, z from -15 to 15) actually covers the
+    // *entire* screen top to bottom — orthographic projection has no
+    // vanishing point to shrink a distant ground into a horizon, so nothing
+    // placed further away was ever visible behind it. Pushed forward here so
+    // its far edge stops a bit past the back rank instead of at the world
+    // origin, opening an actual strip of sky for the horizon plane below to
+    // occupy — still comfortably past the deepest occupied rank (z ~= -4.3).
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(30, 30),
       new THREE.MeshLambertMaterial({ color: T.ground }),
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = 0;
+    ground.position.set(0, 0, 9.8);
     scene.add(ground);
 
-    // a simple back wall standing in for the old 2D silhouette/treeline —
-    // just distant enough, and faded by the fog, to read as scenery rather
-    // than a wall the party could ever reach
+    // A jagged skyline silhouette plus a glowing focal orb, filling the sky
+    // strip the ground pullback above just opened up. Placed by working
+    // backward from where it needs to land on screen (see project()'s
+    // linear map from world (y,z) to screen y under this camera) rather than
+    // by a "natural" world position — fog is disabled here since the plane
+    // sits far enough away that the fog range would otherwise wash the
+    // whole silhouette out to a flat colour, defeating the point of it.
     const far = new THREE.Mesh(
-      new THREE.PlaneGeometry(40, 8),
-      new THREE.MeshLambertMaterial({ color: T.far, fog: true }),
+      // Width matched to the camera's actual visible span at this depth
+      // (~19.9 world units), not left oversized like the ground plane —
+      // an oversized plane here would push most of the horizon texture's
+      // width outside the frame, clipping the orb and thinning out the
+      // skyline to whatever few peaks happened to land in view.
+      new THREE.PlaneGeometry(22, 2.96),
+      new THREE.MeshLambertMaterial({
+        map: this.horizonTexture(T, this.battle.formation.region ?? 'default'),
+        transparent: true, alphaTest: 0.04, fog: false,
+      }),
     );
-    far.position.set(0, 4, -12);
+    far.position.set(0, -3.74, -9.5);
     scene.add(far);
 
     this.billboards = new Map();
@@ -181,12 +203,113 @@ export class BattleScene {
   regionPalette() {
     const region = this.battle.formation.region;
     return {
-      greenfield: { sky1: '#86a2c4', far: '#2c4a34', ground: '#4a7a3e', gdark: '#2f5029', grade: '#a8d0ff' },
-      caverns:    { sky1: '#241d34', far: '#1d1628', ground: '#5a5040', gdark: '#332d24', grade: '#7f9ad8' },
-      ruins:      { sky1: '#3c2450', far: '#241531', ground: '#4e4860', gdark: '#2d2839', grade: '#b088ff' },
-      abyss:      { sky1: '#241040', far: '#170a28', ground: '#3a2c52', gdark: '#211838', grade: '#a86cff' },
-      boss:       { sky1: '#3a1834', far: '#200f26', ground: '#403050', gdark: '#241a34', grade: '#ff8ad0' },
-    }[region] ?? { sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', grade: '#9ab0e0' };
+      // zenith: the top-of-sky colour the banded gradient fades up into.
+      // horizon: the skyline silhouette's fill (was "far"'s flat colour).
+      // mote/moteUp: the ambient drifting particle's colour and whether it
+      // rises (fireflies, sparks) or sinks (falling ash) — the one bit of
+      // motion that keeps an otherwise-static backdrop from feeling inert.
+      // zenith/horizon are deliberately kept a good distance apart in
+      // lightness (not just hue) for every region — the horizon plane's
+      // visible sliver is dominated by the zenith band (see horizonTexture),
+      // so a moody-but-close pair like a near-black zenith over a near-black
+      // horizon reads as nothing at all instead of a silhouette against a
+      // glow. Darker regions get a *lifted* zenith (a distant glow — magma,
+      // moonlight, whatever fits) rather than a darkened horizon, since
+      // there's little room left to darken an already-near-black horizon.
+      greenfield: { sky1: '#86a2c4', far: '#2c4a34', ground: '#4a7a3e', gdark: '#2f5029', grade: '#a8d0ff', zenith: '#dff0ff', horizon: '#233d29', mote: '#fff3b0', moteUp: true },
+      caverns:    { sky1: '#241d34', far: '#1d1628', ground: '#5a5040', gdark: '#332d24', grade: '#7f9ad8', zenith: '#3a3050', horizon: '#0d0815', mote: '#ffb060', moteUp: true },
+      ruins:      { sky1: '#3c2450', far: '#241531', ground: '#4e4860', gdark: '#2d2839', grade: '#b088ff', zenith: '#4a2f66', horizon: '#150a1e', mote: '#c9a2ff', moteUp: true },
+      abyss:      { sky1: '#241040', far: '#170a28', ground: '#3a2c52', gdark: '#211838', grade: '#a86cff', zenith: '#3a1a5c', horizon: '#0b0616', mote: '#a86cff', moteUp: false },
+      boss:       { sky1: '#3a1834', far: '#200f26', ground: '#403050', gdark: '#241a34', grade: '#ff8ad0', zenith: '#4a1530', horizon: '#160810', mote: '#ff5a8a', moteUp: true },
+    }[region] ?? { sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', grade: '#9ab0e0', zenith: '#33335c', horizon: '#14142a', mote: '#9ab0e0', moteUp: true };
+  }
+
+  /** A banded (posterized) vertical sky gradient — a handful of flat colour
+   *  steps rather than a smooth 3D-renderer blend, so the sky reads as part
+   *  of the same chunky-pixel style as everything else instead of a smooth
+   *  gradient bolted behind pixel art. Built once per battle; the palette
+   *  never changes mid-fight. */
+  skyTexture(T) {
+    const BANDS = 6;
+    const cv = document.createElement('canvas');
+    cv.width = 1; cv.height = BANDS;
+    const ctx = cv.getContext('2d');
+    for (let i = 0; i < BANDS; i++) {
+      ctx.fillStyle = mix(T.zenith, T.sky1, i / (BANDS - 1));
+      ctx.fillRect(0, i, 1, 1);
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  /** Replaces the old flat-colour "far" plane with a jagged skyline
+   *  silhouette plus one glowing focal orb (sun, moon, or something less
+   *  friendly for the boss/abyss arenas) — the single biggest thing a
+   *  Octopath-style backdrop has that a flat tinted wall doesn't: a place
+   *  for the eye to land. The skyline shape is seeded from the region name
+   *  so every region reads as a distinct silhouette, but stays identical
+   *  across frames within one battle (only rebuilt in setup3D). */
+  horizonTexture(T, region) {
+    // Match the canvas's aspect ratio to the far plane's actual world
+    // width:height (see setup3D) so the orb renders as a circle rather
+    // than getting stretched into an ellipse by a mismatched texture.
+    const w = 142, h = 20;
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+
+    const orbX = w * 0.55, orbY = h * 0.3, orbR = h * 0.34;
+    const glow = ctx.createRadialGradient(orbX, orbY, 0, orbX, orbY, orbR * 2.4);
+    glow.addColorStop(0, T.grade);
+    glow.addColorStop(0.45, mix(T.grade, T.zenith, 0.7));
+    glow.addColorStop(1, `${T.zenith}00`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = mix(T.grade, '#ffffff', 0.55);
+    ctx.beginPath(); ctx.arc(orbX, orbY, orbR * 0.5, 0, Math.PI * 2); ctx.fill();
+
+    // tiny deterministic PRNG seeded from the region name, so the skyline
+    // is stable across battles in the same region without a shared seed table
+    let seed = 0;
+    for (let i = 0; i < region.length; i++) seed = (seed * 31 + region.charCodeAt(i)) >>> 0;
+    const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+
+    ctx.fillStyle = T.horizon;
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    const peaks = 7;
+    for (let i = 0; i <= peaks; i++) {
+      const x = (w * i) / peaks;
+      const y = h * (0.25 + rand() * 0.35);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(cv);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  /** Ambient drifting motes (fireflies, embers, falling ash depending on
+   *  region) — cheap, screen-space, and reuses the same particle pool hit
+   *  sparks and heal plumes already draw through, so no new draw call is
+   *  needed. The one bit of constant motion that keeps the backdrop from
+   *  reading as a static painting. */
+  spawnMote() {
+    const T = this.regionPalette();
+    const dir = T.moteUp ? -1 : 1;
+    this.fxp.spawn({
+      x: Math.random() * W, y: T.moteUp ? H + 4 : -4,
+      vx: (Math.random() - 0.5) * 6, vy: dir * (16 + Math.random() * 14),
+      life: 4 + Math.random() * 3, color: T.mote, size: 1, glow: true, fade: true,
+    });
   }
 
   /** Grid slot -> world position, with no per-unit animation offset — used
@@ -404,6 +527,8 @@ export class BattleScene {
       dt = 0;   // a brief freeze-frame on a critical hit, for punch
     }
     this.t += dt;
+    this.moteTimer -= dt;
+    if (this.moteTimer <= 0) { this.spawnMote(); this.moteTimer = 0.5 + Math.random() * 0.6; }
     this.fxp.update(dt);
     this.flash = Math.max(0, this.flash - dt);
     this.cmdWheel.update(dt);
