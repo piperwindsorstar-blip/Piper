@@ -871,7 +871,13 @@ export class FieldScene {
     // canvas and gets blitted in as this frame's whole backdrop — see
     // setup3D/render3D/renderWorldTexture for how that's built.
     this.render3D();
-    scr.ctx.drawImage(this.canvas3D, 0, 0, W, H);
+    // Tilt-shift the backdrop the same way battle.js does: sharp in a band
+    // centred on the player (who this camera always keeps at screen centre,
+    // W/2,H/2 — see setup3D), softening toward the top and bottom edges for
+    // the same "miniature diorama" look. Kept gentler and the band wider
+    // than battle's — chests, signs and NPCs the player hasn't reached yet
+    // still need to read clearly near the edges of the visible window.
+    scr.tiltShift(this.canvas3D, 70, 200, 2);
 
     // boss markers — 2D glow/outline overlays, positioned by projecting
     // their tile through the same camera the arena itself rendered with

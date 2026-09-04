@@ -257,6 +257,49 @@ export class Screen {
     }
   }
 
+  /**
+   * Draws a 3D scene's offscreen render as this frame's backdrop with a
+   * vertical tilt-shift blur: sharp in a horizontal focus band, softening
+   * toward the top and bottom edges — the "miniature diorama" look HD-2D
+   * games are known for (Octopath Traveler chief among them). Meant to be
+   * called in place of a plain `drawImage(canvas3D, 0, 0, W, H)`, before
+   * any 2D sprites or UI are drawn on top of it — those stay perfectly
+   * sharp, since only this backdrop layer ever gets blurred.
+   * `focusY0`/`focusY1` mark the sharp band in this buffer's own 480x270
+   * pixels (typically wherever the actual battle/field action is
+   * happening); `blur` is the max blur radius at the top/bottom edges.
+   */
+  tiltShift(src, focusY0, focusY1, blur = 2.5) {
+    const c = this.ctx;
+    c.drawImage(src, 0, 0, W, H);
+    if (blur <= 0) return;
+    if (!this.tsBuf) this.tsBuf = document.createElement('canvas');
+    const t = this.tsBuf;
+    t.width = W; t.height = H;
+    const tctx = t.getContext('2d');
+    tctx.filter = `blur(${blur}px)`;
+    tctx.drawImage(src, 0, 0, W, H);
+    tctx.filter = 'none';
+    // Mask the blurred copy down to only the out-of-focus band with a
+    // gradient, so compositing it back with plain source-over leaves the
+    // focus band showing the untouched sharp base drawn above.
+    tctx.globalCompositeOperation = 'destination-in';
+    const f0 = Math.max(0, Math.min(1, focusY0 / H));
+    const f1 = Math.max(0, Math.min(1, focusY1 / H));
+    const feather = Math.max(0.02, (f1 - f0) * 0.2);
+    const stops = [
+      [0, 1], [f0 - feather, 1], [f0, 0], [f1, 0], [f1 + feather, 1], [1, 1],
+    ];
+    let prev = 0;
+    for (const s of stops) { s[0] = Math.max(0, Math.min(1, Math.max(s[0], prev))); prev = s[0]; }
+    const g = tctx.createLinearGradient(0, 0, 0, H);
+    for (const [off, a] of stops) g.addColorStop(off, `rgba(255,255,255,${a})`);
+    tctx.fillStyle = g;
+    tctx.fillRect(0, 0, W, H);
+    tctx.globalCompositeOperation = 'source-over';
+    c.drawImage(t, 0, 0);
+  }
+
   present() {
     this.applyPost();
     let ox = 0, oy = 0;

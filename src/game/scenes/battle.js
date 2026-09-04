@@ -1022,7 +1022,13 @@ export class BattleScene {
   draw(scr) {
     const b = this.battle;
     this.render3D();
-    scr.ctx.drawImage(this.canvas3D, 0, 0, W, H);
+    // Tilt-shift the backdrop: sharp across the whole band any character
+    // can stand in (enemy back rank down to party back rank), blurred
+    // above it (the sky/horizon strip) and in the thin foreground margin
+    // below the party's own back rank. Never blurs a character — only the
+    // scenery around them — so nothing gameplay-relevant gets harder to
+    // read; see Screen.tiltShift.
+    scr.tiltShift(this.canvas3D, 35, 218, 2.5);
 
     this.drawGrid(scr, 'enemy');
     this.drawGrid(scr, 'party');
