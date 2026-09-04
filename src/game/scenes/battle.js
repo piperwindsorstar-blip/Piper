@@ -34,7 +34,15 @@ import * as THREE from '../../vendor/three.module.js';
 // FRONT_Z started at 0.5 (a 1.0 gap), then 1.1 (2.2) — still read as too
 // close. 1.8 puts a real 3.6-unit no-man's-land between the front ranks,
 // over two sprite-widths, without touching rank spacing within a side.
-const WORLD_LANE_STEP = 2.0, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 1.8;
+// LANE_STEP went 2.0 -> 2.6 -> 4.4 for the same kind of reason on the other
+// axis: each party member's HP/MP/IP card leans sideways out of its own
+// cell (see drawUnit), and the middle lane's card reaching out to the side
+// was landing on top of the *next lane's own sprite*, not just its card —
+// a 2.6 step still put adjacent lanes' actual sprite art (~26px wide)
+// closer together than one card's width plus the gap it leans out from.
+// 4.4 gives every card room to end before the next lane's sprite begins;
+// see drawUnit's cardW for the matching width that was solved alongside it.
+const WORLD_LANE_STEP = 4.4, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 1.8;
 // Each back rank stands a literal step higher than the one in front of it —
 // real 3D risers (see setup3D), not just a further/smaller billboard. Under
 // this orthographic camera, depth alone was reading fairly flat; an actual
@@ -51,13 +59,20 @@ const ACTOR_WORLD_H = 1.7;   // world height of a standard 48px-tall actor sprit
 // tighter on screen), it just doesn't also scale them down.
 const CAM_POS = { x: 0, y: 6, z: 5 };
 const CAM_LOOK = { x: 0, y: 0, z: 0 };
-const BATTLE_VIEW_SIZE = 5.6;
+// Widened twice for more room between the two formations (WORLD_FRONT_Z),
+// which also pushed the party's own back rank (C) further toward the
+// camera each time — by 1.8 it was landing at screen y~229 out of 270,
+// leaving less headroom below it than the message strip needs. Zoomed out
+// (5.6 -> 6.6) to buy that room back everywhere at once, rather than
+// shaving the strip down to fit a shrinking gap. Every other screen-space
+// constant below (ground/horizon plane placement) is re-solved for this
+// same view size — see their own comments for the numbers.
+const BATTLE_VIEW_SIZE = 6.6;
 
 // CELL_W/CELL_H are the nominal 2D box every overlay (HP bars, popups, the
 // wheel) is still positioned against — see cellPos/unitPos below for how
 // that box now comes from a 3D projection instead of flat pixel math.
 const CELL_W = 48, CELL_H = 40;
-const SEAM_TOP = Math.round(H * 0.39);   // roughly where the two grids meet on screen; used to place the message strip
 
 // Formation labels: rows A/B/C run front-to-back (column 0 = row A = the
 // front rank); lanes 1/2/3 run left-to-right (grid.row = lane index). Only
@@ -65,8 +80,18 @@ const SEAM_TOP = Math.round(H * 0.39);   // roughly where the two grids meet on 
 const RANK_LABELS = ['A', 'B', 'C'];
 const LANE_LABELS = ['1', '2', '3'];
 
-// a message/status strip straddling the seam, used for turn narration
-const MSG_Y = SEAM_TOP - 11, MSG_H = 40;
+// The message/target/reposition strip used to sit pinned to a fixed
+// fraction of screen height ("roughly where the two grids meet"), back
+// when that seam was a fixed 2D line. It isn't anymore — the front-rank
+// gap is real 3D depth now and has moved (and grown) every time the
+// arena's spacing has been tuned since, so a strip anchored to an old
+// guessed seam kept drifting into the enemy formation's own HP bars and
+// status icons. Docked to the bottom of the screen instead: the party's
+// own ground line is always the screen's lowest occupied point (nothing
+// this scene draws sits below it — see unitPos/drawUnit), so a strip
+// anchored to the bottom edge can never overlap either formation,
+// regardless of how the 3D spacing above it changes again later.
+const MSG_H = 40, MSG_Y = H - MSG_H - 8;
 
 const MSG_TIME = 0.85;
 
@@ -179,7 +204,7 @@ export class BattleScene {
       new THREE.MeshLambertMaterial({ color: T.ground }),
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, 0, 9.1);
+    ground.position.set(0, 0, 8.7);
     scene.add(ground);
 
     // Real 3D risers under ranks B and C (rank A stays at ground level) —
@@ -214,17 +239,18 @@ export class BattleScene {
     // whole silhouette out to a flat colour, defeating the point of it.
     const far = new THREE.Mesh(
       // Width matched to the camera's actual visible span at this depth
-      // (~19.9 world units), not left oversized like the ground plane —
-      // an oversized plane here would push most of the horizon texture's
-      // width outside the frame, clipping the orb and thinning out the
-      // skyline to whatever few peaks happened to land in view.
-      new THREE.PlaneGeometry(22, 2.12),
+      // (~23.5 world units at this zoom), not left oversized like the
+      // ground plane — an oversized plane here would push most of the
+      // horizon texture's width outside the frame, clipping the orb and
+      // thinning out the skyline to whatever few peaks happened to land
+      // in view.
+      new THREE.PlaneGeometry(26, 3.28),
       new THREE.MeshLambertMaterial({
         map: this.horizonTexture(T, this.battle.formation.region ?? 'default'),
         transparent: true, alphaTest: 0.04, fog: false,
       }),
     );
-    far.position.set(0, -3.32, -9.5);
+    far.position.set(0, -2.27, -9.5);
     scene.add(far);
 
     this.billboards = new Map();
@@ -312,7 +338,7 @@ export class BattleScene {
     // Match the canvas's aspect ratio to the far plane's actual world
     // width:height (see setup3D) so the orb renders as a circle rather
     // than getting stretched into an ellipse by a mismatched texture.
-    const w = 142, h = 14;
+    const w = 142, h = 18;
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d');
@@ -1135,7 +1161,9 @@ export class BattleScene {
       const s = u.stats();
       const ratio = ch.hp / s.maxHp;
       const outward = u.grid.row < 1 ? -1 : 1;
-      const cardW = 42;
+      // 36, not the old 42 — solved together with WORLD_LANE_STEP above so
+      // this card always ends before the next lane's own sprite begins.
+      const cardW = 36;
       const cx = outward > 0 ? p.x + CELL_W + 8 : p.x - 8 - cardW;
       const cy = p.y + CELL_H - 32;
       scr.ctx.save();
@@ -1146,10 +1174,15 @@ export class BattleScene {
       if (boosters.length) {
         scr.rect(cx, cy - 2, cardW, 2, ELEMENT_BY_ID[boosters[0].element]?.color ?? PAL.accent);
       }
-      scr.text(ch.name.slice(0, 7), cx, cy, isActor ? PAL.accent : PAL.text);
-      scr.bar(cx, cy + 9, cardW, 3, ratio, hpColor(ratio));
-      scr.bar(cx, cy + 13, cardW, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-      scr.bar(cx, cy + 16, cardW, 2, ch.ip / 100, PAL.magenta);
+      // Packed tighter than the bars' own minimum spacing would need — see
+      // WORLD_RANK_STEP: two ranks' cards share a lane's screen column and
+      // stack in the gap between their ground lines, which is real but not
+      // huge, especially at a closer zoom. Every pixel this card doesn't
+      // need is a pixel of margin against the next rank's card.
+      scr.text(ch.name.slice(0, 6), cx, cy, isActor ? PAL.accent : PAL.text);
+      scr.bar(cx, cy + 8, cardW, 3, ratio, hpColor(ratio));
+      scr.bar(cx, cy + 11, cardW, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      scr.bar(cx, cy + 13, cardW, 2, ch.ip / 100, PAL.magenta);
       scr.ctx.restore();
     }
   }
