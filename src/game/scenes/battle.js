@@ -100,6 +100,39 @@ const MSG_TIME = 0.85;
 // frame instead of a beat before it), then a settle back to formation.
 const ATK_WINDUP = 0.12, ATK_STRIKE = 0.08, ATK_RECOIL = 0.14;
 
+// Which caster-motion archetype an Art's school plays back as — see
+// actionVisual/unit3DPos. Anything not listed defaults to 'lunge', the
+// original melee weapon-swing motion; these are just the schools whose
+// own fiction (drawing a bow, channelling a spell) reads wrong as a lunge.
+const SCHOOL_ANIM = {
+  bow: 'draw',
+  elem: 'cast', dark: 'cast', hex: 'cast', arcane: 'cast', illusion: 'cast',
+  summon: 'cast', spirit: 'cast', transcend: 'cast', apex: 'cast',
+  white: 'support', holy: 'support', song: 'support', dance: 'support',
+};
+
+// A projectile's shape, arc height, flight duration and trail-particle
+// drift, keyed by element — see spawnProjectile/drawProjectileHead. Tuned
+// so each element reads as itself at a glance (lightning nearly instant
+// and jagged, earth a slow heavy lob, ice a thin cold shard) rather than
+// thirteen recolours of one glowing dot arcing the same way.
+const ELEMENT_FX = {
+  fire:      { shape: 'orb',    arc: 10, dur: 0.20, driftY: -16, spread: 8,  drag: 1.2 },
+  ice:       { shape: 'shard',  arc: 7,  dur: 0.16, driftY: 0,   spread: 6,  drag: 2.5 },
+  nature:    { shape: 'leaf',   arc: 12, dur: 0.22, driftY: -6,  spread: 10, drag: 1.5 },
+  earth:     { shape: 'chunk',  arc: 16, dur: 0.28, driftY: 12,  spread: 5,  drag: 1.5 },
+  metal:     { shape: 'chunk',  arc: 6,  dur: 0.15, driftY: 0,   spread: 16, drag: 3 },
+  lightning: { shape: 'zigzag', arc: 2,  dur: 0.10, driftY: 0,   spread: 30, drag: 4 },
+  wind:      { shape: 'leaf',   arc: 13, dur: 0.16, driftY: 0,   spread: 22, drag: 2 },
+  poison:    { shape: 'orb',    arc: 13, dur: 0.24, driftY: 8,   spread: 4,  drag: 1.5 },
+  water:     { shape: 'drop',   arc: 9,  dur: 0.20, driftY: 10,  spread: 6,  drag: 1.5 },
+  light:     { shape: 'ray',    arc: 6,  dur: 0.14, driftY: -12, spread: 10, drag: 1.2 },
+  dark:      { shape: 'wisp',   arc: 8,  dur: 0.22, driftY: 0,   spread: 8,  drag: 2 },
+  spirit:    { shape: 'wisp',   arc: 8,  dur: 0.22, driftY: -6,  spread: 6,  drag: 1.8 },
+  void:      { shape: 'wisp',   arc: 4,  dur: 0.22, driftY: 0,   spread: 12, drag: 2.5 },
+};
+const DEFAULT_FX = { shape: 'dot', arc: 9, dur: 0.20, driftY: 0, spread: 6, drag: 1.5 };
+
 export class BattleScene {
   constructor(app) { this.app = app; }
 
@@ -466,14 +499,41 @@ export class BattleScene {
       const dir = u.side === 'enemy' ? -1 : 1;
       z += dir * 3.4 * k;
     }
-    if (this.attackAnim && this.attackAnim.uid === u.uid && this.attackAnim.foe) {
+    if (this.attackAnim && this.attackAnim.uid === u.uid) {
       const a = this.attackAnim;
-      const dir = u.side === 'party' ? -1 : 1;
-      let k = 0;
-      if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
-      else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);
-      else k = 1 - (a.t / ATK_RECOIL);
-      z += dir * 0.5 * k;
+      if (a.anim === 'support') {
+        // no foe to close distance with — a gentle rise-and-settle in
+        // place reads as channelling a buff/heal instead of the caster
+        // just standing inert while the wheel closes
+        const k = a.phase === 'windup' ? a.t / ATK_WINDUP
+          : a.phase === 'strike' ? 1 : Math.max(0, 1 - a.t / ATK_RECOIL);
+        y += Math.sin(k * Math.PI) * 0.12;
+      } else if (a.foe) {
+        const dir = u.side === 'party' ? -1 : 1;
+        let k = 0;
+        if (a.anim === 'draw') {
+          // pull back to draw/aim, then ease off again — the shot itself
+          // is the projectile's job (see ELEMENT_FX), not a forward lunge
+          // that would put a bow or a spell in melee range
+          if (a.phase === 'windup') k = -(a.t / ATK_WINDUP);
+          else if (a.phase === 'strike') k = -(1 - a.t / ATK_STRIKE);
+          z += dir * 0.3 * k;
+        } else if (a.anim === 'cast') {
+          // shorter and slower than a melee lunge, with a small rise —
+          // channelling a spell forward, not swinging a weapon
+          if (a.phase === 'windup') k = -0.2 * (a.t / ATK_WINDUP);
+          else if (a.phase === 'strike') k = -0.2 + 1.2 * (a.t / ATK_STRIKE);
+          else k = 1 - (a.t / ATK_RECOIL);
+          z += dir * 0.22 * k;
+          y += Math.max(0, k) * 0.08;
+        } else {
+          // 'lunge' — the original melee weapon-swing motion
+          if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
+          else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);
+          else k = 1 - (a.t / ATK_RECOIL);
+          z += dir * 0.5 * k;
+        }
+      }
     }
     const dying = this.deathAnims.get(u.uid);
     if (dying) {
@@ -597,7 +657,7 @@ export class BattleScene {
           ? ELEMENT_BY_ID[fx.element]?.color ?? PAL.white : PAL.white);
         this.popups.push({
           x: cx, y: cy, life: 1.0,
-          text: fx.type === 'heal' ? `+${fx.amount}` : `${fx.amount}`, color: col,
+          text: fx.type === 'heal' ? `+${Math.round(fx.amount)}` : `${Math.round(fx.amount)}`, color: col,
           big: !!fx.crit,
         });
         if (fx.type === 'damage') {
@@ -668,11 +728,21 @@ export class BattleScene {
     this.popups = this.popups.filter((p) => p.life > 0);
     for (const pr of this.projectiles) {
       pr.t += dt;
-      // a faint trail along the flight path
+      // a trail along the flight path, drifting per ELEMENT_FX — embers
+      // rise behind fire, droplets fall behind water, sparks scatter wide
+      // behind lightning, instead of every element leaving the same
+      // straight fading dot
       const k = Math.min(1, pr.t / pr.dur);
       const x = pr.x0 + (pr.x1 - pr.x0) * k;
-      const y = pr.y0 + (pr.y1 - pr.y0) * k - Math.sin(k * Math.PI) * 9;
-      this.fxp.spawn({ x, y, life: 0.18, size: 1, color: pr.color, glow: true });
+      const y = pr.y0 + (pr.y1 - pr.y0) * k - Math.sin(k * Math.PI) * pr.fx.arc;
+      const solid = pr.fx.shape === 'chunk' || pr.fx.shape === 'drop';
+      this.fxp.spawn({
+        x, y,
+        vx: (Math.random() - 0.5) * pr.fx.spread,
+        vy: pr.fx.driftY + (Math.random() - 0.5) * pr.fx.spread * 0.5,
+        life: 0.16 + Math.random() * 0.08, size: 1, color: pr.color,
+        glow: !solid, drag: pr.fx.drag,
+      });
     }
     this.projectiles = this.projectiles.filter((pr) => pr.t < pr.dur);
     for (const [uid, d] of this.deathAnims) {
@@ -931,11 +1001,12 @@ export class BattleScene {
     if (['attack', 'skill', 'item'].includes(action.kind)) {
       const t = action.target;
       const foe = !!t && t !== unit && t.side !== unit.side;
-      this.attackAnim = { uid: unit.uid, phase: 'windup', t: 0, foe };
+      const vis = this.actionVisual(unit, action);
+      this.attackAnim = { uid: unit.uid, phase: 'windup', t: 0, foe, anim: vis.anim };
       this.pendingUnit = unit;
       this.pendingAction = action;
       this.state = 'attacking';
-      if (foe) this.spawnProjectile(unit, t, action);
+      if (foe) this.spawnProjectile(unit, t, vis);
       return;
     }
     this.battle.act(unit, action);
@@ -946,44 +1017,60 @@ export class BattleScene {
   }
 
   /**
-   * What an action should look like closing the distance: a bow shot, a cast
-   * spell or a thrown item flies across the field as a coloured bolt; a
-   * weapon swing just lands where the lunge already carried the attacker.
+   * What an action should look like: which way the caster's own body moves
+   * (see unit3DPos's attackAnim handling) and, if it reaches at range,
+   * what its bolt looks like in flight (see spawnProjectile/ELEMENT_FX).
    * `reach >= 9` is this game's own shorthand for "hits from anywhere" (see
    * the how-to-play text), which is exactly the set of things that should
    * read as ranged rather than melee.
+   *
+   * The caster motion is keyed off the Art's *school* (a handful of
+   * archetypes, not one bespoke animation per skill — this game has
+   * hundreds of skills across 24 schools, and every sword Art already
+   * looks like a different weapon swing because the sprite itself changes;
+   * what was missing was Bulwark Arts lunging exactly like High Arcana).
+   * Self/ally targets always get 'support' regardless of school, since
+   * there's no foe to lunge toward.
    */
   actionVisual(unit, action) {
     if (action.kind === 'attack') {
       const weapon = unit.isPC && unit.ref.equip?.weapon ? getItem(unit.ref.equip.weapon) : null;
       const element = weapon?.element && weapon.element !== 'none' ? weapon.element : null;
-      return { element, ranged: unit.stats().reach >= 9 };
+      const ranged = unit.stats().reach >= 9;
+      return { element, ranged, anim: ranged ? 'draw' : 'lunge' };
     }
     if (action.kind === 'skill') {
       const skill = getSkill(action.skillId);
       const element = unit.isPC ? skillElement(unit.ref, skill)
         : (skill.element === 'attuned' ? unit.element : skill.element);
-      return { element, ranged: skill.type !== 'phys' || (skill.range ?? 0) >= 9 };
+      const anim = ['self', 'ally', 'allies'].includes(skill.target)
+        ? 'support' : (SCHOOL_ANIM[skill.school] ?? 'lunge');
+      return { element, ranged: skill.type !== 'phys' || (skill.range ?? 0) >= 9, anim };
     }
     if (action.kind === 'item') {
       const it = getItem(action.itemId);
-      return { element: it.element && it.element !== 'none' ? it.element : null, ranged: !!it.damage };
+      const anim = (it.heal || it.healMp || it.cures) ? 'support' : 'lunge';
+      return { element: it.element && it.element !== 'none' ? it.element : null, ranged: !!it.damage, anim };
     }
-    return { element: null, ranged: false };
+    return { element: null, ranged: false, anim: 'lunge' };
   }
 
-  /** A small bolt travelling attacker -> target, timed to arrive right
-   *  around when the hit resolves. Purely cosmetic — the fixed windup timer
-   *  still drives the actual resolution, so a slow bolt never delays a turn. */
-  spawnProjectile(unit, target, action) {
-    const vis = this.actionVisual(unit, action);
+  /** A bolt travelling attacker -> target, timed to arrive right around
+   *  when the hit resolves. Purely cosmetic — the fixed windup timer still
+   *  drives the actual resolution, so a slow bolt never delays a turn.
+   *  Its shape, arc and trail all come from ELEMENT_FX, keyed by the same
+   *  element the damage roll itself uses, so a Fire Art actually looks
+   *  like fire in flight rather than a recoloured generic dot. */
+  spawnProjectile(unit, target, vis) {
     if (!vis.ranged) return;
     const from = this.unitPos(unit), to = this.unitPos(target);
-    const color = vis.element ? (ELEMENT_BY_ID[vis.element]?.color ?? PAL.white) : PAL.white;
+    const el = vis.element ? ELEMENT_BY_ID[vis.element] : null;
+    const fx = (vis.element && ELEMENT_FX[vis.element]) || DEFAULT_FX;
     this.projectiles.push({
       x0: from.x + CELL_W / 2 - 8, y0: from.y + CELL_H - 26,
       x1: to.x + CELL_W / 2 - 8, y1: to.y + CELL_H - 26,
-      t: 0, dur: 0.2, color,
+      t: 0, dur: fx.dur, color: el?.color ?? PAL.white, color2: el?.color2 ?? '#ffffff',
+      fx, seed: Math.random() * 1000,
     });
   }
 
@@ -1217,15 +1304,72 @@ export class BattleScene {
     }
   }
 
-  /** A travelling bolt — an arced streak with a bright glowing head — for
-   *  every ranged or magic action currently in flight. */
+  /** A travelling bolt for every ranged or magic action currently in
+   *  flight — arc height and head shape come from ELEMENT_FX (see
+   *  drawProjectileHead), so a Lightning Art actually zigzags and an
+   *  Earth Art actually lobs, not just arrives in a differently-tinted
+   *  straight line. */
   drawProjectiles(scr) {
     for (const pr of this.projectiles) {
       const k = Math.min(1, pr.t / pr.dur);
       const x = pr.x0 + (pr.x1 - pr.x0) * k;
-      const y = pr.y0 + (pr.y1 - pr.y0) * k - Math.sin(k * Math.PI) * 9;
-      scr.light(x, y, 9, pr.color, 0.6);
-      scr.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, '#ffffff');
+      const y = pr.y0 + (pr.y1 - pr.y0) * k - Math.sin(k * Math.PI) * pr.fx.arc;
+      this.drawProjectileHead(scr, pr, x, y, k);
+    }
+  }
+
+  /** Renders one projectile's head in the shape its ELEMENT_FX entry
+   *  calls for. Every shape still gets the same soft glow underneath (a
+   *  bigger, brighter one for 'ray') so nothing loses the "this is magic"
+   *  read the plain dot always had — only the shape drawn on top of it
+   *  changes. */
+  drawProjectileHead(scr, pr, x, y, k) {
+    const { shape } = pr.fx;
+    const rx = Math.round(x), ry = Math.round(y);
+    if (shape === 'zigzag') {
+      // a scatter of bright sparks jittered along the path travelled so
+      // far, redrawn fresh every frame — a couple of frames of this on a
+      // bolt this short reads as a crackle, not a smooth curve
+      scr.light(x, y, 10, pr.color, 0.55);
+      for (let i = 0; i < 4; i++) {
+        const t = Math.random() * k;
+        const jx = Math.round(pr.x0 + (pr.x1 - pr.x0) * t + (Math.random() - 0.5) * 12);
+        const jy = Math.round(pr.y0 + (pr.y1 - pr.y0) * t + (Math.random() - 0.5) * 8);
+        scr.rect(jx, jy, 1, 2, pr.color2);
+      }
+      scr.rect(rx - 1, ry - 1, 2, 2, pr.color2);
+      return;
+    }
+    scr.light(x, y, shape === 'ray' ? 13 : 9, pr.color, shape === 'ray' ? 0.75 : 0.6);
+    if (shape === 'shard') {
+      scr.rect(rx, ry - 2, 1, 5, pr.color2);
+      scr.rect(rx - 1, ry, 3, 1, pr.color2);
+    } else if (shape === 'chunk') {
+      scr.ctx.save();
+      scr.ctx.translate(x, y);
+      scr.ctx.rotate(pr.t * 9 + pr.seed);
+      scr.ctx.fillStyle = pr.color2;
+      scr.ctx.fillRect(-2, -2, 4, 4);
+      scr.ctx.restore();
+    } else if (shape === 'leaf') {
+      scr.ctx.save();
+      scr.ctx.translate(x, y);
+      scr.ctx.rotate(pr.t * 14 + pr.seed);
+      scr.ctx.fillStyle = pr.color2;
+      scr.ctx.fillRect(-1, -3, 2, 6);
+      scr.ctx.restore();
+    } else if (shape === 'drop') {
+      scr.rect(rx - 1, ry - 2, 2, 3, pr.color2);
+      scr.rect(rx, ry + 1, 1, 1, pr.color2);
+    } else if (shape === 'wisp') {
+      scr.ctx.save();
+      scr.ctx.globalAlpha = 0.5;
+      scr.rect(rx - 2, ry - 2, 4, 4, pr.color2);
+      scr.ctx.restore();
+      scr.rect(rx - 1, ry - 1, 2, 2, pr.color);
+    } else {
+      // 'dot' / 'orb' default
+      scr.rect(rx - 1, ry - 1, 2, 2, pr.color2);
     }
   }
 
