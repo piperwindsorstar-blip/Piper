@@ -21,6 +21,8 @@ import { SCHOOLS, STATUS } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
+import { questState, questProgress, questReady, questsByLevel, questBand } from '../../data/quests.js';
+import { nextStoryHint } from '../../data/story.js';
 import { SLOTS, saveSummary } from '../../engine/save.js';
 import { getTouchMode, cycleTouchMode, TOUCH_LABEL } from '../../engine/settings.js';
 import {
@@ -36,6 +38,7 @@ const PAGES = [
   { id: 'train', label: 'Train' },
   { id: 'jobs', label: 'Jobs' },
   { id: 'ladder', label: 'Ladder' },
+  { id: 'quest', label: 'Quest' },
   { id: 'save', label: 'Save' },
   { id: 'controls', label: 'Controls' },
   { id: 'close', label: 'Close' },
@@ -48,6 +51,9 @@ const TOP = 34, BODY_H = H - TOP - 32;
 const IX = BX + 14, IW = BW - 28;         // body inner
 const CW = Math.floor((IW - 16) / 2);     // two-column width
 const HEAD_PORTRAIT_W = 40, HEAD_PORTRAIT_H = 38; // procedural bust in charHeader
+// Quest page: side-quest list sits below the main-story block, leaving room
+// at the panel's own bottom for the selected entry's hook/reminder text.
+const QUEST_LIST_Y = TOP + 96, QUEST_LIST_ROWS = 6;
 
 /** The procedural bust portrait, scaled to fit a box. */
 function drawBust(scr, x, y, w, h, ch, alpha = 1) {
@@ -121,6 +127,7 @@ export class MenuScene {
       case 'train': return this.updateTrain(input);
       case 'save': return this.updateSave(input);
       case 'controls': return this.updateControls(input);
+      case 'quest': return this.updateQuest(input);
       default: break;
     }
   }
@@ -143,6 +150,7 @@ export class MenuScene {
       this.formCursor = { ...this.g.party[0].grid };
       this.formPicked = null;
     }
+    if (id === 'quest') this.refreshQuest();
   }
 
   get ch() { return this.g.party[this.who]; }
@@ -397,6 +405,7 @@ export class MenuScene {
         case 'ladder': this.drawLadder(scr); break;
         case 'save': this.drawSave(scr); break;
         case 'controls': this.drawControls(scr); break;
+        case 'quest': this.drawQuest(scr); break;
         default: break;
       }
     }
@@ -879,6 +888,71 @@ export class MenuScene {
     scr.textWrap(hint, IX, TOP + 120, IW, PAL.textDim, { lineHeight: 11, maxLines: 3 });
     scr.textWrap('▲▼ choose a row   ·   Z toggles   ·   ◄► adjusts',
       IX, TOP + BODY_H - 22, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
+  }
+
+  // --- quest -------------------------------------------------------------
+  // A read-only log: the main story's one linear next step (see
+  // nextStoryHint/MAIN_QUEST in data/story.js — the world itself stays open,
+  // this just always names the one thing to do if you want to follow the
+  // plot) above a scrollable list of every side quest, low to high by its
+  // recommended level, so "a few per 10 levels" actually reads as that.
+  refreshQuest() {
+    this.list.x = IX + 12; this.list.y = QUEST_LIST_Y;
+    this.list.cellW = IW - 24; this.list.cellH = 13; this.list.rows = QUEST_LIST_ROWS;
+    const items = [];
+    let band = null;
+    for (const q of questsByLevel()) {
+      const b = questBand(q.level);
+      if (b !== band) {
+        band = b;
+        items.push({ label: `— LV ${band - 9}-${band} —`, disabled: true, color: PAL.textFaint });
+      }
+      const state = questState(this.g, q.id);
+      let note;
+      if (state === 'done') note = 'Done';
+      else if (state === 'active') {
+        if (q.type !== 'deliver' && questReady(this.g, q.id)) note = 'Ready!';
+        else if (q.type === 'deliver') note = 'Carrying it';
+        else { const p = questProgress(this.g, q.id); note = `${p.have}/${p.need}`; }
+      } else note = `Lv ${q.level}`;
+      items.push({
+        label: q.title, note, q, state,
+        color: state === 'done' ? PAL.textFaint : PAL.text,
+        noteColor: state === 'done' ? PAL.textFaint : state === 'active' ? PAL.accent : PAL.textDim,
+      });
+    }
+    this.list.setItems(items, true);
+  }
+
+  updateQuest(input) { this.list.handle(input); }
+
+  drawQuest(scr) {
+    scr.text('QUEST', IX, TOP + 10, PAL.accent);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+
+    scr.text('MAIN STORY', IX, TOP + 34, PAL.textFaint);
+    const step = nextStoryHint(this.g);
+    if (step) {
+      scr.textRight(`Lv ${step.level}  ·  ${step.region}`, IX + IW, TOP + 34, PAL.accentDim);
+      scr.textWrap(step.hint, IX, TOP + 46, IW, PAL.text, { lineHeight: 11, maxLines: 2 });
+    } else {
+      scr.textWrap("The wheel is quiet. There's nothing left it's asking of you.",
+        IX, TOP + 46, IW, PAL.text, { lineHeight: 11, maxLines: 2 });
+    }
+
+    scr.rect(IX, TOP + 70, IW, 1, PAL.line);
+    const done = questsByLevel().filter((q) => questState(this.g, q.id) === 'done').length;
+    scr.text('SIDE QUESTS', IX, TOP + 82, PAL.textFaint);
+    scr.textRight(`${done}/${questsByLevel().length} done`, IX + IW, TOP + 82, PAL.textFaint);
+
+    this.list.draw(scr);
+    const sel = this.list.current;
+    if (sel?.q) {
+      const line = sel.state === 'done' ? sel.q.turnIn
+        : sel.state === 'active' ? sel.q.reminder
+          : `${sel.q.npc}: "${sel.q.hook}"`;
+      scr.textWrap(line, IX, TOP + BODY_H - 22, IW, PAL.textDim, { lineHeight: 11, maxLines: 2 });
+    }
   }
 }
 

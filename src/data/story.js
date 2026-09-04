@@ -8,6 +8,43 @@
 //  next to the NPC's own flavor text in maps.js rather than duplicated here.
 // ============================================================================
 
+// The main story, as a single ordered line — a hint feature (see the menu's
+// Quest page) picks the first entry whose boss flag isn't set yet, so the
+// world stays fully open to explore in any order while there's always one
+// clear next step for a player who just wants to know where the plot goes.
+// The order matches the level curve the sim actually plays at (see
+// tools/sim.js's BOSS table), not just formation-file order — Volk is the
+// intended first stop, not Anvil King, even though neither requires the
+// other mechanically.
+export const MAIN_QUEST = [
+  { flag: 'volk', level: 9, region: 'The Hollow',
+    hint: "The Hollow road is Volk's, and nothing moves past it while that's true. Head to the Hollow and end it." },
+  { flag: 'anvil_king', level: 16, region: 'The Anvil Gorge',
+    hint: "Something the size of a mountain stood up in the Anvil Gorge and never sat back down. Go see why." },
+  { flag: 'choir', level: 24, region: 'The Choir Ruins',
+    hint: "The Ruins keep singing whether anyone answers or not. Go find out who — or what — is singing." },
+  { flag: 'aurelith', level: 30, region: 'The Choir Ruins',
+    hint: "Something older than the Choir is coiled deeper in the Ruins. Go finish what the Choir started." },
+  { flag: 'kharos', level: 37, region: 'Cinderreach',
+    hint: "Cinderreach hasn't cooled in years, and lately it's dreaming out loud. Go quiet it." },
+  { flag: 'gatekeeper', level: 45, region: 'The Hollow Between',
+    hint: "Something in the Hollow Between has decided nobody gets through. Go prove it wrong." },
+  { flag: 'nerith', level: 55, region: 'The Drowned Vale',
+    hint: "The Vale's water rose without a current, and it's still rising. Go see what's wearing the crown." },
+  { flag: 'worldheart', level: 65, region: 'The Hollow Between',
+    hint: "Every green thing in the world just turned to face the Hollow Between at once. Go see what it's facing." },
+  { flag: 'vessia', level: 75, region: 'The Glassfields',
+    hint: "The Glassfields' light all points one direction now. Go find its warden." },
+  { flag: 'thirteenth', level: 85, region: 'The Hollow Between',
+    hint: "Nine on the wheel, four beside it — and something that was never on the wheel at all, still "
+      + "turning it. Go end it, in the Hollow Between." },
+];
+
+/** The next undone step of the main quest, or null once it's all cleared. */
+export function nextStoryHint(g) {
+  return MAIN_QUEST.find((step) => !g.flag(`boss.${step.flag}`)) ?? null;
+}
+
 export const STORY = {
   intro: [
     "The wheel has nine sides, and four more besides it — nine that chase each "
