@@ -199,9 +199,14 @@ export class BattleScene {
     // origin, opening an actual strip of sky for the horizon plane below to
     // occupy — still comfortably past the deepest occupied rank (z ~= -5.6,
     // widened along with WORLD_FRONT_Z above).
+    // A flat material colour here read as an empty void once everything
+    // around it (sky, risers, characters) had real detail — see
+    // groundTexture for the noise-speckled texture that replaces it.
+    const groundTex = this.groundTexture(T);
+    groundTex.repeat.set(30, 30);
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(30, 30),
-      new THREE.MeshLambertMaterial({ color: T.ground }),
+      new THREE.MeshLambertMaterial({ map: groundTex }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, 0, 8.7);
@@ -210,20 +215,24 @@ export class BattleScene {
     // Real 3D risers under ranks B and C (rank A stays at ground level) —
     // solid boxes, not another billboard, so the formation reads as
     // standing on an actual stepped platform instead of just being drawn
-    // smaller/higher for "depth". A directional key light makes the top and
-    // front faces of each step shade differently on their own, no extra
-    // texture work needed. Colour matches the ground so it reads as the
-    // ground itself stepping up, darkened slightly per step so the risers
-    // don't just vanish into the floor.
+    // smaller/higher for "depth". Same ground texture (a separate instance,
+    // for its own repeat setting — a box's UVs run 0-1 per face regardless
+    // of that face's actual size, so it can't share the plane's repeat and
+    // still look the same grain size), tinted darker per step via the
+    // material's own colour (which multiplies the texture) so the risers
+    // read as the ground itself stepping up rather than a different floor.
     const riserWidth = WORLD_LANE_STEP * 3 + 1.2;
     for (const side of ['enemy', 'party']) {
       const sign = side === 'enemy' ? -1 : 1;
       for (let col = 1; col <= 2; col++) {
         const topY = col * RISER_STEP_H;
         const z = sign * (WORLD_FRONT_Z + col * WORLD_RANK_STEP);
+        const riserTex = groundTex.clone();
+        riserTex.needsUpdate = true;
+        riserTex.repeat.set(riserWidth, riserWidth);
         const riser = new THREE.Mesh(
           new THREE.BoxGeometry(riserWidth, topY, WORLD_RANK_STEP * 1.05),
-          new THREE.MeshLambertMaterial({ color: shade(T.ground, -0.1 * col) }),
+          new THREE.MeshLambertMaterial({ map: riserTex, color: shade('#ffffff', -0.12 * col) }),
         );
         riser.position.set(0, topY / 2, z);
         scene.add(riser);
@@ -304,6 +313,46 @@ export class BattleScene {
       abyss:      { sky1: '#241040', far: '#170a28', ground: '#3a2c52', gdark: '#211838', grade: '#a86cff', zenith: '#3a1a5c', horizon: '#0b0616', mote: '#a86cff', moteUp: false },
       boss:       { sky1: '#3a1834', far: '#200f26', ground: '#403050', gdark: '#241a34', grade: '#ff8ad0', zenith: '#4a1530', horizon: '#160810', mote: '#ff5a8a', moteUp: true },
     }[region] ?? { sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', grade: '#9ab0e0', zenith: '#33335c', horizon: '#14142a', mote: '#9ab0e0', moteUp: true };
+  }
+
+  /** A small tileable, noise-speckled ground texture — a flat material
+   *  colour here read as an empty void once everything around it (sky,
+   *  risers, characters) had real detail. Cheap hash-based value noise,
+   *  not the overworld's tile-aware groundSprite (that expects a tile
+   *  grid with neighbouring materials to blend against; this plane is one
+   *  uniform material throughout, so a simpler self-contained generator is
+   *  the right tool rather than bending that one to fit). Built once per
+   *  battle and shared (via .clone() for a different repeat) between the
+   *  ground plane and every riser. */
+  groundTexture(T) {
+    const size = 64;
+    const cv = document.createElement('canvas');
+    cv.width = size; cv.height = size;
+    const ctx = cv.getContext('2d');
+    const hash = (x, y) => {
+      const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+      return s - Math.floor(s);
+    };
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        // a coarse blotchy value (patches of lighter/darker ground) plus a
+        // fine per-pixel speckle (individual flecks) layered on top
+        const blotch = hash(Math.floor(x / 4), Math.floor(y / 4));
+        let color = mix(T.gdark, T.ground, 0.35 + blotch * 0.65);
+        const fleck = hash(x + 0.5, y + 0.5);
+        if (fleck > 0.965) color = mix(color, '#ffffff', 0.16);
+        else if (fleck < 0.035) color = shade(color, -0.35);
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
   }
 
   /** A banded (posterized) vertical sky gradient — a handful of flat colour
@@ -1032,9 +1081,6 @@ export class BattleScene {
 
     this.drawGrid(scr, 'enemy');
     this.drawGrid(scr, 'party');
-    this.drawGridLabels(scr, 'enemy');
-    this.drawGridLabels(scr, 'party');
-    this.drawLaneNumbers(scr);
 
     // units, back column first so front overlaps
     const all = [...b.enemies, ...b.party].sort((a, z) => z.grid.col - a.grid.col);
@@ -1086,33 +1132,11 @@ export class BattleScene {
     }
   }
 
-  /** Rank letters (A/B/C, front to back) along the outer edge of one side's
-   *  grid, so "row A is the front" is something the player can just read
-   *  off the field rather than remember. Positioned off the leftmost file's
-   *  own projected ground line, so they track the 3D camera automatically. */
-  drawGridLabels(scr, side) {
-    for (let col = 0; col < 3; col++) {
-      const p = this.cellPos(side, 0, col);
-      scr.textCenter(RANK_LABELS[col], p.x + CELL_W / 2 - 44, p.y + CELL_H / 2 - 4, PAL.textFaint);
-    }
-  }
-
-  /** Lane numbers (1/2/3, left to right) at the seam between the two grids —
-   *  a lane already used this round dims out, since only one unit per lane
-   *  may act per round (Battle.actedLane). Shown for the party's own lanes,
-   *  which is the discipline a player actually has to plan around. The seam
-   *  y is the midpoint between each side's own projected front rank, so it
-   *  tracks the 3D camera rather than assuming a fixed horizon line. */
-  drawLaneNumbers(scr) {
-    const b = this.battle;
-    for (let lane = 0; lane < 3; lane++) {
-      const enemyFront = this.cellPos('enemy', lane, 0).y + CELL_H;
-      const partyFront = this.cellPos('party', lane, 0).y + CELL_H;
-      const fx = this.cellPos('party', lane, 0).x + CELL_W / 2;
-      const locked = b.actedLane.party.has(lane);
-      scr.textCenter(LANE_LABELS[lane], fx, (enemyFront + partyFront) / 2, locked ? PAL.textFaint : PAL.accent);
-    }
-  }
+  // Rank letters (A/B/C) and lane numbers (1/2/3) used to float over the
+  // live battle grid at all times. Those labels are for the formation-
+  // editing UI (see the 'move' state's "lane N row X" readout below) —
+  // pinned over the battlefield itself during a normal turn, they were
+  // just noise. Removed; the grid still exists, it's just unlabelled now.
 
   drawUnit(scr, u) {
     const p = this.unitPos(u);
