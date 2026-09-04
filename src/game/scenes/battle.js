@@ -133,6 +133,38 @@ const ELEMENT_FX = {
 };
 const DEFAULT_FX = { shape: 'dot', arc: 9, dur: 0.20, driftY: 0, spread: 6, drag: 1.5 };
 
+// A slow drift of colour off any unit carrying a status — see
+// updateStatusFx — plus the tint its little icon square draws in (see
+// drawUnit). Every status used to share one of two icon colours (bad =
+// magenta, good = cyan) and only poison/burn/freeze had any particle at
+// all; this covers all of them, so Paralyze doesn't look like Confuse
+// doesn't look like Silence.
+const STATUS_FX = {
+  poison:   { color: '#7ee08a', vy: -14, vy2: 8,  spread: 4,  glow: true,  life: 0.7 },
+  burn:     { color: '#ff8a3c', color2: '#ffd24a', vy: -22, vy2: 14, spread: 10, glow: true, life: 0.4 },
+  freeze:   { color: '#bfe8ff', vy: -4,  vy2: 0,  spread: 14, glow: true,  life: 0.5, fade: true },
+  paralyze: { color: '#fff26a', vy: 0,   vy2: 16, spread: 16, glow: true,  life: 0.22, drag: 3 },
+  sleep:    { color: '#b6a8e0', vy: -8,  vy2: 2,  spread: 4,  glow: true,  life: 0.9, fade: true },
+  confuse:  { color: '#ff9adf', vy: -6,  vy2: 14, spread: 14, glow: true,  life: 0.5 },
+  fear:     { color: '#5a4070', vy: -6,  vy2: 4,  spread: 8,  glow: false, life: 0.6 },
+  silence:  { color: '#c8c8d8', vy: -3,  vy2: 2,  spread: 10, glow: false, life: 0.5, fade: true },
+  blind:    { color: '#241a1e', vy: -2,  vy2: 4,  spread: 10, glow: false, life: 0.6 },
+  slow:     { color: '#8098b0', vy: 4,   vy2: 2,  spread: 6,  glow: false, life: 0.6 },
+  curse:    { color: '#7a2c8a', vy: 6,   vy2: 2,  spread: 4,  glow: true,  life: 0.6 },
+  doom:     { color: '#c81c2c', vy: -2,  vy2: 2,  spread: 6,  glow: true,  life: 0.35 },
+  stone:    { color: '#8a8070', vy: 6,   vy2: 4,  spread: 8,  glow: false, life: 0.4 },
+  haste:    { color: '#fff26a', vy: 0,   vy2: 0,  spread: 26, glow: true,  life: 0.18, drag: 4 },
+  regen:    { color: '#a0ffb0', vy: -18, vy2: 4,  spread: 6,  glow: true,  life: 0.5 },
+  shell:    { color: '#7fc8ff', vy: 0,   vy2: 0,  spread: 12, glow: true,  life: 0.4, fade: true },
+  protect:  { color: '#ffb060', vy: 0,   vy2: 0,  spread: 12, glow: true,  life: 0.4, fade: true },
+  might:    { color: '#ff5a4a', vy: -6,  vy2: 4,  spread: 8,  glow: true,  life: 0.35 },
+  focus:    { color: '#b06aff', vy: -6,  vy2: 4,  spread: 8,  glow: true,  life: 0.35 },
+  evade:    { color: '#7ee0ff', vy: 0,   vy2: 0,  spread: 20, glow: true,  life: 0.2, drag: 3 },
+  reflect:  { color: '#e8e8f0', vy: 0,   vy2: 0,  spread: 10, glow: true,  life: 0.3 },
+  barrier:  { color: '#ffd24a', vy: 0,   vy2: 0,  spread: 10, glow: true,  life: 0.35, fade: true },
+  charm:    { color: '#ff8ac8', vy: -8,  vy2: 4,  spread: 8,  glow: true,  life: 0.5 },
+};
+
 export class BattleScene {
   constructor(app) { this.app = app; }
 
@@ -663,7 +695,7 @@ export class BattleScene {
         if (fx.type === 'damage') {
           this.flash = fx.crit ? 0.22 : 0.14;
           this.app.screen.addShake(fx.crit ? 9 : 4);
-          this.fxp.burst(cx, cy + 10, col, fx.crit ? 26 : 14, fx.crit ? 130 : 80);
+          this.impactBurst(cx, cy + 10, fx.element, col, fx.crit ? 26 : 14, fx.crit ? 130 : 80);
           sfx.hit(fx.crit);
           if (fx.crit) this.hitPause = 0.08;
         } else {
@@ -687,7 +719,7 @@ export class BattleScene {
           const p = this.unitPos(u);
           const col = ELEMENT_BY_ID[fx.element]?.color ?? PAL.white;
           this.deathAnims.set(fx.uid, { t: 0, dur: 0.55 });
-          this.fxp.burst(p.x + CELL_W / 2 - 4, p.y + CELL_H - 20, col, 22, 70);
+          this.impactBurst(p.x + CELL_W / 2 - 4, p.y + CELL_H - 20, fx.element, col, 22, 70);
         }
       }
     }
@@ -772,9 +804,11 @@ export class BattleScene {
     }
   }
 
-  /** A slow bubble/ember/frost drift off any unit carrying that status —
-   *  cheap, additive, and reuses the same particle language as everything
-   *  else in this scene rather than tinting the (cached, shared) sprites. */
+  /** A slow drift of colour off any unit carrying a status — cheap,
+   *  additive, and reuses the same particle language as everything else
+   *  in this scene rather than tinting the (cached, shared) sprites.
+   *  Shape/colour/drift come from STATUS_FX, covering every status this
+   *  game has rather than just the original poison/burn/freeze three. */
   updateStatusFx(dt) {
     this.statusFxT += dt;
     if (this.statusFxT < 0.22) return;
@@ -783,22 +817,17 @@ export class BattleScene {
       if (!u.alive) continue;
       const p = this.unitPos(u);
       const cx = p.x + CELL_W / 2 - 4, cy = p.y + CELL_H - 16;
-      if (u.statuses.poison) {
+      for (const k of Object.keys(u.statuses)) {
+        const fx = STATUS_FX[k];
+        if (!fx) continue;
         this.fxp.spawn({
-          x: cx + (Math.random() - 0.5) * 10, y: cy, vx: (Math.random() - 0.5) * 4, vy: -14 - Math.random() * 8,
-          life: 0.7, color: '#7ee08a', glow: true, size: 1,
-        });
-      }
-      if (u.statuses.burn) {
-        this.fxp.spawn({
-          x: cx + (Math.random() - 0.5) * 10, y: cy, vx: (Math.random() - 0.5) * 10, vy: -22 - Math.random() * 14,
-          life: 0.4, color: Math.random() < 0.5 ? '#ff8a3c' : '#ffd24a', glow: true, size: 1,
-        });
-      }
-      if (u.statuses.freeze) {
-        this.fxp.spawn({
-          x: cx + (Math.random() - 0.5) * 14, y: cy + (Math.random() - 0.5) * 10, vx: 0, vy: -4,
-          life: 0.5, color: '#bfe8ff', glow: true, size: 1, fade: true,
+          x: cx + (Math.random() - 0.5) * fx.spread,
+          y: cy + (Math.random() - 0.5) * fx.spread * 0.5,
+          vx: (Math.random() - 0.5) * fx.spread,
+          vy: fx.vy - Math.random() * fx.vy2,
+          life: fx.life, size: 1,
+          color: fx.color2 && Math.random() < 0.5 ? fx.color2 : fx.color,
+          glow: fx.glow, fade: fx.fade, drag: fx.drag ?? 0,
         });
       }
     }
@@ -1002,7 +1031,7 @@ export class BattleScene {
       const t = action.target;
       const foe = !!t && t !== unit && t.side !== unit.side;
       const vis = this.actionVisual(unit, action);
-      this.attackAnim = { uid: unit.uid, phase: 'windup', t: 0, foe, anim: vis.anim };
+      this.attackAnim = { uid: unit.uid, phase: 'windup', t: 0, foe, anim: vis.anim, element: vis.element };
       this.pendingUnit = unit;
       this.pendingAction = action;
       this.state = 'attacking';
@@ -1072,6 +1101,31 @@ export class BattleScene {
       t: 0, dur: fx.dur, color: el?.color ?? PAL.white, color2: el?.color2 ?? '#ffffff',
       fx, seed: Math.random() * 1000,
     });
+  }
+
+  /** A damage-impact burst, shaped by the hit's own element (see
+   *  ELEMENT_FX) when it has one — fire kicks embers upward, earth throws
+   *  heavy debris down and fast, lightning scatters wide, instead of
+   *  every element sharing one radial spark spray with only its colour
+   *  changed. A physical (non-elemental) hit keeps the plain spark burst
+   *  — that generic "impact" read is exactly right for a sword or a fist,
+   *  which isn't secretly hiding an element that needs its own look. */
+  impactBurst(cx, cy, element, color, count, speed) {
+    const fx = element ? ELEMENT_FX[element] : null;
+    if (!fx) { this.fxp.burst(cx, cy, color, count, speed); return; }
+    const solid = fx.shape === 'chunk' || fx.shape === 'drop';
+    const el = ELEMENT_BY_ID[element];
+    const n = Math.round(count * (fx.shape === 'zigzag' ? 1.4 : solid ? 0.7 : 1));
+    for (let i = 0; i < n; i++) {
+      const a = (Math.PI * 2 * i) / n + Math.random() * 0.5;
+      const s = speed * (0.4 + Math.random() * 0.8);
+      this.fxp.spawn({
+        x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s + fx.driftY * 0.6,
+        ay: solid ? 220 : 100, life: 0.3 + Math.random() * 0.3,
+        color: Math.random() < 0.3 ? (el?.color2 ?? color) : color,
+        size: Math.random() < 0.25 ? 2 : 1, glow: !solid, drag: fx.drag,
+      });
+    }
   }
 
   // --- resolution ----------------------------------------------------------
@@ -1255,7 +1309,15 @@ export class BattleScene {
       scr.light(p.x + CELL_W / 2 - 4, p.y + CELL_H - 6, 22, 'rgba(240,180,76,0.55)', 0.5);
       scr.text('▼', p.x + CELL_W / 2 - 6, p.y - 6 + bob, PAL.accent);
     }
-    if (isActor) scr.light(p.x + CELL_W / 2 - 4, p.y + CELL_H - 6, 22, 'rgba(92,210,240,0.55)', 0.45);
+    if (isActor) {
+      // Tinted by the Art's own element while it's actually resolving (not
+      // during plain command/target selection, where nothing's been cast
+      // yet) — a Fire Art telegraphs amber, not the generic cyan every
+      // action used to glow regardless of what it was.
+      const animEl = this.attackAnim?.uid === u.uid ? this.attackAnim.element : null;
+      const col = animEl ? ELEMENT_BY_ID[animEl]?.color : null;
+      scr.light(p.x + CELL_W / 2 - 4, p.y + CELL_H - 6, 22, col ?? 'rgba(92,210,240,0.55)', 0.45);
+    }
 
     // enemy HP pip and status icons
     if (!u.isPC && u.alive) {
@@ -1265,7 +1327,11 @@ export class BattleScene {
     }
     const st = Object.keys(u.statuses).filter((k) => STATUS[k]);
     st.slice(0, 3).forEach((k, i) => {
-      scr.rect(p.x + CELL_W / 2 - 10 + i * 7, p.y + 2, 5, 5, STATUS[k].kind === 'bad' ? PAL.magenta : PAL.cyan);
+      // Its own colour (see STATUS_FX) where one exists, so Paralyze's
+      // icon doesn't look like Confuse's — falls back to the old plain
+      // bad/good binary only for a status that somehow isn't in the table.
+      const col = STATUS_FX[k]?.color ?? (STATUS[k].kind === 'bad' ? PAL.magenta : PAL.cyan);
+      scr.rect(p.x + CELL_W / 2 - 10 + i * 7, p.y + 2, 5, 5, col);
     });
 
     // party stat card: name, HP, MP and IP, pinned beside each member's own
