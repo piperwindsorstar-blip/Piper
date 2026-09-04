@@ -528,11 +528,15 @@ export class MenuScene {
       let cx = this.colX(1);
       for (const [e, m] of res) {
         const ee = ELEMENT_BY_ID[e];
-        const label = `${ee.name} ${Math.round(m * 100)}%`;
+        // See creation.js's identical arrow: colour alone (green/red) is a
+        // classic red-green colourblind trap, so the arrow carries the same
+        // "resisted vs. weak" meaning on its own.
+        const arrow = m < 1 ? '▼' : m > 1 ? '▲' : '';
+        const label = `${ee.name} ${arrow}${Math.round(m * 100)}%`;
         const wdt = scr.textWidth(label) + 8;
         if (cx + wdt > this.colX(1) + CW) { cx = this.colX(1); ry += 11; }
         scr.rect(cx, ry + 1, 3, 6, ee.color);
-        scr.text(label, cx + 6, ry, m < 1 ? PAL.green : PAL.red);
+        scr.text(label, cx + 6, ry, m < 1 ? PAL.green : m > 1 ? PAL.red : PAL.textDim);
         cx += wdt + 6;
       }
       ry += 14;

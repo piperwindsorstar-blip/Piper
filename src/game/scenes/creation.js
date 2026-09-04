@@ -467,12 +467,16 @@ export class CreationScene {
       const x0 = cx;
       for (const [e, m] of res) {
         const el = ELEMENT_BY_ID[e];
-        const pct = `${Math.round(m * 100)}%`;
+        // The colour alone (green/red) is a classic red-green colourblind
+        // trap — the arrow carries the same "resisted vs. weak" meaning on
+        // its own, the way the status icons carry meaning without colour.
+        const arrow = m < 1 ? '▼' : m > 1 ? '▲' : '';
+        const pct = `${arrow}${Math.round(m * 100)}%`;
         const wdt = scr.textWidth(`${el.name} ${pct}`) + 8;
         if (cx + wdt > x0 + CW) { cx = x0; ry += 10; }
         scr.rect(cx, ry + 1, 3, 6, el.color);
         scr.text(el.name, cx + 6, ry, PAL.textDim);
-        scr.text(pct, cx + 6 + scr.textWidth(`${el.name} `), ry, m < 1 ? PAL.green : PAL.red);
+        scr.text(pct, cx + 6 + scr.textWidth(`${el.name} `), ry, m < 1 ? PAL.green : m > 1 ? PAL.red : PAL.textDim);
         cx += wdt + 6;
       }
       ry += 11;
