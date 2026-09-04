@@ -165,6 +165,46 @@ const STATUS_FX = {
   charm:    { color: '#ff8ac8', vy: -8,  vy2: 4,  spread: 8,  glow: true,  life: 0.5 },
 };
 
+// A tiny pictogram per status, drawn over its STATUS_FX colour in drawUnit —
+// the colour alone couldn't distinguish, say, Paralyze's yellow from Haste's
+// (both buffs the eye reads as "yellow square" at this size), and colour-
+// blind players had nothing but position to go on. Authored the same way as
+// font.js's glyphs: 5 rows of '#'/'.' read as a picture, one bit per pixel.
+const STATUS_ICON = {
+  poison:   ['..#..', '.###.', '#####', '#####', '.###.'],   // dripping drop
+  burn:     ['..#..', '.#.#.', '#...#', '#.#.#', '.###.'],   // flame
+  freeze:   ['#.#.#', '.#.#.', '#####', '.#.#.', '#.#.#'],   // snowflake
+  paralyze: ['..##.', '.##..', '###..', '..##.', '.##..'],   // bolt
+  sleep:    ['#####', '...#.', '..#..', '.#...', '#####'],   // Z
+  confuse:  ['.###.', '#...#', '..##.', '..#..', '..#..'],   // question mark
+  fear:     ['..#..', '..#..', '#####', '.###.', '..#..'],   // fleeing/down arrow
+  silence:  ['.###.', '#.#.#', '..#..', '#.#.#', '.###.'],   // crossed-out mouth
+  blind:    ['.....', '.....', '#####', '.#.#.', '.....'],   // shut eye
+  slow:     ['#####', '.#.#.', '..#..', '.#.#.', '#####'],   // hourglass
+  curse:    ['#....', '.#...', '..#..', '...#.', '....#'],   // crack
+  doom:     ['.###.', '#.#.#', '#####', '.#.#.', '#...#'],   // skull
+  stone:    ['#####', '#...#', '#####', '#...#', '#####'],   // brick
+  haste:    ['#.#..', '.#.#.', '#.#.#', '.#.#.', '#.#..'],   // speed chevrons
+  regen:    ['..#..', '..#..', '#####', '..#..', '..#..'],   // cross/heal
+  shell:    ['.###.', '#...#', '#...#', '#...#', '.###.'],   // magic ward
+  protect:  ['..#..', '.###.', '.###.', '#####', '#####'],   // shield
+  might:    ['..#..', '.###.', '#.#.#', '..#..', '..#..'],   // power-up arrow
+  focus:    ['..#..', '.....', '#.#.#', '.....', '..#..'],   // crosshair
+  evade:    ['.....', '..##.', '.##..', '##...', '.....'],   // dodge streak
+  reflect:  ['#...#', '.#.#.', '..#..', '.#.#.', '#...#'],   // bounce-back X
+  barrier:  ['#.#.#', '.....', '#...#', '.....', '#.#.#'],   // dashed wall
+  charm:    ['.#.#.', '#####', '#####', '.###.', '..#..'],   // heart
+};
+
+/** Black or white, whichever reads over a given status colour. */
+function iconInk(hex) {
+  if (!hex || hex[0] !== '#') return PAL.shadow;
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? PAL.shadow : PAL.white;
+}
+
 export class BattleScene {
   constructor(app) { this.app = app; }
 
@@ -1331,7 +1371,17 @@ export class BattleScene {
       // icon doesn't look like Confuse's — falls back to the old plain
       // bad/good binary only for a status that somehow isn't in the table.
       const col = STATUS_FX[k]?.color ?? (STATUS[k].kind === 'bad' ? PAL.magenta : PAL.cyan);
-      scr.rect(p.x + CELL_W / 2 - 10 + i * 7, p.y + 2, 5, 5, col);
+      const ix = p.x + CELL_W / 2 - 10 + i * 7, iy = p.y + 2;
+      scr.rect(ix, iy, 5, 5, col);
+      const icon = STATUS_ICON[k];
+      if (icon) {
+        const ink = iconInk(col);
+        for (let ry = 0; ry < 5; ry++) {
+          for (let rx = 0; rx < 5; rx++) {
+            if (icon[ry][rx] === '#') scr.px(ix + rx, iy + ry, ink);
+          }
+        }
+      }
     });
 
     // party stat card: name, HP, MP and IP, pinned beside each member's own
