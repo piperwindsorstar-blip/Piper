@@ -357,6 +357,17 @@ export const ENEMIES = [
     drops: [['worldedge', 1.0], ['nullstaff', 1.0], ['crownvoid', 1.0]],
     blurb: 'The element that was left off the wheel, and has not forgiven it.',
   }),
+
+  // --- postgame — a locked room in the Hollow Between, open only once the
+  // Thirteenth is counted, per the epilogue's own last line about the wheel
+  // turning "like something is missing from it now, on purpose" -----------
+  e('boss_seam', 'The Seam', 'aberration', 'void', 96, [40000, 2500, 460, 340, 430, 380, 105], {
+    sprite: sp('humanoid', '#050208', '#3a3450', '#000000', 2.9),
+    skills: ['worldsend', 'lastword', 'unmaking', 'everguard', 'rebirth', 'soulbind'], ai: 'boss',
+    gold: 500000, exp: 3000000,
+    drops: [['seamring', 1.0]],
+    blurb: "Not a fourteenth element. The gap a good ring keeps, so it still has room to turn.",
+  }),
 ];
 
 export const ENEMY_BY_ID = Object.fromEntries(ENEMIES.map((x) => [x.id, x]));
@@ -428,6 +439,7 @@ export const FORMATIONS = [
   f('boss_worldheart', 'boss', [at('boss_worldheart', 1, 1), at('seraph', 0, 2), at('seraph', 2, 2)], { boss: true }),
   f('boss_vessia', 'boss', [at('boss_vessia', 1, 1), at('radiantguard', 0, 0), at('radiantguard', 2, 0)], { boss: true }),
   f('boss_thirteenth', 'boss', [at('boss_thirteenth', 1, 1), at('nullweaver', 0, 0), at('nullweaver', 2, 0)], { boss: true }),
+  f('boss_seam', 'boss', [at('boss_seam', 1, 1), at('starweaver', 0, 0), at('starweaver', 2, 0)], { boss: true }),
 ];
 
 export const FORMATION_BY_ID = Object.fromEntries(FORMATIONS.map((x) => [x.id, x]));

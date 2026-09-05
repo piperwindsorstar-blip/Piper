@@ -91,7 +91,7 @@ const REGION_LEVEL = {
 const BOSS_LEVEL = {
   boss_volk: 9, boss_anvil: 16, boss_choir: 24, boss_aurelith: 30,
   boss_kharos: 37, boss_gate: 45, boss_nerith: 55, boss_worldheart: 65,
-  boss_vessia: 75, boss_thirteenth: 85,
+  boss_vessia: 75, boss_thirteenth: 85, boss_seam: 96,
 };
 
 console.log(`\n  QUEST OF THE THIRTEEN — battle simulation (${RUNS} runs each)\n`);

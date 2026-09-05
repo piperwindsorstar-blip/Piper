@@ -77,6 +77,10 @@ export const ACHIEVEMENTS = [
     id: 'wealthy', name: 'Coffers Full', desc: 'Hold 100,000 gold at once.',
     check: (g) => g.gold >= 100000,
   },
+  {
+    id: 'boss.seam', name: 'Nothing Left Unwritten', desc: 'Find and defeat the Hollow Between\'s hidden postgame boss.',
+    check: (g) => g.flag('boss.seam'),
+  },
 ];
 
 export function achievementsDone(g) { return ACHIEVEMENTS.filter((a) => a.check(g)); }

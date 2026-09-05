@@ -1014,6 +1014,8 @@ export const MAPS = {
     boss: {"x": 32, "y": 11, "formation": "boss_gate", "flag": "gatekeeper", "intro": "Something enormous unfolds from the wall. \"Nobody has been through.\"", "requires": "kharos"},
     boss2: {"x": 34, "y": 20, "formation": "boss_worldheart", "flag": "worldheart", "requires": "nerith", "intro": "Every green thing in the world turns to face you at once."},
     boss3: {"x": 23, "y": 25, "formation": "boss_thirteenth", "flag": "thirteenth", "requires": "vessia", "intro": "\"Nine on the wheel. Four beside it. And then there is me.\""},
+    boss4: {"x": 34, "y": 3, "formation": "boss_seam", "flag": "seam", "requires": "thirteenth",
+      "intro": "The room was never on any map of this place. It was always going to be exactly this empty."},
   },
 
   cinderreach: {
@@ -1489,7 +1491,10 @@ export const MAPS = {
         "reactions": { "vessia": "The fields still shine. Nobody's watching them anymore. We've decided that's an improvement." }},
       {"x": 2, "y": 8, "kind": "talk", "name": "Old Reliquary Keeper",
         "text": "Nine on the wheel, four beside it, and a hub nobody paints. I've kept this town's shrine to all thirteen my whole life. Never met the thirteenth in person. Small mercies, I used to think.",
-        "reactions": { "thirteenth": "Met it, then. The shrine stays lit either way — you don't stop tending a wheel just because you've finally seen its hub." }},
+        "reactions": {
+          "seam": "There was never a fourteenth candle to light. I lit one anyway. Didn't feel wrong.",
+          "thirteenth": "Met it, then. The shrine stays lit either way — you don't stop tending a wheel just because you've finally seen its hub."
+        }},
     ],
   },
 
@@ -1680,7 +1685,7 @@ export function signAt(map, x, y) {
 // off the world map, but is just as worth surfacing on a world overview.
 export const REGIONS = [...MAPS.world.warps.map((w) => w.to), 'hollowbetween'];
 
-export const BOSS_SLOTS = ['boss', 'boss2', 'boss3'];
+export const BOSS_SLOTS = ['boss', 'boss2', 'boss3', 'boss4'];
 
 export function bossAt(map, x, y) {
   for (const key of BOSS_SLOTS) {

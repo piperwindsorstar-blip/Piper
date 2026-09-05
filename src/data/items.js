@@ -137,6 +137,9 @@ export const ITEMS = [
   ACC('cindercrown', 'Cinder Crown', 8500, { bonus: { int: 10, spr: 8 } }),
   ACC('vicarlocket', "The Vicar's Locket", 19000, { bonus: { spr: 14, mp: 30 } }),
   ACC('glasshalo', 'Glass Halo', 54000, { bonus: { int: 16, spr: 16, lck: 8 } }),
+  // --- postgame — the Seam's own drop, a step above everything else here ---
+  ACC('seamring', 'The Missing Seam', 400000,
+    { bonus: { str: 20, vit: 20, agi: 20, int: 20, spr: 20, lck: 20 } }),
 
   // --- consumables ---------------------------------------------------------
   U('potion', 'Potion', 30, { heal: 80, target: 'ally' }),
