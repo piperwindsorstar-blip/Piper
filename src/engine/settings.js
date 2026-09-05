@@ -46,3 +46,19 @@ export function applyTouchVisibility() {
   // toggling it mid-session must resize the canvas to match immediately
   window.app?.screen?.resize();
 }
+
+// A straight multiplier on the battle scene's own dt (see BattleScene.update)
+// — windups, strikes, message dwell time, everything speeds up together.
+// Never touches tools/simulate.js, which has no frame timing to begin with.
+const BATTLE_SPEEDS = [1, 2, 3];
+
+export function getBattleSpeed() {
+  const s = read().battleSpeed;
+  return BATTLE_SPEEDS.includes(s) ? s : 1;
+}
+
+export function cycleBattleSpeed() {
+  const next = BATTLE_SPEEDS[(BATTLE_SPEEDS.indexOf(getBattleSpeed()) + 1) % BATTLE_SPEEDS.length];
+  write({ battleSpeed: next });
+  return next;
+}

@@ -4,9 +4,9 @@
 //
 //   node tools/simulate.js [--runs N] [--level L] [--formation ID] [--verbose]
 
-import { createCharacter, awardExp, promote, refreshPromotion, stats, usableSkills, fullRestore }
+import { createCharacter, awardExp, promote, refreshPromotion, stats, fullRestore }
   from '../src/game/character.js';
-import { Battle, PHASE } from '../src/game/battle.js';
+import { Battle, PHASE, autoPartyAction } from '../src/game/battle.js';
 import { FORMATIONS } from '../src/data/enemies.js';
 import { ITEMS, canEquip } from '../src/data/items.js';
 import { getClass } from '../src/data/classes.js';
@@ -62,37 +62,6 @@ function equipBest(ch) {
   }
 }
 
-function autoAction(b, unit) {
-  const ch = unit.ref;
-  const s = unit.stats();
-  const foes = b.livingEnemies();
-  const allies = b.livingParty();
-  const hurt = allies.filter((a) => a.hp / a.stats().maxHp < 0.5);
-  const skills = usableSkills(ch);
-
-  // heal if someone is badly hurt
-  const heals = skills.filter((k) => k.type === 'heal' && k.power > 0);
-  if (hurt.length && heals.length && b.rng.chance(0.8)) {
-    const k = heals[heals.length - 1];
-    return { kind: 'skill', skillId: k.id, target: hurt.sort((x, y) => x.hp - y.hp)[0] };
-  }
-  // otherwise the strongest offensive skill that has a legal target
-  const off = skills.filter((k) => (k.type === 'phys' || k.type === 'mag'))
-    .sort((a, z) => (z.power * (z.hits ?? 1)) - (a.power * (a.hits ?? 1)));
-  for (const k of off) {
-    const legal = b.validTargets(unit, k);
-    if (legal.length && b.rng.chance(0.7)) {
-      return { kind: 'skill', skillId: k.id, target: b.rng.pick(legal) };
-    }
-  }
-  const reachable = foes.filter((f) => b.inReach(unit, f, s.reach));
-  if (!reachable.length) {
-    if (unit.grid.col > 0) return { kind: 'move', row: unit.grid.row, col: unit.grid.col - 1 };
-    return { kind: 'attack', target: foes[0] };
-  }
-  return { kind: 'attack', target: b.rng.pick(reachable) };
-}
-
 function runBattle(party, formationId, seed) {
   const b = new Battle(party, formationId, { seed });
   b.phase = PHASE.INPUT;
@@ -100,7 +69,7 @@ function runBattle(party, formationId, seed) {
   while (b.phase === PHASE.INPUT && turns < 400) {
     const u = b.current();
     if (!u) { b.advance(); continue; }
-    const action = u.isPC ? autoAction(b, u) : b.enemyAction(u);
+    const action = u.isPC ? autoPartyAction(b, u) : b.enemyAction(u);
     b.act(u, action);
     b.checkEnd();
     if (b.phase !== PHASE.INPUT) break;

@@ -11,12 +11,13 @@ import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
-import { Battle, PHASE, gridNeighbors } from '../battle.js';
+import { Battle, PHASE, gridNeighbors, autoPartyAction } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '../character.js';
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { DIFFICULTY_BY_ID } from '../../data/difficulty.js';
+import { getBattleSpeed } from '../../engine/settings.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
 import { mix, shade } from '../../engine/pixel.js';
@@ -240,6 +241,7 @@ export class BattleScene {
     this.introDur = 1.1;
     this.introT = this.introDur;
     this.hitPause = 0;
+    this.autoBattle = false;
     this.setup3D();
     playMusic(this.battle.isBoss ? 'boss' : 'battle', this.battle.isBoss ? BOSS_THEME : BATTLE_THEME);
     // a small impact as the fight opens: a jolt, a white flash, and both
@@ -787,6 +789,16 @@ export class BattleScene {
 
   // --- update --------------------------------------------------------------
   update(dt, input) {
+    // Auto-Battle plays the whole party with autoPartyAction (the same
+    // heuristic tools/simulate.js is balanced against) instead of waiting on
+    // the command wheel — Shift toggles it any time, matching the "Shift ...
+    // AUTO" hint the control rail already advertises. Neither this nor the
+    // speed multiplier below touch the headless sim, which has no dt.
+    if (this.state !== 'intro' && input.tap('shift')) {
+      this.autoBattle = !this.autoBattle;
+      sfx.confirm();
+    }
+    dt *= getBattleSpeed();
     if (this.hitPause > 0) {
       this.hitPause = Math.max(0, this.hitPause - dt);
       dt = 0;   // a brief freeze-frame on a critical hit, for punch
@@ -899,7 +911,13 @@ export class BattleScene {
     const u = b.current();
     if (!u) { this.needsAdvance = true; return; }
     this.actor = u;
-    if (u.isPC) { this.openCommand(); }
+    if (u.isPC && this.autoBattle) {
+      this.enemyDelay = (this.enemyDelay ?? 0) + dt;
+      if (this.enemyDelay > 0.35) {
+        this.enemyDelay = 0;
+        this.runAction(u, autoPartyAction(b, u));
+      }
+    } else if (u.isPC) { this.openCommand(); }
     else {
       this.enemyDelay = (this.enemyDelay ?? 0) + dt;
       if (this.enemyDelay > 0.35) {
@@ -948,6 +966,10 @@ export class BattleScene {
   }
 
   updateCommand(input) {
+    // Toggling Auto-Battle on while the wheel is already open for this
+    // actor's turn (the common case — a player reaches for Shift mid-menu,
+    // not just between turns) shouldn't wait a full extra turn to take effect.
+    if (this.autoBattle) { this.runAction(this.actor, autoPartyAction(this.battle, this.actor)); return; }
     this.cmdWheel.handle(input);
     const confirmed = input.tap('confirm');
     if (confirmed && this.cmdWheel.disabled()) { sfx.error(); return; }
@@ -1283,6 +1305,10 @@ export class BattleScene {
     if (this.flash > 0) scr.fade(this.flash * 1.4, '#ffffff');
 
     this.drawUi(scr);
+    if (this.autoBattle) {
+      scr.panel(W - 46, 4, 42, 14, { accent: true });
+      scr.textCenter('AUTO', W - 25, 8, PAL.accent);
+    }
 
     if (this.state === 'intro') {
       const names = [...new Set(b.enemies.map((e) => e.name))].join(', ');
