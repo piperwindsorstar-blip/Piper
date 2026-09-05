@@ -358,6 +358,17 @@ export const ENEMIES = [
     blurb: 'The element that was left off the wheel, and has not forgiven it.',
   }),
 
+  // --- The Colosseum's Champion Gauntlet — a mortal record nobody's beaten,
+  // not a cosmic horror like the rest of this tier's company. Reward comes
+  // straight from data/arena.js on clearing the tier, not from this drop
+  // table, so it's left empty. ------------------------------------------
+  e('boss_arenachampion', 'The Undefeated', 'humanoid', 'none', 82, [21000, 700, 315, 235, 70, 205, 75], {
+    sprite: sp('humanoid', '#8a1c1c', '#e0a030', '#3a0808', 2.0),
+    skills: ['crossslash', 'warcry', 'breakpoint', 'recklessblow'], ai: 'boss',
+    gold: 170000, exp: 900000,
+    blurb: "Nobody remembers a name. Everybody remembers losing.",
+  }),
+
   // --- postgame — a locked room in the Hollow Between, open only once the
   // Thirteenth is counted, per the epilogue's own last line about the wheel
   // turning "like something is missing from it now, on purpose" -----------
@@ -440,6 +451,7 @@ export const FORMATIONS = [
   f('boss_vessia', 'boss', [at('boss_vessia', 1, 1), at('radiantguard', 0, 0), at('radiantguard', 2, 0)], { boss: true }),
   f('boss_thirteenth', 'boss', [at('boss_thirteenth', 1, 1), at('nullweaver', 0, 0), at('nullweaver', 2, 0)], { boss: true }),
   f('boss_seam', 'boss', [at('boss_seam', 1, 1), at('starweaver', 0, 0), at('starweaver', 2, 0)], { boss: true }),
+  f('boss_arenachampion', 'boss', [at('boss_arenachampion', 1, 1)], { boss: true }),
 ];
 
 export const FORMATION_BY_ID = Object.fromEntries(FORMATIONS.map((x) => [x.id, x]));

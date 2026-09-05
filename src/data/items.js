@@ -156,6 +156,12 @@ export const ITEMS = [
   // --- postgame — the Seam's own drop, a step above everything else here ---
   ACC('seamring', 'The Missing Seam', 400000,
     { bonus: { str: 20, vit: 20, agi: 20, int: 20, spr: 20, lck: 20 } }),
+  // --- the Colosseum's own gauntlet rewards — never sold or dropped in the
+  // wild, only granted for clearing that tier (see data/arena.js) ----------
+  ACC('brawlersband', "Brawler's Band", 750, { bonus: { str: 5, agi: 3 } }),
+  ACC('gladiatorsigil', 'Gladiator Sigil', 2800, { bonus: { str: 8, vit: 5 } }),
+  ACC('vanguardcrest', 'Vanguard Crest', 9500, { bonus: { str: 14, vit: 10, agi: 4 } }),
+  ACC('championscrown', "Champion's Crown", 62000, { bonus: { str: 22, vit: 16, agi: 10, lck: 8 } }),
 
   // --- consumables ---------------------------------------------------------
   U('potion', 'Potion', 30, { heal: 80, target: 'ally' }),

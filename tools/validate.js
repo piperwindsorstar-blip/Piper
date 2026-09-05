@@ -16,7 +16,7 @@ import { JOBS, JOB_IDS, jobBonus, jobRankFromExp, MAX_JOB_RANK } from '../src/da
 import { SKILLS, SKILL_BY_ID, SCHOOLS, SCHOOL_IDS, STATUS } from '../src/data/skills.js';
 import { ITEMS, ITEM_BY_ID, canEquip, WEAPON_TYPES } from '../src/data/items.js';
 import { ENEMIES, ENEMY_BY_ID, FORMATIONS } from '../src/data/enemies.js';
-import { MAPS, LEGEND, SHOPS, BOSS_SLOTS, isSolid, mapSize } from '../src/data/maps.js';
+import { MAPS, LEGEND, SHOPS, BOSS_SLOTS, isSolid, mapSize, getMap } from '../src/data/maps.js';
 import { createCharacter, awardExp, promote, refreshPromotion, stats, knownSkills, expForLevel }
   from '../src/game/character.js';
 
@@ -279,9 +279,16 @@ group('MAPS');
   const bad = [];
   for (const m of Object.values(MAPS)) {
     for (const wp of m.warps ?? []) {
-      if (!MAPS[wp.to]) { bad.push(`${m.id}->${wp.to}`); continue; }
+      // "depths_<n>" floors don't exist until getMap() generates one on
+      // first request (see maps.js) — everything past depths_1 is only ever
+      // reached through a chain of warps the generator itself wrote, whose
+      // correctness is a property of that code rather than hand-authored
+      // content, so checking the one static->generated hop here is enough.
+      let target;
+      try { target = getMap(wp.to); } catch { target = null; }
+      if (!target) { bad.push(`${m.id}->${wp.to}`); continue; }
       if (isSolid(m, wp.x, wp.y)) bad.push(`${m.id}: warp tile is solid`);
-      if (isSolid(MAPS[wp.to], wp.tx, wp.ty)) bad.push(`${m.id}->${wp.to}: lands in a wall`);
+      if (isSolid(target, wp.tx, wp.ty)) bad.push(`${m.id}->${wp.to}: lands in a wall`);
     }
   }
   report('every warp is walkable on both sides', bad.length === 0, [...new Set(bad)].join(','));

@@ -10,9 +10,11 @@ import { buildingSprite, hasStructure, isStructure } from '../../engine/building
 import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
+  resetDungeonFloors,
 } from '../../data/maps.js';
 import { formationsForRegion } from '../../data/enemies.js';
 import { getItem } from '../../data/items.js';
+import { ARENA_TIERS } from '../../data/arena.js';
 import { stats, canPromote } from '../character.js';
 import { getJob } from '../../data/jobs.js';
 import { rng } from '../../engine/rng.js';
@@ -80,6 +82,8 @@ export class FieldScene {
     this.fade = opts.fadeIn ? 1 : 0;
     this.fadeDir = opts.fadeIn ? -1 : 0;
     this.choice = null;
+    this.gauntlet = null;
+    this.pendingGauntletFormation = null;
     this.encounterCooldown = 0;
     this.rainT = 0;
     this.thunderFlash = 0;
@@ -491,6 +495,10 @@ export class FieldScene {
           const boss = this.pendingBoss;
           this.pendingBoss = null;
           this.app.push('battle', { formationId: boss.formation, bossFlag: boss.flag });
+        } else if (emptied && this.pendingGauntletFormation) {
+          const formationId = this.pendingGauntletFormation;
+          this.pendingGauntletFormation = null;
+          this.app.push('battle', { formationId });
         } else if (emptied && this.pendingNGPlusChoice) {
           this.pendingNGPlusChoice = false;
           this.choice = {
@@ -582,7 +590,12 @@ export class FieldScene {
     const preemptive = rng.chance(Math.min(0.5, 0.06 + 0.08 * scout + (keenScent ? 0.08 : 0)));
     const ambushed = !preemptive && scout < 5 && !keenScent && rng.chance(0.06);
     this.g.stepsSinceBattle = 0;
-    this.app.push('battle', { formationId: f.id, preemptive, ambushed });
+    // The Shifting Depths climbs in difficulty by floor rather than by
+    // region alone — see data/dungeon.js — so a floor deeper than its own
+    // region's usual ceiling still hits harder than the same formation
+    // would on the surface.
+    const enemyScaleBonus = m.dungeonDepth ? 1 + 0.05 * m.dungeonDepth : 1;
+    this.app.push('battle', { formationId: f.id, preemptive, ambushed, enemyScaleBonus });
   }
 
   // --- interaction ---------------------------------------------------------
@@ -671,6 +684,29 @@ export class FieldScene {
       case 'shop':
         this.app.push('shop', { shopId: npc.shop, name: SHOPS[npc.shop]?.name ?? npc.name });
         break;
+      case 'arena': {
+        const options = ARENA_TIERS.map((t) => {
+          const locked = t.requires && !this.g.flag(`boss.${t.requires}`);
+          const cleared = this.g.flag(`arena.${t.id}.cleared`);
+          return locked ? `${t.name} — Sealed` : `${t.name}${cleared ? ' (cleared)' : ''}`;
+        });
+        options.push('Leave');
+        this.choice = {
+          title: `${npc.name}: "${npc.text}"`,
+          options,
+          onPick: (i) => {
+            const tier = ARENA_TIERS[i];
+            if (!tier) return;
+            if (tier.requires && !this.g.flag(`boss.${tier.requires}`)) {
+              this.dlg.say(`"Not yet." ${tier.lockHint}`);
+              return;
+            }
+            if (this.g.livingParty().length === 0) { this.dlg.say('"Come back when your party can stand."'); return; }
+            this.startGauntlet(tier);
+          },
+        };
+        break;
+      }
       case 'guild':
         this.dlg.say(npc.text, npc.name, this.npcPortrait(npc));
         this.dlg.say('(Open the party menu with C or TAB for Formation, Jobs and the class ladder.)');
@@ -823,9 +859,13 @@ export class FieldScene {
     const wp = this.pendingWarp;
     this.pendingWarp = null;
     if (!wp) return;
+    if (wp.regenDungeon) resetDungeonFloors();
     this.g.mapId = wp.to;
     this.g.x = wp.tx;
     this.g.y = wp.ty;
+    this.g.visitedMaps[wp.to] = true;
+    const depthMatch = /^depths_(\d+)$/.exec(wp.to);
+    if (depthMatch) this.g.deepestDepth = Math.max(this.g.deepestDepth, Number(depthMatch[1]));
     this.g.stepsSinceBattle = 0;
     this.encounterCooldown = 3;
     this.banner = 2.2;
@@ -845,15 +885,56 @@ export class FieldScene {
     if (result?.outcome) this.onBattleResult(result);
   }
 
+  // --- the Colosseum ---------------------------------------------------------
+  startGauntlet(tier) {
+    this.gauntlet = { tierId: tier.id, round: 0 };
+    this.g.restParty();
+    this.app.push('battle', { formationId: tier.rounds[0] });
+  }
+
+  /** Advances or ends the current gauntlet after a round's result. Returns
+   *  true if it handled the result (so onBattleResult stops there). */
+  handleGauntletResult(result) {
+    const tier = ARENA_TIERS.find((t) => t.id === this.gauntlet.tierId);
+    if (result.outcome === 'fled') {
+      this.gauntlet = null;
+      this.dlg.say('The gauntlet ends — you fled the ring.');
+      return true;
+    }
+    this.gauntlet.round++;
+    if (this.gauntlet.round < tier.rounds.length) {
+      this.g.restParty();
+      this.pendingGauntletFormation = tier.rounds[this.gauntlet.round];
+      this.dlg.say(`Round ${this.gauntlet.round} cleared! The crowd roars for more.`);
+      return true;
+    }
+    this.g.setFlag(`arena.${tier.id}.cleared`);
+    const r = tier.reward;
+    if (r.gold) this.g.earn(r.gold);
+    if (r.lp) this.g.lp += r.lp;
+    let itemMsg = '';
+    if (r.item) {
+      if (this.g.addItem(r.item)) itemMsg = ` and ${getItem(r.item).name}`;
+      // Same rule as a chest with no room: don't mark it cleared, so the
+      // reward is still there to collect once there's space for it.
+      else { this.g.setFlag(`arena.${tier.id}.cleared`, false); itemMsg = ' — but the pack is full'; }
+    }
+    this.gauntlet = null;
+    this.dlg.say(`${tier.name} cleared! The steward counts out ${r.gold} gold${itemMsg}.`);
+    return true;
+  }
+
   // called by the app when a battle finishes
   onBattleResult(result) {
     if (result.outcome === 'defeat') {
+      this.gauntlet = null;
       this.app.replace('gameover');
       return;
     }
     this.g.stepsSinceBattle = 0;
     this.encounterCooldown = 4;
     if (result.bossFlag) this.g.setFlag(`boss.${result.bossFlag}`);
+    if (this.gauntlet) { this.handleGauntletResult(result); return; }
     // The battle scene already showed the spoils, level-ups and drops in its own
     // message box. Replaying them here made you read every line twice.
   }

@@ -217,8 +217,11 @@ export class BattleScene {
       preemptive: opts.preemptive, ambushed: opts.ambushed,
       // New Game+ stacks its own multiplier on top of the chosen difficulty
       // — +40% per completed cycle — rather than replacing it, so a Hard NG+2
-      // run is harder than either alone.
-      enemyScale: (DIFFICULTY_BY_ID[this.g.difficulty]?.scale ?? 1) * (1 + 0.4 * (this.g.ngPlus ?? 0)),
+      // run is harder than either alone. enemyScaleBonus is the Shifting
+      // Depths' own per-floor climb (see field.js's startEncounter); it's 1
+      // for every fight outside that dungeon, so this is a no-op elsewhere.
+      enemyScale: (DIFFICULTY_BY_ID[this.g.difficulty]?.scale ?? 1) * (1 + 0.4 * (this.g.ngPlus ?? 0))
+        * (opts.enemyScaleBonus ?? 1),
     });
     this.state = 'intro';
     this.t = 0;

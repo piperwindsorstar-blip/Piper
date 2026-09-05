@@ -85,6 +85,18 @@ export const ACHIEVEMENTS = [
     id: 'ngPlus', name: 'Around Again', desc: 'Begin a New Game+.',
     check: (g) => g.ngPlus > 0,
   },
+  {
+    id: 'arenaChampion', name: 'The New Undefeated', desc: 'Clear the Colosseum\'s Champion Gauntlet.',
+    check: (g) => g.flag('arena.champion.cleared'),
+  },
+  {
+    id: 'depths10', name: 'Ten Floors Down', desc: 'Reach floor 10 of the Shifting Depths.',
+    check: (g) => (g.deepestDepth ?? 0) >= 10,
+  },
+  {
+    id: 'depths25', name: 'Where the Light Gives Out', desc: 'Reach floor 25 of the Shifting Depths.',
+    check: (g) => (g.deepestDepth ?? 0) >= 25,
+  },
 ];
 
 export function achievementsDone(g) { return ACHIEVEMENTS.filter((a) => a.check(g)); }

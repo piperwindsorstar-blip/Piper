@@ -8,6 +8,8 @@
 //  enemies.js) and a `rate`; towns declare neither, so they are safe.
 // ============================================================================
 
+import { generateDungeonFloor } from './dungeon.js';
+
 export const LEGEND = {
   '.': { tile: 'grass',    solid: false },
   ',': { tile: 'road',     solid: false },
@@ -124,6 +126,8 @@ export const MAPS = {
       {"x": 42, "y": 52, "to": "duskwell", "tx": 7, "ty": 8},
       {"x": 62, "y": 44, "to": "glasshaven", "tx": 12, "ty": 18},
       {"x": 66, "y": 47, "to": "glassfields", "tx": 10, "ty": 15},
+      {"x": 12, "y": 40, "to": "colosseum", "tx": 5, "ty": 4},
+      {"x": 20, "y": 46, "to": "depths_entrance", "tx": 5, "ty": 4},
     ],
     signs: [
       {"x": 10, "y": 17, "text": "WREN'S FORD - west. THE ANVIL GORGE - north. Travellers are advised to be several people."},
@@ -1562,6 +1566,54 @@ export const MAPS = {
     ],
   },
 
+  // --- The Colosseum — one small arena lobby; every actual fight is a
+  // formation from data/enemies.js chosen by data/arena.js, run back-to-back
+  // by field.js's gauntlet handling rather than anything on this map. ------
+  colosseum: {
+    id: 'colosseum', name: 'The Colosseum',
+    encounter: null, rate: 0, bg: '#241c14',
+    tiles: [
+      '###########',
+      '#_________#',
+      '#_________#',
+      '#___l_l___#',
+      '#_________#',
+      '#____D____#',
+      '###########',
+    ],
+    warps: [{"x": 5, "y": 5, "to": "world", "tx": 12, "ty": 41}],
+    npcs: [
+      {"x": 5, "y": 2, "kind": "arena", "name": "Arena Steward",
+        "text": "Coin says you don't last three rounds. Prove me wrong, and the purse is yours."},
+    ],
+  },
+
+  // --- The Shifting Depths — a static antechamber; every floor beyond the
+  // one warp below is generated on the fly (see data/dungeon.js and this
+  // file's own getMap()). Nothing here ever changes between dives. -------
+  depths_entrance: {
+    id: 'depths_entrance', name: 'The Shifting Depths',
+    encounter: null, rate: 0, bg: '#0e0c16',
+    tiles: [
+      '###########',
+      '#_________#',
+      '#_________#',
+      '#____s____#',
+      '#_________#',
+      '#____D____#',
+      '###########',
+    ],
+    warps: [
+      { x: 5, y: 3, to: 'depths_1', tx: 3, ty: 3, regenDungeon: true },
+      { x: 5, y: 5, to: 'world', tx: 20, ty: 47 },
+    ],
+    npcs: [
+      {"x": 3, "y": 2, "kind": "talk", "name": "Weathered Sign",
+        "text": "The floor is never the same twice. Go as deep as you dare — whatever you carry out is yours "
+          + "to keep, but the depths themselves forget you the moment you leave."},
+    ],
+  },
+
 };
 
 export const SHOPS = {
@@ -1641,8 +1693,24 @@ export const SHOPS = {
   },
 };
 
+// "depths_<n>" ids are never authored above — they're generated on first
+// request and cached here so a floor's layout holds still for as long as
+// it's reachable, exactly like every hand-authored map. resetDungeonFloors()
+// (called only when stepping from depths_entrance into a fresh dive — see
+// field.js's "regenDungeon" warp handling) clears the cache so the next
+// Floor 1 is never the last dive's.
+const DEPTHS_RE = /^depths_(\d+)$/;
+
+export function resetDungeonFloors() {
+  for (const key of Object.keys(MAPS)) if (DEPTHS_RE.test(key)) delete MAPS[key];
+}
+
 export function getMap(id) {
-  const m = MAPS[id];
+  let m = MAPS[id];
+  if (!m) {
+    const depthMatch = DEPTHS_RE.exec(id);
+    if (depthMatch) { m = generateDungeonFloor(Number(depthMatch[1])); MAPS[id] = m; }
+  }
   if (!m) throw new Error(`unknown map: ${id}`);
   return m;
 }

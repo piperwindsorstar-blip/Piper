@@ -39,6 +39,7 @@ export class GameState {
     this.visitedMaps = {};          // every mapId the field scene has ever entered
     this.difficulty = 'normal';     // data/difficulty.js — chosen once at creation
     this.ngPlus = 0;                // New Game+ cycles completed — see startNewGamePlus
+    this.deepestDepth = 0;          // best floor ever reached in the Shifting Depths
     this.slot = 1;
   }
 
@@ -299,6 +300,7 @@ export class GameState {
       visitedMaps: this.visitedMaps,
       difficulty: this.difficulty,
       ngPlus: this.ngPlus,
+      deepestDepth: this.deepestDepth,
     };
   }
 
@@ -343,6 +345,7 @@ export class GameState {
     g.visitedMaps = d.visitedMaps ?? {};
     g.difficulty = d.difficulty ?? 'normal';
     g.ngPlus = d.ngPlus ?? 0;
+    g.deepestDepth = d.deepestDepth ?? 0;
     return g;
   }
 
