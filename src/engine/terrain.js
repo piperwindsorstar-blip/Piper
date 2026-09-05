@@ -56,8 +56,9 @@ function noise(x, y, scale) {
 /** Which ground a tile stands on. Anything absent here is not auto-tiled. */
 const GROUND_OF = {
   grass: 'grass', tree: 'grass', mountain: 'grass', town: 'grass',
-  cave: 'grass', flower: 'grass',
-  road: 'road', sand: 'sand', water: 'water', bridge: 'water',
+  cave: 'grass', flower: 'grass', well: 'grass',
+  road: 'road', stall: 'road', lamp: 'road',
+  sand: 'sand', water: 'water', bridge: 'water',
 };
 
 const PRIORITY = { water: 0, sand: 1, grass: 2, road: 3 };
@@ -143,24 +144,173 @@ const MAT_THEMES = {
       return '#265f6a';
     },
   },
+  // Ashfall / Ashquarry / Cinderreach — a scorched reach that never quite
+  // cooled: cinder and clinker instead of soil, embers instead of dew.
+  ash: {
+    grass: (wx, wy) => {
+      const n = noise(wx, wy, 6.5);
+      const clump = noise(wx + 91, wy + 37, 17);
+      if (clump > 0.72 && n > 0.5) return '#a8482a';         // a bank still glowing underneath
+      if (n > 0.63) return '#4a423c';
+      if (n < 0.30) return '#221e1b';
+      if (n < 0.44) return '#2e2925';
+      return '#3a332e';
+    },
+    sand: (wx, wy) => {
+      const n = noise(wx, wy, 7);
+      if (n > 0.68) return '#9a8f82';
+      if (n < 0.33) return '#5e564e';
+      return '#6e6459';
+    },
+    road: (wx, wy) => {
+      const n = noise(wx, wy, 5.5);
+      if (n > 0.72) return '#5c534a';
+      if (n < 0.28) return '#2a2521';
+      if (n < 0.42) return '#342e29';
+      return '#443c35';
+    },
+    water: (wx, wy) => {
+      // scorched, still water with an oily ember sheen rather than a swell
+      const swell = noise(wx * 0.7, wy * 1.6, 9);
+      const fine = noise(wx + 200, wy * 2.2 + 60, 4);
+      if (swell + fine * 0.5 > 1.10) return '#7a3a24';
+      if (swell > 0.66) return '#4a2418';
+      if (swell < 0.32) return '#160a08';
+      return '#2c1610';
+    },
+  },
+  // Harrow's Rest / Duskwell — the harvest country past its season, gold
+  // gone to rust.
+  autumn: {
+    grass: (wx, wy) => {
+      const n = noise(wx, wy, 6.5);
+      const clump = noise(wx + 91, wy + 37, 17);
+      if (clump > 0.70 && n > 0.45) return '#c8963c';
+      if (n > 0.63) return '#a87830';
+      if (n < 0.30) return '#6e4a24';
+      if (n < 0.44) return '#805a2a';
+      return '#96702e';
+    },
+    sand: (wx, wy) => {
+      const n = noise(wx, wy, 7);
+      if (n > 0.68) return '#e0c894';
+      if (n < 0.33) return '#b89158';
+      return '#ccaa70';
+    },
+    road: (wx, wy) => {
+      const n = noise(wx, wy, 5.5);
+      if (n > 0.72) return '#a8815a';
+      if (n < 0.28) return '#6a4c2e';
+      if (n < 0.42) return '#7a5a36';
+      return '#8c6a40';
+    },
+    water: (wx, wy) => {
+      const swell = noise(wx * 0.7, wy * 1.6, 9);
+      const fine = noise(wx + 200, wy * 2.2 + 60, 4);
+      if (swell + fine * 0.5 > 1.10) return '#8a7048';
+      if (swell > 0.66) return '#4a3a24';
+      if (swell < 0.32) return '#241c10';
+      return '#362a18';
+    },
+  },
+  // Glasshaven / Glassfields — sand and water both gone to fused, pale glass.
+  crystal: {
+    grass: (wx, wy) => {
+      const n = noise(wx, wy, 6.5);
+      const clump = noise(wx + 91, wy + 37, 17);
+      if (clump > 0.70 && n > 0.45) return '#d8d0ec';
+      if (n > 0.63) return '#b8b0d4';
+      if (n < 0.30) return '#7c7498';
+      if (n < 0.44) return '#8c84ac';
+      return '#a09cc0';
+    },
+    sand: (wx, wy) => {
+      const n = noise(wx, wy, 7);
+      if (n > 0.68) return '#f4f0fa';
+      if (n < 0.33) return '#c8c0dc';
+      return '#e0dcf0';
+    },
+    road: (wx, wy) => {
+      const n = noise(wx, wy, 5.5);
+      if (n > 0.72) return '#c4bcd8';
+      if (n < 0.28) return '#8880a0';
+      if (n < 0.42) return '#9890b0';
+      return '#aca4c4';
+    },
+    water: (wx, wy) => {
+      // glassy and still — a bright crest instead of a rolling swell
+      const swell = noise(wx * 0.7, wy * 1.6, 9);
+      const fine = noise(wx + 200, wy * 2.2 + 60, 4);
+      if (swell + fine * 0.5 > 1.10) return '#e8f4ff';
+      if (swell > 0.66) return '#9cd0ec';
+      if (swell < 0.32) return '#5088b0';
+      return '#78b0d4';
+    },
+  },
+  // Tidewatch / the Drowned Vale — brackish, half-drowned lowland.
+  swamp: {
+    grass: (wx, wy) => {
+      const n = noise(wx, wy, 6.5);
+      const clump = noise(wx + 91, wy + 37, 17);
+      if (clump > 0.70 && n > 0.45) return '#5c6e3c';
+      if (n > 0.63) return '#4a5c30';
+      if (n < 0.30) return '#241e14';
+      if (n < 0.44) return '#332a1c';
+      return '#3e4a28';
+    },
+    sand: (wx, wy) => {
+      const n = noise(wx, wy, 7);
+      if (n > 0.68) return '#7a6c48';
+      if (n < 0.33) return '#4a4030';
+      return '#5e523a';
+    },
+    road: (wx, wy) => {
+      const n = noise(wx, wy, 5.5);
+      if (n > 0.72) return '#5a5038';
+      if (n < 0.28) return '#302a1e';
+      if (n < 0.42) return '#3a3324';
+      return '#463c2a';
+    },
+    water: (wx, wy) => {
+      const swell = noise(wx * 0.7, wy * 1.6, 9);
+      const fine = noise(wx + 200, wy * 2.2 + 60, 4);
+      if (swell + fine * 0.5 > 1.10) return '#4a5c3a';
+      if (swell > 0.66) return '#243420';
+      if (swell < 0.32) return '#0e140c';
+      return '#182410';
+    },
+  },
+};
+
+// Per-theme detail colours: a bright and a dark fleck for grass and road,
+// one bright glint each for sand and water. `grassTall` draws the bright
+// grass fleck as a two-pixel blade (a lawn) rather than one dry mote (scrub,
+// cinder, scale, muck) — the same distinction the old desert-only branch drew.
+const SPECK = {
+  green:   { grass: ['#7cbb63', '#2c4e26'], grassTall: true,  road: ['#d8c8a8', '#6e5c40'], sand: '#f2e4bd', water: '#b8dcff' },
+  desert:  { grass: ['#c8b878', '#6a5230'], grassTall: false, road: ['#ecd8a4', '#7a5f38'], sand: '#fbeec0', water: '#c8e8ec' },
+  ash:     { grass: ['#e8783c', '#120e0c'], grassTall: false, road: ['#847666', '#1c1815'], sand: '#b0a696', water: '#c86a34' },
+  autumn:  { grass: ['#e8c05c', '#4a3016'], grassTall: true,  road: ['#c8a878', '#4a3620'], sand: '#f0dcac', water: '#c8a860' },
+  crystal: { grass: ['#f8f4ff', '#6c6488'], grassTall: false, road: ['#f0ecff', '#8078a0'], sand: '#ffffff', water: '#ffffff' },
+  swamp:   { grass: ['#7a8c4a', '#0c0e08'], grassTall: false, road: ['#6a6048', '#1a1610'], sand: '#8a7c54', water: '#5a6c3e' },
 };
 
 /** Sparse detail scattered over a filled material: blades, pebbles, glints. */
 function speckle(P, mat, px, py, wx, wy, theme) {
   const h = hash2(wx * 3 + 11, wy * 5 + 7);
+  const s = SPECK[theme] ?? SPECK.green;
   if (mat === 'grass') {
-    if (theme === 'desert') {
-      if (h > 0.978) P.px(px, py, '#c8b878');       // a dry stalk, not a blade
-      else if (h < 0.018) P.px(px, py, '#6a5230');
-    } else if (h > 0.972) { P.px(px, py, '#7cbb63'); P.px(px, py - 1, '#8ecb70'); }
-    else if (h < 0.022) P.px(px, py, '#2c4e26');
+    const [hi, lo] = s.grass;
+    if (h > 0.972) { P.px(px, py, hi); if (s.grassTall) P.px(px, py - 1, hi); }
+    else if (h < 0.022) P.px(px, py, lo);
   } else if (mat === 'road') {
-    if (h > 0.982) P.px(px, py, theme === 'desert' ? '#ecd8a4' : '#d8c8a8');
-    else if (h < 0.014) P.px(px, py, theme === 'desert' ? '#7a5f38' : '#6e5c40');
+    const [hi, lo] = s.road;
+    if (h > 0.982) P.px(px, py, hi);
+    else if (h < 0.014) P.px(px, py, lo);
   } else if (mat === 'sand') {
-    if (h > 0.984) P.px(px, py, theme === 'desert' ? '#fbeec0' : '#f2e4bd');
+    if (h > 0.984) P.px(px, py, s.sand);
   } else if (mat === 'water') {
-    if (h > 0.9958) P.px(px, py, theme === 'desert' ? '#c8e8ec' : '#b8dcff');
+    if (h > 0.9958) P.px(px, py, s.water);
   }
 }
 
@@ -289,8 +439,28 @@ const fieldAt = (f, x, y) => {
   return f[j * FW + i];
 };
 
-const ROCK = ['#a99c86', '#8a7f6d', '#6b6255', '#4e4740', '#332e29'];
-const SNOW = ['#f2f4fa', '#d2d8e8'];
+// Per-theme rock + crest palettes. `crest` is the tall-peak highlight — snow
+// in green country, sun-bleach on sandstone, an ember seam on a volcanic
+// range, raw facets on crystal, a lichen crust in the swamp — so the same
+// jittered-peak silhouette in drawMountain reads as a genuinely different
+// range per region rather than the same grey stamp recoloured once.
+const ROCK_THEMES = {
+  green:   { rock: ['#a99c86', '#8a7f6d', '#6b6255', '#4e4740', '#332e29'], crest: ['#f2f4fa', '#d2d8e8'] },
+  desert:  { rock: ['#c9a97e', '#ab8862', '#87694a', '#654e38', '#42311f'], crest: ['#f0dca8', '#d8bc80'] },
+  ash:     { rock: ['#5a4a42', '#403430', '#2c2320', '#1c1614', '#0e0a08'], crest: ['#f0803c', '#b8481c'] },
+  autumn:  { rock: ['#ab9878', '#8c7c5e', '#6e6048', '#524634', '#362d21'], crest: ['#f2f4fa', '#d2d8e8'] },
+  crystal: { rock: ['#dcd4f0', '#bcb0dc', '#9c90c0', '#786ca0', '#584e7c'], crest: ['#ffffff', '#d8e8ff'] },
+  swamp:   { rock: ['#767a5e', '#5c6048', '#454838', '#302f26', '#1c1c16'], crest: ['#a8b878', '#8a9c5e'] },
+};
+// Per-theme canopy palette, brightest crown to deepest shadow.
+const LEAF_THEMES = {
+  green:   ['#5da24a', '#3d7d35', '#2a5b28', '#1b3f1e', '#122c15'],
+  desert:  ['#9aa05c', '#7c8248', '#5e6438', '#404428', '#282a18'],
+  ash:     ['#8a5040', '#5c3428', '#3a2018', '#22120c', '#100806'],
+  autumn:  ['#e8a83c', '#c87a28', '#a85a20', '#7a3c18', '#4a2410'],
+  crystal: ['#e8e4ff', '#c8c0ec', '#a89cd8', '#8078b8', '#5c5490'],
+  swamp:   ['#5c6e3c', '#3e4a28', '#2a3218', '#1a2010', '#0e1408'],
+};
 
 /**
  * Rock reads as rock only if it has faces. A mass filled with noise is flat grey
@@ -300,7 +470,8 @@ const SNOW = ['#f2f4fa', '#d2d8e8'];
  * rather than a row of hills is that the grid is in world space, so the peaks
  * never line up with the cells underneath them.
  */
-function drawMountain(P, f, wx0, wy0) {
+function drawMountain(P, f, wx0, wy0, theme = 'green') {
+  const { rock: ROCK, crest: SNOW } = ROCK_THEMES[theme] ?? ROCK_THEMES.green;
   // the mass itself, and the shadow it throws on the ground below
   for (let py = 0; py < TS; py++) {
     for (let px = 0; px < TS; px++) {
@@ -331,7 +502,7 @@ function drawMountain(P, f, wx0, wy0) {
       const by = Math.round(gy * G + hash2(gx + 3, gy + 9) * G * 0.8) - wy0;
       // a wide spread of sizes, so a range has summits rather than cobbles
       const r = 7.5 + hash2(gx + 23, gy + 11) * 6.5;
-      const tall = hash2(gx + 5, gy + 31) > 0.55;     // only some carry snow
+      const tall = hash2(gx + 5, gy + 31) > 0.55;     // only some carry a crest
       if (fieldAt(f, bx, by) > -2) continue;          // only inside the rock
       const R = Math.ceil(r) + 2;
       for (let y = -R; y <= R; y++) {
@@ -358,14 +529,13 @@ function drawMountain(P, f, wx0, wy0) {
   }
 }
 
-const LEAF = ['#5da24a', '#3d7d35', '#2a5b28', '#1b3f1e', '#122c15'];
-
 /**
  * Canopy as a mass with a scalloped edge, then treetop bumps laid on a jittered
  * WORLD grid. Placing the bumps in world space rather than per cell is what stops
  * a forest reading as a lattice — the texture no longer knows where cells are.
  */
-function drawTrees(P, f, wx0, wy0) {
+function drawTrees(P, f, wx0, wy0, theme = 'green') {
+  const LEAF = LEAF_THEMES[theme] ?? LEAF_THEMES.green;
   for (let py = 0; py < TS; py++) {
     for (let px = 0; px < TS; px++) {
       const d = fieldAt(f, px, py);
@@ -410,14 +580,24 @@ function drawTrees(P, f, wx0, wy0) {
   }
 }
 
+const TRUNK_THEMES = {
+  green: ['#3f2c16', '#5d4020', '#2a1c0d'],
+  desert: ['#4a3420', '#6a4c2c', '#302012'],
+  ash: ['#1a1210', '#302420', '#0c0806'],
+  autumn: ['#4a3420', '#6a4c2c', '#302012'],
+  crystal: ['#8078a0', '#a89cd8', '#5c5490'],
+  swamp: ['#2a2818', '#403c24', '#181608'],
+};
+
 /** A lone tree still deserves a trunk. */
-function drawTrunk(P, sample) {
+function drawTrunk(P, sample, theme = 'green') {
   if (sample(0, 0) !== 'tree') return;
   const near = (dx, dy) => sample(dx, dy) === 'tree';
   if (near(-1, 0) || near(1, 0) || near(0, -1) || near(0, 1)) return;
-  P.rect(11, 17, 3, 6, '#3f2c16');
-  P.rect(11, 17, 1, 6, '#5d4020');
-  P.rect(10, 22, 5, 1, '#2a1c0d');
+  const [dark, mid, shadow] = TRUNK_THEMES[theme] ?? TRUNK_THEMES.green;
+  P.rect(11, 17, 3, 6, dark);
+  P.rect(11, 17, 1, 6, mid);
+  P.rect(10, 22, 5, 1, shadow);
 }
 
 const MASSES = ['mountain', 'tree'];   // drawn in this order: canopy in front
@@ -427,14 +607,14 @@ const MASSES = ['mountain', 'tree'];   // drawn in this order: canopy in front
  * neighbouring cells — which is what lets a peak rise into the sky above it and a
  * canopy close over a cell border.
  */
-export function massSprite(key, wx0, wy0, sample) {
-  return make(`mass|${key}`, TS, TS, (P) => {
+export function massSprite(key, wx0, wy0, sample, theme = 'green') {
+  return make(`mass|${theme}|${key}`, TS, TS, (P) => {
     const rock = massField('mountain', wx0, wy0, sample);
-    if (rock) drawMountain(P, rock, wx0, wy0);
+    if (rock) drawMountain(P, rock, wx0, wy0, theme);
     const wood = massField('tree', wx0, wy0, sample);
     if (wood) {
-      drawTrunk(P, sample);
-      drawTrees(P, wood, wx0, wy0);
+      drawTrunk(P, sample, theme);
+      drawTrees(P, wood, wx0, wy0, theme);
     }
   });
 }

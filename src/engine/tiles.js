@@ -185,8 +185,15 @@ T.door = (P) => {
   P.px(15, 14, '#fff0b0');
 };
 
+// town/flower/well/stall/lamp/bridge used to fill their whole tile with a
+// hardcoded T.grass/T.road/T.water before drawing their own decoration —
+// fine when every outdoor tile really was that one green, but it painted
+// over the correctly-themed ground terrain.js now draws underneath these
+// (see field.js's renderWorldTexture, which draws groundSprite first and
+// these feature stamps second) — an ash-country well or a crystal-field
+// lamppost sitting in a flat green square. Left transparent outside their
+// own decoration, the real ground shows through instead.
 T.town = (P) => {
-  T.grass(P);
   P.rect(3, 10, 18, 12, '#cbaf86');
   P.rect(3, 10, 18, 1, '#dcc49a');
   P.rect(2, 9, 20, 1, '#6a2a1e');
@@ -196,7 +203,6 @@ T.town = (P) => {
   P.rect(9, 15, 6, 1, '#7a5430');
   P.rect(5, 13, 3, 3, '#6a90c8'); P.px(5, 13, '#a8ccf0');
   P.rect(16, 13, 3, 3, '#6a90c8'); P.px(16, 13, '#a8ccf0');
-  P.rect(0, 23, TS, 1, '#3e6837');
 };
 
 T.cave = (P) => {
@@ -237,7 +243,6 @@ T.chest = (P) => {
 };
 
 T.bridge = (P) => {
-  T.water(P);
   P.rect(0, 3, TS, 18, '#7a5a34');
   P.dither(0, 3, TS, 18, '#8e6a3e', 0.4);
   P.rect(0, 3, TS, 1, '#a88a58');
@@ -247,7 +252,6 @@ T.bridge = (P) => {
 };
 
 T.flower = (P) => {
-  T.grass(P);
   for (const [x, y, c] of [[5, 6, '#f0e070'], [15, 4, '#e87890'], [9, 15, '#f0e070'],
     [18, 18, '#c890f0'], [3, 19, '#7ad0f0']]) {
     P.px(x, y + 1, '#3e6837');
@@ -258,7 +262,6 @@ T.flower = (P) => {
 };
 
 T.well = (P) => {
-  T.grass(P);
   // stone ring
   P.ellipse(12, 16, 8, 6, '#78706a');
   P.ellipse(12, 16, 8, 6, '#8c8478');
@@ -279,7 +282,6 @@ T.well = (P) => {
 };
 
 T.stall = (P) => {
-  T.road(P);
   // trestle table
   P.rect(3, 15, 18, 7, '#6b4622');
   P.dither(3, 15, 18, 7, '#7d5429', 0.4);
@@ -297,7 +299,6 @@ T.stall = (P) => {
 };
 
 T.lamp = (P) => {
-  T.road(P);
   // post
   P.rect(11, 8, 2, 15, '#2c2a30');
   P.rect(11, 8, 1, 15, '#3e3c44');

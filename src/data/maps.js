@@ -584,6 +584,7 @@ export const MAPS = {
     encounter: null,
     rate: 0,
     town: true,
+    theme: 'ash',
     bg: "#241c14",
     tiles: [
       'TTTTTTTTTTTTTTTT',
@@ -1146,7 +1147,7 @@ export const MAPS = {
 
   ashfall: {
     id: 'ashfall', name: "Ashfall",
-    encounter: null, rate: 0, town: true, bg: "#241812",
+    encounter: null, rate: 0, town: true, theme: 'ash', bg: "#241812",
     tiles: [
       'TTTTTTTTTTTTTTTT',
       'T............l.T',
@@ -1244,7 +1245,7 @@ export const MAPS = {
 
   tidewatch: {
     id: 'tidewatch', name: "Tidewatch",
-    encounter: null, rate: 0, town: true, bg: "#101c28",
+    encounter: null, rate: 0, town: true, theme: 'swamp', bg: "#101c28",
     tiles: [
       'TTTTTTTTTTTTTTTT',
       'T............l.T',
@@ -1293,7 +1294,7 @@ export const MAPS = {
 
   duskwell: {
     id: 'duskwell', name: "Duskwell",
-    encounter: null, rate: 0, town: true, bg: "#141020",
+    encounter: null, rate: 0, town: true, theme: 'autumn', bg: "#141020",
     tiles: [
       'TTTTTTTTTTTTTTTT',
       'T............l.T',
@@ -1342,7 +1343,7 @@ export const MAPS = {
 
   harrowsrest: {
     id: 'harrowsrest', name: "Harrow's Rest",
-    encounter: null, rate: 0, town: true, bg: "#1c2214",
+    encounter: null, rate: 0, town: true, theme: 'autumn', bg: "#1c2214",
     tiles: [
       'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
       'T..f...................f......l......T',
@@ -1451,7 +1452,7 @@ export const MAPS = {
 
   glasshaven: {
     id: 'glasshaven', name: "Glasshaven",
-    encounter: null, rate: 0, town: true, bg: "#20242c",
+    encounter: null, rate: 0, town: true, theme: 'crystal', bg: "#20242c",
     tiles: [
       'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
       'T..f...................f......l......T',
@@ -1684,6 +1685,32 @@ export function signAt(map, x, y) {
 // reached through a sub-warp (from the Choir Ruins) rather than directly
 // off the world map, but is just as worth surfacing on a world overview.
 export const REGIONS = [...MAPS.world.warps.map((w) => w.to), 'hollowbetween'];
+
+// The overworld is one shared map, so it can't carry a single `theme` field
+// the way an individual region map can — instead a handful of named patches
+// (in overworld tile coordinates, centred roughly on the warp into the
+// region they foreshadow) shade the countryside toward that region's biome
+// as you approach it, well before the warp itself. Anything outside every
+// patch stays the default green countryside.
+const WORLD_THEME_ZONES = [
+  { theme: 'ash', cx: 54, cy: 12, r: 12 },      // Ashfall / Cinderreach
+  { theme: 'ash', cx: 15, cy: 12, r: 7 },       // Ashquarry, by the Anvil Gorge
+  { theme: 'autumn', cx: 36, cy: 47, r: 13 },   // Harrow's Rest / Duskwell
+  { theme: 'crystal', cx: 64, cy: 45, r: 12 },  // Glasshaven / the Glassfields
+  { theme: 'swamp', cx: 16, cy: 44, r: 12 },    // Tidewatch / the Drowned Vale
+];
+
+/** The terrain theme for one overworld cell, or a map's own fixed `theme`
+ *  (or 'green') for anywhere else. `x`/`y` are tile coordinates. */
+export function themeAt(map, x, y) {
+  if (map.id === 'world') {
+    for (const z of WORLD_THEME_ZONES) {
+      if (Math.hypot(x - z.cx, y - z.cy) < z.r) return z.theme;
+    }
+    return 'green';
+  }
+  return map.theme ?? 'green';
+}
 
 export const BOSS_SLOTS = ['boss', 'boss2', 'boss3', 'boss4'];
 

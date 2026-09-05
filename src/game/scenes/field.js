@@ -9,7 +9,7 @@ import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terra
 import { buildingSprite, hasStructure, isStructure } from '../../engine/building.js';
 import { Particles } from '../../engine/particles.js';
 import {
-  getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS,
+  getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
 } from '../../data/maps.js';
 import { formationsForRegion } from '../../data/enemies.js';
 import { getItem } from '../../data/items.js';
@@ -249,12 +249,12 @@ export class FieldScene {
     const y0 = Math.max(0, Math.floor(oy / TS));
     const x1 = Math.min(w - 1, Math.ceil((ox + this.worldCanvas.width) / TS));
     const y1 = Math.min(h - 1, Math.ceil((oy + this.worldCanvas.height) / TS));
-    const theme = m.theme ?? 'green';
 
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const t = tileAt(m, x, y);
         if (!t) continue;
+        const theme = themeAt(m, x, y);
         const px = x * TS - ox, py = y * TS - oy;
         if (isOutdoor(t.tile)) {
           ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sampler(m, x, y), theme), px, py);
@@ -269,6 +269,7 @@ export class FieldScene {
       for (let x = x0; x <= x1; x++) {
         const t = tileAt(m, x, y);
         if (!t) continue;
+        const theme = themeAt(m, x, y);
         const px2 = x * TS - ox, py2 = y * TS - oy;
         const smp = sampler(m, x, y);
         if (hasStructure(smp)) {
@@ -277,7 +278,7 @@ export class FieldScene {
         if (!isOutdoor(t.tile)) continue;
         const px = x * TS - ox, py = y * TS - oy;
         if (hasMass(smp)) {
-          ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, smp), px, py);
+          ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, smp, theme), px, py);
         }
         if (FEATURE.has(t.tile)) ctx.drawImage(tileSprite(t.tile), px, py);
       }
