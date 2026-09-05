@@ -94,7 +94,11 @@ export class MenuScene {
     this.msgT = 0;
     this.root = new Menu({
       items: PAGES.map((p) => ({ label: p.label, id: p.id })),
-      x: NAV_X + 20, y: TOP + 12, cellW: NAV_W - 30, cellH: 17, rows: PAGES.length,
+      // Capped to what the nav panel actually holds — Menu's own scroll
+      // handles the rest — rather than PAGES.length, which used to fit when
+      // there were fewer pages but now runs the list past the panel border.
+      x: NAV_X + 20, y: TOP + 12, cellW: NAV_W - 30, cellH: 17,
+      rows: Math.min(PAGES.length, Math.floor((BODY_H - 16) / 17)),
     });
     this.list = new Menu({ items: [], x: IX + 12, y: TOP + 30, cellW: IW - 24, cellH: 13, rows: 13 });
     this.equipSlot = 0;
