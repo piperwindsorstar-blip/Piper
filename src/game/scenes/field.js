@@ -804,7 +804,7 @@ export class FieldScene {
   sayReward(reward) {
     if (reward.gold) this.dlg.say(`${reward.gold} gold.`);
     if (reward.item) this.dlg.say(`Found ${getItem(reward.item).name}.`);
-    if (reward.lp) this.dlg.say(`+${reward.lp} LP.`);
+    if (reward.lp) this.dlg.say(`+${reward.lp} LP each.`);
   }
 
   /** An NPC's normal line, unless a `reactions` entry for an already-set
@@ -911,7 +911,7 @@ export class FieldScene {
     this.g.setFlag(`arena.${tier.id}.cleared`);
     const r = tier.reward;
     if (r.gold) this.g.earn(r.gold);
-    if (r.lp) this.g.lp += r.lp;
+    if (r.lp) for (const ch of this.g.party) ch.lp += r.lp;
     let itemMsg = '';
     if (r.item) {
       if (this.g.addItem(r.item)) itemMsg = ` and ${getItem(r.item).name}`;

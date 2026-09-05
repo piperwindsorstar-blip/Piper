@@ -366,7 +366,7 @@ export class MenuScene {
     if (input.tap('down')) this.trainIdx = (this.trainIdx + 1) % STAT_KEYS.length;
     if (input.tap('confirm')) {
       const key = STAT_KEYS[this.trainIdx];
-      if (trainStat(this.g, this.ch, key)) { sfx.confirm(); this.say(`${this.ch.name}'s ${key.toUpperCase()} rises.`); }
+      if (trainStat(this.ch, key)) { sfx.confirm(); this.say(`${this.ch.name}'s ${key.toUpperCase()} rises.`); }
       else { sfx.error(); this.say(`Needs ${TRAIN_COST} LP.`); }
     }
   }
@@ -754,7 +754,7 @@ export class MenuScene {
     const ch = this.ch;
     const s = stats(ch);
     scr.text('LEARNING POINTS', IX, top, PAL.textDim);
-    scr.textRight(`${this.g.lp} LP`, IX + IW, top, PAL.cyan);
+    scr.textRight(`${ch.lp} LP`, IX + IW, top, PAL.cyan);
     scr.rect(IX, top + 12, IW, 1, PAL.line);
     STAT_KEYS.forEach((k, i) => {
       const y = top + 22 + i * 13;
@@ -762,7 +762,7 @@ export class MenuScene {
       if (sel) scr.rect(IX - 4, y - 2, IW + 8, 12, 'rgba(120,155,235,0.16)');
       scr.text(k.toUpperCase(), IX, y, sel ? PAL.accent : PAL.textDim);
       scr.text(`${s[k]}`, IX + 60, y, PAL.text);
-      scr.textRight(`${TRAIN_COST} LP`, IX + IW, y, this.g.lp >= TRAIN_COST ? PAL.cyan : PAL.textFaint);
+      scr.textRight(`${TRAIN_COST} LP`, IX + IW, y, ch.lp >= TRAIN_COST ? PAL.cyan : PAL.textFaint);
     });
     scr.textRight('Z train · ▲▼ choose stat', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
   }

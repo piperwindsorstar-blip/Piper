@@ -282,6 +282,6 @@ export function completeQuest(g, id) {
   g.setFlag(`quest.${id}.active`, false);
   g.setFlag(`quest.${id}.done`, true);
   if (q.reward.gold) g.earn(q.reward.gold);
-  if (q.reward.lp) g.lp += q.reward.lp;
+  if (q.reward.lp) for (const ch of g.party) ch.lp += q.reward.lp;
   if (q.reward.item) g.addItem(q.reward.item);
 }

@@ -24,7 +24,6 @@ export class GameState {
     this.roster = [];               // everyone ever recruited (superset of party)
     this.party = [];                // the active battle formation, up to MAX_PARTY
     this.gold = 200;
-    this.lp = 0;                     // Learning Points: spent on stat training, shared like gold
     this.inventory = [];            // [{id, count}]
     this.flags = {};                // world flags: opened chests, defeated bosses
     this.mapId = 'wren';
@@ -281,13 +280,12 @@ export class GameState {
       roster: this.roster.map((c) => ({
         id: c.id, name: c.name, classId: c.classId, raceId: c.raceId,
         elementId: c.elementId, jobId: c.jobId,
-        level: c.level, exp: c.exp, acc: c.acc, jobExp: c.jobExp, equip: c.equip,
+        level: c.level, exp: c.exp, acc: c.acc, jobExp: c.jobExp, lp: c.lp, equip: c.equip,
         grid: c.grid, ip: c.ip, statuses: c.statuses, hp: c.hp, mp: c.mp,
         classHistory: c.classHistory, skin: c.skin, hair: c.hair, alive: c.hp > 0,
       })),
       partyIds: this.party.map((c) => c.id),
       gold: this.gold,
-      lp: this.lp,
       inventory: this.inventory,
       flags: this.flags,
       mapId: this.mapId,
@@ -318,6 +316,11 @@ export class GameState {
       ch.exp = c.exp ?? 0;
       for (const k of STAT_KEYS) ch.acc[k] = c.acc?.[k] ?? ch.acc[k];
       ch.jobExp = c.jobExp ?? 0;
+      // Learning Points used to be one pool shared across the whole roster
+      // (`d.lp`); a save from before it became per-character had no `c.lp`
+      // of its own, so every returning character picks up that old shared
+      // total rather than starting back over at zero.
+      ch.lp = c.lp ?? d.lp ?? 0;
       ch.equip = { weapon: null, offhand: null, body: null, head: null, accessory: null, ...(c.equip ?? {}) };
       ch.grid = c.grid ?? { row: 1, col: 0 };
       ch.ip = c.ip ?? 0;
@@ -332,7 +335,6 @@ export class GameState {
       ? d.partyIds.map((id) => g.roster.find((c) => c.id === id)).filter(Boolean)
       : g.roster.slice(0, MAX_PARTY);
     g.gold = d.gold ?? 0;
-    g.lp = d.lp ?? 0;
     g.inventory = d.inventory ?? [];
     g.flags = d.flags ?? {};
     g.mapId = d.mapId ?? 'wren';

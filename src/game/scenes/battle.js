@@ -1210,9 +1210,8 @@ export class BattleScene {
       playMusic('victory', VICTORY_THEME);
       sfx.victory();
       const spoils = b.spoils();
-      msgs.push(`Victory! ${spoils.exp} EXP, ${spoils.gold} gold and ${spoils.lp} LP.`);
+      msgs.push(`Victory! ${spoils.exp} EXP, ${spoils.gold} gold and ${spoils.lp} LP each.`);
       this.g.earn(spoils.gold);
-      this.g.lp += spoils.lp;
       for (const id of spoils.items) {
         if (this.g.addItem(id)) msgs.push(`Found ${getItem(id).name}.`);
       }
@@ -1220,6 +1219,7 @@ export class BattleScene {
       const leveledRefs = new Set();
       for (const ch of this.g.party) {
         const r = awardExp(ch, spoils.exp);
+        ch.lp += spoils.lp;
         if (r.levels) { msgs.push(`${ch.name} reaches level ${ch.level}!`); leveledRefs.add(ch); }
         if (refreshPromotion(ch)) promos.push(ch);
       }

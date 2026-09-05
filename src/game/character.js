@@ -49,6 +49,7 @@ export function createCharacter(o) {
     exp: 0,
     acc: Object.fromEntries(STAT_KEYS.map((k) => [k, 0])),
     jobExp: 0,
+    lp: 0,
     equip: { weapon: null, offhand: null, body: null, head: null, accessory: null },
     grid: { row: o.row ?? 1, col: o.col ?? 0 },
     ip: 0,
@@ -190,15 +191,15 @@ export const TRAIN_COST = 20;
 export const TRAIN_AMOUNT = 2;
 
 /**
- * Spend the party's Learning Points to permanently raise one of a
- * character's raw stats — the same accumulator EXP-driven growth writes
- * to (`ch.acc`), so it composes with everything else `stats()` already
- * does (race mods, element bias, job bonus, equipment) with no separate
- * bookkeeping. Returns false (and spends nothing) if `g.lp` can't cover it.
+ * Spend a character's own Learning Points to permanently raise one of
+ * their raw stats — the same accumulator EXP-driven growth writes to
+ * (`ch.acc`), so it composes with everything else `stats()` already does
+ * (race mods, element bias, job bonus, equipment) with no separate
+ * bookkeeping. Returns false (and spends nothing) if `ch.lp` can't cover it.
  */
-export function trainStat(g, ch, statKey) {
-  if (g.lp < TRAIN_COST) return false;
-  g.lp -= TRAIN_COST;
+export function trainStat(ch, statKey) {
+  if (ch.lp < TRAIN_COST) return false;
+  ch.lp -= TRAIN_COST;
   ch.acc[statKey] += TRAIN_AMOUNT;
   return true;
 }
