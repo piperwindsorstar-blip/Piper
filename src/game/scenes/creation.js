@@ -18,6 +18,7 @@ import { RACES, RACE_BY_ID } from '../../data/races.js';
 import { SCHOOLS } from '../../data/skills.js';
 import { actorSprite, actorPortraitSprite } from '../../engine/sprites.js';
 import { GameState, STARTING_PARTY } from '../state.js';
+import { DIFFICULTIES, DIFFICULTY_BY_ID } from '../../data/difficulty.js';
 import { sfx } from '../../engine/audio.js';
 
 const NAME_ROWS = [
@@ -56,6 +57,7 @@ export class CreationScene {
     this.t = 0;
     this.draft = this.blankDraft();
     this.namePos = { r: 0, c: 0 };
+    this.difficulty = 'normal';
     this.buildMenus();
     this.mode = 'edit';
   }
@@ -93,6 +95,11 @@ export class CreationScene {
       };
     });
     const filled = this.slots.filter(Boolean).length;
+    const diff = DIFFICULTY_BY_ID[this.difficulty];
+    items.push({
+      label: 'DIFFICULTY', difficultyRow: true, color: PAL.text, noteColor: PAL.accent,
+      note: `◀ ${diff.name} (${Math.round(diff.scale * 100)}% enemies) ▶`,
+    });
     items.push({ label: 'BEGIN THE QUEST', begin: true, disabled: filled === 0, color: PAL.accent });
     items.push({ label: 'BACK TO TITLE', quit: true, color: PAL.textDim });
     this.rosterMenu.setItems(items, true);
@@ -149,6 +156,7 @@ export class CreationScene {
 
   begin() {
     const g = new GameState();
+    g.difficulty = this.difficulty;
     for (const s of this.slots) if (s) g.addMember(s);
     g.gold = 300;
     g.addItem('potion', 5);
@@ -181,10 +189,22 @@ export class CreationScene {
 
   updateRoster(input) {
     this.rosterMenu.handle(input);
+    const cur = this.rosterMenu.current;
+    if (cur?.difficultyRow) {
+      const left = input.tap('left'), right = input.tap('right');
+      if (left || right) {
+        const ids = DIFFICULTIES.map((d) => d.id);
+        const i = (ids.indexOf(this.difficulty) + (right ? 1 : -1) + ids.length) % ids.length;
+        this.difficulty = ids[i];
+        this.refreshRoster();
+        sfx.move();
+        return;
+      }
+    }
     if (input.tap('cancel')) { sfx.cancel(); this.app.pop(); return; }
     if (input.tap('confirm')) {
-      const cur = this.rosterMenu.current;
       if (cur.disabled) { sfx.error(); return; }
+      if (cur.difficultyRow) return;
       sfx.confirm();
       if (cur.begin) this.begin();
       else if (cur.quit) this.app.pop();

@@ -16,6 +16,7 @@ import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '.
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
+import { DIFFICULTY_BY_ID } from '../../data/difficulty.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
 import { mix, shade } from '../../engine/pixel.js';
@@ -213,6 +214,7 @@ export class BattleScene {
     this.opts = opts;
     this.battle = new Battle(this.g.party, opts.formationId, {
       preemptive: opts.preemptive, ambushed: opts.ambushed,
+      enemyScale: DIFFICULTY_BY_ID[this.g.difficulty]?.scale ?? 1,
     });
     this.state = 'intro';
     this.t = 0;

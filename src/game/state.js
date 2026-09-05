@@ -37,6 +37,7 @@ export class GameState {
     this.bestiary = {};
     this.mapped = {};               // cartographer: mapId -> true
     this.visitedMaps = {};          // every mapId the field scene has ever entered
+    this.difficulty = 'normal';     // data/difficulty.js — chosen once at creation
     this.slot = 1;
   }
 
@@ -276,6 +277,7 @@ export class GameState {
       bestiary: this.bestiary,
       mapped: this.mapped,
       visitedMaps: this.visitedMaps,
+      difficulty: this.difficulty,
     };
   }
 
@@ -318,6 +320,7 @@ export class GameState {
     g.bestiary = d.bestiary ?? {};
     g.mapped = d.mapped ?? {};
     g.visitedMaps = d.visitedMaps ?? {};
+    g.difficulty = d.difficulty ?? 'normal';
     return g;
   }
 

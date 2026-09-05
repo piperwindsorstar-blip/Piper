@@ -910,9 +910,9 @@ export class MenuScene {
     }[mode];
     const hint = this.controlsIdx === 0 ? desc
       : this.controlsIdx === 3 ? 'Silences sound effects and music together.'
-        : '◄► adjusts the volume.';
+        : '◀▶ adjusts the volume.';
     scr.textWrap(hint, IX, TOP + 120, IW, PAL.textDim, { lineHeight: 11, maxLines: 3 });
-    scr.textWrap('▲▼ choose a row   ·   Z toggles   ·   ◄► adjusts',
+    scr.textWrap('▲▼ choose a row   ·   Z toggles   ·   ◀▶ adjusts',
       IX, TOP + BODY_H - 22, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
   }
 

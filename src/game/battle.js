@@ -111,21 +111,25 @@ function pcUnit(ch, battle) {
   };
 }
 
-function enemyUnit(def, row, col, index) {
+function enemyUnit(def, row, col, index, scale = 1) {
   // Enemies have no equipment, so their raw atk/mag are scaled harder than a
-  // PC's to land in the same damage band as a geared party member.
+  // PC's to land in the same damage band as a geared party member. `scale`
+  // is the difficulty multiplier (data/difficulty.js) — 1 at Normal, so this
+  // reduces to exactly today's numbers whenever a caller doesn't pass one
+  // (every existing call site, plus tools/simulate.js).
   const boss = def.ai === 'boss';
   const s = {
-    maxHp: def.hp, maxMp: def.mp,
-    power: def.atk * (boss ? 3.4 : 3.0), magic: def.mag * (boss ? 3.2 : 2.8),
-    armor: def.def * 2.2, ward: def.res * 2.2,
+    maxHp: Math.round(def.hp * scale), maxMp: def.mp,
+    power: Math.round(def.atk * (boss ? 3.4 : 3.0) * scale),
+    magic: Math.round(def.mag * (boss ? 3.2 : 2.8) * scale),
+    armor: Math.round(def.def * 2.2 * scale), ward: Math.round(def.res * 2.2 * scale),
     speed: def.agi, crit: boss ? 0.10 : 0.04, evade: 0.03 + def.agi * 0.002,
     reach: def.reach, element: def.element,
   };
   return {
     uid: `e${++uidCounter}`, side: 'enemy', def, name: def.name,
     label: def.name, index,
-    hp: def.hp, mp: def.mp, ip: 0,
+    hp: s.maxHp, mp: def.mp, ip: 0,
     statuses: {}, grid: { row, col },
     get alive() { return this.hp > 0; },
     element: def.element,
@@ -160,10 +164,11 @@ export class Battle {
 
     // name duplicate enemies "Slime A", "Slime B"
     const counts = {};
+    const scale = opts.enemyScale ?? 1;
     this.enemies = this.formation.cells.map((c, i) => {
       const def = getEnemy(c.id);
       counts[c.id] = (counts[c.id] ?? 0) + 1;
-      return enemyUnit(def, c.row, c.col, i);
+      return enemyUnit(def, c.row, c.col, i, scale);
     });
     for (const id of Object.keys(counts)) {
       if (counts[id] < 2) continue;
