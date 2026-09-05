@@ -94,6 +94,7 @@ export class FieldScene {
     } else if (this.g.flag('boss.thirteenth') && !this.g.flag('story.epilogue')) {
       this.g.setFlag('story.epilogue');
       for (const line of STORY.epilogue) this.dlg.say(line);
+      this.pendingNGPlusChoice = true;
     } else if (this.g.flag('boss.aurelith') && !this.g.flag('story.midpoint')) {
       this.g.setFlag('story.midpoint');
       for (const line of STORY.midpoint) this.dlg.say(line);
@@ -489,6 +490,14 @@ export class FieldScene {
           const boss = this.pendingBoss;
           this.pendingBoss = null;
           this.app.push('battle', { formationId: boss.formation, bossFlag: boss.flag });
+        } else if (emptied && this.pendingNGPlusChoice) {
+          this.pendingNGPlusChoice = false;
+          this.choice = {
+            title: 'Begin New Game+? The roster, its gear and gold carry over — the story and map reset, '
+              + 'and every enemy hits harder.',
+            options: ['Not yet', 'Begin New Game+'],
+            onPick: (i) => { if (i === 1) this.beginNewGamePlus(); },
+          };
         }
       }
       return;
@@ -799,6 +808,14 @@ export class FieldScene {
       sfx.cancel();
       this.choice = null; this.choiceMenu = null;
     }
+  }
+
+  /** GameState.startNewGamePlus() does the actual state reset; this just
+   *  restarts the field scene fresh once it has, the same way booting a
+   *  save does — no separate transition machinery to get wrong. */
+  beginNewGamePlus() {
+    this.g.startNewGamePlus();
+    this.app.replace('field', { fadeIn: true });
   }
 
   completeWarp() {

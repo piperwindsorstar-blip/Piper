@@ -215,7 +215,10 @@ export class BattleScene {
     this.opts = opts;
     this.battle = new Battle(this.g.party, opts.formationId, {
       preemptive: opts.preemptive, ambushed: opts.ambushed,
-      enemyScale: DIFFICULTY_BY_ID[this.g.difficulty]?.scale ?? 1,
+      // New Game+ stacks its own multiplier on top of the chosen difficulty
+      // — +40% per completed cycle — rather than replacing it, so a Hard NG+2
+      // run is harder than either alone.
+      enemyScale: (DIFFICULTY_BY_ID[this.g.difficulty]?.scale ?? 1) * (1 + 0.4 * (this.g.ngPlus ?? 0)),
     });
     this.state = 'intro';
     this.t = 0;

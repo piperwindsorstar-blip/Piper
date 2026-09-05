@@ -414,7 +414,7 @@ export class MenuScene {
     scr.ctx.globalAlpha = openK;
     scr.ctx.translate(0, (1 - openK) * -14);
 
-    header(scr, 'PARTY', `${this.g.gold} G     ${formatTime(this.g.playtime)}`);
+    header(scr, 'PARTY', `${this.g.ngPlus ? `NG+${this.g.ngPlus}     ` : ''}${this.g.gold} G     ${formatTime(this.g.playtime)}`);
 
     scr.panel(NAV_X, TOP, NAV_W, BODY_H, { accent: true });
     this.root.draw(scr, { inactive: this.mode !== 'root' });

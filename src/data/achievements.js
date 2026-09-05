@@ -81,6 +81,10 @@ export const ACHIEVEMENTS = [
     id: 'boss.seam', name: 'Nothing Left Unwritten', desc: 'Find and defeat the Hollow Between\'s hidden postgame boss.',
     check: (g) => g.flag('boss.seam'),
   },
+  {
+    id: 'ngPlus', name: 'Around Again', desc: 'Begin a New Game+.',
+    check: (g) => g.ngPlus > 0,
+  },
 ];
 
 export function achievementsDone(g) { return ACHIEVEMENTS.filter((a) => a.check(g)); }

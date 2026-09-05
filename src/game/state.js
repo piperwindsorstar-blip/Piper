@@ -38,6 +38,7 @@ export class GameState {
     this.mapped = {};               // cartographer: mapId -> true
     this.visitedMaps = {};          // every mapId the field scene has ever entered
     this.difficulty = 'normal';     // data/difficulty.js — chosen once at creation
+    this.ngPlus = 0;                // New Game+ cycles completed — see startNewGamePlus
     this.slot = 1;
   }
 
@@ -195,6 +196,25 @@ export class GameState {
     return true;
   }
 
+  /**
+   * New Game+: roster, their levels/gear, gold, inventory, bestiary and
+   * trophies all carry over untouched — only the story itself resets, so
+   * the campaign plays again from the top rather than dropping the player
+   * back at creation. Offered once the epilogue finishes (see field.js).
+   * Battle scenes read `ngPlus` to scale enemies up further each cycle
+   * (data/difficulty.js's own multiplier stacks on top, unchanged).
+   */
+  startNewGamePlus() {
+    this.ngPlus += 1;
+    this.flags = {};
+    this.visitedMaps = {};
+    this.mapped = {};
+    this.mapId = 'wren';
+    this.x = 12; this.y = 18; this.facing = 'down';
+    this.stepsSinceBattle = 0;
+    for (const ch of this.roster) fullRestore(ch);
+  }
+
   earn(amount) { this.gold = Math.min(9999999, this.gold + Math.max(0, amount)); }
 
   // --- jobs ----------------------------------------------------------------
@@ -278,6 +298,7 @@ export class GameState {
       mapped: this.mapped,
       visitedMaps: this.visitedMaps,
       difficulty: this.difficulty,
+      ngPlus: this.ngPlus,
     };
   }
 
@@ -321,6 +342,7 @@ export class GameState {
     g.mapped = d.mapped ?? {};
     g.visitedMaps = d.visitedMaps ?? {};
     g.difficulty = d.difficulty ?? 'normal';
+    g.ngPlus = d.ngPlus ?? 0;
     return g;
   }
 
