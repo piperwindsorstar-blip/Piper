@@ -32,7 +32,10 @@ import * as THREE from '../../vendor/three.module.js';
 // consecutive ranks' billboards overlap on screen — the original 1.05 was
 // smaller than the 1.7-tall sprite standing on it, which is what made a
 // full 9-member party read as one overlapping cluster per lane instead of
-// three distinct ranks.
+// three distinct ranks. Both numbers grew together later (1.7->2.3, 1.9->2.15)
+// to make individual characters actually readable at this resolution — a
+// full 9-a-side lineup still clears cleanly with room to spare (see the
+// party-stress screenshots from that pass), so there was slack to spend.
 // FRONT_Z started at 0.5 (a 1.0 gap), then 1.1 (2.2) — still read as too
 // close. 1.8 puts a real 3.6-unit no-man's-land between the front ranks,
 // over two sprite-widths, without touching rank spacing within a side.
@@ -44,14 +47,14 @@ import * as THREE from '../../vendor/three.module.js';
 // closer together than one card's width plus the gap it leans out from.
 // 4.4 gives every card room to end before the next lane's sprite begins;
 // see drawUnit's cardW for the matching width that was solved alongside it.
-const WORLD_LANE_STEP = 4.4, WORLD_RANK_STEP = 1.9, WORLD_FRONT_Z = 1.8;
+const WORLD_LANE_STEP = 4.4, WORLD_RANK_STEP = 2.15, WORLD_FRONT_Z = 1.8;
 // Each back rank stands a literal step higher than the one in front of it —
 // real 3D risers (see setup3D), not just a further/smaller billboard. Under
 // this orthographic camera, depth alone was reading fairly flat; an actual
 // stepped platform with a lit top and a shaded riser face gives the eye
 // something with real volume to confirm the depth with.
 const RISER_STEP_H = 0.32;
-const ACTOR_WORLD_H = 1.7;   // world height of a standard 48px-tall actor sprite
+const ACTOR_WORLD_H = 2.3;   // world height of a standard 48px-tall actor sprite
 // Orthographic, not perspective, and for the same reason field.js's camera
 // is: fitting every rank of a full 9-a-side battle (front to back, both
 // sides) is a wide enough world-Z range that a perspective camera close
