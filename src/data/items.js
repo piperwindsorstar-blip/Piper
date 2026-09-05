@@ -119,6 +119,22 @@ export const ITEMS = [
   A('greathelm', 'Great Helm', 'head', 'heavy', 22, 1800, { bonus: { vit: 4 } }),
   A('crownofstars', 'Crown of Stars', 'head', 'cloth', 16, 6400, { bonus: { int: 10, spr: 10 } }),
 
+  // --- forged — crafted only, at the Forge (menu's Craft page); never sold
+  // or dropped, so ore/leather/petal drops that quests don't already want
+  // have somewhere to go. Priced above the shop weapon of the same tier
+  // they're clearly stronger than, since gold alone can't buy them. -------
+  W('ridgeforgesword', 'Ridgeforge Sword', 'sword', 36, 1400, { bonus: { str: 4 } }),
+  W('quarrycleaver', 'Quarry Cleaver', 'axe', 40, 1500, { bonus: { str: 5, vit: 2 } }),
+  W('sunfiremace', 'Sunfire Mace', 'mace', 34, 1500, { element: 'fire', bonus: { int: 4 } }),
+  W('silentfang', 'Silent Fang', 'dagger', 30, 1300, { element: 'poison', bonus: { agi: 5 } }),
+  W('thornweavewraps', 'Thornweave Wraps', 'fist', 32, 1300, { bonus: { str: 3, agi: 3 } }),
+  W('ridgebacklance', 'Ridgeback Lance', 'spear', 42, 3800, { bonus: { str: 6, vit: 3 } }),
+  W('whisperingcord', 'Whispering Cord', 'whip', 34, 3400, { bonus: { agi: 6, lck: 3 } }),
+  W('riverglassbow', 'Riverglass Bow', 'bow', 36, 3200, { element: 'water', bonus: { agi: 5 } }),
+  W('emberweaverod', 'Emberweave Rod', 'staff', 26, 1900, { element: 'fire', bonus: { int: 8 } }),
+  A('alloyweavevest', 'Alloyweave Vest', 'body', 'light', 24, 1300, { bonus: { agi: 2, vit: 2 } }),
+  A('mythrilcirclet', 'Mythril Circlet', 'head', 'cloth', 20, 2600, { bonus: { int: 6, spr: 6 } }),
+
   // --- accessories ---------------------------------------------------------
   ACC('powerband', 'Power Band', 700, { bonus: { str: 6 } }),
   ACC('swiftboots', 'Swift Boots', 700, { bonus: { agi: 7 } }),

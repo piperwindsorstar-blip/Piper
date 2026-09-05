@@ -19,9 +19,10 @@ import { CLASSES, TIER_NAME, PROMOTION_LEVELS, STAT_KEYS } from '../../data/clas
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { ENEMIES, FAMILIES } from '../../data/enemies.js';
 import { ACHIEVEMENTS } from '../../data/achievements.js';
+import { RECIPES, canCraft, craft } from '../../data/recipes.js';
 import { MAPS, REGIONS } from '../../data/maps.js';
 import { SCHOOLS, STATUS } from '../../data/skills.js';
-import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
+import { getItem, SLOTS as EQUIP_SLOTS, canEquip, WEAPON_TYPES, ARMOR_CLASSES } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
 import { questState, questProgress, questReady, questsByLevel, questBand } from '../../data/quests.js';
@@ -37,6 +38,7 @@ const PAGES = [
   { id: 'arts', label: 'Arts' },
   { id: 'items', label: 'Items' },
   { id: 'equip', label: 'Equip' },
+  { id: 'craft', label: 'Craft' },
   { id: 'formation', label: 'Formation' },
   { id: 'train', label: 'Train' },
   { id: 'jobs', label: 'Jobs' },
@@ -67,6 +69,9 @@ const BESTIARY_LIST_Y = TOP + 34, BESTIARY_LIST_ROWS = 10;
 const TROPHY_LIST_Y = TOP + 34, TROPHY_LIST_ROWS = 10;
 // Atlas page: same shape again — one list, one description line.
 const ATLAS_LIST_Y = TOP + 34, ATLAS_LIST_ROWS = 10;
+// Craft page: the list takes the left column; a detail panel (materials,
+// have/need, gold) fills the right, mirroring Equip's own two-column split.
+const CRAFT_LIST_Y = TOP + 34, CRAFT_LIST_ROWS = 10;
 
 /** The procedural bust portrait, scaled to fit a box. */
 function drawBust(scr, x, y, w, h, ch, alpha = 1) {
@@ -136,6 +141,7 @@ export class MenuScene {
       case 'itemTarget': return this.updateItemTarget(input);
       case 'equip': return this.updateEquip(input);
       case 'equipList': return this.updateEquipList(input);
+      case 'craft': return this.updateCraft(input);
       case 'formation': return this.updateFormation(input);
       case 'train': return this.updateTrain(input);
       case 'save': return this.updateSave(input);
@@ -166,6 +172,7 @@ export class MenuScene {
       this.formCursor = { ...this.g.party[0].grid };
       this.formPicked = null;
     }
+    if (id === 'craft') this.refreshCraft();
     if (id === 'quest') this.refreshQuest();
     if (id === 'atlas') this.refreshAtlas();
     if (id === 'bestiary') this.refreshBestiary();
@@ -420,6 +427,7 @@ export class MenuScene {
         case 'arts': this.drawArts(scr); break;
         case 'items': case 'itemTarget': this.drawItems(scr); break;
         case 'equip': case 'equipList': this.drawEquip(scr); break;
+        case 'craft': this.drawCraft(scr); break;
         case 'formation': this.drawFormation(scr); break;
         case 'train': this.drawTrain(scr); break;
         case 'jobs': this.drawJobs(scr); break;
@@ -986,6 +994,71 @@ export class MenuScene {
           : `${sel.q.npc}: "${sel.q.hook}"`;
       scr.textWrap(line, IX, TOP + BODY_H - 22, IW, PAL.textDim, { lineHeight: 11, maxLines: 2 });
     }
+  }
+
+  // --- craft -------------------------------------------------------------
+  // The Forge: spend gold plus specific monster-drop materials for an item
+  // that exists nowhere else (see data/recipes.js) — a use for materials the
+  // side quests don't already want, and an alternative to grinding gold.
+  refreshCraft() {
+    this.list.x = this.colX(0) + 12; this.list.y = CRAFT_LIST_Y;
+    this.list.cellW = CW - 8; this.list.cellH = 13; this.list.rows = CRAFT_LIST_ROWS;
+    this.list.setItems(RECIPES.map((r) => {
+      const ok = canCraft(this.g, r);
+      return {
+        label: getItem(r.itemId).name, note: ok ? 'Ready' : `${r.gold}g`, r,
+        color: ok ? PAL.text : PAL.textDim, noteColor: ok ? PAL.accent : PAL.textFaint,
+      };
+    }), true);
+  }
+
+  updateCraft(input) {
+    this.list.handle(input);
+    if (input.tap('confirm') && this.list.current?.r) {
+      const r = this.list.current.r;
+      if (!canCraft(this.g, r)) { sfx.error(); return; }
+      craft(this.g, r);
+      sfx.confirm();
+      this.say(`Forged ${getItem(r.itemId).name}.`);
+      this.refreshCraft();
+    }
+  }
+
+  drawCraft(scr) {
+    scr.text('CRAFT', IX, TOP + 10, PAL.accent);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+    this.list.draw(scr);
+
+    const r = this.list.current?.r;
+    if (!r) return;
+    const it = getItem(r.itemId);
+    const rx = this.colX(1);
+    let ry = CRAFT_LIST_Y;
+    scr.text(it.name, rx, ry, PAL.accent); ry += 14;
+    const kindLine = it.kind === 'weapon' ? `${WEAPON_TYPES[it.wtype].name}  ·  ${it.atk} ATK`
+      : `${it.slot === 'accessory' ? 'Accessory' : `${ARMOR_CLASSES[it.aclass]?.name ?? ''} armour`}  ·  ${it.def ?? 0} DEF`;
+    scr.text(kindLine, rx, ry, PAL.textDim); ry += 12;
+    if (it.element && it.element !== 'none') { scr.text(`Element: ${ELEMENT_BY_ID[it.element].name}`, rx, ry, ELEMENT_BY_ID[it.element].color); ry += 12; }
+    if (it.bonus) {
+      const line = Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()} ${v > 0 ? '+' : ''}${v}`).join('  ');
+      ry += scr.textWrap(line, rx, ry, CW, PAL.cyan, { lineHeight: 11, maxLines: 2 }) * 11 + 4;
+    }
+    ry += 6;
+    scr.rect(rx, ry, CW, 1, PAL.line); ry += 12;
+
+    const goldOk = this.g.gold >= r.gold;
+    scr.text('Gold', rx, ry, PAL.textDim);
+    scr.textRight(`${this.g.gold} / ${r.gold}`, rx + CW, ry, goldOk ? PAL.green : PAL.red);
+    ry += 14;
+    for (const m of r.materials) {
+      const have = this.g.countItem(m.id);
+      const ok = have >= m.count;
+      scr.text(getItem(m.id).name, rx, ry, PAL.textDim);
+      scr.textRight(`${have} / ${m.count}`, rx + CW, ry, ok ? PAL.green : PAL.red);
+      ry += 14;
+    }
+    scr.textWrap(canCraft(this.g, r) ? 'Z forges it.' : 'Short on gold or materials.',
+      rx, TOP + BODY_H - 22, CW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
   }
 
   // --- atlas -----------------------------------------------------------------

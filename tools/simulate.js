@@ -9,6 +9,7 @@ import { createCharacter, awardExp, promote, refreshPromotion, stats, fullRestor
 import { Battle, PHASE, autoPartyAction } from '../src/game/battle.js';
 import { FORMATIONS } from '../src/data/enemies.js';
 import { ITEMS, canEquip } from '../src/data/items.js';
+import { RECIPES } from '../src/data/recipes.js';
 import { getClass } from '../src/data/classes.js';
 import { RNG } from '../src/engine/rng.js';
 
@@ -43,6 +44,8 @@ function buildParty(level, rng) {
 
 // Gear the character in the best thing they can use whose price fits the
 // spending power a party would plausibly have at their level.
+const CRAFTED_ONLY = new Set(RECIPES.map((r) => r.itemId));
+
 function equipBest(ch) {
   const cls = getClass(ch.classId);
   // Roughly the gold a party actually accumulates per character by this level,
@@ -51,6 +54,10 @@ function equipBest(ch) {
   for (const slot of ['weapon', 'offhand', 'body', 'head', 'accessory']) {
     const slotBudget = slot === 'weapon' ? budget : budget * 0.55;
     const pool = ITEMS.filter((it) => {
+      // Forged items cost gold same as anything else, but also need farmed
+      // materials a simulated party never actually has — gold budget alone
+      // overstates what's really affordable, so this sim party skips them.
+      if (CRAFTED_ONLY.has(it.id)) return false;
       if (it.price > slotBudget) return false;
       if (!canEquip(cls, it)) return false;
       if (slot === 'weapon') return it.kind === 'weapon' && it.wtype !== 'shield';
