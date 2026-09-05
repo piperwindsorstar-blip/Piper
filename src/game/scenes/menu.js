@@ -18,6 +18,7 @@ import {
 import { CLASSES, TIER_NAME, PROMOTION_LEVELS, STAT_KEYS } from '../../data/classes.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { ENEMIES, FAMILIES } from '../../data/enemies.js';
+import { ACHIEVEMENTS } from '../../data/achievements.js';
 import { SCHOOLS, STATUS } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
@@ -41,6 +42,7 @@ const PAGES = [
   { id: 'ladder', label: 'Ladder' },
   { id: 'quest', label: 'Quest' },
   { id: 'bestiary', label: 'Bestiary' },
+  { id: 'trophies', label: 'Trophies' },
   { id: 'save', label: 'Save' },
   { id: 'controls', label: 'Controls' },
   { id: 'close', label: 'Close' },
@@ -59,6 +61,8 @@ const QUEST_LIST_Y = TOP + 96, QUEST_LIST_ROWS = 6;
 // Bestiary page: one list fills the body, leaving room at the bottom for the
 // selected entry's family/element/blurb line.
 const BESTIARY_LIST_Y = TOP + 34, BESTIARY_LIST_ROWS = 10;
+// Trophies page: same shape as Bestiary — one list, one description line.
+const TROPHY_LIST_Y = TOP + 34, TROPHY_LIST_ROWS = 10;
 
 /** The procedural bust portrait, scaled to fit a box. */
 function drawBust(scr, x, y, w, h, ch, alpha = 1) {
@@ -134,6 +138,7 @@ export class MenuScene {
       case 'controls': return this.updateControls(input);
       case 'quest': return this.updateQuest(input);
       case 'bestiary': return this.updateBestiary(input);
+      case 'trophies': return this.updateTrophies(input);
       default: break;
     }
   }
@@ -158,6 +163,7 @@ export class MenuScene {
     }
     if (id === 'quest') this.refreshQuest();
     if (id === 'bestiary') this.refreshBestiary();
+    if (id === 'trophies') this.refreshTrophies();
   }
 
   get ch() { return this.g.party[this.who]; }
@@ -414,6 +420,7 @@ export class MenuScene {
         case 'controls': this.drawControls(scr); break;
         case 'quest': this.drawQuest(scr); break;
         case 'bestiary': this.drawBestiary(scr); break;
+        case 'trophies': this.drawTrophies(scr); break;
         default: break;
       }
     }
@@ -1006,6 +1013,37 @@ export class MenuScene {
       if (e.blurb) scr.textWrap(e.blurb, IX, TOP + BODY_H - 22, IW, PAL.text, { lineHeight: 11, maxLines: 2 });
     } else if (sel) {
       scr.textWrap('Not yet encountered.', IX, TOP + BODY_H - 22, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
+    }
+  }
+
+  // --- trophies --------------------------------------------------------------
+  // Every entry is derived straight from flags/bestiary/roster/gold GameState
+  // already tracks (see data/achievements.js) — nothing here is itself saved.
+  refreshTrophies() {
+    this.list.x = IX + 12; this.list.y = TROPHY_LIST_Y;
+    this.list.cellW = IW - 24; this.list.cellH = 13; this.list.rows = TROPHY_LIST_ROWS;
+    this.list.setItems(ACHIEVEMENTS.map((a) => {
+      const done = a.check(this.g);
+      return {
+        label: a.name, note: done ? 'Done' : '', a, done,
+        color: done ? PAL.gold : PAL.textFaint,
+      };
+    }), true);
+  }
+
+  updateTrophies(input) { this.list.handle(input); }
+
+  drawTrophies(scr) {
+    scr.text('TROPHIES', IX, TOP + 10, PAL.accent);
+    const done = ACHIEVEMENTS.filter((a) => a.check(this.g)).length;
+    scr.textRight(`${done}/${ACHIEVEMENTS.length} earned`, IX + IW, TOP + 10, PAL.textFaint);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+
+    this.list.draw(scr);
+    const sel = this.list.current;
+    if (sel?.a) {
+      scr.textWrap(sel.a.desc, IX, TOP + BODY_H - 22, IW, sel.done ? PAL.textDim : PAL.textFaint,
+        { lineHeight: 11, maxLines: 2 });
     }
   }
 }
