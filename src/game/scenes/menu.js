@@ -17,6 +17,7 @@ import {
 } from '../character.js';
 import { CLASSES, TIER_NAME, PROMOTION_LEVELS, STAT_KEYS } from '../../data/classes.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
+import { ENEMIES, FAMILIES } from '../../data/enemies.js';
 import { SCHOOLS, STATUS } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
@@ -39,6 +40,7 @@ const PAGES = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'ladder', label: 'Ladder' },
   { id: 'quest', label: 'Quest' },
+  { id: 'bestiary', label: 'Bestiary' },
   { id: 'save', label: 'Save' },
   { id: 'controls', label: 'Controls' },
   { id: 'close', label: 'Close' },
@@ -54,6 +56,9 @@ const HEAD_PORTRAIT_W = 40, HEAD_PORTRAIT_H = 38; // procedural bust in charHead
 // Quest page: side-quest list sits below the main-story block, leaving room
 // at the panel's own bottom for the selected entry's hook/reminder text.
 const QUEST_LIST_Y = TOP + 96, QUEST_LIST_ROWS = 6;
+// Bestiary page: one list fills the body, leaving room at the bottom for the
+// selected entry's family/element/blurb line.
+const BESTIARY_LIST_Y = TOP + 34, BESTIARY_LIST_ROWS = 10;
 
 /** The procedural bust portrait, scaled to fit a box. */
 function drawBust(scr, x, y, w, h, ch, alpha = 1) {
@@ -128,6 +133,7 @@ export class MenuScene {
       case 'save': return this.updateSave(input);
       case 'controls': return this.updateControls(input);
       case 'quest': return this.updateQuest(input);
+      case 'bestiary': return this.updateBestiary(input);
       default: break;
     }
   }
@@ -151,6 +157,7 @@ export class MenuScene {
       this.formPicked = null;
     }
     if (id === 'quest') this.refreshQuest();
+    if (id === 'bestiary') this.refreshBestiary();
   }
 
   get ch() { return this.g.party[this.who]; }
@@ -406,6 +413,7 @@ export class MenuScene {
         case 'save': this.drawSave(scr); break;
         case 'controls': this.drawControls(scr); break;
         case 'quest': this.drawQuest(scr); break;
+        case 'bestiary': this.drawBestiary(scr); break;
         default: break;
       }
     }
@@ -956,6 +964,48 @@ export class MenuScene {
         : sel.state === 'active' ? sel.q.reminder
           : `${sel.q.npc}: "${sel.q.hook}"`;
       scr.textWrap(line, IX, TOP + BODY_H - 22, IW, PAL.textDim, { lineHeight: 11, maxLines: 2 });
+    }
+  }
+
+  // --- bestiary ------------------------------------------------------------
+  // Every enemy the bestiary has ever counted a kill for (see battle.js's
+  // victory handling) shows its real name, family, element and blurb; every
+  // other enemy shows only its level, as "???" — a reason to fight something
+  // new rather than a spoiler for it.
+  refreshBestiary() {
+    this.list.x = IX + 12; this.list.y = BESTIARY_LIST_Y;
+    this.list.cellW = IW - 24; this.list.cellH = 13; this.list.rows = BESTIARY_LIST_ROWS;
+    const sorted = [...ENEMIES].sort((a, b) => a.lv - b.lv);
+    this.list.setItems(sorted.map((e) => {
+      const count = this.g.bestiary[e.id] ?? 0;
+      const seen = count > 0;
+      return {
+        label: seen ? e.name : '???',
+        note: seen ? `x${count}` : `Lv ${e.lv}`,
+        e, seen,
+        color: !seen ? PAL.textFaint : e.ai === 'boss' ? PAL.gold : PAL.text,
+        noteColor: seen ? PAL.textDim : PAL.textFaint,
+      };
+    }), true);
+  }
+
+  updateBestiary(input) { this.list.handle(input); }
+
+  drawBestiary(scr) {
+    scr.text('BESTIARY', IX, TOP + 10, PAL.accent);
+    const seenCount = ENEMIES.filter((e) => (this.g.bestiary[e.id] ?? 0) > 0).length;
+    scr.textRight(`${seenCount}/${ENEMIES.length} discovered`, IX + IW, TOP + 10, PAL.textFaint);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+
+    this.list.draw(scr);
+    const sel = this.list.current;
+    if (sel?.seen) {
+      const e = sel.e;
+      const el = ELEMENT_BY_ID[e.element];
+      scr.text(`Lv ${e.lv}   ${FAMILIES[e.family].name}   ${el.name}`, IX, TOP + BODY_H - 34, PAL.textDim);
+      if (e.blurb) scr.textWrap(e.blurb, IX, TOP + BODY_H - 22, IW, PAL.text, { lineHeight: 11, maxLines: 2 });
+    } else if (sel) {
+      scr.textWrap('Not yet encountered.', IX, TOP + BODY_H - 22, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
     }
   }
 }
