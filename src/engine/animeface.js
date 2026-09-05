@@ -528,9 +528,15 @@ export function paintAnimeBody(ctx, o) {
   const lean = frame === 3 ? 2.4 : 0;
   const hurt = frame === 2;
 
+  // Height is dampened (^0.4) so a small-build race reads as a bit shorter
+  // rather than a doll standing next to everyone else — the pixel sprite
+  // kept every race at nearly the same on-field stature and let build show
+  // up as girth instead, which is what widthFactor (a lighter sqrt taper)
+  // is for here.
+  const heightFactor = Math.pow(build, 0.4), widthFactor = Math.sqrt(build);
   const ground = o.h - 3;
-  const legH = 11 * build, bodyH = 13 * build, headH = 6.6 * Math.sqrt(build);
-  const bodyW = 5.6 * build, headW = 6.6 * Math.sqrt(build);
+  const legH = 11 * heightFactor, bodyH = 13 * heightFactor, headH = 6.6 * heightFactor;
+  const bodyW = 5.6 * widthFactor, headW = 6.6 * widthFactor;
   const legY = ground - legH + bob;
   const bodyTop = legY - bodyH;
   const headCy = bodyTop - headH * 0.75;
