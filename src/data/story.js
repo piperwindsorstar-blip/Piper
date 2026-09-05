@@ -16,26 +16,31 @@
 // tools/sim.js's BOSS table), not just formation-file order — Volk is the
 // intended first stop, not Anvil King, even though neither requires the
 // other mechanically.
+// `mapId` names the region as data/maps.js actually IDs it, so the menu's
+// World page can point at the right spot on the overview without parsing
+// the prose `region` string — anvil_king's own boss sits in 'anvil2' (the
+// gorge's lower depth) but the overworld only warps to 'anvil1', so that's
+// what's named here; same idea for the three Hollow Between bosses.
 export const MAIN_QUEST = [
-  { flag: 'volk', level: 9, region: 'The Hollow',
+  { flag: 'volk', level: 9, region: 'The Hollow', mapId: 'hollow',
     hint: "The Hollow road is Volk's, and nothing moves past it while that's true. Head to the Hollow and end it." },
-  { flag: 'anvil_king', level: 16, region: 'The Anvil Gorge',
+  { flag: 'anvil_king', level: 16, region: 'The Anvil Gorge', mapId: 'anvil1',
     hint: "Something the size of a mountain stood up in the Anvil Gorge and never sat back down. Go see why." },
-  { flag: 'choir', level: 24, region: 'The Choir Ruins',
+  { flag: 'choir', level: 24, region: 'The Choir Ruins', mapId: 'ruins',
     hint: "The Ruins keep singing whether anyone answers or not. Go find out who — or what — is singing." },
-  { flag: 'aurelith', level: 30, region: 'The Choir Ruins',
+  { flag: 'aurelith', level: 30, region: 'The Choir Ruins', mapId: 'ruins',
     hint: "Something older than the Choir is coiled deeper in the Ruins. Go finish what the Choir started." },
-  { flag: 'kharos', level: 37, region: 'Cinderreach',
+  { flag: 'kharos', level: 37, region: 'Cinderreach', mapId: 'cinderreach',
     hint: "Cinderreach hasn't cooled in years, and lately it's dreaming out loud. Go quiet it." },
-  { flag: 'gatekeeper', level: 45, region: 'The Hollow Between',
+  { flag: 'gatekeeper', level: 45, region: 'The Hollow Between', mapId: 'hollowbetween',
     hint: "Something in the Hollow Between has decided nobody gets through. Go prove it wrong." },
-  { flag: 'nerith', level: 55, region: 'The Drowned Vale',
+  { flag: 'nerith', level: 55, region: 'The Drowned Vale', mapId: 'drownedvale',
     hint: "The Vale's water rose without a current, and it's still rising. Go see what's wearing the crown." },
-  { flag: 'worldheart', level: 65, region: 'The Hollow Between',
+  { flag: 'worldheart', level: 65, region: 'The Hollow Between', mapId: 'hollowbetween',
     hint: "Every green thing in the world just turned to face the Hollow Between at once. Go see what it's facing." },
-  { flag: 'vessia', level: 75, region: 'The Glassfields',
+  { flag: 'vessia', level: 75, region: 'The Glassfields', mapId: 'glassfields',
     hint: "The Glassfields' light all points one direction now. Go find its warden." },
-  { flag: 'thirteenth', level: 85, region: 'The Hollow Between',
+  { flag: 'thirteenth', level: 85, region: 'The Hollow Between', mapId: 'hollowbetween',
     hint: "Nine on the wheel, four beside it — and something that was never on the wheel at all, still "
       + "turning it. Go end it, in the Hollow Between." },
 ];

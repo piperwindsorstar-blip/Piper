@@ -1673,6 +1673,13 @@ export function signAt(map, x, y) {
   return (map.signs ?? []).find((s) => s.x === x && s.y === y) ?? null;
 }
 
+// Every named region a player can actually travel to, in the order the
+// overworld's own warps list them (roughly the order a player encounters
+// them) — 'hollowbetween' is appended on its own since it's the one region
+// reached through a sub-warp (from the Choir Ruins) rather than directly
+// off the world map, but is just as worth surfacing on a world overview.
+export const REGIONS = [...MAPS.world.warps.map((w) => w.to), 'hollowbetween'];
+
 export const BOSS_SLOTS = ['boss', 'boss2', 'boss3'];
 
 export function bossAt(map, x, y) {

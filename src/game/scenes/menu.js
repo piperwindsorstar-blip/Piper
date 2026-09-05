@@ -19,6 +19,7 @@ import { CLASSES, TIER_NAME, PROMOTION_LEVELS, STAT_KEYS } from '../../data/clas
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { ENEMIES, FAMILIES } from '../../data/enemies.js';
 import { ACHIEVEMENTS } from '../../data/achievements.js';
+import { MAPS, REGIONS } from '../../data/maps.js';
 import { SCHOOLS, STATUS } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
@@ -41,6 +42,7 @@ const PAGES = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'ladder', label: 'Ladder' },
   { id: 'quest', label: 'Quest' },
+  { id: 'atlas', label: 'Atlas' },
   { id: 'bestiary', label: 'Bestiary' },
   { id: 'trophies', label: 'Trophies' },
   { id: 'save', label: 'Save' },
@@ -63,6 +65,8 @@ const QUEST_LIST_Y = TOP + 96, QUEST_LIST_ROWS = 6;
 const BESTIARY_LIST_Y = TOP + 34, BESTIARY_LIST_ROWS = 10;
 // Trophies page: same shape as Bestiary — one list, one description line.
 const TROPHY_LIST_Y = TOP + 34, TROPHY_LIST_ROWS = 10;
+// Atlas page: same shape again — one list, one description line.
+const ATLAS_LIST_Y = TOP + 34, ATLAS_LIST_ROWS = 10;
 
 /** The procedural bust portrait, scaled to fit a box. */
 function drawBust(scr, x, y, w, h, ch, alpha = 1) {
@@ -137,6 +141,7 @@ export class MenuScene {
       case 'save': return this.updateSave(input);
       case 'controls': return this.updateControls(input);
       case 'quest': return this.updateQuest(input);
+      case 'atlas': return this.updateAtlas(input);
       case 'bestiary': return this.updateBestiary(input);
       case 'trophies': return this.updateTrophies(input);
       default: break;
@@ -162,6 +167,7 @@ export class MenuScene {
       this.formPicked = null;
     }
     if (id === 'quest') this.refreshQuest();
+    if (id === 'atlas') this.refreshAtlas();
     if (id === 'bestiary') this.refreshBestiary();
     if (id === 'trophies') this.refreshTrophies();
   }
@@ -419,6 +425,7 @@ export class MenuScene {
         case 'save': this.drawSave(scr); break;
         case 'controls': this.drawControls(scr); break;
         case 'quest': this.drawQuest(scr); break;
+        case 'atlas': this.drawAtlas(scr); break;
         case 'bestiary': this.drawBestiary(scr); break;
         case 'trophies': this.drawTrophies(scr); break;
         default: break;
@@ -971,6 +978,49 @@ export class MenuScene {
         : sel.state === 'active' ? sel.q.reminder
           : `${sel.q.npc}: "${sel.q.hook}"`;
       scr.textWrap(line, IX, TOP + BODY_H - 22, IW, PAL.textDim, { lineHeight: 11, maxLines: 2 });
+    }
+  }
+
+  // --- atlas -----------------------------------------------------------------
+  // Every region worth traveling to (see data/maps.js's REGIONS), named once
+  // the field scene has actually entered it — the main story's next stop
+  // (see the Quest page's own hint) is named too even unvisited, since the
+  // hint's own prose already says where it is; every other unvisited region
+  // stays "???", the same restraint the Bestiary and Quest pages use.
+  refreshAtlas() {
+    this.list.x = IX + 12; this.list.y = ATLAS_LIST_Y;
+    this.list.cellW = IW - 24; this.list.cellH = 13; this.list.rows = ATLAS_LIST_ROWS;
+    const step = nextStoryHint(this.g);
+    this.list.setItems(REGIONS.map((id) => {
+      const m = MAPS[id];
+      const visited = !!this.g.visitedMaps[id];
+      const isNext = step?.mapId === id;
+      return {
+        label: visited || isNext ? m.name : '???',
+        note: isNext ? 'Next' : visited ? 'Visited' : '',
+        id, visited, isNext,
+        color: isNext ? PAL.accent : visited ? PAL.text : PAL.textFaint,
+        noteColor: isNext ? PAL.accent : PAL.textDim,
+      };
+    }), true);
+  }
+
+  updateAtlas(input) { this.list.handle(input); }
+
+  drawAtlas(scr) {
+    scr.text('ATLAS', IX, TOP + 10, PAL.accent);
+    const found = REGIONS.filter((id) => this.g.visitedMaps[id]).length;
+    scr.textRight(`${found}/${REGIONS.length} found`, IX + IW, TOP + 10, PAL.textFaint);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+
+    this.list.draw(scr);
+    const sel = this.list.current;
+    if (sel?.isNext) {
+      scr.textWrap('The main story\'s next stop.', IX, TOP + BODY_H - 22, IW, PAL.accentDim,
+        { lineHeight: 11, maxLines: 2 });
+    } else if (sel?.visited === false) {
+      scr.textWrap("Not yet on the map.", IX, TOP + BODY_H - 22, IW, PAL.textFaint,
+        { lineHeight: 11, maxLines: 2 });
     }
   }
 

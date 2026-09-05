@@ -68,6 +68,7 @@ export class FieldScene {
 
   enter(opts = {}) {
     this.g = this.app.game;
+    this.g.visitedMaps[this.g.mapId] = true;
     this.dlg = new Dialogue();
     this.fxp = new Particles(220);
     this.ambientT = 0;

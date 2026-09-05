@@ -36,6 +36,7 @@ export class GameState {
     this.encounterMod = 1;          // Hunter's Track ability
     this.bestiary = {};
     this.mapped = {};               // cartographer: mapId -> true
+    this.visitedMaps = {};          // every mapId the field scene has ever entered
     this.slot = 1;
   }
 
@@ -274,6 +275,7 @@ export class GameState {
       steps: this.steps,
       bestiary: this.bestiary,
       mapped: this.mapped,
+      visitedMaps: this.visitedMaps,
     };
   }
 
@@ -315,6 +317,7 @@ export class GameState {
     g.steps = d.steps ?? 0;
     g.bestiary = d.bestiary ?? {};
     g.mapped = d.mapped ?? {};
+    g.visitedMaps = d.visitedMaps ?? {};
     return g;
   }
 
