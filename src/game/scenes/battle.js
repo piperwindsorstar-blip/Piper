@@ -11,7 +11,7 @@ import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, monsterSprite } from '../../engine/sprites.js';
 import { Particles } from '../../engine/particles.js';
-import { Battle, PHASE, gridNeighbors, autoPartyAction } from '../battle.js';
+import { Battle, PHASE, autoPartyAction } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '../character.js';
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
@@ -1310,6 +1310,9 @@ export class BattleScene {
 
     if (this.flash > 0) scr.fade(this.flash * 1.4, '#ffffff');
 
+    // The skill/item detail box widens into this corner, so the party
+    // panel steps aside rather than let the two overlap.
+    if (this.state !== 'skill' && this.state !== 'item') this.drawPartyPanel(scr);
     this.drawUi(scr);
     if (this.autoBattle) {
       scr.panel(W - 46, 4, 42, 14, { accent: true });
@@ -1418,40 +1421,47 @@ export class BattleScene {
       }
     });
 
-    // party stat card: name, HP, MP and IP, pinned beside each member's own
-    // sprite (leaning outward, away from the centre file, so it never runs
-    // off the side of the screen) — replaces the old side roster panel, so
-    // the numbers that matter live wherever that character is standing,
-    // not off in a corner the player has to glance away to read.
+    // A quick at-a-glance HP sliver under each ally's own feet — the same
+    // treatment enemies get below — so a critical ally is visible without
+    // looking away to the party panel. Name, exact HP/MP/IP numbers and the
+    // rest of the detail live there instead (see drawPartyPanel): a card
+    // pinned beside every sprite used to duplicate that same information
+    // right on the battlefield, where it could end up under whatever
+    // floating menu the current turn happened to open.
     if (u.isPC) {
-      const ch = u.ref;
       const s = u.stats();
-      const ratio = ch.hp / s.maxHp;
-      const outward = u.grid.row < 1 ? -1 : 1;
-      // 36, not the old 42 — solved together with WORLD_LANE_STEP above so
-      // this card always ends before the next lane's own sprite begins.
-      const cardW = 36;
-      const cx = outward > 0 ? p.x + CELL_W + 8 : p.x - 8 - cardW;
-      const cy = p.y + CELL_H - 32;
+      const ratio = u.hp / s.maxHp;
       scr.ctx.save();
       if (!u.alive) scr.ctx.globalAlpha = 0.4;
-      // a grid-adjacent ally shares a fraction of its own element bias with
-      // this unit — a thin tint names which element is currently helping
-      const boosters = gridNeighbors(u, this.battle);
-      if (boosters.length) {
-        scr.rect(cx, cy - 2, cardW, 2, ELEMENT_BY_ID[boosters[0].element]?.color ?? PAL.accent);
-      }
-      // Packed tighter than the bars' own minimum spacing would need — see
-      // WORLD_RANK_STEP: two ranks' cards share a lane's screen column and
-      // stack in the gap between their ground lines, which is real but not
-      // huge, especially at a closer zoom. Every pixel this card doesn't
-      // need is a pixel of margin against the next rank's card.
-      scr.text(ch.name.slice(0, 6), cx, cy, isActor ? PAL.accent : PAL.text);
-      scr.bar(cx, cy + 8, cardW, 3, ratio, hpColor(ratio));
-      scr.bar(cx, cy + 11, cardW, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-      scr.bar(cx, cy + 13, cardW, 2, ch.ip / 100, PAL.magenta);
+      scr.bar(p.x + CELL_W / 2 - 18, p.y + CELL_H + 4, 36, 3, ratio, hpColor(ratio));
       scr.ctx.restore();
     }
+  }
+
+  /**
+   * Every party member's name, HP and MP, docked in one fixed corner for
+   * the whole battle — the same spot field.js's own HUD uses, so the two
+   * scenes read as one system. Nothing else in this scene can draw over
+   * it, unlike the old per-sprite cards a floating command panel or a
+   * neighbouring lane's own card could end up covering.
+   */
+  drawPartyPanel(scr) {
+    const party = this.battle.party;
+    const pw = 118, rowH = 21, ph = 8 + party.length * rowH;
+    const x = W - pw - 6, y = 20;
+    scr.panel(x, y, pw, ph, { alpha: 0.92 });
+    party.forEach((u, i) => {
+      const ch = u.ref;
+      const s = u.stats();
+      const ratio = u.hp / s.maxHp;
+      const ry = y + 8 + i * rowH;
+      const acting = this.actor?.uid === u.uid;
+      scr.text(ch.name.slice(0, 8), x + 6, ry, !u.alive ? PAL.grey : acting ? PAL.accent : PAL.text);
+      scr.textRight(`${u.hp}`, x + pw - 6, ry, hpColor(ratio));
+      scr.bar(x + 6, ry + 9, pw - 12, 3, ratio, hpColor(ratio));
+      scr.bar(x + 6, ry + 13, pw - 12, 2, s.maxMp ? u.mp / s.maxMp : 0, PAL.cyan);
+      scr.bar(x + 6, ry + 16, pw - 12, 2, u.ip / 100, PAL.magenta);
+    });
   }
 
   /** A travelling bolt for every ranged or magic action currently in
@@ -1529,23 +1539,6 @@ export class BattleScene {
     scr.textWrap(text, 24, MSG_Y + 11, W - 48, color, { maxLines: 2, lineHeight: 12 });
   }
 
-  /**
-   * Where the command wheel should sit for whoever is acting: right beside
-   * their own sprite, on whichever side of it has room, clamped so it never
-   * runs off the edge of the screen. `size` is the wheel's full width/height
-   * (three cells square) at the cell size the caller is about to draw it at.
-   */
-  wheelPosNearActor(size) {
-    const p = this.unitPos(this.actor);
-    const cx = p.x + CELL_W / 2, cy = p.y + CELL_H / 2;
-    let x = cx + 26;
-    if (x + size > W - 6) x = cx - 26 - size;
-    x = Math.max(6, Math.min(W - 6 - size, x));
-    let y = cy - size / 2;
-    y = Math.max(6, Math.min(H - 6 - size, y));
-    return { x, y };
-  }
-
   drawUi(scr) {
     if (this.state === 'messages' && this.pending.length) {
       this.msgBox(scr, this.pending[0]);
@@ -1558,36 +1551,24 @@ export class BattleScene {
       return;
     }
 
-    // The compact, non-interactive wheel shown during target/move selection —
-    // just enough to remember what was chosen. The active picker below is a
-    // different, bigger rendering entirely, not this box made bigger.
-    const cmdBox = () => {
-      const cell = 15, size = cell * 3;
-      const { x, y } = this.wheelPosNearActor(size);
-      scr.panel(x - 6, y - 18, size + 12, size + 24);
-      scr.text(this.actor?.name ?? '', x - 2, y - 12, PAL.textDim);
-      this.cmdWheel.cell = cell;
-      this.cmdWheel.x = x;
-      this.cmdWheel.y = y;
-      this.cmdWheel.draw(scr, { inactive: true });
-    };
-
+    // Command, Arts and Items all open in the same fixed box — the same
+    // spot every turn, for every actor, instead of a wheel that used to pop
+    // up beside whoever's turn it was and could land on top of an ally's
+    // own stats or another lane's sprite depending on where they stood.
+    const px = 12, py = 90, pw = 208, ph = 152;
     if (this.state === 'command') {
-      // The wheel opens right beside whoever's turn it is, at a noticeably
-      // bigger size than the reminder box above — this is the picker a
-      // player actually spends time reading, so it gets the room.
-      const cell = 32, size = cell * 3;
-      const { x, y } = this.wheelPosNearActor(size);
+      const cell = 28, size = cell * 3;
+      const wx = px + (pw - size) / 2, wy = py + 26;
       const ch = this.actor.ref;
-      scr.panel(x - 8, y - 24, size + 16, size + 34, { accent: true });
-      scr.text(this.actor.name, x - 2, y - 18, PAL.accent);
-      scr.textRight(ELEMENT_BY_ID[ch.elementId].name, x + size + 6, y - 18, ELEMENT_BY_ID[ch.elementId].color);
-      scr.textRight(this.cmdWheel.current?.label ?? '', x + size + 6, y - 6, PAL.text);
+      scr.panel(px, py, pw, ph, { accent: true });
+      scr.text(this.actor.name, px + 10, py + 10, PAL.accent);
+      scr.textRight(ELEMENT_BY_ID[ch.elementId].name, px + pw - 10, py + 10, ELEMENT_BY_ID[ch.elementId].color);
       this.cmdWheel.cell = cell;
-      this.cmdWheel.x = x;
-      this.cmdWheel.y = y;
+      this.cmdWheel.x = wx;
+      this.cmdWheel.y = wy;
       this.cmdWheel.draw(scr);
-      scr.textCenter('Z select · X back', x + size / 2, y + size + 10, PAL.textFaint);
+      scr.textCenter(this.cmdWheel.current?.label ?? '', px + pw / 2, wy + size + 12, PAL.text);
+      scr.textCenter('Z select · X back', px + pw / 2, py + ph - 10, PAL.textFaint);
     } else if (this.state === 'skill' || this.state === 'item') {
       scr.panel(12, 90, 208, 152, { accent: true });
       scr.heading(this.state === 'skill' ? 'ARTS' : 'ITEMS', 26, 100, 180);
@@ -1620,6 +1601,7 @@ export class BattleScene {
       const t = this.targetPool[this.targetIndex];
       scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
       scr.text('CHOOSE A TARGET', 24, MSG_Y + 9, PAL.accent);
+      scr.textRight(`${this.actor.name} · ${this.cmdWheel.current?.label ?? ''}`, W - 24, MSG_Y + 9, PAL.textFaint);
       if (t) {
         scr.text(this.battle.label(t), 24, MSG_Y + 24, PAL.text);
         if (t.element && t.element !== 'none') {
@@ -1635,13 +1617,12 @@ export class BattleScene {
             W - 24, MSG_Y + 24, ok ? PAL.green : PAL.red);
         }
       }
-      cmdBox();
     } else if (this.state === 'move') {
       scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
       scr.text('REPOSITION', 24, MSG_Y + 9, PAL.accent);
+      scr.textRight(`${this.actor.name} · ${this.cmdWheel.current?.label ?? ''}`, W - 24, MSG_Y + 9, PAL.textFaint);
       scr.text('Row A is the front rank: it reaches, and it is reached.', 24, MSG_Y + 24, PAL.textDim);
       scr.textRight(`lane ${LANE_LABELS[this.moveCursor.row]}   row ${RANK_LABELS[this.moveCursor.col]}`, W - 24, MSG_Y + 24, PAL.text);
-      cmdBox();
     }
   }
 }
