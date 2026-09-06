@@ -306,8 +306,14 @@ group('MAPS');
   };
   const bad = [];
   for (const m of Object.values(MAPS)) {
-    const entry = m.id === 'world' ? [9, 18]
-      : m.town ? (entranceTo(m.id) ?? [12, 18]) : [m.warps[0].x, m.warps[0].y];
+    // The world map has no entrance of its own to be handed — start the
+    // flood fill from its own warp tile into Wren's Ford, any walkable
+    // point on it, rather than a hand-picked coordinate that goes stale
+    // the moment the map's own layout or scale changes.
+    const entry = m.id === 'world' ? (() => {
+      const wp = m.warps.find((w) => w.to === 'wren');
+      return [wp.x, wp.y];
+    })() : m.town ? (entranceTo(m.id) ?? [12, 18]) : [m.warps[0].x, m.warps[0].y];
     const { w, h } = mapSize(m);
     const seen = new Set();
     const q = [entry];
