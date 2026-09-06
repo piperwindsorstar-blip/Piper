@@ -7,9 +7,10 @@
 //  target, everything out of reach for the chosen action is greyed out.
 // ============================================================================
 
-import { PAL, W, H } from '../../engine/screen.js';
+import { PAL, W, H, drawFit } from '../../engine/screen.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, monsterSprite } from '../../engine/sprites.js';
+import { actorPortraitSprite } from '../../engine/actor.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE, autoPartyAction } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '../character.js';
@@ -79,13 +80,7 @@ const BATTLE_VIEW_SIZE = 6.6;
 // that box now comes from a 3D projection instead of flat pixel math.
 const CELL_W = 48, CELL_H = 40;
 
-// Formation labels: rows A/B/C run front-to-back (column 0 = row A = the
-// front rank); lanes 1/2/3 run left-to-right (grid.row = lane index). Only
-// one unit per lane may act each round — see Battle.actedLane.
-const RANK_LABELS = ['A', 'B', 'C'];
-const LANE_LABELS = ['1', '2', '3'];
-
-// The message/target/reposition strip used to sit pinned to a fixed
+// The message/target strip used to sit pinned to a fixed
 // fraction of screen height ("roughly where the two grids meet"), back
 // when that seam was a fixed 2D line. It isn't anymore — the front-rank
 // gap is real 3D depth now and has moved (and grown) every time the
@@ -236,7 +231,8 @@ export class BattleScene {
     this.action = null;
     this.targetIndex = 0;
     this.targetPool = [];
-    this.moveCursor = { row: 1, col: 0 };
+    this.charPool = [];
+    this.charIndex = 0;
     this.flash = 0;
     this.cmdWheel = new CommandWheel({ cell: 32 });
     this.listMenu = new Menu({ items: [], x: 36, y: 120, cellW: 150, cellH: 13, rows: 7 });
@@ -661,7 +657,7 @@ export class BattleScene {
    *  so the pixel art stays crisp instead of smoothing into a blur. */
   syncBillboards() {
     for (const u of this.battle.units()) {
-      const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'move'].includes(this.state))
+      const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'character'].includes(this.state))
         || this.attackAnim?.uid === u.uid;
       const cv = this.spriteFor(u, isActor);
       let b = this.billboards.get(u.uid);
@@ -862,7 +858,7 @@ export class BattleScene {
       case 'skill': return this.updateSkillList(input);
       case 'item': return this.updateItemList(input);
       case 'target': return this.updateTarget(input);
-      case 'move': return this.updateMove(input);
+      case 'character': return this.updateCharacter(input);
       default: break;
     }
   }
@@ -961,15 +957,16 @@ export class BattleScene {
   openCommand() {
     const ch = this.actor.ref;
     const skills = usableSkills(ch);
-    // A plus of five, Attack at centre where the cursor starts, with Move
-    // filling the one corner a cross shape leaves spare.
+    // A single row, left to right in the order a player reaches for them
+    // most: Attack first, Character last since it's the one command that
+    // hands the turn to someone else instead of using it.
     this.cmdWheel.setItems([
+      { id: 'attack', label: 'Attack', icon: 'sword', pos: [0, 0] },
       { id: 'skill', label: 'Arts', icon: 'book', pos: [1, 0], disabled: skills.length === 0 },
-      { id: 'defend', label: 'Guard', icon: 'shield', pos: [0, 1] },
-      { id: 'attack', label: 'Attack', icon: 'sword', pos: [1, 1] },
-      { id: 'item', label: 'Item', icon: 'bag', pos: [2, 1], disabled: this.g.usableInBattle().length === 0 },
-      { id: 'flee', label: 'Flee', icon: 'boot', pos: [1, 2], disabled: this.battle.isBoss },
-      { id: 'move', label: 'Move', icon: 'move', pos: [2, 2] },
+      { id: 'defend', label: 'Guard', icon: 'shield', pos: [2, 0] },
+      { id: 'item', label: 'Item', icon: 'bag', pos: [3, 0], disabled: this.g.usableInBattle().length === 0 },
+      { id: 'flee', label: 'Flee', icon: 'boot', pos: [4, 0], disabled: this.battle.isBoss },
+      { id: 'character', label: 'Character', icon: 'party', pos: [5, 0], disabled: !this.battle.readySwapPool(this.actor).length },
     ], { defaultId: 'attack' });
     this.state = 'command';
   }
@@ -1000,9 +997,8 @@ export class BattleScene {
           label: getItem(s.id).name, id: s.id, note: `x${s.count}`,
         })));
         this.state = 'item';
-      } else if (id === 'move') {
-        this.moveCursor = { ...this.actor.grid };
-        this.state = 'move';
+      } else if (id === 'character') {
+        this.openCharacterPick();
       } else if (id === 'defend') {
         this.perform({ kind: 'defend' });
       } else if (id === 'flee') {
@@ -1076,18 +1072,28 @@ export class BattleScene {
     }
   }
 
-  updateMove(input) {
-    // Depth (rank A/B/C) now runs vertically on screen and lanes (1/2/3) run
-    // horizontally, so up/down steps the rank and left/right steps the lane
-    // — matching what the cursor actually does on the grid, not the engine's
-    // internal row/col naming.
-    const d = input.dir();
-    if (d.y) { this.moveCursor.col = Math.max(0, Math.min(2, this.moveCursor.col + d.y)); sfx.move(); }
-    if (d.x) { this.moveCursor.row = Math.max(0, Math.min(2, this.moveCursor.row + d.x)); sfx.move(); }
+  /** The Character command: builds the pool of other party members who
+   *  haven't acted yet this round and could take the turn right now. */
+  openCharacterPick() {
+    this.charPool = this.battle.readySwapPool(this.actor);
+    this.charIndex = 0;
+    this.state = 'character';
+  }
+
+  updateCharacter(input) {
     if (input.tap('cancel')) { sfx.cancel(); this.state = 'command'; return; }
-    if (input.tap('confirm')) {
+    const d = input.dir();
+    if ((d.x || d.y) && this.charPool.length > 1) {
+      const step = (d.x > 0 || d.y > 0) ? 1 : -1;
+      this.charIndex = (this.charIndex + step + this.charPool.length) % this.charPool.length;
+      sfx.move();
+    }
+    if (input.tap('confirm') && this.charPool.length) {
       sfx.confirm();
-      this.perform({ kind: 'move', row: this.moveCursor.row, col: this.moveCursor.col });
+      const target = this.charPool[this.charIndex];
+      this.battle.swapTurn(target);
+      this.actor = target;
+      this.openCommand();
     }
   }
 
@@ -1314,8 +1320,9 @@ export class BattleScene {
     if (this.flash > 0) scr.fade(this.flash * 1.4, '#ffffff');
 
     // The skill/item detail box widens into this corner, so the party
-    // panel steps aside rather than let the two overlap.
-    if (this.state !== 'skill' && this.state !== 'item') this.drawPartyPanel(scr);
+    // panel steps aside rather than let the two overlap; the command dock
+    // folds the same party status into itself, so it steps aside there too.
+    if (!['skill', 'item', 'command', 'character'].includes(this.state)) this.drawPartyPanel(scr);
     this.drawUi(scr);
     if (this.autoBattle) {
       scr.panel(W - 46, 4, 42, 14, { accent: true });
@@ -1345,24 +1352,19 @@ export class BattleScene {
           scr.rect(cx - 14, cy - 3, 28, 1, '#9db4f0');
           scr.ctx.restore();
         }
-        if (this.state === 'move' && side === this.actor?.side
-          && this.moveCursor.row === row && this.moveCursor.col === col) {
-          scr.outline(x - 2, y + CELL_H - 9, CELL_W - 2, 9, PAL.gold);
-        }
       }
     }
   }
 
   // Rank letters (A/B/C) and lane numbers (1/2/3) used to float over the
-  // live battle grid at all times. Those labels are for the formation-
-  // editing UI (see the 'move' state's "lane N row X" readout below) —
-  // pinned over the battlefield itself during a normal turn, they were
-  // just noise. Removed; the grid still exists, it's just unlabelled now.
+  // live battle grid at all times, pinned over the battlefield itself
+  // during a normal turn. Just noise there; removed. The grid still
+  // exists, it's just unlabelled now.
 
   drawUnit(scr, u) {
     const p = this.unitPos(u);
     const isTarget = this.state === 'target' && this.targetPool[this.targetIndex]?.uid === u.uid;
-    const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'move'].includes(this.state))
+    const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'character'].includes(this.state))
       || this.attackAnim?.uid === u.uid;
 
     // a boss winding up telegraphs the coming hit with a pulsing red glow and
@@ -1439,6 +1441,68 @@ export class BattleScene {
       scr.bar(p.x + CELL_W / 2 - 18, p.y + CELL_H + 4, 36, 3, ratio, hpColor(ratio));
       scr.ctx.restore();
     }
+  }
+
+  /**
+   * The command dock: the acting character's portrait and HP/MP/IP, the
+   * command row (Attack/Arts/Guard/Item/Flee/Character) or, once Character
+   * is picked, a prompt over the same party grid used to show everyone's
+   * status — one panel instead of a command box and a separate corner
+   * panel competing for space.
+   */
+  drawDock(scr) {
+    const party = this.battle.party;
+    const picking = this.state === 'character';
+    const dx = 8, dw = 464;
+    const rows = Math.max(2, Math.ceil(party.length / 2));
+    const chipH = 17, chipGap = 2;
+    const dh = Math.max(84, 16 + rows * chipH + (rows - 1) * chipGap);
+    const dy = H - dh - 8;
+    scr.panel(dx, dy, dw, dh, { accent: true });
+
+    // acting character: portrait, level, HP/MP/IP
+    const ch = this.actor.ref;
+    const s = this.actor.stats();
+    drawFit(scr, dx + 4, dy + 4, 40, dh - 18, actorPortraitSprite(ch));
+    const rx = dx + 48;
+    scr.text(`Lv ${ch.level}`, rx + 9, dy + 6, PAL.text);
+    scr.bar(rx + 9, dy + 18, 78, 4, this.actor.hp / s.maxHp, hpColor(this.actor.hp / s.maxHp));
+    scr.bar(rx + 9, dy + 27, 78, 4, s.maxMp ? this.actor.mp / s.maxMp : 0, PAL.cyan);
+    scr.bar(rx + 9, dy + 36, 78, 4, this.actor.ip / 100, PAL.magenta);
+    scr.text(this.actor.name, dx + 4, dy + dh - 12, PAL.accent);
+
+    const sep1 = dx + 132;
+    scr.rect(sep1, dy + 6, 1, dh - 12, PAL.line);
+
+    // command row, or the Character prompt once it's picked
+    const cell = 22;
+    const cmdX = sep1 + 8, cmdY = dy + (dh - cell) / 2 - 6;
+    this.cmdWheel.cell = cell;
+    this.cmdWheel.x = cmdX;
+    this.cmdWheel.y = cmdY;
+    this.cmdWheel.draw(scr, { inactive: picking });
+    const cmdW = this.cmdWheel.length * cell;
+    scr.textCenter(picking ? 'Pick who acts' : (this.cmdWheel.current?.label ?? ''),
+      cmdX + cmdW / 2, cmdY + cell + 6, PAL.accent);
+
+    const sep2 = cmdX + cmdW + 8;
+    scr.rect(sep2, dy + 6, 1, dh - 12, PAL.line);
+
+    // the whole party, two columns — the acting unit's chip is outlined,
+    // and while picking, the currently-hovered candidate is too
+    const gx0 = sep2 + 6, colW = (dx + dw - 6 - gx0) / 2;
+    party.forEach((u, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = gx0 + col * (colW + 2), y = dy + 6 + row * (chipH + chipGap);
+      const isCandidate = picking && this.charPool[this.charIndex]?.uid === u.uid;
+      const border = isCandidate ? PAL.accent : (!picking && u.uid === this.actor.uid ? PAL.accent : PAL.line);
+      scr.panel(x, y, colW, chipH, { alpha: u.alive ? 0.92 : 0.55, border });
+      const ratio = u.hp / u.stats().maxHp;
+      scr.text(u.ref.name.slice(0, 7), x + 4, y + 2, u.alive ? PAL.text : PAL.grey, { size: 7 });
+      scr.bar(x + 4, y + 11, colW - 8, 3, ratio, u.alive ? hpColor(ratio) : PAL.grey);
+    });
+
+    scr.textCenter(picking ? 'Z swap · X back' : 'Z select · X back', dx + dw / 2, dy + dh - 9, PAL.textFaint);
   }
 
   /**
@@ -1554,24 +1618,8 @@ export class BattleScene {
       return;
     }
 
-    // Command, Arts and Items all open in the same fixed box — the same
-    // spot every turn, for every actor, instead of a wheel that used to pop
-    // up beside whoever's turn it was and could land on top of an ally's
-    // own stats or another lane's sprite depending on where they stood.
-    const px = 12, py = 90, pw = 208, ph = 152;
-    if (this.state === 'command') {
-      const cell = 28, size = cell * 3;
-      const wx = px + (pw - size) / 2, wy = py + 26;
-      const ch = this.actor.ref;
-      scr.panel(px, py, pw, ph, { accent: true });
-      scr.text(this.actor.name, px + 10, py + 10, PAL.accent);
-      scr.textRight(ELEMENT_BY_ID[ch.elementId].name, px + pw - 10, py + 10, ELEMENT_BY_ID[ch.elementId].color);
-      this.cmdWheel.cell = cell;
-      this.cmdWheel.x = wx;
-      this.cmdWheel.y = wy;
-      this.cmdWheel.draw(scr);
-      scr.textCenter(this.cmdWheel.current?.label ?? '', px + pw / 2, wy + size + 12, PAL.text);
-      scr.textCenter('Z select · X back', px + pw / 2, py + ph - 10, PAL.textFaint);
+    if (this.state === 'command' || this.state === 'character') {
+      this.drawDock(scr);
     } else if (this.state === 'skill' || this.state === 'item') {
       scr.panel(12, 90, 208, 152, { accent: true });
       scr.heading(this.state === 'skill' ? 'ARTS' : 'ITEMS', 26, 100, 180);
@@ -1620,12 +1668,6 @@ export class BattleScene {
             W - 24, MSG_Y + 24, ok ? PAL.green : PAL.red);
         }
       }
-    } else if (this.state === 'move') {
-      scr.panel(12, MSG_Y, W - 24, MSG_H, { accent: true, accentWidth: 22 });
-      scr.text('REPOSITION', 24, MSG_Y + 9, PAL.accent);
-      scr.textRight(`${this.actor.name} · ${this.cmdWheel.current?.label ?? ''}`, W - 24, MSG_Y + 9, PAL.textFaint);
-      scr.text('Row A is the front rank: it reaches, and it is reached.', 24, MSG_Y + 24, PAL.textDim);
-      scr.textRight(`lane ${LANE_LABELS[this.moveCursor.row]}   row ${RANK_LABELS[this.moveCursor.col]}`, W - 24, MSG_Y + 24, PAL.text);
     }
   }
 }

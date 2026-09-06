@@ -57,22 +57,19 @@ const ICONS = {
     P.rect(5, 12, 10, 2, WOOD_D);
     for (const y of [2, 4, 6]) P.px(9, y, GOLD_D);
   },
-  move: (P) => {
-    // a compass of four hand-drawn arrowheads (P.tri only tapers vertically,
-    // so east/west are built the same way turned on their side) around a hub
-    const cx = 9, cy = 9;
-    const vArrow = (tipY, grow, size, col) => {
-      for (let i = 0; i < size; i++) { const w = i + 1; P.rect(cx - (w >> 1), tipY + i * grow, w, 1, col); }
-    };
-    const hArrow = (tipX, grow, size, col) => {
-      for (let i = 0; i < size; i++) { const w = i + 1; P.rect(tipX + i * grow, cy - (w >> 1), 1, w, col); }
-    };
-    vArrow(0, 1, 4, CLOTH);                     // north: tip at the top, widening down
-    vArrow(17, -1, 4, CLOTH);                    // south: tip at the bottom, widening up
-    hArrow(0, 1, 4, CLOTH);                      // west
-    hArrow(17, -1, 4, CLOTH);                    // east
-    P.rect(cx - 2, cy - 2, 4, 4, INK);
-    P.rect(cx - 1, cy - 1, 2, 2, GOLD);
+  party: (P) => {
+    // a person silhouette with a swap-arrow badge — hand the current turn
+    // to someone else
+    P.rect(5, 2, 5, 5, CLOTH);
+    P.rect(3, 8, 9, 8, CLOTH);
+    P.rect(3, 8, 3, 8, STEEL_D);
+    // two opposing arrows forming an exchange badge, lower-right corner
+    P.rect(11, 10, 5, 1, GOLD);
+    P.rect(14, 9, 2, 1, GOLD);
+    P.rect(14, 11, 2, 1, GOLD);
+    P.rect(12, 14, 5, 1, GOLD_D);
+    P.rect(12, 13, 2, 1, GOLD_D);
+    P.rect(12, 15, 2, 1, GOLD_D);
   },
 };
 

@@ -317,6 +317,28 @@ export class Battle {
     return !!this.order[this.turnIndex]?.extra;
   }
 
+  /** Other party members who haven't acted yet this round and could act
+   *  right now if it were their turn — the pool the battle scene's
+   *  Character command lets the player hand the current turn to instead. */
+  readySwapPool(exclude) {
+    return this.order
+      .slice(this.turnIndex + 1)
+      .map((e) => e.u)
+      .filter((u) => u.side === 'party' && u.uid !== exclude.uid && u.alive && canAct(u.ref)
+        && (this.actedLane.party.get(this.lane(u)) ?? u.uid) === u.uid);
+  }
+
+  /** Hands the current turn to `target` instead of whoever's up next by
+   *  speed — swaps their slots in the turn order so `target` acts now and
+   *  the unit whose turn this actually was keeps its own turn later this
+   *  round, in `target`'s old spot. */
+  swapTurn(target) {
+    const j = this.order.findIndex((e) => e.u.uid === target.uid);
+    if (j <= this.turnIndex) return null;
+    [this.order[this.turnIndex], this.order[j]] = [this.order[j], this.order[this.turnIndex]];
+    return this.current();
+  }
+
   /** Advance to the next actor, ticking statuses and rebuilding the order. */
   advance() {
     this.turnIndex++;
