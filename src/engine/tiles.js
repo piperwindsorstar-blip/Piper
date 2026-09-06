@@ -314,7 +314,25 @@ T.lamp = (P) => {
 export const TILE_DRAW = T;
 export const TILE_NAMES = Object.keys(T);
 
+// These are the only tileSprite() entries that actually sit out on the
+// overworld, each a standalone decoration on its own tile rather than part
+// of a seamless field (see the comment above T.town) — no neighbouring tile
+// needs to agree with these at an edge, so a direct blur-and-outline is safe
+// where it isn't for terrain/building's world-spanning art (see pixel.js's
+// paintSoftened for why those need real neighbour context instead).
+const OUTDOOR_PROPS = new Set(['town', 'flower', 'well', 'stall', 'lamp', 'bridge']);
+
 export function tileSprite(name) {
   const draw = T[name] ?? T.grass;
-  return make(`tile|${name}`, TS, TS, draw);
+  if (!OUTDOOR_PROPS.has(name)) return make(`tile|${name}`, TS, TS, draw);
+  return make(`tile|${name}`, TS, TS, (P) => {
+    draw(P);
+    const original = document.createElement('canvas');
+    original.width = TS; original.height = TS;
+    original.getContext('2d').drawImage(P.ctx.canvas, 0, 0);
+    P.ctx.clearRect(0, 0, TS, TS);
+    P.ctx.filter = 'blur(0.5px)';
+    P.ctx.drawImage(original, 0, 0);
+    P.ctx.filter = 'none';
+  }, { outline: 'rgba(20,16,12,0.5)' });
 }

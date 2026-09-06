@@ -261,9 +261,9 @@ export class FieldScene {
         const theme = themeAt(m, x, y);
         const px = x * TS - ox, py = y * TS - oy;
         if (isOutdoor(t.tile)) {
-          ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, sampler(m, x, y), theme), px, py);
+          ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, sampler(m, x, y), theme), px, py);
         } else if (isStructure(t.tile)) {
-          ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, groundUnder(m, x, y), theme), px, py);
+          ctx.drawImage(groundSprite(`${m.id}|${x}|${y}`, groundUnder(m, x, y), theme), px, py);
         } else {
           ctx.drawImage(tileSprite(t.tile), px, py);
         }
@@ -282,7 +282,7 @@ export class FieldScene {
         if (!isOutdoor(t.tile)) continue;
         const px = x * TS - ox, py = y * TS - oy;
         if (hasMass(smp)) {
-          ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, x * TS, y * TS, smp, theme), px, py);
+          ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, smp, theme), px, py);
         }
         if (FEATURE.has(t.tile)) ctx.drawImage(tileSprite(t.tile), px, py);
       }

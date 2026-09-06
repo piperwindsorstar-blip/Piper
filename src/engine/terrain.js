@@ -28,7 +28,7 @@
 //  closure returning a neighbour's tile name, plus the cell's world position.
 // ============================================================================
 
-import { make, shade } from './pixel.js';
+import { make, shade, paintSoftened } from './pixel.js';
 
 export const TS = 24;
 
@@ -323,14 +323,13 @@ function distToCell(wx, wy, cx0, cy0) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-/**
- * Ground for one cell: its own material, then every higher-priority material
- * around it bleeding across a noisy boundary. Where land meets water a sand
- * beach is laid slightly proud of the land, so a shore reads as a shore.
- */
-export function groundSprite(key, wx0, wy0, sample, theme = 'green') {
+/** The unblurred ground for exactly one cell — cached under its own absolute
+ *  position so a neighbouring cell's softened pass can reuse it instead of
+ *  recomputing the same colour math (see paintSoftened in pixel.js). */
+function groundSpriteRaw(mapId, x, y, sample, theme) {
   const MAT = MAT_THEMES[theme] ?? MAT_THEMES.green;
-  return make(`gnd|${theme}|${key}`, TS, TS, (P) => {
+  const wx0 = x * TS, wy0 = y * TS;
+  return make(`gndraw|${theme}|${mapId}|${x}|${y}`, TS, TS, (P) => {
     const own = GROUND_OF[sample(0, 0)] ?? 'grass';
 
     // which higher-priority materials are around, and where
@@ -366,6 +365,24 @@ export function groundSprite(key, wx0, wy0, sample, theme = 'green') {
         speckle(P, mat, px, py, wx, wy, theme);
       }
     }
+  });
+}
+
+/**
+ * Ground for one cell: its own material, then every higher-priority material
+ * around it bleeding across a noisy boundary. Where land meets water a sand
+ * beach is laid slightly proud of the land, so a shore reads as a shore.
+ *
+ * `key` is `${mapId}|${x}|${y}` (see field.js's renderWorldTexture) — parsed
+ * back apart so a neighbour's raw tile can be looked up by its own absolute
+ * cell, not derived from this tile's key relative to it.
+ */
+export function groundSprite(key, sample, theme = 'green') {
+  const [mapId, cxs, cys] = key.split('|');
+  const cx = Number(cxs), cy = Number(cys);
+  return make(`gnd|${theme}|${key}`, TS, TS, (P) => {
+    softened(P, sample, (dx, dy, nSample) =>
+      groundSpriteRaw(mapId, cx + dx, cy + dy, nSample, theme));
   });
 }
 
@@ -602,13 +619,13 @@ function drawTrunk(P, sample, theme = 'green') {
 
 const MASSES = ['mountain', 'tree'];   // drawn in this order: canopy in front
 
-/**
- * Everything standing on the ground in this cell, including the parts owned by
- * neighbouring cells — which is what lets a peak rise into the sky above it and a
- * canopy close over a cell border.
- */
-export function massSprite(key, wx0, wy0, sample, theme = 'green') {
-  return make(`mass|${theme}|${key}`, TS, TS, (P) => {
+const softened = (P, sample, rawTile, opts) => paintSoftened(TS, P, sample, rawTile, opts);
+
+/** The unblurred mass content for exactly one cell — cached under its own
+ *  absolute position for the same reason groundSpriteRaw is (see there). */
+function massSpriteRaw(mapId, x, y, sample, theme) {
+  const wx0 = x * TS, wy0 = y * TS;
+  return make(`massraw|${theme}|${mapId}|${x}|${y}`, TS, TS, (P) => {
     const rock = massField('mountain', wx0, wy0, sample);
     if (rock) drawMountain(P, rock, wx0, wy0, theme);
     const wood = massField('tree', wx0, wy0, sample);
@@ -617,6 +634,20 @@ export function massSprite(key, wx0, wy0, sample, theme = 'green') {
       drawTrees(P, wood, wx0, wy0, theme);
     }
   });
+}
+
+/**
+ * Everything standing on the ground in this cell, including the parts owned by
+ * neighbouring cells — which is what lets a peak rise into the sky above it and a
+ * canopy close over a cell border.
+ */
+export function massSprite(key, sample, theme = 'green') {
+  const [mapId, cxs, cys] = key.split('|');
+  const cx = Number(cxs), cy = Number(cys);
+  return make(`mass|${theme}|${key}`, TS, TS, (P) => {
+    softened(P, sample, (dx, dy, nSample) =>
+      massSpriteRaw(mapId, cx + dx, cy + dy, nSample, theme));
+  }, { outline: 'rgba(18,14,10,0.55)' });
 }
 
 /** True when a cell carries anything on the mass layer, its own or a neighbour's. */

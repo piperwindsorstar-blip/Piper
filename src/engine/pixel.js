@@ -56,6 +56,59 @@ export function make(key, w, h, draw, opts = {}) {
 
 export function clearCache() { cache.clear(); }
 
+/**
+ * Softens a tile's hard per-pixel edges into the smoother, painted look the
+ * anime-style character art already has, for any tile-based drawing built
+ * from a `sample(dx, dy)` neighbour closure (terrain, buildings).
+ *
+ * Blurring a tile in isolation would sample transparent "nothing" past its
+ * own edge, fading every tile boundary into a false seam even where the
+ * content is meant to run on unbroken into the next cell (a canopy, a wall)
+ * — exactly the blockiness these callers' own world-space math exists to
+ * avoid. So this stitches the tile and its eight neighbours into one padded
+ * scratch canvas before blurring, so the blur has real neighbouring colour
+ * to sample across every seam, then crops the centre tile back out onto `P`.
+ *
+ * `rawTile(dx, dy, nSample)` must return each neighbour's OWN unblurred
+ * tile — cached under that neighbour's own absolute key via `make()`, same
+ * as this tile itself, not recomputed from scratch here. That's what keeps
+ * this affordable: a newly-explored tile still costs 9 lookups, but at most
+ * 1 of those 9 is ever a real cache miss once any of its neighbours has
+ * already been drawn as someone else's neighbour — walking across a whole
+ * new field would otherwise recompute the same colour math 9x per tile.
+ */
+// One scratch canvas reused across every call below (sized up as needed,
+// never shrunk) instead of allocating a fresh one per tile — this runs once
+// per newly-explored tile position, but exploring a whole new screenful of
+// them in one step made canvas allocation itself show up on the clock.
+let scratch = null, scratchCtx = null;
+function getScratch(size) {
+  if (!scratch || scratch.width < size) {
+    scratch = document.createElement('canvas');
+    scratch.width = scratch.height = size;
+    scratchCtx = scratch.getContext('2d');
+  }
+  return scratchCtx;
+}
+
+export function paintSoftened(TS, P, sample, rawTile, opts = {}) {
+  const margin = opts.margin ?? 5;
+  const blur = opts.blur ?? 1.1;
+  const size = TS + margin * 2;
+  const bctx = getScratch(size);
+  bctx.clearRect(0, 0, size, size);
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nSample = (ddx, ddy) => sample(dx + ddx, dy + ddy);
+      bctx.drawImage(rawTile(dx, dy, nSample), margin + dx * TS, margin + dy * TS);
+    }
+  }
+  bctx.filter = `blur(${blur}px)`;
+  bctx.drawImage(bctx.canvas, 0, 0, size, size, 0, 0, size, size);
+  bctx.filter = 'none';
+  P.ctx.drawImage(bctx.canvas, margin, margin, TS, TS, 0, 0, TS, TS);
+}
+
 export function painter(c) {
   return {
     ctx: c,

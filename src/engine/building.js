@@ -17,7 +17,7 @@
 //  shadow on the wall below, and a shadow on the ground so they stop floating.
 // ============================================================================
 
-import { make, shade } from './pixel.js';
+import { make, shade, paintSoftened } from './pixel.js';
 
 export const TS = 24;
 
@@ -306,13 +306,26 @@ export function hasStructure(sample) {
   return isRoof(sample(-1, 0)) || isRoof(sample(1, 0)) || isBuilding(sample(0, -1));
 }
 
-export function buildingSprite(key, sample, theme = 'green') {
+/** The unblurred building content for exactly one cell — cached under its
+ *  own absolute position so a neighbouring cell's softened pass can reuse
+ *  it instead of redrawing (see terrain.js's groundSpriteRaw for why). */
+function buildingSpriteRaw(mapId, x, y, sample, theme) {
   const T = THEMES[theme] ?? THEMES.green;
-  return make(`bld|${theme}|${key}`, TS, TS, (P) => {
+  return make(`bldraw|${theme}|${mapId}|${x}|${y}`, TS, TS, (P) => {
     const self = sample(0, 0);
     if (isDome(self)) drawDome(P, sample, T);
     else if (isRoof(self)) drawRoof(P, sample, T);
     else if (isWall(self)) drawWall(P, sample, self === 'door', T, self);
     else drawCast(P, sample, T);
+  });
+}
+
+/** `key` is `${mapId}|${x}|${y}` (see field.js's renderWorldTexture). */
+export function buildingSprite(key, sample, theme = 'green') {
+  const [mapId, cxs, cys] = key.split('|');
+  const cx = Number(cxs), cy = Number(cys);
+  return make(`bld|${theme}|${key}`, TS, TS, (P) => {
+    paintSoftened(TS, P, sample, (dx, dy, nSample) =>
+      buildingSpriteRaw(mapId, cx + dx, cy + dy, nSample, theme));
   });
 }
