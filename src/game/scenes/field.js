@@ -912,15 +912,21 @@ export class FieldScene {
     const r = tier.reward;
     if (r.gold) this.g.earn(r.gold);
     if (r.lp) for (const ch of this.g.party) ch.lp += r.lp;
-    let itemMsg = '';
+    const parts = [`${r.gold} gold`];
+    if (r.lp) parts.push(`${r.lp} LP each`);
+    let packFull = false;
     if (r.item) {
-      if (this.g.addItem(r.item)) itemMsg = ` and ${getItem(r.item).name}`;
+      if (this.g.addItem(r.item)) parts.push(getItem(r.item).name);
       // Same rule as a chest with no room: don't mark it cleared, so the
       // reward is still there to collect once there's space for it.
-      else { this.g.setFlag(`arena.${tier.id}.cleared`, false); itemMsg = ' — but the pack is full'; }
+      else { this.g.setFlag(`arena.${tier.id}.cleared`, false); packFull = true; }
     }
     this.gauntlet = null;
-    this.dlg.say(`${tier.name} cleared! The steward counts out ${r.gold} gold${itemMsg}.`);
+    const counted = parts.length > 1
+      ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
+      : parts[0];
+    const tail = packFull ? ' — but the pack is full' : '';
+    this.dlg.say(`${tier.name} cleared! The steward counts out ${counted}${tail}.`);
     return true;
   }
 

@@ -5,8 +5,9 @@
 //  actorSprite (36x48, 4 frames) and actorPortraitSprite (56x64, a bust) are
 //  both painted by engine/animeface.js's bezier-and-arc anime style rather
 //  than pixel.js's blocky painter — see that file's own header for why.
-//  Townsfolk (npcSprite/npcPortraitSprite below) still use the original
-//  traced-pixel look — not yet converted.
+//  Townsfolk (npcSprite/npcPortraitSprite below) use the same painters, just
+//  rendered at the actor/portrait canvas's native size and scaled down onto
+//  their own smaller canvas — see those functions for why.
 // ============================================================================
 
 import { make, shade, mix } from './pixel.js';
@@ -18,8 +19,6 @@ import { paintAnimeBust, paintAnimeBody, pickHairstyle } from './animeface.js';
 
 export const AW = 36, AH = 48;      // actor canvas
 export const PW = 56, PH = 64;      // portrait bust canvas
-const OUTLINE = '#0a0812';
-const RIM = '#8fa8d8';
 
 /** Cheap, stable per-string number — picks a hair style deterministically
  *  from race + hair-index without adding a new data field. */
@@ -167,12 +166,22 @@ export function actorPortraitSprite(o) {
 // ---------------------------------------------------------------------------
 //  TOWNSFOLK
 // ---------------------------------------------------------------------------
+// No race data to draw from (an NPC is just a "kind" + a skin variant), so
+// every townsfolk shares one plain-human anatomy — only cloth, hair colour
+// and hairstyle vary, the same way a player character's kit differs by class
+// while race anatomy is layered on separately.
+const NPC_LOOK = {
+  ears: 'round', muzzle: false, tail: null, wings: null, horns: null,
+  tusks: false, beard: false, goggles: false, fins: false, scaled: false,
+  fur: false, plates: false, gaunt: false, build: 1,
+};
+const NPC_EYE = '#4a3a2c';
 const NPC_KITS = {
-  shop:   { cloth: '#8d5c2a', trim: '#dcb44c', hair: '#3a2a20', hat: 'cap' },
-  inn:    { cloth: '#325fa8', trim: '#ccd8f0', hair: '#5a3a1c', hat: 'none' },
-  temple: { cloth: '#dfe0ec', trim: '#cca442', hair: '#e8e8f0', hat: 'hood' },
-  guild:  { cloth: '#9d3a3a', trim: '#e4c464', hair: '#241c18', hat: 'none' },
-  talk:   { cloth: '#4e7d4e', trim: '#8cbc8c', hair: '#6a4a24', hat: 'none' },
+  shop:   { cloth: '#8d5c2a', trim: '#dcb44c', hair: '#3a2a20', hairstyles: ['spiky', 'bob'] },
+  inn:    { cloth: '#325fa8', trim: '#ccd8f0', hair: '#5a3a1c', hairstyles: ['swept', 'bob'] },
+  temple: { cloth: '#dfe0ec', trim: '#cca442', hair: '#e8e8f0', hairstyles: ['flowing', 'braid'] },
+  guild:  { cloth: '#9d3a3a', trim: '#e4c464', hair: '#241c18', hairstyles: ['spiky', 'swept'] },
+  talk:   { cloth: '#4e7d4e', trim: '#8cbc8c', hair: '#6a4a24', hairstyles: ['bob', 'swept'] },
 };
 const NPC_SKINS = ['#e8b890', '#c89068', '#a06848', '#7a4c30'];
 export const NW = 24, NH = 32;
@@ -180,45 +189,22 @@ export const NW = 24, NH = 32;
 export function npcSprite(kind, variant = 0, frame = 0) {
   const kit = NPC_KITS[kind] ?? NPC_KITS.talk;
   const skin = NPC_SKINS[variant % NPC_SKINS.length];
+  const hairStyle = kit.hairstyles[variant % kit.hairstyles.length];
   return make(`npc|${kind}|${variant}|${frame}`, NW, NH, (P) => {
-    const ax = NW / 2;
-    const bob = frame === 1 ? 1 : 0;
-    const ground = NH - 2;
-    const cloth = kit.cloth, clothL = shade(cloth, 0.3), clothD = shade(cloth, -0.42);
-    const skinL = shade(skin, 0.2), skinD = shade(skin, -0.26);
-    const legY = ground - 7 + bob, bodyY = legY - 10, headY = bodyY - 9;
-
-    P.ellipse(ax, ground, 6, 2, '#151222');
-    P.mrect(ax, 1, legY, 3, 6, clothD);
-    P.mrect(ax, 1, legY + 5, 4, 2, '#241f2e');
-    P.rect(ax - 5, bodyY, 10, 10, cloth);
-    P.rect(ax - 5, bodyY, 2, 10, clothL);
-    P.rect(ax + 3, bodyY, 2, 10, clothD);
-    P.rect(ax - 5, bodyY + 5, 10, 1, kit.trim);
-    P.rect(ax - 8, bodyY + 1, 3, 8, clothD);
-    P.rect(ax + 5, bodyY + 1, 3, 8, clothL);
-    P.rect(ax - 8, bodyY + 7, 3, 2, skinD);
-    P.rect(ax + 5, bodyY + 7, 3, 2, skin);
-    P.rect(ax - 4, headY, 8, 9, skin);
-    P.rect(ax - 4, headY + 1, 2, 6, skinL);
-    P.rect(ax + 2, headY, 2, 9, skinD);
-    P.rect(ax - 3, headY + 4, 2, 2, '#2b1f2e');
-    P.rect(ax + 1, headY + 4, 2, 2, '#2b1f2e');
-    P.rect(ax - 1, headY + 7, 2, 1, skinD);
-    if (kit.hat === 'hood') {
-      P.rect(ax - 5, headY - 3, 10, 6, kit.trim);
-      P.rect(ax - 5, headY - 3, 10, 1, shade(kit.trim, 0.35));
-      P.mrect(ax, 4, headY + 3, 1, 5, kit.trim);
-    } else if (kit.hat === 'cap') {
-      P.rect(ax - 5, headY - 3, 10, 4, cloth);
-      P.rect(ax - 5, headY - 3, 10, 1, clothL);
-      P.rect(ax - 5, headY + 1, 10, 1, kit.trim);
-    } else {
-      P.rect(ax - 4, headY - 3, 8, 4, kit.hair);
-      P.rect(ax - 4, headY - 3, 5, 1, shade(kit.hair, 0.4));
-      P.mrect(ax, 3, headY + 1, 1, 4, kit.hair);
-    }
-  }, { round: true, outline: OUTLINE, ao: 0.24, rim: RIM, rimAlpha: 0.3 });
+    // paintAnimeBody's proportions are tuned for the actor canvas (AW x AH)
+    // it was built for — painted there at native size, then scaled down onto
+    // the townsfolk's own smaller canvas, which keeps NPCs a visible notch
+    // smaller than the party on the field, same as the old pixel sprites.
+    const src = document.createElement('canvas');
+    src.width = AW; src.height = AH;
+    paintAnimeBody(src.getContext('2d'), {
+      w: AW, h: AH, frame, skin, hair: kit.hair, eye: NPC_EYE,
+      cloth: kit.cloth, trim: kit.trim, look: NPC_LOOK, hairStyle,
+      seed: hashStr(`${kind}|${variant}`), weaponType: 'fist', weaponElement: null, hasShield: false,
+    });
+    P.ctx.imageSmoothingEnabled = true;
+    P.ctx.drawImage(src, 0, 0, NW, NH);
+  });
 }
 
 /** A head-and-shoulders bust for dialogue — the same kit/skin an NPC's field
@@ -228,52 +214,18 @@ export const NPW = 40, NPH = 46;
 export function npcPortraitSprite(kind, variant = 0) {
   const kit = NPC_KITS[kind] ?? NPC_KITS.talk;
   const skin = NPC_SKINS[variant % NPC_SKINS.length];
+  const hairStyle = kit.hairstyles[variant % kit.hairstyles.length];
   return make(`npcport|${kind}|${variant}`, NPW, NPH, (P) => {
-    const ax = NPW / 2;
-    const cloth = kit.cloth, clothL = shade(cloth, 0.3), clothD = shade(cloth, -0.42);
-    const skinL = shade(skin, 0.2), skinD = shade(skin, -0.26);
-    const headW = 18, headH = 20, headY = 5;
-    const shoulderY = headY + headH - 3;
-
-    // shoulders, filling out to the canvas edges
-    P.rect(0, shoulderY, NPW, NPH - shoulderY, cloth);
-    P.rect(0, shoulderY, 3, NPH - shoulderY, clothL);
-    P.rect(NPW - 3, shoulderY, 3, NPH - shoulderY, clothD);
-    P.rect(0, shoulderY, NPW, 2, kit.trim);
-    P.rect(ax - 4, shoulderY - 5, 8, 6, skinD);
-
-    // head
-    P.rect(ax - headW / 2, headY, headW, headH, skin);
-    P.rect(ax - headW / 2, headY, 3, headH, skinL);
-    P.rect(ax + headW / 2 - 3, headY, 3, headH, skinD);
-    P.rect(ax - headW / 2 + 2, headY + headH - 4, headW - 4, 3, skinD);
-
-    // eyes
-    P.rect(ax - 7, headY + 8, 4, 2, shade(skin, -0.12));
-    P.rect(ax + 3, headY + 8, 4, 2, shade(skin, -0.12));
-    P.rect(ax - 6, headY + 9, 3, 3, '#241a2c');
-    P.rect(ax + 3, headY + 9, 3, 3, '#241a2c');
-    P.rect(ax - 5, headY + 9, 1, 1, '#eef2fb');
-    P.rect(ax + 4, headY + 9, 1, 1, '#eef2fb');
-
-    // nose + mouth
-    P.rect(ax - 1, headY + 12, 2, 3, skinD);
-    P.rect(ax - 3, headY + headH - 6, 6, 1, shade(skinD, -0.15));
-
-    if (kit.hat === 'hood') {
-      P.rect(ax - headW / 2 - 3, headY - 5, headW + 6, 9, kit.trim);
-      P.rect(ax - headW / 2 - 3, headY - 5, headW + 6, 2, shade(kit.trim, 0.35));
-      P.rect(ax - headW / 2 + 1, headY + 4, 2, headH - 4, kit.trim);
-      P.rect(ax + headW / 2 - 3, headY + 4, 2, headH - 4, kit.trim);
-    } else if (kit.hat === 'cap') {
-      P.rect(ax - headW / 2 - 2, headY - 6, headW + 4, 7, cloth);
-      P.rect(ax - headW / 2 - 2, headY - 6, headW + 4, 2, clothL);
-      P.rect(ax - headW / 2 - 2, headY - 1, headW + 4, 2, kit.trim);
-    } else {
-      P.rect(ax - headW / 2 - 1, headY - 5, headW + 2, 7, kit.hair);
-      P.rect(ax - headW / 2 - 1, headY - 5, headW + 2, 2, shade(kit.hair, 0.4));
-      P.rect(ax - headW / 2 - 1, headY + 2, 3, headH - 6, kit.hair);
-      P.rect(ax + headW / 2 - 2, headY + 2, 3, headH - 6, kit.hair);
-    }
-  }, { round: true, outline: OUTLINE, ao: 0.26, rim: RIM, rimAlpha: 0.32 });
+    // Same native-size-then-downscale approach as npcSprite, using the
+    // portrait bust canvas (PW x PH) paintAnimeBust is tuned for.
+    const src = document.createElement('canvas');
+    src.width = PW; src.height = PH;
+    const cx = PW / 2, cy = PH * 0.467;
+    paintAnimeBust(src.getContext('2d'), cx, cy, 12.5, 13.6, {
+      skin, hair: kit.hair, eye: NPC_EYE, cloth: kit.cloth, trim: kit.trim,
+      look: NPC_LOOK, hairStyle, seed: hashStr(`${kind}|${variant}`),
+    });
+    P.ctx.imageSmoothingEnabled = true;
+    P.ctx.drawImage(src, 0, 0, NPW, NPH);
+  });
 }
