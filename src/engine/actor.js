@@ -50,18 +50,18 @@ function equipLook(o, kit) {
 //  CLASS KITS — silhouette rules per root class
 // ---------------------------------------------------------------------------
 const KITS = {
-  warrior:   { head: 'helm',      body: 'plate',  cape: true,  weapon: 'sword',  cloth: '#a8342c', trim: '#e0bc58' },
-  guardian:  { head: 'greathelm', body: 'plate',  cape: true,  weapon: 'shield', cloth: '#3358ab', trim: '#cdd6e8' },
-  monk:      { head: 'band',      body: 'gi',     cape: false, weapon: 'fist',   cloth: '#dcac52', trim: '#a84c2a' },
-  lancer:    { head: 'horned',    body: 'plate',  cape: true,  weapon: 'spear',  cloth: '#2f7352', trim: '#dcc464' },
-  thief:     { head: 'hood',      body: 'light',  cape: false, weapon: 'dagger', cloth: '#4a4280', trim: '#8f7ec8' },
-  archer:    { head: 'cap',       body: 'light',  cape: true,  weapon: 'bow',    cloth: '#436c3c', trim: '#adc576' },
-  dancer:    { head: 'veil',      body: 'dress',  cape: false, weapon: 'dagger', cloth: '#c44a8c', trim: '#f4cee6' },
-  jester:    { head: 'jester',    body: 'motley', cape: false, weapon: 'dagger', cloth: '#8c3aa6', trim: '#f4d44c' },
-  mage:      { head: 'hat',       body: 'robe',   cape: false, weapon: 'staff',  cloth: '#3c3c94', trim: '#ccb464' },
-  cleric:    { head: 'mitre',     body: 'robe',   cape: true,  weapon: 'mace',   cloth: '#e4e4ee', trim: '#cca442' },
-  summoner:  { head: 'horns',     body: 'robe',   cape: true,  weapon: 'staff',  cloth: '#6e3c94', trim: '#dcbcf4' },
-  spiritist: { head: 'mask',      body: 'robe',   cape: false, weapon: 'staff',  cloth: '#2c6e6e', trim: '#a4e4d4' },
+  warrior:   { weapon: 'sword',  cloth: '#a8342c', trim: '#e0bc58' },
+  guardian:  { weapon: 'shield', cloth: '#3358ab', trim: '#cdd6e8' },
+  monk:      { weapon: 'fist',   cloth: '#dcac52', trim: '#a84c2a' },
+  lancer:    { weapon: 'spear',  cloth: '#2f7352', trim: '#dcc464' },
+  thief:     { weapon: 'dagger', cloth: '#4a4280', trim: '#8f7ec8' },
+  archer:    { weapon: 'bow',    cloth: '#436c3c', trim: '#adc576' },
+  dancer:    { weapon: 'dagger', cloth: '#c44a8c', trim: '#f4cee6' },
+  jester:    { weapon: 'dagger', cloth: '#8c3aa6', trim: '#f4d44c' },
+  mage:      { weapon: 'staff',  cloth: '#3c3c94', trim: '#ccb464' },
+  cleric:    { weapon: 'mace',   cloth: '#e4e4ee', trim: '#cca442' },
+  summoner:  { weapon: 'staff',  cloth: '#6e3c94', trim: '#dcbcf4' },
+  spiritist: { weapon: 'staff',  cloth: '#2c6e6e', trim: '#a4e4d4' },
 };
 
 /**
