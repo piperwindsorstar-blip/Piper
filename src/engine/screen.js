@@ -271,6 +271,10 @@ export class Screen {
    */
   tiltShift(src, focusY0, focusY1, blur = 2.5) {
     const c = this.ctx;
+    // `src` is a WebGL canvas — reading it back into a 2D canvas can stall
+    // the CPU on a GPU sync, so it's drawn here exactly once per frame and
+    // every further pass (the blur below) reads from this already-2D copy
+    // instead of going back to `src` a second time.
     c.drawImage(src, 0, 0, W, H);
     if (blur <= 0) return;
     if (!this.tsBuf) this.tsBuf = document.createElement('canvas');
@@ -278,7 +282,7 @@ export class Screen {
     t.width = W; t.height = H;
     const tctx = t.getContext('2d');
     tctx.filter = `blur(${blur}px)`;
-    tctx.drawImage(src, 0, 0, W, H);
+    tctx.drawImage(c.canvas, 0, 0, W, H);
     tctx.filter = 'none';
     // Mask the blurred copy down to only the out-of-focus band with a
     // gradient, so compositing it back with plain source-over leaves the

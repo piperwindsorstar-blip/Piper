@@ -7,6 +7,7 @@ import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
 import { tileSprite, actorSprite, npcSprite, TS } from '../../engine/sprites.js';
 import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terrain.js';
 import { buildingSprite, hasStructure, isStructure } from '../../engine/building.js';
+import { citySprite, pitstopSprite, CITY_W, CITY_H, PITSTOP_W, PITSTOP_H } from '../../engine/townmarker.js';
 import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
@@ -55,6 +56,12 @@ const FIELD_VIEW_SIZE = 6.3;
 // it reads as weather rather than a strobing gimmick, short enough to see
 // more than one phase in a normal session.
 const DAY_LEN = 300;
+
+// The four full cities (many buildings apiece: smithy, pedlar, inn, temple,
+// guildhall, two cottages) get the grand gated-arch marker on the world
+// map; every other town:true destination is a smaller pitstop with just a
+// store and a home, and gets the plain signpost marker instead.
+const CITY_TOWNS = new Set(['wren', 'kelda', 'harrowsrest', 'glasshaven']);
 
 function mixHex(a, b, t) {
   t = Math.max(0, Math.min(1, t));
@@ -235,10 +242,21 @@ export class FieldScene {
    * two tile passes, just widened and pointed at ctx instead of scr.ctx.
    */
   renderWorldTexture() {
-    const ctx = this.worldCanvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
     const m = this.map;
     const cam = this.camera();
+    // Re-baking this whole (margin-padded, larger-than-screen) canvas
+    // uploads it to the GPU as a fresh texture — real cost that was
+    // paid every single frame even standing still, since nothing here
+    // ever changed except when the camera actually moves or a chest
+    // opens (which calls markWorldTextureDirty itself). Skipping the
+    // redraw whenever neither has happened turns a several-hundred-tile
+    // repaint-and-reupload into a no-op for most frames.
+    const bakeKey = `${m.id}|${cam.x}|${cam.y}`;
+    if (bakeKey === this._worldTexBakeKey) return;
+    this._worldTexBakeKey = bakeKey;
+
+    const ctx = this.worldCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
     const ox = cam.x - MARGIN_PX, oy = cam.y - MARGIN_PX;
     // Filled, not cleared: on a map smaller than the margin-padded window
     // (most towns), the baked area can reach past the map's real edge —
@@ -618,10 +636,16 @@ export class FieldScene {
     if (wp) { sfx.door(); this.pendingWarp = wp; this.fadeDir = 1; }
   }
 
+  /** Forces the next renderWorldTexture() call to actually re-bake, for the
+   *  rare cases (a chest opening) that change what's baked into the ground
+   *  texture without the camera itself having moved. */
+  markWorldTextureDirty() { this._worldTexBakeKey = null; }
+
   openChest(chest) {
     const locked = chest.locked && !this.g.hasJob('locksmith');
     if (locked) { this.dlg.say('Locked. A Locksmith could open this.'); return; }
     this.g.setFlag(`chest.${chest.id}`);
+    this.markWorldTextureDirty();
     if (chest.gold) {
       sfx.chest();
       this.g.earn(chest.gold);
@@ -996,6 +1020,22 @@ export class FieldScene {
       scr.outline(p.x - TS / 2 + 5, p.y - TS / 2 + 5, TS - 10, TS - 10, PAL.red);
     }
 
+    // town markers — bigger, labelled entrances so a destination reads as
+    // one from a screen away instead of blending into the ground tile
+    // underneath it; the four full cities get the grand arch, every other
+    // town gets the plain roadside signpost (see CITY_TOWNS).
+    for (const wp of m.warps ?? []) {
+      const dest = getMap(wp.to);
+      if (!dest?.town) continue;
+      const isCity = CITY_TOWNS.has(wp.to);
+      const sprite = isCity ? citySprite() : pitstopSprite();
+      const w = isCity ? CITY_W : PITSTOP_W, h = isCity ? CITY_H : PITSTOP_H;
+      const p = this.tileScreenPos(wp.x, wp.y);
+      const baseY = p.y + 10;
+      scr.ctx.drawImage(sprite, Math.round(p.x - w / 2), Math.round(baseY - h), w, h);
+      scr.textCenter(dest.name, p.x, baseY - h - 10, isCity ? PAL.gold : PAL.text);
+    }
+
     // NPC glyphs (recruit "*", service marks) — same projection, drawn over
     // each NPC's own billboard
     for (const n of m.npcs ?? []) {
@@ -1079,7 +1119,10 @@ export class FieldScene {
 }
 
 /** Tiles that still want their own stamp drawn over the terrain. */
-const FEATURE = new Set(['town', 'cave', 'bridge', 'flower', 'well', 'stall', 'lamp']);
+// 'town' isn't drawn here — the overlay town marker (see CITY_TOWNS above)
+// now owns that tile's whole visual, bigger and labelled instead of a
+// 24px prop that'd otherwise double up underneath it.
+const FEATURE = new Set(['cave', 'bridge', 'flower', 'well', 'stall', 'lamp']);
 
 /**
  * A neighbourhood reader for the terrain layer: `sample(dx, dy)` gives the tile
