@@ -478,7 +478,7 @@ function drawMountain(P, f, wx0, wy0, theme = 'green') {
       const d = fieldAt(f, px, py);
       const wx = wx0 + px, wy = wy0 + py;
       if (d >= 0) {
-        if (d < 3.4 && fieldAt(f, px, py - 4) < 0) P.px(px, py, 'rgba(20,26,18,0.30)');
+        if (d < 3.4 && fieldAt(f, px, py - 4) < 0) P.px(px, py, 'rgba(20,26,18,0.20)');
         continue;
       }
       const depth = -d;
@@ -541,7 +541,7 @@ function drawTrees(P, f, wx0, wy0, theme = 'green') {
       const d = fieldAt(f, px, py);
       const wx = wx0 + px, wy = wy0 + py;
       if (d >= 0) {
-        if (d < 3.0 && fieldAt(f, px, py - 4) < 0) P.px(px, py, 'rgba(18,32,16,0.32)');
+        if (d < 3.0 && fieldAt(f, px, py - 4) < 0) P.px(px, py, 'rgba(18,32,16,0.20)');
         continue;
       }
       const depth = -d;

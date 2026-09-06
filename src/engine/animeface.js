@@ -545,7 +545,7 @@ export function paintAnimeBody(ctx, o) {
   const skinD = afShade(o.skin, -0.25);
 
   // contact shadow
-  ctx.fillStyle = 'rgba(10,8,15,0.4)';
+  ctx.fillStyle = 'rgba(10,8,15,0.25)';
   ctx.beginPath();
   ctx.ellipse(ax, ground + 1, 7 * build, 1.6, 0, 0, Math.PI * 2);
   ctx.fill();

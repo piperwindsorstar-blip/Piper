@@ -62,9 +62,9 @@ const THEMES = {
   },
 };
 
-const SHADOW = 'rgba(24,18,14,0.42)';
-const SOFT = 'rgba(24,18,14,0.22)';
-const CONTACT = 'rgba(20,14,10,0.55)';
+const SHADOW = 'rgba(24,18,14,0.28)';
+const SOFT = 'rgba(24,18,14,0.14)';
+const CONTACT = 'rgba(20,14,10,0.35)';
 
 /** How many cells the building runs in one direction, up to a sane limit. */
 function run(sample, pred, dx, dy) {

@@ -369,8 +369,8 @@ export class FieldScene {
     this.renderWorldTexture();
     this.syncFieldBillboards();
     const look = this.look;
-    this.sun.intensity = look.dark ? 0.5 : 1.6;
-    this.ambient.intensity = look.dark ? 0.55 : 0.85;
+    this.sun.intensity = look.dark ? 0.85 : 1.6;
+    this.ambient.intensity = look.dark ? 0.75 : 0.85;
     this.ambient.color.set(look.dark ? 0x8890c0 : 0xffffff);
     // fills anywhere past the (deliberately oversized) ground plane's edge —
     // matches the map's own background colour instead of showing through
@@ -424,8 +424,8 @@ export class FieldScene {
     return {
       ...base,
       grade: mixHex(base.grade, this.raining ? '#33415e' : '#16224a', Math.min(1, night * 0.85 + wet)),
-      amount: Math.min(0.4, base.amount + dk * 0.22),
-      vignette: Math.min(0.82, base.vignette + dk * 0.3),
+      amount: Math.min(0.28, base.amount + dk * 0.14),
+      vignette: Math.min(0.55, base.vignette + dk * 0.18),
       motes: mixHex(base.motes, '#c9d8ff', night),
       dark: night > 0.5,
       warm: base.warm && night <= 0.5,
@@ -1012,7 +1012,7 @@ export class FieldScene {
       scr.ctx.globalCompositeOperation = 'multiply';
       const g = scr.ctx.createRadialGradient(lx, ly, 20, lx, ly, 150);
       g.addColorStop(0, '#ffffff');
-      g.addColorStop(1, look.dark ? '#404058' : '#8890a8');
+      g.addColorStop(1, look.dark ? '#767690' : '#8890a8');
       scr.ctx.fillStyle = g;
       scr.ctx.fillRect(0, 0, W, H);
       scr.ctx.restore();

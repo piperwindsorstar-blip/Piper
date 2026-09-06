@@ -16,7 +16,7 @@ export const LEGEND = {
   'n': { tile: 'sand',     solid: false },
   '~': { tile: 'water',    solid: true, water: true },
   '=': { tile: 'bridge',   solid: false },
-  'T': { tile: 'tree',     solid: true },
+  'T': { tile: 'tree',     solid: false },
   '^': { tile: 'mountain', solid: true },
   '#': { tile: 'wall',     solid: true },
   '_': { tile: 'floor',    solid: false },
