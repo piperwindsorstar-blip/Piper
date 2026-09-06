@@ -7,7 +7,7 @@
 //    reach 9  bows, staves (as casting foci) — anywhere on the grid
 // ============================================================================
 
-export const SLOTS = ['weapon', 'offhand', 'body', 'head', 'accessory'];
+export const SLOTS = ['weapon', 'offhand', 'body', 'head', 'accessory', 'rune'];
 
 export const WEAPON_TYPES = {
   sword:  { name: 'Sword',  reach: 2, stat: 'str' },
@@ -37,6 +37,11 @@ const A = (id, name, slot, aclass, def, price, extra = {}) => ({
   id, name, kind: 'armor', slot, aclass, def, price, ...extra,
 });
 const ACC = (id, name, price, extra = {}) => ({ id, name, kind: 'accessory', slot: 'accessory', price, ...extra });
+// A Rune grants its wearer one specific skill for as long as it's socketed —
+// borrowed access to another school's tool, not tied to class or level (the
+// item itself is the gate). See character.js's knownSkills for where the
+// grant actually gets folded into a character's skill list.
+const RUNE = (id, name, price, grantSkill) => ({ id, name, kind: 'rune', slot: 'rune', price, grantSkill });
 const U = (id, name, price, extra = {}) => ({ id, name, kind: 'consumable', price, ...extra });
 const M = (id, name, price, extra = {}) => ({ id, name, kind: 'material', price, ...extra });
 
@@ -163,6 +168,20 @@ export const ITEMS = [
   ACC('vanguardcrest', 'Vanguard Crest', 9500, { bonus: { str: 14, vit: 10, agi: 4 } }),
   ACC('championscrown', "Champion's Crown", 62000, { bonus: { str: 22, vit: 16, agi: 10, lck: 8 } }),
 
+  // --- runes -----------------------------------------------------------------
+  // One rune's worth of another school's toolkit, sold at the same four arms
+  // shops that carry the gear power curve — see data/maps.js's SHOPS. Kept to
+  // low-to-mid-tier skills on purpose: breadth of access is the reward here,
+  // not a shortcut to a class's own late-game signature move.
+  RUNE('sparkrune', 'Spark Rune', 480, 'spark'),
+  RUNE('mercyrune', 'Mercy Rune', 620, 'heal'),
+  RUNE('aegisrune', 'Aegis Rune', 1200, 'cover'),
+  RUNE('emberrune', 'Ember Rune', 1900, 'primebolt'),
+  RUNE('umbralrune', 'Umbral Rune', 3400, 'bonespear'),
+  RUNE('solarrune', 'Solar Rune', 4600, 'judgement'),
+  RUNE('chorusrune', 'Chorus Rune', 9000, 'healall'),
+  RUNE('reliquaryrune', 'Reliquary Rune', 15000, 'revive'),
+
   // --- consumables ---------------------------------------------------------
   U('potion', 'Potion', 30, { heal: 80, target: 'ally' }),
   U('hipotion', 'Hi-Potion', 150, { heal: 320, target: 'ally' }),
@@ -215,7 +234,7 @@ export function itemSlot(item) {
 }
 
 export function isEquippable(item) {
-  return item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'accessory';
+  return item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'accessory' || item.kind === 'rune';
 }
 
 /** Can `cls` (a class node) equip `item`? */
@@ -229,5 +248,5 @@ export function canEquip(cls, item) {
     const best = Math.max(...cls.armor.map((a) => order.indexOf(a)));
     return order.indexOf(item.aclass) <= best;
   }
-  return true;
+  return true; // accessories and runes: always equippable by any class
 }

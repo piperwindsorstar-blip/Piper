@@ -1621,7 +1621,7 @@ export const SHOPS = {
     name: "Dell's Arms",
     stock: ['bronzesword', 'handaxe', 'club', 'bronzedagger', 'wraps', 'shortspear',
             'leatherwhip', 'shortbow', 'oakstaff', 'woodshield', 'clothrobe',
-            'leatherarmor', 'leathercap'],
+            'leatherarmor', 'leathercap', 'sparkrune', 'mercyrune'],
   },
   wren_items: {
     name: "Moss's Sundries",
@@ -1632,7 +1632,7 @@ export const SHOPS = {
     stock: ['ironsword', 'battleaxe', 'warhammer', 'mainGauche', 'ironclaws', 'halberd',
             'chainwhip', 'longbow', 'runestaff', 'ironshield', 'silkrobe', 'studded',
             'chainmail', 'ironplate', 'ironhelm', 'circlet', 'powerband', 'swiftboots',
-            'sagering', 'wardamulet'],
+            'sagering', 'wardamulet', 'aegisrune', 'emberrune'],
   },
   kelda_items: {
     name: "Pell's Flasks",
@@ -1674,7 +1674,8 @@ export const SHOPS = {
   harrowsrest_arms: {
     name: "Smith Talia's",
     stock: ['flametongue', 'frostbrand', 'ruinaxe', 'shadowedge', 'wyvernlance',
-            'stormrod', 'aegisshield', 'knightplate', 'bishopvest', 'greathelm'],
+            'stormrod', 'aegisshield', 'knightplate', 'bishopvest', 'greathelm',
+            'umbralrune', 'solarrune'],
   },
   harrowsrest_items: {
     name: "Pedlar Once's",
@@ -1684,7 +1685,7 @@ export const SHOPS = {
   glasshaven_arms: {
     name: "Armourer Kest's",
     stock: ['sunblade', 'dragonfists', 'gungnir', 'worldstaff', 'artemisbow',
-            'adamantplate', 'crownofstars', 'scalemail'],
+            'adamantplate', 'crownofstars', 'scalemail', 'chorusrune', 'reliquaryrune'],
   },
   glasshaven_items: {
     name: "Pedlar Sorin's",

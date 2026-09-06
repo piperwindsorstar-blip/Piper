@@ -321,7 +321,7 @@ export class GameState {
       // of its own, so every returning character picks up that old shared
       // total rather than starting back over at zero.
       ch.lp = c.lp ?? d.lp ?? 0;
-      ch.equip = { weapon: null, offhand: null, body: null, head: null, accessory: null, ...(c.equip ?? {}) };
+      ch.equip = { weapon: null, offhand: null, body: null, head: null, accessory: null, rune: null, ...(c.equip ?? {}) };
       ch.grid = c.grid ?? { row: 1, col: 0 };
       ch.ip = c.ip ?? 0;
       ch.statuses = c.statuses ?? {};

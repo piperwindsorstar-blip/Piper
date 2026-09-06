@@ -50,7 +50,7 @@ export function createCharacter(o) {
     acc: Object.fromEntries(STAT_KEYS.map((k) => [k, 0])),
     jobExp: 0,
     lp: 0,
-    equip: { weapon: null, offhand: null, body: null, head: null, accessory: null },
+    equip: { weapon: null, offhand: null, body: null, head: null, accessory: null, rune: null },
     grid: { row: o.row ?? 1, col: o.col ?? 0 },
     ip: 0,
     statuses: {},
@@ -254,7 +254,14 @@ export function promotionPath(ch) {
 // ---------------------------------------------------------------------------
 export function knownSkills(ch) {
   const cls = getClass(ch.classId);
-  return skillsForSchools(cls.schools, ch.level);
+  const base = skillsForSchools(cls.schools, ch.level);
+  const runeId = ch.equip.rune;
+  if (!runeId) return base;
+  const granted = getSkill(getItem(runeId).grantSkill);
+  // A rune's grant is available immediately regardless of class or level —
+  // the item itself is the gate, same as any other piece of gear — so it's
+  // simply unioned in rather than passed through skillsForSchools' filter.
+  return base.some((k) => k.id === granted.id) ? base : [...base, granted];
 }
 
 export function usableSkills(ch) {

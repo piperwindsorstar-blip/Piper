@@ -21,7 +21,7 @@ import { ENEMIES, FAMILIES } from '../../data/enemies.js';
 import { ACHIEVEMENTS } from '../../data/achievements.js';
 import { RECIPES, canCraft, craft } from '../../data/recipes.js';
 import { MAPS, REGIONS } from '../../data/maps.js';
-import { SCHOOLS, STATUS } from '../../data/skills.js';
+import { SCHOOLS, STATUS, getSkill } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip, WEAPON_TYPES, ARMOR_CLASSES } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
@@ -623,7 +623,8 @@ export class MenuScene {
       scr.rect(x, TOP + 50, CW - 8, 1, PAL.line);
       const desc = it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
         : it.cures ? `Cures ${it.cures.join(', ')}.` : it.camp ? 'Rest anywhere.'
-          : it.kind === 'material' ? 'A crafting material.' : `Worth ${it.price} gold.`;
+          : it.grantSkill ? `Grants ${getSkill(it.grantSkill).name} while worn, to any class.`
+            : it.kind === 'material' ? 'A crafting material.' : `Worth ${it.price} gold.`;
       scr.textWrap(desc, x, TOP + 58, CW - 8, PAL.textDim, { lineHeight: 11, maxLines: 3 });
     }
 

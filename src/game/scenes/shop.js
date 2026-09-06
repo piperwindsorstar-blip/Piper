@@ -7,6 +7,7 @@ import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, header, statRow } from '../../engine/ui.js';
 import { SHOPS } from '../../data/maps.js';
 import { getItem, canEquip, isEquippable } from '../../data/items.js';
+import { getSkill } from '../../data/skills.js';
 import { CLASSES } from '../../data/classes.js';
 import { RACE_BY_ID } from '../../data/races.js';
 import { actorSprite } from '../../engine/sprites.js';
@@ -145,6 +146,7 @@ export class ShopScene {
     if (it.heal) { statRow(scr, 'Restores', `${it.heal} HP`, DX + 14, y, rowW, { color: PAL.green }); y += 12; }
     if (it.healMp) { statRow(scr, 'Restores', `${it.healMp} MP`, DX + 14, y, rowW, { color: PAL.cyan }); y += 12; }
     if (it.cures) { statRow(scr, 'Cures', it.cures.join(', '), DX + 14, y, rowW, { color: PAL.green }); y += 12; }
+    if (it.grantSkill) { statRow(scr, 'Grants', getSkill(it.grantSkill).name, DX + 14, y, rowW, { color: PAL.cyan }); y += 12; }
     if (it.bonus) {
       for (const [k, v] of Object.entries(it.bonus)) {
         statRow(scr, k.toUpperCase(), `${v > 0 ? '+' : ''}${v}`, DX + 14, y, rowW,
