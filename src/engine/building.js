@@ -48,7 +48,7 @@ const KIND_TILE = {
   sign_store: ['#5cab58', '#458c42', '#316b2e', '#234e21', '#132c12'],
   sign_temple: ['#f2ecda', '#ddd1af', '#b9a878', '#8d7b51', '#5a4c31'],   // pale stone
   sign_guild: ['#6c74c2', '#545ca2', '#3e447a', '#2b2f58', '#191b36'],    // deep blue-violet
-  sign_castle: ['#a83838', '#8a2c2c', '#6a2020', '#4a1616', '#2c0c0c'],   // royal red
+  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c', '#24272b'],  // fortress ashlar
   sign_treasury: ['#c8a848', '#a88838', '#846a28', '#5c4a1a', '#362c10'], // gold
   sign_garrison: ['#7a828c', '#626870', '#4a5058', '#363a40', '#202226'], // steel
 };
@@ -56,7 +56,7 @@ const KIND_WALL = {
   sign_smithy: ['#c6c6cc', '#aaaab2', '#8c8c94', '#68686e'],
   sign_temple: ['#faf6ec', '#eee6d2', '#d2c6a2', '#aa9a7a'],
   sign_guild: ['#cad0f0', '#aab0e0', '#8a92c2', '#6870a2'],
-  sign_castle: ['#e2caca', '#caa2a2', '#aa7a7a', '#825a5a'],
+  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c'],   // the same stone as the rampart above
   sign_treasury: ['#ecdeb2', '#d6c28a', '#b29e62', '#8c7a46'],
   sign_garrison: ['#c2c6ca', '#a6aaae', '#8a8e92', '#6a6e72'],
 };
@@ -64,14 +64,14 @@ const KIND_TRIM = {
   sign_smithy: '#3a3a42',
   sign_temple: '#e8c860',
   sign_guild: '#4a52a0',
-  sign_castle: '#c83030',
+  sign_castle: '#b02828',   // banners and the gate's ironwork — the only warm color on a grey keep
   sign_treasury: '#e0b030',
   sign_garrison: '#5a6068',
 };
-// A castle's corner towers are gold against its red walls rather than the
-// regional dome's default — a coronet, not a watchtower.
+// A castle's corner towers are built of the same stone as everything else —
+// a fortress, not a gilded folly.
 const KIND_DOME = {
-  sign_castle: ['#e8c860', '#c8a040', '#9c7830', '#5a4818'],
+  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c'],
 };
 
 /** How far a building's own footprint runs, in every direction from `sample`'s
@@ -180,6 +180,7 @@ function drawRoof(P, sample, T, kind) {
       const bx = xOff + px;
       let col;
       const corrugated = kind === 'sign_smithy';
+      const masonry = kind === 'sign_castle';
       if (by < 2) {
         col = TILE[4];                         // the ridge's own keyline
       } else if (by < 5) {
@@ -190,6 +191,15 @@ function drawRoof(P, sample, T, kind) {
         // corrugated tin, not clay tile — a mechanic's shop, not a cottage
         const ridge = bx % 4;
         col = ridge === 0 ? TILE[3] : ridge < 3 ? TILE[1] : TILE[2];
+      } else if (masonry) {
+        // coursed ashlar stone, climbing straight up from the wall below —
+        // a keep's rampart, not a pitched roof wearing a castle's colors
+        const course = Math.floor((by - 5) / 5);
+        const inCourse = (by - 5) % 5;
+        const stagger = (course % 2) * 5;
+        col = TILE[1];
+        if (inCourse === 0) col = TILE[0];              // the lit top of a course
+        if ((bx + stagger) % 10 === 0) col = TILE[3];    // the joints between blocks
       } else {
         // courses of tiles, offset every other row like real tiling
         const course = Math.floor((by - 5) / 6);
@@ -219,13 +229,13 @@ function drawRoof(P, sample, T, kind) {
         col = '#f8d868';
       } else if (kind === 'sign_guild' && by < 5 && bx % 10 < 4) {
         col = trim;
-      } else if (kind === 'sign_castle' && by < 6) {
+      } else if (kind === 'sign_castle' && by < 8) {
         // a crenellated parapet: solid merlons standing on a continuous
         // ledge, with open notches between them left unpainted so the grass
         // behind the building shows through — a real break in the roofline,
         // not just a texture, the one silhouette in this file that isn't a
         // pitched roof underneath
-        if (by < 4) {
+        if (by < 6) {
           const merlon = Math.floor(bx / 4) % 2 === 0;
           col = merlon ? (by < 2 ? TILE[4] : TILE[0]) : null;
         } else {
@@ -241,39 +251,46 @@ function drawRoof(P, sample, T, kind) {
 }
 
 /**
- * A domed watchtower cap — a rounded silhouette rather than a pitch, the
- * regional marker from the desert reference. Unlike the pitched roof this
- * never spans multiple columns: a dome tops one narrow tower, so only the
- * vertical run matters and the shape stays centred in its own TS-wide column.
+ * A tower cap. The regional default is a rounded dome, a rounded silhouette
+ * rather than a pitch; a castle's corner tower instead gets a flat,
+ * crenellated top — the same battlement motif as the main rampart, so the
+ * tower reads as part of the same fortress rather than a decoration bolted
+ * onto it. Either way the cap can span more than one column now — a castle's
+ * towers are two cells wide, wide enough to read as a tower rather than a
+ * turret stuck on the corner — so width is measured the same way the roof
+ * measures its own, not assumed to be exactly one cell.
  */
 function drawDome(P, sample, T, kind) {
   const D = KIND_DOME[kind] ?? T.DOME;
   const up = run(sample, isDome, 0, -1);
   const down = run(sample, isDome, 0, 1);
+  const left = run(sample, isDome, -1, 0);
+  const right = run(sample, isDome, 1, 0);
   const blockH = (up + 1 + down) * TS;
+  const blockW = (left + 1 + right) * TS;
   const yOff = up * TS;
-  const cx = TS / 2;
-  const r = TS / 2 - 1;
+  const xOff = left * TS;
+  const cx = blockW / 2;
+  const r = blockW / 2 - 1;
   const turret = kind === 'sign_castle';
   // A dome reads as a dome only if its cap is roughly as tall as it is wide —
   // stretch that cap over the whole block and a hemisphere becomes a spike.
   // The cap sits on a cylindrical drum that takes up whatever height is left,
-  // however tall the tower itself is. A castle's corner tower skips the dome
-  // entirely for a flat, crenellated top — the same battlement motif as the
-  // main roof, so the tower reads as part of the same fortress.
-  const domeH = turret ? 7 : r * 1.15;
+  // however tall the tower itself is.
+  const domeH = turret ? 8 : r * 1.15;
 
   for (let py = 0; py < TS; py++) {
     const by = yOff + py;
     for (let px = 0; px < TS; px++) {
-      const dx = px - cx;
+      const bx = xOff + px;              // position across the whole tower
+      const dx = bx - cx;
       let col = null;
       if (turret && by < domeH) {
         if (Math.abs(dx) < 2 && by < 2) {
-          col = '#c83030';                          // a pennant on a pole above the wall
+          col = '#b02828';                          // a pennant on a pole above the wall
         } else if (by >= 2 && Math.abs(dx) <= r) {
-          const merlon = Math.floor((px + 1) / 3) % 2 === 0;
-          if (merlon) col = by < 4 ? D[0] : D[1];   // solid tooth; the gaps stay open
+          const merlon = Math.floor((bx + 1) / 3) % 2 === 0;
+          if (merlon) col = by < 5 ? D[0] : D[1];   // solid tooth; the gaps stay open
         }
       } else if (!turret && by < domeH) {
         // a hemisphere: at height `by`, the dome's half-width shrinks toward the apex
@@ -287,10 +304,16 @@ function drawDome(P, sample, T, kind) {
           if (by < 2 && Math.abs(dx) < 2) col = D[3];           // finial
         }
       } else if (by < blockH - 3) {
-        // a short cylindrical drum below the dome
+        // a cylindrical (or, for a wide castle tower, a squared) drum below the cap
         if (Math.abs(dx) <= r) {
           col = dx < -r * 0.2 ? D[1] : D[2];
           if (Math.abs(dx) > r - 1.2) col = D[3];
+          if (turret) {
+            // coursed stone banding, so the tower's shaft reads as the same
+            // ashlar as the rest of the keep instead of a smooth cylinder
+            const inCourse = (by - Math.ceil(domeH)) % 5;
+            if (inCourse === 0) col = D[0];
+          }
         }
       } else if (Math.abs(dx) <= r + 1) {
         col = by >= blockH - 1 ? D[3] : D[2];   // the base lip
@@ -366,10 +389,12 @@ function drawSign(P, kind, T) {
   }
 }
 
-/** Plaster wall with a timber frame, in shadow under the eaves. */
+/** Plaster wall with a timber frame, in shadow under the eaves — or, for a
+ *  castle, coursed fortress stone with no timber in it at all. */
 function drawWall(P, sample, isDoor, T, self, kind) {
   const WALL = KIND_WALL[kind] ?? T.WALL, BEAM = T.BEAM;
   const trim = KIND_TRIM[kind] ?? T.TRIM;
+  const masonry = kind === 'sign_castle';
   const up = run(sample, isWall, 0, -1);
   const down = run(sample, isWall, 0, 1);
   const left = run(sample, isBuilding, -1, 0);
@@ -384,12 +409,23 @@ function drawWall(P, sample, isDoor, T, self, kind) {
     for (let px = 0; px < TS; px++) {
       const bx = xOff + px;
       let col = WALL[1];
-      if (by < 4) col = WALL[3];                       // under the eaves
-      else if (by < 6) col = WALL[2];
-      else if (by >= blockH - 3) col = WALL[3];        // foundation course
-      else if ((by + bx) % 23 === 0) col = WALL[0];    // a little relief
-      // corner posts
-      if (bx < 3 || bx >= blockW - 3) col = by < 4 ? BEAM[1] : BEAM[0];
+      if (masonry) {
+        // coursed ashlar, straight up from the ground with no eaves to
+        // shade it — a curtain wall, not a plastered cottage face
+        const course = Math.floor(by / 5);
+        const inCourse = by % 5;
+        const stagger = (course % 2) * 5;
+        col = (inCourse === 0) ? WALL[0] : ((bx + stagger) % 10 === 0) ? WALL[2] : WALL[1];
+        if (by >= blockH - 3) col = WALL[3];             // foundation course
+        if (bx < 3 || bx >= blockW - 3) col = inCourse < 2 ? WALL[0] : WALL[3];  // a squared quoin, not a timber post
+      } else {
+        if (by < 4) col = WALL[3];                       // under the eaves
+        else if (by < 6) col = WALL[2];
+        else if (by >= blockH - 3) col = WALL[3];        // foundation course
+        else if ((by + bx) % 23 === 0) col = WALL[0];    // a little relief
+        // corner posts
+        if (bx < 3 || bx >= blockW - 3) col = by < 4 ? BEAM[1] : BEAM[0];
+      }
       P.px(px, py, col);
     }
   }
@@ -402,7 +438,14 @@ function drawWall(P, sample, isDoor, T, self, kind) {
   const shopfront = kind === 'sign_store' || kind === 'sign_pedlar';
   const hasWindow = !isDoor && !sign && blockH > TS && (twoStorey ? true : (yOff % TS === 0 && up === 0));
   if (hasWindow) {
-    if (shopfront) {
+    if (masonry) {
+      // an arrow slit, not a glazed window — a keep doesn't let a cottage
+      // window into a wall built to stop something
+      P.rect(10, 5, 4, 17, WALL[3]);
+      P.rect(11, 6, 2, 15, '#161719');
+      P.rect(9, 10, 6, 2, WALL[3]);                       // the cross-slit
+      P.rect(10, 10, 4, 2, '#161719');
+    } else if (shopfront) {
       // full-width glass, edge to edge, so neighbouring cells' panes read as
       // one continuous shopfront window broken only by its own thin mullions
       // — not another cottage with a bigger square cut into the wall
@@ -434,6 +477,21 @@ function drawWall(P, sample, isDoor, T, self, kind) {
       P.rect(3, 6, TS - 6, TS - 7, trim);
       P.rect(3, 6, TS - 6, 1, shade(trim, 0.3));
       for (let gy = 9; gy < TS - 2; gy += 4) P.rect(3, gy, TS - 6, 1, shade(trim, -0.35));
+    } else if (masonry) {
+      // a fortified gate: iron-braced double doors set into a deep stone
+      // archway, wide and dark enough to look like the way an army would
+      // actually come in — not a cottage door painted a different color
+      const top = up === 0 ? 4 : 0;
+      P.rect(2, top, TS - 4, TS - top, '#100b06');           // the archway's black recess
+      P.rect(3, top + 1, TS - 6, TS - top - 1, '#4a3620');    // iron-bound oak
+      for (let gy = top + 2; gy < TS - 2; gy += 4) P.rect(3, gy, TS - 6, 1, '#241c12');
+      P.rect(TS / 2 - 1, top + 1, 2, TS - top - 1, '#100b06'); // the seam between the two leaves
+      P.rect(6, top + 8, 2, 2, '#c8a848');                     // a ring pull on each leaf
+      P.rect(TS - 8, top + 8, 2, 2, '#c8a848');
+      if (up === 0) {
+        P.rect(2, 0, TS - 4, 2, WALL[0]);                      // the arch's stone lintel
+        P.rect(TS / 2 - 2, 2, 4, 3, trim);                     // a small crest above the gate
+      }
     } else {
       const top = up === 0 ? 6 : 0;
       P.rect(6, top, 12, TS - top, BEAM[1]);

@@ -465,8 +465,8 @@ export const MAPS = {
     encounter: null, rate: 0, town: true, bg: "#182038",
     tiles: [
       'TTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-      'T.........O......O..........T',
-      'T..RRRRRR.ORRRRRRO..RRRRRR..T',
+      'T.........OO....OO..........T',
+      'T..RRRRRR.OORRRROO..RRRRRR..T',
       'T..RRRRRR.RRRRRRRR..RRRRRR..T',
       'T..HHQHHH.HHHHKHHH..HHGHHH..T',
       'T..HHDHHH.HHHHDHHH..HHDHHH..T',
