@@ -37,6 +37,14 @@ export const LEGEND = {
   'y': { tile: 'sign_temple', solid: true },
   'g': { tile: 'sign_guild',  solid: true },
   'c': { tile: 'sign_store',  solid: true },
+  'B': { tile: 'bed',    solid: true },
+  't': { tile: 'table',  solid: true },
+  'j': { tile: 'shelf',  solid: true },
+  'x': { tile: 'crate',  solid: true },
+  'u': { tile: 'rug',    solid: false },
+  'v': { tile: 'plant',  solid: true },
+  'a': { tile: 'anvil',  solid: true },
+  'd': { tile: 'candle', solid: true },
 };
 
 export const MAPS = {
@@ -441,10 +449,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182038",
     tiles: [
       '#########',
+      '#j__a__j#',
       '#_______#',
       '#_______#',
-      '#_______#',
-      '#_______#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -458,10 +466,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182038",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -475,10 +483,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182038",
     tiles: [
       '#########',
+      '#B_____B#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -492,10 +500,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182038",
     tiles: [
       '#########',
+      '#d_____d#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#j_____j#',
       '#___D___#',
       '#########',
     ],
@@ -509,10 +517,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182038",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___x_#',
       '#___D___#',
       '#########',
     ],
@@ -527,10 +535,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182038",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -546,10 +554,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182038",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -622,10 +630,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#302418",
     tiles: [
       '#########',
+      '#j__a__j#',
       '#_______#',
       '#_______#',
-      '#_______#',
-      '#_______#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -640,10 +648,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#302418",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -658,10 +666,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#302418",
     tiles: [
       '#########',
+      '#B_____B#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -676,10 +684,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#302418",
     tiles: [
       '#########',
+      '#d_____d#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#j_____j#',
       '#___D___#',
       '#########',
     ],
@@ -694,10 +702,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#302418",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___x_#',
       '#___D___#',
       '#########',
     ],
@@ -712,10 +720,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#302418",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -731,10 +739,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#302418",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -787,10 +795,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#1c2230",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -805,10 +813,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#1c2230",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -858,10 +866,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#241c14",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -876,10 +884,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#241c14",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -928,10 +936,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182818",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -946,10 +954,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#182818",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -1001,10 +1009,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#201830",
     tiles: [
       '#########',
+      '#j_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#x_____x#',
       '#___D___#',
       '#########',
     ],
@@ -1019,10 +1027,10 @@ export const MAPS = {
     encounter: null, rate: 0, bg: "#201830",
     tiles: [
       '#########',
+      '#B_____j#',
       '#_______#',
-      '#_______#',
-      '#_______#',
-      '#_______#',
+      '#___u___#',
+      '#_t___v_#',
       '#___D___#',
       '#########',
     ],
@@ -1417,7 +1425,7 @@ export const MAPS = {
 
   ashfall_store: {
     id: 'ashfall_store', name: "Cinderwright Tavik's", encounter: null, rate: 0, bg: "#241812",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "ashfall", "tx": 10, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Cinderwright Tavik", "shop": "ashfall_store", "text": "Everything I sell has been through the reach at least once. So have I."},
@@ -1426,7 +1434,7 @@ export const MAPS = {
 
   ashfall_home: {
     id: 'ashfall_home', name: "Ondra's Forge", encounter: null, rate: 0, bg: "#241812",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "ashfall", "tx": 4, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "ondra", "name": "Ondra",
@@ -1466,7 +1474,7 @@ export const MAPS = {
 
   windmere_store: {
     id: 'windmere_store', name: "Chandler Bett's", encounter: null, rate: 0, bg: "#182430",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "windmere", "tx": 10, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Chandler Bett", "shop": "windmere_store", "text": "Rope, oil, and whatever the last boat left behind. Take your pick."},
@@ -1475,7 +1483,7 @@ export const MAPS = {
 
   windmere_home: {
     id: 'windmere_home', name: "Iona's Berth", encounter: null, rate: 0, bg: "#182430",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "windmere", "tx": 4, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "iona", "name": "Iona",
@@ -1515,7 +1523,7 @@ export const MAPS = {
 
   tidewatch_store: {
     id: 'tidewatch_store', name: "Netmender Course's", encounter: null, rate: 0, bg: "#101c28",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "tidewatch", "tx": 10, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Netmender Course", "shop": "tidewatch_store", "text": "Holy water sells better here than anywhere else on the coast. Wonder why."},
@@ -1524,7 +1532,7 @@ export const MAPS = {
 
   tidewatch_home: {
     id: 'tidewatch_home', name: "Corvin's Watchpost", encounter: null, rate: 0, bg: "#101c28",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "tidewatch", "tx": 4, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "corvin", "name": "Corvin",
@@ -1564,7 +1572,7 @@ export const MAPS = {
 
   duskwell_store: {
     id: 'duskwell_store', name: "Warden Ilse's", encounter: null, rate: 0, bg: "#141020",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "duskwell", "tx": 10, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Warden Ilse", "shop": "duskwell_store", "text": "Nobody passes through Duskwell without a full tent and a spare antidote. I make sure of it."},
@@ -1573,7 +1581,7 @@ export const MAPS = {
 
   duskwell_home: {
     id: 'duskwell_home', name: "Nyx's Lock-room", encounter: null, rate: 0, bg: "#141020",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "duskwell", "tx": 4, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "nyx", "name": "Nyx",
@@ -1631,7 +1639,7 @@ export const MAPS = {
 
   harrowsrest_smithy: {
     id: 'harrowsrest_smithy', name: "Smith Talia's", encounter: null, rate: 0, bg: "#1c2214",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j__a__j#','#_______#','#_______#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 5, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Smith Talia", "shop": "harrowsrest_arms", "text": "Better than the Ford sells, worse than what waits past the Gate. Fair price for the difference."},
@@ -1639,7 +1647,7 @@ export const MAPS = {
   },
   harrowsrest_pedlar: {
     id: 'harrowsrest_pedlar', name: "Pedlar Once's", encounter: null, rate: 0, bg: "#1c2214",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 18, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Pedlar Once", "shop": "harrowsrest_items", "text": "Bought this stock twice already. Bandits took it once. I don't ask questions anymore, I just restock."},
@@ -1647,7 +1655,7 @@ export const MAPS = {
   },
   harrowsrest_inn: {
     id: 'harrowsrest_inn', name: "The Harrow Inn", encounter: null, rate: 0, bg: "#1c2214",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____B#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 5, "ty": 13}],
     npcs: [
       {"x": 4, "y": 2, "kind": "inn", "name": "Innkeeper Fenna", "cost": 14, "text": "Fourteen gold. The well's fine again, before you ask."},
@@ -1655,7 +1663,7 @@ export const MAPS = {
   },
   harrowsrest_temple: {
     id: 'harrowsrest_temple', name: "Harrow's Rest Temple", encounter: null, rate: 0, bg: "#1c2214",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#d_____d#','#_______#','#___u___#','#j_____j#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 18, "ty": 13}],
     npcs: [
       {"x": 4, "y": 2, "kind": "temple", "name": "Brother Cale", "text": "We raise the fallen here same as anywhere. Prayer doesn't care how far you are from the Ford."},
@@ -1663,7 +1671,7 @@ export const MAPS = {
   },
   harrowsrest_guildhall: {
     id: 'harrowsrest_guildhall', name: "Harrow's Rest Guildhall", encounter: null, rate: 0, bg: "#1c2214",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#_t___x_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 9, "ty": 18}],
     npcs: [
       {"x": 4, "y": 2, "kind": "guild", "name": "Registrar Voss", "text": "A satellite ledger. Everything gets copied back to Orrin's rolls at the Ford eventually."},
@@ -1671,7 +1679,7 @@ export const MAPS = {
   },
   harrowsrest_cottage1: {
     id: 'harrowsrest_cottage1', name: "Sable's House", encounter: null, rate: 0, bg: "#1c2214",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 29, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "sable", "name": "Sable",
@@ -1682,7 +1690,7 @@ export const MAPS = {
   },
   harrowsrest_cottage2: {
     id: 'harrowsrest_cottage2', name: "Petra's Loft", encounter: null, rate: 0, bg: "#1c2214",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 29, "ty": 13}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "petra", "name": "Petra",
@@ -1743,7 +1751,7 @@ export const MAPS = {
 
   glasshaven_smithy: {
     id: 'glasshaven_smithy', name: "Armourer Kest's", encounter: null, rate: 0, bg: "#20242c",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j__a__j#','#_______#','#_______#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 5, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Armourer Kest", "shop": "glasshaven_arms", "text": "The best steel this side of the Fields. Past the Fields, you're on your own."},
@@ -1751,7 +1759,7 @@ export const MAPS = {
   },
   glasshaven_pedlar: {
     id: 'glasshaven_pedlar', name: "Pedlar Sorin's", encounter: null, rate: 0, bg: "#20242c",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#x_____x#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 18, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "shop", "name": "Pedlar Sorin", "shop": "glasshaven_items", "text": "Elixirs, sold openly, for the first time in this town's history. Business is good."},
@@ -1759,7 +1767,7 @@ export const MAPS = {
   },
   glasshaven_inn: {
     id: 'glasshaven_inn', name: "The Reliquary Inn", encounter: null, rate: 0, bg: "#20242c",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____B#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 5, "ty": 13}],
     npcs: [
       {"x": 4, "y": 2, "kind": "inn", "name": "Innkeeper Odalys", "cost": 40, "text": "Forty gold. You're paying for the view of the Fields as much as the bed."},
@@ -1767,7 +1775,7 @@ export const MAPS = {
   },
   glasshaven_temple: {
     id: 'glasshaven_temple', name: "Glasshaven Reliquary", encounter: null, rate: 0, bg: "#20242c",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#d_____d#','#_______#','#___u___#','#j_____j#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 18, "ty": 13}],
     npcs: [
       {"x": 4, "y": 2, "kind": "temple", "name": "High Reliquary Sana", "text": "This shrine has stood watch over all thirteen since before anyone here could name them. We raise the fallen. We always have."},
@@ -1775,7 +1783,7 @@ export const MAPS = {
   },
   glasshaven_guildhall: {
     id: 'glasshaven_guildhall', name: "Glasshaven Guildhall", encounter: null, rate: 0, bg: "#20242c",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#j_____j#','#_______#','#___u___#','#_t___x_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 9, "ty": 18}],
     npcs: [
       {"x": 4, "y": 2, "kind": "guild", "name": "Master Registrar Thane", "text": "The furthest ledger from the Ford, and the busiest. Everyone passes through Glasshaven eventually."},
@@ -1783,7 +1791,7 @@ export const MAPS = {
   },
   glasshaven_cottage1: {
     id: 'glasshaven_cottage1', name: "Selwyn's Rest", encounter: null, rate: 0, bg: "#20242c",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 29, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "selwyn", "name": "Selwyn",
@@ -1794,7 +1802,7 @@ export const MAPS = {
   },
   glasshaven_cottage2: {
     id: 'glasshaven_cottage2', name: "Iskra's Hall", encounter: null, rate: 0, bg: "#20242c",
-    tiles: ['#########','#_______#','#_______#','#_______#','#_______#','#___D___#','#########'],
+    tiles: ['#########','#B_____j#','#_______#','#___u___#','#_t___v_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 29, "ty": 13}],
     npcs: [
       {"x": 4, "y": 2, "kind": "recruit", "id": "iskra", "name": "Iskra",

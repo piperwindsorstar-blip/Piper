@@ -262,6 +262,105 @@ T.chest = (P) => {
   P.rect(3, 20, 18, 1, '#241608');
 };
 
+// Furniture — an interior's own floor tile drawn underneath (same trick
+// T.chest uses) so a bed or shelf reads as something standing IN the room
+// rather than a sprite pasted over it. Placed by INTERIOR_DECOR below,
+// which keeps them off the one-tile path between a room's door and its
+// NPC so nothing ever blocks the way through.
+T.bed = (P) => {
+  T.floor(P);
+  P.rect(2, 5, 4, 17, '#3a2f22');
+  P.rect(18, 5, 4, 17, '#3a2f22');
+  P.rect(2, 5, 1, 17, '#5a4630');
+  P.rect(18, 5, 1, 17, '#5a4630');
+  P.rect(3, 9, 18, 12, '#5a4630');
+  P.rect(3, 9, 18, 1, '#7a5f40');
+  P.rect(4, 10, 16, 10, '#8a5a4a');
+  P.rect(4, 10, 16, 4, '#c85a4a');
+  P.rect(4, 10, 16, 1, '#e07868');
+  P.rect(5, 11, 6, 5, '#e8e0d0');
+  P.rect(5, 11, 6, 1, '#fbf6ec');
+};
+
+T.table = (P) => {
+  T.floor(P);
+  P.ellipse(12, 20, 9, 3, 'rgba(10,8,6,0.25)');
+  P.rect(4, 8, 16, 8, '#7d5429');
+  P.dither(4, 8, 16, 8, '#966333', 0.4);
+  P.rect(4, 8, 16, 1, '#a8794a');
+  P.rect(5, 16, 2, 6, '#5a4630');
+  P.rect(17, 16, 2, 6, '#5a4630');
+  P.rect(14, 5, 3, 3, '#c8a878');
+  P.px(14, 5, '#e8d0a0');
+};
+
+T.shelf = (P) => {
+  T.floor(P);
+  P.rect(2, 1, 20, 19, '#5a4630');
+  P.rect(2, 1, 20, 1, '#7a5f40');
+  for (const y of [1, 7, 13]) P.rect(2, y, 20, 2, '#3a2f22');
+  const books = [[4, 3, '#7a2a2a'], [7, 3, '#2a5a3a'], [10, 3, '#3a3a7a'],
+    [15, 9, '#8a5a2a'], [18, 9, '#5a2a5a'], [5, 15, '#2a5a7a'], [12, 15, '#7a5a2a']];
+  for (const [x, y, c] of books) P.rect(x, y, 2, 4, c);
+  P.ellipse(9, 17, 2, 2, '#c8a878');
+};
+
+T.crate = (P) => {
+  T.floor(P);
+  P.ellipse(12, 21, 8, 2, 'rgba(10,8,6,0.25)');
+  P.rect(3, 6, 18, 15, '#7d5429');
+  P.dither(3, 6, 18, 15, '#8a5a28', 0.4);
+  P.rect(3, 6, 18, 1, '#a8794a');
+  P.rect(3, 6, 2, 15, '#5a4020');
+  P.rect(19, 6, 2, 15, '#5a4020');
+  P.rect(3, 12, 18, 2, '#5a4020');
+  P.rect(6, 0, 12, 8, '#8a5a28');
+  P.rect(6, 0, 12, 1, '#a8794a');
+  P.rect(6, 0, 2, 8, '#5a4020');
+  P.rect(16, 0, 2, 8, '#5a4020');
+};
+
+T.rug = (P) => {
+  T.floor(P);
+  P.rect(3, 3, 18, 18, '#7a2a2a');
+  P.rect(5, 5, 14, 14, '#943c30');
+  P.rect(7, 7, 10, 10, '#c85a4a');
+  for (let x = 4; x < 21; x += 3) { P.px(x, 3, '#e8c860'); P.px(x, 20, '#e8c860'); }
+};
+
+T.plant = (P) => {
+  T.floor(P);
+  P.ellipse(12, 20, 5, 2, 'rgba(10,8,6,0.25)');
+  P.rect(9, 15, 6, 6, '#8a5a3a');
+  P.rect(9, 15, 6, 1, '#a8794a');
+  P.ellipse(12, 10, 7, 6, '#2f7128');
+  P.ellipse(9, 8, 4, 4, '#3f9034');
+  P.ellipse(15, 9, 4, 4, '#215420');
+  P.speck([[10, 6], [14, 5], [8, 11], [16, 11]], '#5cb44a');
+};
+
+T.anvil = (P) => {
+  T.floor(P);
+  P.ellipse(12, 20, 7, 2, 'rgba(10,8,6,0.25)');
+  P.rect(9, 16, 6, 5, '#2c2a30');
+  P.rect(6, 10, 12, 6, '#4a4650');
+  P.rect(6, 10, 12, 1, '#6a6680');
+  P.rect(3, 8, 18, 3, '#3a3640');
+  P.rect(3, 8, 18, 1, '#5a5666');
+  P.speck([[9, 9], [15, 9]], '#ffd070');
+  P.px(9, 7, '#ffe8a0'); P.px(16, 7, '#ffe8a0');
+};
+
+T.candle = (P) => {
+  T.floor(P);
+  P.rect(9, 15, 6, 6, '#4a4650');
+  P.rect(9, 15, 6, 1, '#6a6680');
+  P.rect(11, 6, 2, 9, '#e8e0c8');
+  P.rect(11, 6, 1, 9, '#fbf6ec');
+  P.ellipse(12, 5, 2, 3, '#ffcf60');
+  P.px(12, 3, '#fff4c0');
+};
+
 T.bridge = (P) => {
   P.rect(0, 3, TS, 18, '#7a5a34');
   P.dither(0, 3, TS, 18, '#8e6a3e', 0.4);
