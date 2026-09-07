@@ -223,7 +223,7 @@ export class BattleScene {
         * (opts.enemyScaleBonus ?? 1),
       companion: this.g.companion
         ? { enemyId: this.g.companion.enemyId, rank: this.g.jobRankOf('tamer') } : null,
-      night: opts.night, rain: opts.rain,
+      night: opts.night, rain: opts.rain, partyGold: this.g.gold,
     });
     this.state = 'intro';
     this.t = 0;
@@ -1228,6 +1228,10 @@ export class BattleScene {
     if (this.state === 'done' || this.state === 'victoryPose') return;
     const b = this.battle;
     const msgs = [];
+    // Gold Toss spends real party gold the instant it's cast, win or lose —
+    // Battle only ever holds a snapshot (see its constructor), so the actual
+    // GameState deduction happens here once, after the fight is over.
+    if (b.goldSpent) this.g.spend(b.goldSpent);
     if (b.result === 'victory') {
       playMusic('victory', VICTORY_THEME);
       sfx.victory();

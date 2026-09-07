@@ -160,6 +160,9 @@ export class Battle {
     // battle started without opts.night/opts.rain (indoors, the Colosseum,
     // every earlier save), so this is a pure addition, never a regression.
     this.weather = { night: !!opts.night, rain: !!opts.rain };
+    // Gold Toss's own resource pool — see useSkill's goldCost handling.
+    this.partyGold = opts.partyGold ?? 0;
+    this.goldSpent = 0;
     this.formation = FORMATION_BY_ID[formationId];
     if (!this.formation) throw new Error(`unknown formation: ${formationId}`);
     this.isBoss = !!this.formation.boss;
@@ -435,7 +438,11 @@ export class Battle {
     const a = actor.stats();
     const d = target.stats();
     const magical = opts.magical;
-    let base = (magical ? a.magic : a.power) * (opts.power ?? 1);
+    // A handful of skills cast off a different stat than the usual INT (holy
+    // and ki arts run on SPR instead) — same formula stats() uses for
+    // `magic`, just substituting the named stat for `int`.
+    const magicBase = opts.useStat ? a[opts.useStat] * 1.6 + a.atk * 0.4 : a.magic;
+    let base = (magical ? magicBase : a.power) * (opts.power ?? 1);
 
     // status modifiers on the attacker
     if (actor.statuses.might && !magical) base *= 1.3;
@@ -788,6 +795,11 @@ export class Battle {
       const cost = Math.max(1, Math.floor(s.maxHp * skill.hpCost));
       actor.hp = Math.max(1, actor.hp - cost);
     }
+    if (skill.goldCost) {
+      if (this.partyGold < skill.goldCost) return this.say(`${this.label(actor)} doesn't have the gold to throw.`);
+      this.partyGold -= skill.goldCost;
+      this.goldSpent += skill.goldCost;
+    }
     // A rune's granted Art grows sharper with use, the same "rank rises with
     // use, not level" idea a Job's own field ability already runs on:
     // casting it awards the rune experience, and its current level scales
@@ -796,7 +808,13 @@ export class Battle {
     const runeId = actor.isPC ? actor.ref.equip.rune : null;
     const runeGrant = !!runeId && getItem(runeId).grantSkill === skill.id;
     if (runeGrant) awardRuneExp(actor.ref, runeId, 10);
-    const power = skill.power * (runeGrant ? runePowerMult(runeLevel(actor.ref, runeId)) : 1);
+    let power = skill.power * (runeGrant ? runePowerMult(runeLevel(actor.ref, runeId)) : 1);
+    // Gold Toss: the toss is only as big as the purse backing it — reads the
+    // remaining party gold snapshotted onto the battle at its start (see the
+    // constructor), not a live GameState reference Battle doesn't otherwise
+    // hold; scenes/battle.js reconciles goldSpent back into GameState.gold
+    // once the fight ends.
+    if (skill.goldCost) power *= Math.min(2.5, 1 + this.partyGold / 3000);
     // A Scribe's Transcribe: a scroll grant is good for exactly one cast.
     if (actor.isPC && actor.ref.scrollSkill === skill.id) delete actor.ref.scrollSkill;
     this.say(`${this.label(actor)} uses ${skill.name}!`);
@@ -818,7 +836,7 @@ export class Battle {
               power: power * spread(skill.target),
               element: el, magical: skill.type === 'mag',
               pierce: skill.pierce, crit: skill.crit, missChance: skill.missChance,
-              undeadBonus: skill.undeadBonus,
+              undeadBonus: skill.undeadBonus, useStat: skill.useStat,
               reachCheck: skill.type === 'phys', reach: skill.range,
             });
             if (r.missed) { this.fx.push({ type: 'miss', uid: t.uid }); this.say(`  ...misses ${this.label(t)}.`); continue; }

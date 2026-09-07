@@ -103,7 +103,13 @@ export function stats(ch, extraBias = {}) {
     const it = getItem(id);
     if (it.atk) atk += it.atk;
     if (it.def) def += it.def;
-    if (it.bonus) for (const [k, v] of Object.entries(it.bonus)) out[k] = (out[k] ?? 0) + v;
+    // 'mag' is a handful of legendary runes' own name for a flat magic-power
+    // bonus; `magic` below is derived from `int` alone, so it rides on that
+    // accumulator rather than a `mag` key nothing else would ever read.
+    if (it.bonus) for (const [k, v] of Object.entries(it.bonus)) {
+      const key = k === 'mag' ? 'int' : k;
+      out[key] = (out[key] ?? 0) + v;
+    }
     if (slot === 'weapon' && it.reach) reach = it.reach;
   }
 
