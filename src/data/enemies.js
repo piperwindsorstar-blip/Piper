@@ -440,6 +440,15 @@ export const ENEMIES = [
     blurb: "Not a fourteenth element. The gap a good ring keeps, so it still has room to turn.",
   }),
 
+  // --- The Shifting Depths' own capstone — floor 50, the one fight down
+  // there that isn't a labyrinth boss wearing a harder difficulty scalar.
+  e('depthswarden', 'The Warden Beneath', 'aberration', 'void', 70, [20000, 1000, 330, 220, 320, 230, 75], {
+    sprite: sp('blob', '#141018', '#463a5c', '#000000', 2.6),
+    skills: ['worldsend', 'soulbind', 'anathemahex'], ai: 'boss', gold: 130000, exp: 520000,
+    drops: [['endlesscrown', 1.0]],
+    blurb: 'It was never counting floors. It was counting how many times you came back.',
+  }),
+
   // --- Labyrinths — six optional dungeons, one per cave on the world map,
   // levelled 10/20/30/40/50/60. Each floor 1-4 guards a mini-boss; floor 5's
   // real boss is the only source of that labyrinth's ultra rune. ------------
@@ -478,7 +487,7 @@ export const ENEMIES = [
   e('moltensovereign', 'The Molten Sovereign', 'dragon', 'fire', 40, [11000, 480, 220, 145, 220, 140, 55], {
     sprite: sp('moltensovereign', '#d8501e', '#f8a850', '#5c1c08', 2.0),
     skills: ['cataclysm', 'primeforce', 'ironwall'], ai: 'boss', gold: 32000, exp: 90000,
-    drops: [['cindercrownrune', 1.0]],
+    drops: [['cindercrownrune', 1.0], ['cinderfang', 0.15]],
     blurb: 'The spiral was always going to end in this.',
   }),
 
@@ -491,7 +500,7 @@ export const ENEMIES = [
   e('stormtyrant', 'The Storm Tyrant', 'spirit', 'lightning', 46, [13200, 420, 250, 165, 260, 175, 65], {
     sprite: sp('stormtyrant', '#5a7ad0', '#c8dcf8', '#22305c', 2.0),
     skills: ['primeforce', 'warcry', 'unyielding'], ai: 'boss', gold: 42000, exp: 125000,
-    drops: [['vaultcrown', 1.0]],
+    drops: [['vaultcrown', 1.0], ['sunderingfang', 0.13]],
     blurb: 'The vault only ever opened one way, and it just did.',
   }),
 
@@ -504,14 +513,14 @@ export const ENEMIES = [
   e('drownedregent', 'The Drowned Regent', 'undead', 'water', 58, [16000, 760, 300, 205, 290, 210, 60], {
     sprite: sp('drownedregent', '#123a4c', '#3a7898', '#081c28', 1.9),
     skills: ['leviathan', 'soulbind', 'oblivion'], ai: 'boss', gold: 68000, exp: 271000,
-    drops: [['tidecrown', 1.0]],
+    drops: [['tidecrown', 1.0], ['gravebinder', 0.12]],
     blurb: 'Still keeps court. The maze is the only one left to attend it.',
   }),
 
   e('abysswarden', 'Abyss Warden', 'aberration', 'void', 63, [10200, 520, 176, 118, 198, 138, 41], {
     sprite: sp('abysswarden', '#2a2038', '#6a5a90', '#100c18', 1.8),
     skills: ['anathemahex', 'soulbind'], ai: 'boss', gold: 26000, exp: 110000,
-    drops: [['voidring', 1.0]],
+    drops: [['voidring', 1.0], ['widowslattice', 0.15]],
     blurb: 'Paces the last ring the way a held breath paces a chest.',
   }),
   e('endlessmaw', 'The Endless Maw', 'aberration', 'void', 66, [18500, 950, 320, 215, 360, 250, 75], {
@@ -605,6 +614,7 @@ export const FORMATIONS = [
   f('boss_thirteenth', 'boss', [at('boss_thirteenth', 1, 1), at('nullweaver', 0, 0), at('nullweaver', 2, 0)], { boss: true }),
   f('boss_seam', 'boss', [at('boss_seam', 1, 1), at('starweaver', 0, 0), at('starweaver', 2, 0)], { boss: true }),
   f('boss_arenachampion', 'boss', [at('boss_arenachampion', 1, 1)], { boss: true }),
+  f('depths_capstone', 'boss', [at('depthswarden', 1, 1)], { boss: true, lpBonus: 2000 }),
 
   // --- Labyrinth ambient encounters (wandering trash, one region per
   // labyrinth so its world-map cave label shows a level span of its own) ---

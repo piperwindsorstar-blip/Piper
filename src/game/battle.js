@@ -485,6 +485,11 @@ export class Battle {
       mult = nullify ? 1 : elementMultiplier(atkEl, target.element);
       // a defender's RACE resists on top of the elemental wheel
       if (!nullify && target.isPC) mult *= elementalResistance(target.ref, atkEl);
+      // Element Charm: wards the wearer against their own affinity acting up
+      // against them — only relevant on the rare hit that shares their element.
+      if (!nullify && target.isPC && target.ref.equip.accessory === 'elemcharm' && atkEl === target.element) {
+        mult *= 1 - getItem('elemcharm').resistAmount;
+      }
       if (opts.undeadBonus && target.def?.family === 'undead') mult *= opts.undeadBonus;
       if (actor.isPC && actor.element === 'light' && target.def?.family === 'undead') mult *= 1.25;
       // Rain feeds water and douses fire; true night feeds dark and dims
@@ -513,6 +518,12 @@ export class Battle {
     if (!magical && trait(target, 'scaled')) mult *= 0.88;
     if (magical && trait(target, 'thickskull')) mult *= 1.1;
 
+    // Sundering Fang: a finisher, not a wear-them-down weapon.
+    if (actor.isPC && actor.ref.equip.weapon === 'sunderingfang'
+      && target.hp / target.stats().maxHp < 0.25) {
+      mult *= getItem('sunderingfang').executeBonus;
+    }
+
     // crit
     let critRate = (opts.crit ?? 0) + a.crit;
     if (actor.statuses.lucky) critRate += 0.15;
@@ -524,7 +535,7 @@ export class Battle {
     return { damage: dmg, crit, mult, missed: false };
   }
 
-  dealDamage(actor, target, amount, { silent = false, element = 'none', crit = false } = {}) {
+  dealDamage(actor, target, amount, { silent = false, element = 'none', crit = false, isReflect = false } = {}) {
     if (target.statuses.barrier) {
       delete target.statuses.barrier;
       if (!silent) this.say(`${this.label(target)}'s barrier absorbs the hit.`);
@@ -536,6 +547,16 @@ export class Battle {
     if (target.statuses.freeze && element !== 'ice') delete target.statuses.freeze;
     this.gainIp(target, Math.min(24, 6 + amount * 40 / Math.max(1, target.stats().maxHp)));
     if (actor) this.gainIp(actor, Math.min(16, 4 + amount * 20 / Math.max(1, target.stats().maxHp)));
+    // Widow's Lattice: sends a slice of the hit back — guarded against a pair
+    // of wearers volleying it back and forth forever.
+    if (!isReflect && actor && actor.uid !== target.uid && target.isPC
+      && target.ref.equip.accessory === 'widowslattice' && target.alive) {
+      const back = Math.max(1, Math.round(amount * getItem('widowslattice').reflect));
+      this.dealDamage(target, actor, back, { silent, element: 'none', isReflect: true });
+      if (!silent) this.say(`${this.label(target)}'s lattice sends ${back} back at ${this.label(actor)}.`);
+    }
+    // Cinderfang: a crit doesn't just hurt, it catches.
+    if (crit && actor?.isPC && actor.ref.equip.weapon === 'cinderfang') this.applyTo(target, 'burn');
     if (target.hp <= 0) {
       target.hp = 0;
       if (target.isPC) {
@@ -563,6 +584,16 @@ export class Battle {
         const s = actor.stats();
         actor.hp = Math.min(s.maxHp, actor.hp + Math.floor(s.maxHp * 0.1));
         actor.mp = Math.min(s.maxMp, actor.mp + Math.floor(s.maxMp * 0.1));
+      }
+      // Gravebinder: a kill feeds the whole lane — same column, the grid's
+      // own front-to-back axis (see the front-rank-wipe comment above) —
+      // not just the one who struck.
+      if (actor?.isPC && actor.ref.equip.weapon === 'gravebinder') {
+        const lane = (actor.side === 'party' ? this.livingParty() : this.livingEnemies())
+          .filter((u) => u.grid.col === actor.grid.col);
+        const amt = Math.round(actor.stats().maxHp * getItem('gravebinder').killHealsRow);
+        for (const u of lane) this.healUnit(u, amt);
+        if (lane.length) this.say(`Gravebinder feeds the lane for ${amt}.`);
       }
     }
     return amount;
@@ -719,7 +750,16 @@ export class Battle {
   }
 
   applyTo(unit, statusId, turns = null) {
-    if (unit.isPC) return applyStatus(unit.ref, statusId, turns);
+    if (unit.isPC) {
+      // The Endless Crown: turns aside the first ailment aimed at its wearer
+      // each battle, then it's spent — a shield, not a ward.
+      if (STATUS[statusId]?.kind === 'bad' && unit.ref.equip.accessory === 'endlesscrown' && !unit.usedStatusShield) {
+        unit.usedStatusShield = true;
+        this.say(`${unit.name}'s crown turns the ${STATUS[statusId].name.toLowerCase()} aside.`);
+        return false;
+      }
+      return applyStatus(unit.ref, statusId, turns);
+    }
     const def = STATUS[statusId];
     if (!def) return false;
     let t = turns ?? def.turns;

@@ -1065,6 +1065,11 @@ export class FieldScene {
     this.encounterCooldown = 4;
     if (result.bossFlag) {
       this.g.setFlag(`boss.${result.bossFlag}`);
+      // Depths boss flags carry a random suffix (see data/dungeon.js) so they
+      // can never be checked directly by an achievement — these two stable
+      // flags are what Achievements actually reads instead.
+      if (result.bossFlag.startsWith('depthscap_')) this.g.setFlag('depths.capstoneCleared', true);
+      else if (result.bossFlag.startsWith('depths_')) this.g.setFlag('depths.bossCleared', true);
       // one closing beat on the spot where the boss just fell, distinct from
       // (and shorter than) any broader reflection the story shows once you
       // leave and warp somewhere new — see resume()'s epilogue/midpoint/

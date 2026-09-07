@@ -97,6 +97,26 @@ export const ACHIEVEMENTS = [
     id: 'depths25', name: 'Where the Light Gives Out', desc: 'Reach floor 25 of the Shifting Depths.',
     check: (g) => (g.deepestDepth ?? 0) >= 25,
   },
+  {
+    id: 'depths50', name: 'The Bottom, Allegedly', desc: 'Reach floor 50 of the Shifting Depths.',
+    check: (g) => (g.deepestDepth ?? 0) >= 50,
+  },
+  {
+    id: 'tamedCompanion', name: 'New Friend', desc: 'Tame a monster companion.',
+    check: (g) => !!g.companion,
+  },
+  {
+    id: 'thrallSummoned', name: 'Something Obedient', desc: 'Fill the fifth grid cell with a raised thrall or bonded beast.',
+    check: (g) => g.flag('thrall.summoned'),
+  },
+  {
+    id: 'depthsBossCleared', name: 'Not Random At All', desc: 'Defeat one of the Shifting Depths\' set-piece floor bosses.',
+    check: (g) => g.flag('depths.bossCleared'),
+  },
+  {
+    id: 'depthsCapstone', name: 'The Warden Beneath', desc: 'Defeat what waits on floor 50 of the Shifting Depths.',
+    check: (g) => g.flag('depths.capstoneCleared'),
+  },
 ];
 
 export function achievementsDone(g) { return ACHIEVEMENTS.filter((a) => a.check(g)); }

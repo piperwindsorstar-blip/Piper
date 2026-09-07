@@ -63,6 +63,10 @@ function chestSecurity(depth) {
   return out;
 }
 
+// The one floor in the endless climb that isn't just a harder repeat of
+// something you've already beaten — see bossForDepth below.
+export const DEPTHS_CAPSTONE_DEPTH = 50;
+
 /** Every 5th floor gets a set-piece fight instead of just tougher trash —
  *  reusing a labyrinth's own floor-5 formation (by depth tier, capped at
  *  the deepest labyrinth once the climb runs past it) rather than
@@ -71,9 +75,26 @@ function chestSecurity(depth) {
  *  that labyrinth's real progress complete without ever setting foot in
  *  it, and a fixed flag would only ever fire on a player's very first
  *  visit to this depth, since floors regenerate every dive but flags
- *  never clear. A random one can never collide with either. */
+ *  never clear. A random one can never collide with either.
+ *
+ *  DEPTHS_CAPSTONE_DEPTH is the one exception: a purpose-built fight and
+ *  drop instead of a reused labyrinth boss, still on the same randomized-
+ *  flag/repeatable footing as every other floor here — it's the climb's
+ *  destination, not a one-time cutscene. Its flag gets its own `depthscap_`
+ *  prefix (still randomized) so field.js can tell the two apart for the
+ *  achievement that specifically wants the capstone, not just any floor. */
 function bossForDepth(depth) {
   if (depth % 5 !== 0) return null;
+  if (depth === DEPTHS_CAPSTONE_DEPTH) {
+    return {
+      formation: 'depths_capstone',
+      flag: `depthscap_${rng.int(0, 999999)}`,
+      intro: [
+        'The floor here was never random. It was waiting for you to notice.',
+        'Something rises out of the dark that has been counting your steps since floor one.',
+      ],
+    };
+  }
   const tier = Math.min(6, Math.ceil(depth / 5));
   return {
     formation: `laby${tier}_f5`,

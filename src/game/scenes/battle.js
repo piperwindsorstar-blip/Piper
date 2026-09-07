@@ -1254,6 +1254,7 @@ export class BattleScene {
         const tamer = this.g.party.find((c) => c.jobId === 'tamer');
         if (tamer) { const m = this.g.jobTick(tamer, 15); if (m) msgs.push(m); }
       }
+      if (b.thrall) this.g.setFlag('thrall.summoned', true);
       // record the bestiary
       for (const e of b.enemies) this.g.bestiary[e.def.id] = (this.g.bestiary[e.def.id] ?? 0) + 1;
       if (promos.length) {

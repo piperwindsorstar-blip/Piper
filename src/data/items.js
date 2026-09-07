@@ -119,6 +119,21 @@ export const ITEMS = [
   W('starbow', 'Starfall Bow', 'bow', 132, 64000, { element: 'light', bonus: { lck: 20, agi: 12 } }),
   W('nullstaff', 'Null Staff', 'staff', 96, 88000, { element: 'void', bonus: { int: 40, spr: 22, mp: 90 } }),
   W('bulwarkshield', 'Bulwark of Ages', 'shield', 0, 52000, { slot: 'offhand', def: 62, bonus: { vit: 14, spr: 12 } }),
+  // --- labyrinth-boss legendaries — a rare drop, not sold; each carries a
+  // real passive rather than just a bigger stat block. See battle.js's
+  // computeDamage/dealDamage/applyTo for where each of these is actually
+  // read (by item id, the same way voidring/phoenixdown/ipband already are).
+  W('cinderfang', 'Cinderfang', 'sword', 110, 46000,
+    { element: 'fire', bonus: { str: 10 }, critBurns: true }),
+  W('gravebinder', 'Gravebinder', 'mace', 116, 50000,
+    { element: 'dark', bonus: { str: 8, vit: 6 }, killHealsRow: 0.12 }),
+  W('sunderingfang', 'Sundering Fang', 'axe', 122, 54000,
+    { bonus: { str: 12, agi: -4 }, executeBonus: 1.5 }),
+  ACC('widowslattice', "Widow's Lattice", 48000, { bonus: { agi: 6, spr: 6 }, reflect: 0.22 }),
+  // --- the Shifting Depths' own capstone (floor 50) — its one guaranteed
+  // drop, a step above the labyrinth legendaries above it. --------------------
+  ACC('endlesscrown', 'The Endless Crown', 260000,
+    { bonus: { str: 10, vit: 10, int: 10, spr: 10, lck: 10 }, statusShield: true }),
   W('woodshield', 'Wooden Shield', 'shield', 0, 120, { slot: 'offhand', def: 6 }),
   W('ironshield', 'Iron Shield', 'shield', 0, 520, { slot: 'offhand', def: 14 }),
   W('aegisshield', 'Aegis', 'shield', 0, 3800, { slot: 'offhand', def: 30, bonus: { spr: 6, vit: 4 } }),
