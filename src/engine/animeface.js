@@ -9,6 +9,8 @@
 //  a bezier silhouette comes out just as clean as around a blocky one.
 // ============================================================================
 
+import { paintRaceStamp, paintArmorStamp, paintWeaponStamp } from './stamps.js';
+
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 function rgbToHex(r, g, b) {
@@ -35,49 +37,27 @@ function headPath(ctx, cx, cy, w, h) {
 }
 
 function drawEye(ctx, ex, ey, ew, eh, iris, flip) {
+  // Title-plate HD-2D eye: a small white oval, dark iris, one highlight.
+  // The old anime eye ate the face at 36px and fought the key art.
   const dir = flip ? -1 : 1;
   ctx.save();
+  ctx.fillStyle = '#f4efe4';
   ctx.beginPath();
-  ctx.moveTo(ex - dir * ew, ey);
-  ctx.quadraticCurveTo(ex - dir * ew * 0.4, ey - eh, ex, ey - eh * 0.92);
-  ctx.quadraticCurveTo(ex + dir * ew * 0.7, ey - eh * 0.85, ex + dir * ew, ey - eh * 0.05);
-  ctx.quadraticCurveTo(ex + dir * ew * 0.55, ey + eh * 0.62, ex, ey + eh * 0.66);
-  ctx.quadraticCurveTo(ex - dir * ew * 0.5, ey + eh * 0.55, ex - dir * ew, ey);
-  ctx.closePath();
-  ctx.fillStyle = '#fbf6ec';
+  ctx.ellipse(ex, ey, ew, eh, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.clip();
+  ctx.fillStyle = afShade(iris, -0.15);
   ctx.beginPath();
-  ctx.arc(ex + dir * ew * 0.12, ey + eh * 0.08, eh * 0.64, 0, Math.PI * 2);
-  const g = ctx.createLinearGradient(ex, ey - eh * 0.5, ex, ey + eh * 0.6);
-  g.addColorStop(0, afShade(iris, 0.35));
-  g.addColorStop(1, afShade(iris, -0.25));
-  ctx.fillStyle = g;
+  ctx.ellipse(ex + dir * ew * 0.08, ey + eh * 0.06, ew * 0.62, eh * 0.72, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = '#1a1214';
   ctx.beginPath();
-  ctx.arc(ex + dir * ew * 0.12, ey + eh * 0.08, eh * 0.32, 0, Math.PI * 2);
-  ctx.fillStyle = '#191113';
+  ctx.ellipse(ex + dir * ew * 0.1, ey + eh * 0.08, ew * 0.28, eh * 0.34, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.beginPath();
-  ctx.arc(ex - dir * ew * 0.18, ey - eh * 0.32, eh * 0.2, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.arc(ex - dir * ew * 0.28, ey - eh * 0.28, Math.max(0.45, eh * 0.22), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  ctx.beginPath();
-  ctx.moveTo(ex - dir * ew * 1.04, ey + eh * 0.08);
-  ctx.quadraticCurveTo(ex - dir * ew * 0.4, ey - eh * 1.18, ex, ey - eh * 1.06);
-  ctx.quadraticCurveTo(ex + dir * ew * 0.72, ey - eh * 1.08, ex + dir * ew * 1.04, ey - eh * 0.1);
-  ctx.lineWidth = eh * 0.26;
-  ctx.strokeStyle = '#211a17';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(ex - dir * ew * 0.7, ey - eh * 1.5);
-  ctx.quadraticCurveTo(ex, ey - eh * 1.9, ex + dir * ew * 0.8, ey - eh * 1.58);
-  ctx.lineWidth = eh * 0.18;
-  ctx.strokeStyle = '#211a17';
-  ctx.stroke();
 }
 
 // One robust ear-to-ear cap silhouette closed by a single curve across the
@@ -265,6 +245,66 @@ export function paintAnimeBust(ctx, cx, cy, hw, hh, o) {
   ctx.stroke();
 
   paintAnimeHead(ctx, cx, cy, hw, hh, o);
+  paintRaceStamp(ctx, cx, cy, hw, hh, o.raceId, o.skin, ink);
+  if (o.armor || o.kitRoot) drawClassMark(ctx, cx, cy, hw, hh, o.kitRoot, o.trim, ink, o.armor);
+}
+
+/** Small, bust-safe class marks. Kept off the body sprite on purpose —
+ *  a 36px figure cannot afford a hat that eats the head. */
+function drawClassMark(ctx, cx, cy, hw, hh, root, trim, ink, armor) {
+  const helm = armor?.helm ?? (
+    root === 'warrior' || root === 'guardian' ? 'open'
+    : root === 'mage' || root === 'summoner' || root === 'spiritist' ? 'point'
+    : root === 'cleric' ? 'circlet'
+    : root === 'thief' || root === 'archer' ? 'hood'
+    : 'none'
+  );
+  ctx.save();
+  ctx.lineJoin = 'round';
+  if (helm === 'open') {
+    ctx.fillStyle = trim;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(1, hh * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(cx - hw * 0.9, cy - hh * 0.55);
+    ctx.quadraticCurveTo(cx, cy - hh * 1.35, cx + hw * 0.9, cy - hh * 0.55);
+    ctx.lineTo(cx + hw * 0.8, cy - hh * 0.28);
+    ctx.quadraticCurveTo(cx, cy - hh * 0.42, cx - hw * 0.8, cy - hh * 0.28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (helm === 'point') {
+    ctx.fillStyle = trim;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(1, hh * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - hh * 1.85);
+    ctx.lineTo(cx + hw * 0.95, cy - hh * 0.15);
+    ctx.lineTo(cx - hw * 0.95, cy - hh * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (helm === 'circlet') {
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = Math.max(1.2, hh * 0.07);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - hh * 0.05, hw * 0.72, hh * 0.18, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (helm === 'hood') {
+    ctx.fillStyle = 'rgba(20,16,28,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - hh * 0.55, hw * 0.95, hh * 0.55, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+  } else if (root === 'dancer' || root === 'jester') {
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.moveTo(cx + hw * 0.15, cy - hh * 1.05);
+    ctx.quadraticCurveTo(cx + hw * 1.1, cy - hh * 1.6, cx + hw * 1.25, cy - hh * 0.4);
+    ctx.quadraticCurveTo(cx + hw * 0.7, cy - hh * 0.85, cx + hw * 0.2, cy - hh * 0.7);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /** Head only: hair, ears, horns, face, tusks, beard, goggles — everything
@@ -343,9 +383,9 @@ export function paintAnimeHead(ctx, cx, cy, hw, hh, o) {
   ctx.strokeStyle = ink;
   ctx.stroke();
 
-  const ew = hw * 0.34, eh = hh * 0.3;
-  drawEye(ctx, cx - hw * 0.42, cy + hh * 0.05, ew, eh, o.eye, true);
-  drawEye(ctx, cx + hw * 0.42, cy + hh * 0.05, ew, eh, o.eye, false);
+  const ew = hw * 0.18, eh = hh * 0.16;
+  drawEye(ctx, cx - hw * 0.36, cy + hh * 0.06, ew, eh, o.eye, true);
+  drawEye(ctx, cx + hw * 0.36, cy + hh * 0.06, ew, eh, o.eye, false);
 
   if (look.muzzle) {
     ctx.fillStyle = afShade(o.skin, -0.06);
@@ -519,139 +559,264 @@ function drawWeapon(ctx, handX, handY, angle, category, color, accent, reach) {
  * are the destination canvas size (AW/AH).
  */
 export function paintAnimeBody(ctx, o) {
-  const ink = o.ink ?? '#2a1c17';
-  const look = o.look;
+  if (!o._native) {
+    const S = (o.w || 36) / 36;
+    ctx.save();
+    ctx.scale(S, S);
+    paintAnimeBody(ctx, { ...o, w: 36, h: 48, _native: true });
+    ctx.restore();
+    return;
+  }
+  // Painted HD-2D field sprite — same costume language as the title plate:
+  // cape, metal, hat, boots, a held weapon. Curves and three-tone ramps,
+  // not stacked boxes, so the 36px figure still reads as the illustration.
+  const look = o.look ?? {};
   const build = look.build ?? 1;
   const frame = o.frame ?? 0;
+  const root = o.kitRoot ?? 'warrior';
   const ax = o.w / 2;
-  const bob = frame === 1 ? 1 : 0;
-  const lean = frame === 3 ? 2.4 : 0;
+  const bob = (frame === 1 || frame === 5) ? 1 : 0;
+  const face = o.face === 'up' || o.face === 'down' || o.face === 'left' ? o.face : 'right';
+  const lean = frame === 3 ? 2.2 : face === 'up' ? -1.2 : 0;
+  const stride = frame === 1 ? 2.4 : frame === 4 ? -2.4 : frame === 3 ? 1.6 : 0;
   const hurt = frame === 2;
+  const ground = o.h - 2.5 + bob;
+  const ink = o.ink ?? '#1a1418';
 
-  // Height is dampened (^0.4) so a small-build race reads as a bit shorter
-  // rather than a doll standing next to everyone else — the pixel sprite
-  // kept every race at nearly the same on-field stature and let build show
-  // up as girth instead, which is what widthFactor (a lighter sqrt taper)
-  // is for here.
-  const heightFactor = Math.pow(build, 0.4), widthFactor = Math.sqrt(build);
-  const ground = o.h - 3;
-  const legH = 11 * heightFactor, bodyH = 13 * heightFactor, headH = 6.6 * heightFactor;
-  const bodyW = 5.6 * widthFactor, headW = 6.6 * widthFactor;
-  const legY = ground - legH + bob;
-  const bodyTop = legY - bodyH;
-  const headCy = bodyTop - headH * 0.75;
+  const cloth = o.cloth;
+  const clothD = afShade(cloth, -0.28);
+  const clothL = afShade(cloth, 0.18);
+  const trim = o.trim;
+  const metal = afMix('#d4cfc4', trim, 0.22);
+  const metalL = afShade(metal, 0.28);
+  const metalD = afShade(metal, -0.32);
+  const boot = '#241610';
+  const armor = o.armor ?? { kind: 'plate', cape: null, helm: 'none', metal: false };
+  const isRobe = armor.kind === 'robe' || armor.kind === 'vestments' || armor.kind === 'silk';
+  const isArmor = !!armor.metal;
+  const capeCol = armor.cape;
 
-  const clothD = afShade(o.cloth, -0.35);
-  const skinD = afShade(o.skin, -0.25);
+  const widthF = Math.sqrt(build) * (o.raceScale ?? 1);
+  const bodyW = 7.0 * widthF;
+
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
 
   // contact shadow
-  ctx.fillStyle = 'rgba(10,8,15,0.25)';
+  ctx.fillStyle = 'rgba(8,6,14,0.4)';
   ctx.beginPath();
-  ctx.ellipse(ax, ground + 1, 7 * build, 1.6, 0, 0, Math.PI * 2);
+  ctx.ellipse(ax, ground + 1.2, 8.5 * widthF, 2.0, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // legs
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = clothD;
-  ctx.lineWidth = bodyW * 0.5;
-  const stride = frame === 1 ? 2.2 : frame === 3 ? 1.6 : 0;
-  ctx.beginPath();
-  ctx.moveTo(ax - bodyW * 0.4, bodyTop + bodyH * 0.85);
-  ctx.lineTo(ax - bodyW * 0.55 - stride * 0.3, ground - 1);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(ax + bodyW * 0.4, bodyTop + bodyH * 0.85);
-  ctx.lineTo(ax + bodyW * 0.55 + stride * 0.3, ground - 1);
-  ctx.stroke();
-  ctx.fillStyle = ink;
-  for (const dir of [-1, 1]) {
+  // cape — title-plate blue / robe drape, behind the figure
+  if (capeCol && face !== 'up') {
+    ctx.fillStyle = afShade(capeCol, -0.12);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(ax + dir * (bodyW * 0.55 + stride * 0.3), ground - 0.6, bodyW * 0.32, 1, 0, 0, Math.PI * 2);
+    ctx.moveTo(ax - 2 + lean, 16);
+    ctx.quadraticCurveTo(ax - 14 + lean, 22, ax - 11 + lean, 38);
+    ctx.quadraticCurveTo(ax - 6 + lean, 36, ax - 3 + lean, 24);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = afShade(capeCol, 0.16);
+    ctx.beginPath();
+    ctx.moveTo(ax - 3 + lean, 17);
+    ctx.quadraticCurveTo(ax - 8 + lean, 22, ax - 6 + lean, 30);
+    ctx.quadraticCurveTo(ax - 4 + lean, 24, ax - 3 + lean, 18);
     ctx.fill();
   }
 
-  // torso
-  ctx.fillStyle = o.cloth;
+  const strokeLimb = (x1, y1, x2, y2, w, fill) => {
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = w + 1.2;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.strokeStyle = fill;
+    ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  };
+
+  const hipY = 30 + bob;
+  const shoulderY = 17 + bob;
+  const bodyTop = 15 + bob;
+
+  // legs + boots
+  const lFootX = ax - 3.2 - stride, rFootX = ax + 3.2 + stride;
+  strokeLimb(ax - 2.2, hipY, lFootX, ground - 3, bodyW * 0.42, clothD);
+  strokeLimb(ax + 2.2, hipY, rFootX, ground - 3, bodyW * 0.42, clothD);
+  for (const fx of [lFootX, rFootX]) {
+    ctx.fillStyle = boot;
+    ctx.beginPath();
+    ctx.ellipse(fx, ground - 1.2, 3.1, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = afShade(boot, 0.28);
+    ctx.beginPath();
+    ctx.ellipse(fx - 0.4, ground - 1.6, 1.6, 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // hips / robe flare
+  ctx.fillStyle = isRobe ? cloth : clothD;
   ctx.strokeStyle = ink;
-  ctx.lineJoin = 'round';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(ax - bodyW * 0.5 + lean * 0.2, bodyTop);
-  ctx.quadraticCurveTo(ax - bodyW * 1.15 + lean * 0.2, bodyTop + bodyH * 0.4, ax - bodyW * 0.75 + lean * 0.3, bodyTop + bodyH);
-  ctx.lineTo(ax + bodyW * 0.75 + lean * 0.3, bodyTop + bodyH);
-  ctx.quadraticCurveTo(ax + bodyW * 1.15 + lean * 0.2, bodyTop + bodyH * 0.4, ax + bodyW * 0.5 + lean * 0.2, bodyTop);
+  if (isRobe) {
+    ctx.moveTo(ax - bodyW * 0.55 + lean, hipY - 2);
+    ctx.quadraticCurveTo(ax - bodyW * 1.35 + lean, hipY + 6, ax - bodyW * 1.05 + lean, ground - 6);
+    ctx.lineTo(ax + bodyW * 1.05 + lean, ground - 6);
+    ctx.quadraticCurveTo(ax + bodyW * 1.35 + lean, hipY + 6, ax + bodyW * 0.55 + lean, hipY - 2);
+  } else {
+    ctx.moveTo(ax - bodyW * 0.7 + lean, hipY - 3);
+    ctx.quadraticCurveTo(ax - bodyW * 0.9 + lean, hipY + 4, ax - bodyW * 0.55 + lean, hipY + 7);
+    ctx.lineTo(ax + bodyW * 0.55 + lean, hipY + 7);
+    ctx.quadraticCurveTo(ax + bodyW * 0.9 + lean, hipY + 4, ax + bodyW * 0.7 + lean, hipY - 3);
+  }
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = o.trim;
-  ctx.lineWidth = 1.3;
-  ctx.beginPath();
-  ctx.moveTo(ax - bodyW * 0.4, bodyTop + 0.5);
-  ctx.quadraticCurveTo(ax, bodyTop + 2, ax + bodyW * 0.4, bodyTop + 0.5);
-  ctx.stroke();
 
-  // arms (drawn after torso, before head so hands can hold a weapon at the head/torso boundary)
-  // Each is an ink-outlined capsule stroke: a wider dark pass first, then a
-  // thinner cloth-coloured one on top — without it, a sleeve the same colour
-  // as the torso it crosses in front of just vanishes into the silhouette.
-  const armColor = afShade(o.cloth, 0.08);
-  const armW = bodyW * 0.48;
-  const strokeArm = (x1, y1, x2, y2) => {
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = armW + 1.1;
+  // torso — metal breastplate or cloth, with a lit edge
+  ctx.fillStyle = isArmor ? metal : cloth;
+  ctx.beginPath();
+  ctx.moveTo(ax - bodyW * 0.55 + lean, bodyTop);
+  ctx.quadraticCurveTo(ax - bodyW * 1.15 + lean, bodyTop + 7, ax - bodyW * 0.7 + lean, hipY);
+  ctx.lineTo(ax + bodyW * 0.7 + lean, hipY);
+  ctx.quadraticCurveTo(ax + bodyW * 1.15 + lean, bodyTop + 7, ax + bodyW * 0.55 + lean, bodyTop);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = isArmor ? metalL : clothL;
+  ctx.beginPath();
+  ctx.moveTo(ax - bodyW * 0.35 + lean, bodyTop + 1);
+  ctx.quadraticCurveTo(ax - bodyW * 0.55 + lean, bodyTop + 7, ax - bodyW * 0.25 + lean, hipY - 2);
+  ctx.lineTo(ax - bodyW * 0.05 + lean, hipY - 2);
+  ctx.quadraticCurveTo(ax - bodyW * 0.2 + lean, bodyTop + 6, ax - bodyW * 0.15 + lean, bodyTop + 1);
+  ctx.fill();
+  ctx.strokeStyle = trim;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(ax - bodyW * 0.4 + lean, bodyTop + 0.6);
+  ctx.quadraticCurveTo(ax + lean, bodyTop + 2.4, ax + bodyW * 0.4 + lean, bodyTop + 0.6);
+  ctx.stroke();
+  if (isArmor) {
+    ctx.strokeStyle = metalD;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.moveTo(ax + lean, bodyTop + 3);
+    ctx.lineTo(ax + lean, hipY - 2);
     ctx.stroke();
-    ctx.strokeStyle = armColor;
-    ctx.lineWidth = armW;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  };
-  const shoulderY = bodyTop + bodyH * 0.18;
-  const { weaponType, weaponElement, hasShield } = o;
-  const category = WEAPON_CATEGORY[weaponType] ?? 'blade';
-  const reach = weaponType === 'bow' || weaponType === 'staff' ? 9 : weaponType === 'spear' || weaponType === 'whip' ? 3 : 2;
+  }
+  paintArmorStamp(ctx, ax, lean, bodyTop, hipY, bodyW, armor, cloth, trim, metal, metalL, metalD, ink);
+
   // off-hand
-  const offX = ax - bodyW * 0.95 - (frame === 3 ? 1 : 0), offY = shoulderY + bodyH * (frame === 3 ? 0.15 : 0.45);
-  strokeArm(ax - bodyW * 0.55, shoulderY, offX, offY);
-  if (hasShield) {
-    ctx.fillStyle = afShade(o.trim, -0.1);
+  const offX = ax - bodyW * 1.05 + lean, offY = shoulderY + (frame === 3 ? 3 : 8);
+  strokeLimb(ax - bodyW * 0.55 + lean, shoulderY, offX, offY, bodyW * 0.38, isArmor ? metal : cloth);
+  if (o.hasShield) {
+    ctx.fillStyle = metal;
     ctx.strokeStyle = ink;
-    ctx.lineWidth = 0.8;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(offX - 1.5, offY, 2.6, 3.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(offX - 1.4, offY, 3.2, 4.2, -0.2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = trim;
+    ctx.beginPath();
+    ctx.ellipse(offX - 1.4, offY, 1.4, 2.0, -0.2, 0, Math.PI * 2);
     ctx.stroke();
   } else {
     ctx.fillStyle = o.skin;
     ctx.strokeStyle = ink;
-    ctx.lineWidth = 0.6;
+    ctx.lineWidth = 0.7;
     ctx.beginPath();
-    ctx.arc(offX, offY, bodyW * 0.26, 0, Math.PI * 2);
+    ctx.arc(offX, offY, 2.0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
-  // action hand
-  const swingAngle = frame === 3 ? -0.65 : frame === 1 ? -0.15 : 0.08;
-  const handX = ax + bodyW * 0.95 + lean * 0.6, handY = shoulderY + bodyH * (0.55 + swingAngle * 0.3);
-  strokeArm(ax + bodyW * 0.55 + lean * 0.3, shoulderY, handX, handY);
+
+  // action hand + weapon
+  const atk = frame === 3;
+  const handX = ax + bodyW * 1.05 + lean + (atk ? 2 : 0);
+  const handY = shoulderY + (atk ? 3 : 9);
+  strokeLimb(ax + bodyW * 0.55 + lean, shoulderY, handX, handY, bodyW * 0.38, isArmor ? metal : cloth);
   ctx.fillStyle = o.skin;
   ctx.strokeStyle = ink;
-  ctx.lineWidth = 0.6;
+  ctx.lineWidth = 0.7;
   ctx.beginPath();
-  ctx.arc(handX, handY, bodyW * 0.26, 0, Math.PI * 2);
+  ctx.arc(handX, handY, 2.0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  if (frame === 3) {
-    const angle = -1.1 + swingAngle;
-    drawWeapon(ctx, handX, handY, angle, category, '#e8ecf4', weaponElement ? afShade(o.trim, 0.25) : afShade(o.trim, 0.15), reach);
+
+  const { weaponType, weaponElement } = o;
+  const category = WEAPON_CATEGORY[weaponType] ?? 'blade';
+  const reach = weaponType === 'bow' || weaponType === 'staff' ? 9
+    : weaponType === 'spear' || weaponType === 'whip' ? 3 : 2;
+  if (weaponType && weaponType !== 'fist') {
+    const angle = atk ? -1.15 : (frame === 1 || frame === 4) ? -0.35 : -0.12;
+    drawWeapon(ctx, handX, handY, angle, category, '#eef2f8',
+      weaponElement ? afShade(trim, 0.3) : afShade(trim, 0.12), reach);
+    paintWeaponStamp(ctx, handX, handY, angle, category,
+      weaponElement ? afShade(trim, 0.3) : afShade(trim, 0.12));
   }
 
-  paintAnimeHead(ctx, ax + lean * 0.5, headCy, headW, headH, { ...o, ink });
+  // head — title-plate proportion: big enough for the face, small enough
+  // that a cape and a sword still have room
+  const hx = ax + lean * 0.45;
+  const hy = 12.4 + bob;
+  const hw = 4.35 * widthF;
+  const hh = 4.55 * widthF;
+  paintAnimeHead(ctx, hx, hy, hw, hh, { ...o, ink, kitRoot: root });
+  paintRaceStamp(ctx, hx, hy, hw, hh, o.raceId, o.skin, ink);
+
+  // hats / open helms sit on the hair, never over the eyes
+  ctx.save();
+  ctx.lineJoin = 'round';
+  if (armor.helm === 'point') {
+    ctx.fillStyle = cloth;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy - hh * 1.85);
+    ctx.lineTo(hx + hw * 1.05, hy - hh * 0.15);
+    ctx.lineTo(hx - hw * 1.05, hy - hh * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.arc(hx, hy - hh * 1.85, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (armor.helm === 'open') {
+    ctx.fillStyle = metal;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx - hw * 0.95, hy - hh * 0.35);
+    ctx.quadraticCurveTo(hx, hy - hh * 1.35, hx + hw * 0.95, hy - hh * 0.35);
+    ctx.lineTo(hx + hw * 0.85, hy - hh * 0.05);
+    ctx.quadraticCurveTo(hx, hy - hh * 0.2, hx - hw * 0.85, hy - hh * 0.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = metalL;
+    ctx.fillRect(hx - 0.7, hy - hh * 1.15, 1.4, hh * 0.7);
+  } else if (armor.helm === 'circlet') {
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy - hh * 0.08, hw * 0.78, hh * 0.16, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (armor.helm === 'hood') {
+    ctx.fillStyle = clothD;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy - hh * 0.55, hw * 1.05, hh * 0.5, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx - hw * 1.05, hy - hh * 0.15);
+    ctx.quadraticCurveTo(hx - hw * 1.3, hy + hh * 0.35, hx - hw * 0.7, hy + hh * 0.15);
+    ctx.fill();
+  }
+  ctx.restore();
 
   if (hurt) {
     ctx.save();

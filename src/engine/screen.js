@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { drawText, measure, wrap, GLYPH_H } from './font.js';
+import { applyHd2d } from './hd2d.js';
 
 export const W = 480;
 export const H = 270;
@@ -203,6 +204,11 @@ export class Screen {
 
   applyPost() {
     const c = this.ctx;
+
+    // HD-2D: snap the whole frame (world + UI) onto a coarse ramp with
+    // Bayer dither. Runs on every scene so title, creation, menus, shops
+    // and game-over share the same pixel language as field and battle.
+    applyHd2d(c, W, H);
 
     // BLOOM: threshold the frame, blur it by bouncing through two smaller
     // buffers, then add it back. Cheap, and it is what makes lit pixels read

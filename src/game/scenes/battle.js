@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { PAL, W, H, drawFit } from '../../engine/screen.js';
+import { plateImage } from '../../engine/plates.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, monsterSprite } from '../../engine/sprites.js';
 import { actorPortraitSprite } from '../../engine/actor.js';
@@ -24,6 +25,8 @@ import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
 import { mix, shade } from '../../engine/pixel.js';
 import * as THREE from '../../vendor/three.module.js';
+import { makeDoll, lookFromActor } from '../../engine/doll.js';
+// HD-2D finish lives in Screen.applyPost (every scene).
 
 // The arena, in world units (roughly metres) rather than pixels: lanes run
 // along X, rank depth runs along Z, enemies sit at negative Z and the party
@@ -299,12 +302,28 @@ export class BattleScene {
     this.billboardYaw = Math.atan2(CAM_POS.x - CAM_LOOK.x, CAM_POS.z - CAM_LOOK.z);
 
     const T = this.regionPalette();
-    scene.background = this.skyTexture(T);
+    const region = this.battle.formation.region;
+    const plateKey = region === 'caverns' || region === 'abyss' ? 'dungeon'
+      : region === 'greenfield' ? 'overworld'
+        : region === 'ruins' ? 'battle'
+          : 'battle';
+    const plate = plateImage(plateKey);
+    if (plate && plate.complete && plate.naturalWidth) {
+      const tex = new THREE.Texture(plate);
+      tex.needsUpdate = true;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      scene.background = tex;
+    } else {
+      scene.background = this.skyTexture(T);
+    }
     scene.fog = new THREE.Fog(T.far, 6, 15);
 
     const sun = new THREE.DirectionalLight(0xfff2df, 1.9);
     sun.position.set(-3, 6, 4);
     scene.add(sun);
+    const rim = new THREE.DirectionalLight(0x88a8ff, 0.75);
+    rim.position.set(4, 2.4, -3);
+    scene.add(rim);
     scene.add(new THREE.AmbientLight(T.grade, 0.6));
     scene.add(new THREE.HemisphereLight(T.sky1, T.gdark, 0.5));
 
@@ -381,6 +400,7 @@ export class BattleScene {
     scene.add(far);
 
     this.billboards = new Map();
+    this.dolls = new Map();
   }
 
   /** Releases the offscreen WebGL context and every GPU resource this scene
@@ -648,7 +668,7 @@ export class BattleScene {
       return actorSprite({
         classId: ch.classId, raceId: ch.raceId, elementId: ch.elementId,
         skin: ch.skin, hair: ch.hair, equip: ch.equip,
-        frame: isActor ? 3 : (hurtFrame || (breathe ? 1 : 0)),
+        frame: isActor ? 3 : (hurtFrame || (breathe ? 5 : 0)),
       });
     }
     return monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
@@ -663,6 +683,21 @@ export class BattleScene {
     for (const u of this.battle.units()) {
       const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'character'].includes(this.state))
         || this.attackAnim?.uid === u.uid;
+      if (u.isPC) {
+        const look = lookFromActor(u.ref);
+        let d = this.dolls.get(u.uid);
+        if (!d) {
+          d = makeDoll(THREE, look);
+          this.scene3D.add(d.root);
+          this.dolls.set(u.uid, d);
+        }
+        const frame = this.attackAnim?.uid === u.uid ? 3 : (u.alive ? 0 : 2);
+        d.pose(frame);
+        const pos = this.unit3DPos(u);
+        d.place(pos.x, pos.y, pos.z, this.billboardYaw + (u.side === 'party' ? -0.2 : 0.2));
+        d.root.visible = true;
+        continue;
+      }
       const cv = this.spriteFor(u, isActor);
       let b = this.billboards.get(u.uid);
       if (!b) {
@@ -1220,7 +1255,11 @@ export class BattleScene {
    *  which isn't secretly hiding an element that needs its own look. */
   impactBurst(cx, cy, element, color, count, speed) {
     const fx = element ? ELEMENT_FX[element] : null;
-    if (!fx) { this.fxp.burst(cx, cy, color, count, speed); return; }
+    if (!fx) {
+      this.fxp.burst(cx, cy, color, count, speed);
+      this.fxp.ring(cx, cy, color, 14, 0.22);
+      return;
+    }
     const solid = fx.shape === 'chunk' || fx.shape === 'drop';
     const el = ELEMENT_BY_ID[element];
     const n = Math.round(count * (fx.shape === 'zigzag' ? 1.4 : solid ? 0.7 : 1));
@@ -1234,6 +1273,7 @@ export class BattleScene {
         size: Math.random() < 0.25 ? 2 : 1, glow: !solid, drag: fx.drag,
       });
     }
+    this.fxp.ring(cx, cy, el?.color2 ?? color, fx.shape === 'zigzag' ? 22 : 16, 0.26);
   }
 
   // --- resolution ----------------------------------------------------------
@@ -1638,9 +1678,16 @@ export class BattleScene {
       scr.rect(rx - 2, ry - 2, 4, 4, pr.color2);
       scr.ctx.restore();
       scr.rect(rx - 1, ry - 1, 2, 2, pr.color);
+      scr.light(x, y, 16, pr.color, 0.35);
+    } else if (shape === 'ray') {
+      scr.rect(rx - 3, ry, 7, 1, pr.color2);
+      scr.rect(rx, ry - 3, 1, 7, pr.color2);
+      scr.rect(rx - 1, ry - 1, 3, 3, '#ffffff');
     } else {
-      // 'dot' / 'orb' default
+      // 'dot' / 'orb' default — a hotter core so fire/light reads as emitting
+      scr.rect(rx - 2, ry - 2, 4, 4, pr.color);
       scr.rect(rx - 1, ry - 1, 2, 2, pr.color2);
+      scr.px(rx, ry, '#ffffff');
     }
   }
 

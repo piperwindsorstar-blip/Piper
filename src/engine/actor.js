@@ -2,7 +2,7 @@
 //  ACTOR SPRITES — party members, generated from class kit x race anatomy x
 //  element tint.
 //
-//  actorSprite (36x48, 4 frames) and actorPortraitSprite (56x64, a bust) are
+//  actorSprite (36x48, 6 frames) and actorPortraitSprite (56x64, a bust) are
 //  both painted by engine/animeface.js's bezier-and-arc anime style rather
 //  than pixel.js's blocky painter — see that file's own header for why.
 //  Townsfolk (npcSprite/npcPortraitSprite below) use the same painters, just
@@ -16,9 +16,11 @@ import { getClass } from '../data/classes.js';
 import { getRace } from '../data/races.js';
 import { getItem } from '../data/items.js';
 import { paintAnimeBust, paintAnimeBody, pickHairstyle } from './animeface.js';
+import { FILTER_VER, applyRaceFilter, getArmorFilter, getWeaponFilter, getRaceFilter } from './filters.js';
 
-export const AW = 36, AH = 48;      // actor canvas
-export const PW = 56, PH = 64;      // portrait bust canvas
+export const AW = 72, AH = 96;      // actor canvas (2× the 36×48 design grid)
+export const PW = 112, PH = 128;    // portrait bust canvas
+export const SPRITE_WORLD_W = 36, SPRITE_WORLD_H = 48; // field billboard footprint
 
 /** Cheap, stable per-string number — picks a hair style deterministically
  *  from race + hair-index without adding a new data field. */
@@ -65,8 +67,9 @@ const KITS = {
 };
 
 /**
- * @param {object} o {classId, raceId, elementId, skin, hair, frame, equip}
- *   frame 0 idle · 1 step · 2 hurt · 3 attack
+ * @param {object} o {classId, raceId, elementId, skin, hair, frame, equip, face}
+ *   frame 0 idle · 1 step-A · 2 hurt · 3 attack · 4 step-B · 5 idle-breathe
+ *   face  'left' | 'right' (optional) — flips the baked sprite
  *   equip {weapon, offhand, body, head, accessory} — item ids, all optional;
  *   when given, the actual carried weapon and off-hand shield are drawn
  *   instead of the class's stock loadout.
@@ -79,12 +82,21 @@ export function actorSprite(o) {
   const L = race.look;
   const frame = o.frame ?? 0;
   const tier = cls.tier;
-  const { weaponType, weaponElement, hasShield } = equipLook(o, kit);
+  const stock = getWeaponFilter(cls.root);
+  const { weaponType, weaponElement, hasShield } = (() => {
+    const look = equipLook(o, kit);
+    return {
+      weaponType: look.weaponType ?? stock.type,
+      weaponElement: look.weaponElement,
+      hasShield: look.hasShield || stock.type === 'shield',
+    };
+  })();
 
   const skin = L.skins[(o.skin ?? 0) % L.skins.length];
   const hair = L.hairs[(o.hair ?? 0) % L.hairs.length];
-  const key = `act|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}|${frame}` +
-    `|${weaponType}|${weaponElement ?? ''}|${hasShield ? 1 : 0}`;
+  const face = ['left', 'right', 'up', 'down'].includes(o.face) ? o.face : 'right';
+  const key = `act|${FILTER_VER}|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}|${frame}` +
+    `|${weaponType}|${weaponElement ?? ''}|${hasShield ? 1 : 0}|${face}`;
 
   return make(key, AW, AH, (P) => {
     const cloth = tier >= 3 ? shade(kit.cloth, 0.14) : kit.cloth;
@@ -93,10 +105,17 @@ export function actorSprite(o) {
     const seed = hashStr(`${race.id}|${o.hair ?? 0}|${o.skin ?? 0}`);
     const hairStyle = pickHairstyle(cls.root, seed);
 
+    P.ctx.save();
+    if (face === 'left') { P.ctx.translate(AW, 0); P.ctx.scale(-1, 1); }
     paintAnimeBody(P.ctx, {
-      w: AW, h: AH, frame, skin, hair, eye, cloth, trim, look: L, hairStyle, seed,
-      weaponType, weaponElement, hasShield,
+      w: AW, h: AH, frame, face, skin, hair, eye, cloth, trim, look: L, hairStyle, seed,
+      weaponType, weaponElement, hasShield, kitRoot: cls.root,
+      armor: getArmorFilter(cls.root),
+      raceScale: getRaceFilter(race.id).scale,
+      raceId: race.id,
     });
+    P.ctx.restore();
+    applyRaceFilter(P.ctx, AW, AH, race.id);
 
     if (tier >= 5) {
       P.ctx.save();
@@ -109,7 +128,7 @@ export function actorSprite(o) {
       P.ctx.fillRect(0, 0, AW, AH);
       P.ctx.restore();
     }
-  });
+  }, { outline: '#1a1418', ao: 0.22, rim: '#fff1c8', rimAlpha: 0.32 });
 }
 
 /**
@@ -134,7 +153,7 @@ export function actorPortraitSprite(o) {
 
   const skin = L.skins[(o.skin ?? 0) % L.skins.length];
   const hair = L.hairs[(o.hair ?? 0) % L.hairs.length];
-  const key = `bust|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}`;
+  const key = `bust|${FILTER_VER}|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}`;
 
   return make(key, PW, PH, (P) => {
     const build = L.build ?? 1;
@@ -144,9 +163,15 @@ export function actorPortraitSprite(o) {
     const seed = hashStr(`${race.id}|${o.hair ?? 0}|${o.skin ?? 0}`);
     const hairStyle = pickHairstyle(cls.root, seed);
 
+    const S = PW / 56;
     const cx = PW / 2, cy = PH * 0.467;
-    const hw = 12.5 * Math.sqrt(build), hh = 13.6 * Math.sqrt(build);
-    paintAnimeBust(P.ctx, cx, cy, hw, hh, { skin, hair, eye, cloth, trim, look: L, hairStyle, seed });
+    const hw = 12.5 * Math.sqrt(build) * S, hh = 13.6 * Math.sqrt(build) * S;
+    paintAnimeBust(P.ctx, cx, cy, hw, hh, {
+      skin, hair, eye, cloth, trim, look: L, hairStyle, seed, kitRoot: cls.root,
+      armor: getArmorFilter(cls.root),
+      raceId: race.id,
+    });
+    applyRaceFilter(P.ctx, PW, PH, race.id);
 
     // --- promotion wash, tier 5+ — the same treatment the body sprite gets
     if (tier >= 5) {
@@ -160,7 +185,7 @@ export function actorPortraitSprite(o) {
       P.ctx.fillRect(0, 0, PW, PH);
       P.ctx.restore();
     }
-  });
+  }, { outline: '#1a1418', ao: 0.18, rim: '#fff1c8', rimAlpha: 0.28 });
 }
 
 // ---------------------------------------------------------------------------

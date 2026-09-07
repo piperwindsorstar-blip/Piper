@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { PAL, W, H } from '../../engine/screen.js';
+import { plateImage, plateKeyForMap } from '../../engine/plates.js';
 import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
 import { tileSprite, actorSprite, npcSprite, TS } from '../../engine/sprites.js';
 import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terrain.js';
@@ -27,6 +28,8 @@ import { sfx, playMusic } from '../../engine/audio.js';
 import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 import { QUESTS, questState, questReady, questAvailable, startQuest, completeQuest } from '../../data/quests.js';
 import * as THREE from '../../vendor/three.module.js';
+import { makeDoll, lookFromActor } from '../../engine/doll.js';
+// HD-2D finish lives in Screen.applyPost (every scene).
 
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -155,10 +158,13 @@ export class FieldScene {
     // warped-sprite bug this fixes for anyone off-centre and deep in Z.
     this.billboardYaw = Math.atan2(FIELD_CAM_POS.x - FIELD_CAM_LOOK.x, FIELD_CAM_POS.z - FIELD_CAM_LOOK.z);
 
-    this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
+    this.sun = new THREE.DirectionalLight(0xffe2b8, 1.55);
     this.sun.position.set(-3, 6, 4);
     this.scene3D.add(this.sun);
-    this.ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    this.rim = new THREE.DirectionalLight(0x88a8ff, 0.7);
+    this.rim.position.set(4, 2.2, -3);
+    this.scene3D.add(this.rim);
+    this.ambient = new THREE.AmbientLight(0xc8d4f0, 0.55);
     this.scene3D.add(this.ambient);
 
     if (!this.worldCanvas) this.worldCanvas = document.createElement('canvas');
@@ -187,6 +193,7 @@ export class FieldScene {
     this.scene3D.add(this.groundMesh);
 
     this.fieldBillboards = new Map();
+    this.fieldDolls = new Map();
   }
 
   /** Releases the offscreen WebGL context and every GPU resource this scene
@@ -324,7 +331,9 @@ export class FieldScene {
   billboardFor(cv, pixelX, pixelY) {
     const cam = this.camera();
     const world = this.worldFromScreenPx(pixelX - cam.x, pixelY - cam.y);
-    return { world, w: cv.width / TS, h: cv.height / TS };
+    // Sprites paint at 2× pixels now; world size stays the original 36×48
+    // footprint so the party does not become giants on the tile grid.
+    return { world, w: 36 / TS, h: 48 / TS };
   }
 
   /** Creates/updates one camera-facing billboard per NPC plus the player,
@@ -372,13 +381,27 @@ export class FieldScene {
       sync(`npc:${n.x},${n.y}`, cv, n.x * TS, n.y * TS + TS);
     }
     const leader = this.g.leader;
-    const pcv = actorSprite({
-      classId: leader.classId, raceId: leader.raceId, elementId: leader.elementId,
-      skin: leader.skin, hair: leader.hair, equip: leader.equip,
-      frame: this.moving ? (Math.floor(this.animT * 8) % 2) : 0,
-    });
+    const frame = this.moving
+      ? (Math.floor(this.animT * 8) % 2 === 0 ? 1 : 4)
+      : (Math.floor(this.animT * 1.35) % 2 === 0 ? 0 : 5);
     const pp = this.playerPixel();
-    sync('player', pcv, pp.x, pp.y + TS);
+    const { world } = this.billboardFor(null, pp.x, pp.y + TS);
+    const look = lookFromActor(leader);
+    const dollKey = `${look.raceId}|${look.classId}|${look.skin}|${look.hair}`;
+    let doll = this.fieldDolls.get('player');
+    if (!doll || doll.lookKey !== dollKey) {
+      if (doll) { this.scene3D.remove(doll.root); doll.dispose(); }
+      doll = makeDoll(THREE, look);
+      doll.lookKey = dollKey;
+      this.scene3D.add(doll.root);
+      this.fieldDolls.set('player', doll);
+    }
+    doll.pose(frame, this.g.facing);
+    // Face the camera like Octopath, with a little yaw from walking direction
+    // so the 3D volume reads. Pixel overlay is the 480×270 nearest blit.
+    const side = this.g.facing === 'left' ? 0.35 : this.g.facing === 'right' ? -0.35 : 0;
+    doll.place(world.x, 0, world.z, this.billboardYaw + side);
+    seen.add('player');
 
     for (const [key, b] of this.fieldBillboards) {
       if (!seen.has(key)) { this.scene3D.remove(b.mesh); this.fieldBillboards.delete(key); }
@@ -399,9 +422,22 @@ export class FieldScene {
     // fills anywhere past the (deliberately oversized) ground plane's edge —
     // matches the map's own background colour instead of showing through
     // as flat black
-    if (!this.scene3DBg) this.scene3DBg = new THREE.Color();
-    this.scene3DBg.set(this.map.bg ?? '#0b0e18');
-    this.scene3D.background = this.scene3DBg;
+    const plateKey = plateKeyForMap(this.map);
+    const plate = plateImage(plateKey);
+    if (plate && plate.complete && plate.naturalWidth) {
+      if (this._plateKey !== plateKey) {
+        this._plateTex?.dispose?.();
+        this._plateTex = new THREE.Texture(plate);
+        this._plateTex.needsUpdate = true;
+        this._plateTex.colorSpace = THREE.SRGBColorSpace;
+        this._plateKey = plateKey;
+      }
+      this.scene3D.background = this._plateTex;
+    } else {
+      if (!this.scene3DBg) this.scene3DBg = new THREE.Color();
+      this.scene3DBg.set(this.map.bg ?? '#0b0e18');
+      this.scene3D.background = this.scene3DBg;
+    }
     this.renderer3D.render(this.scene3D, this.camera3D);
   }
 
@@ -557,7 +593,7 @@ export class FieldScene {
       if (this.stepT >= STEP_TIME) {
         const cam = this.camera();
         this.fxp.dust(this.g.x * TS + TS / 2 - cam.x, this.g.y * TS + TS - 2 - cam.y,
-          this.map.outdoor ? '#6a8a58' : '#7a7284', 3);
+          this.map.outdoor ? '#6a8a58' : '#7a7284', 6);
         this.g.x = this.moving.tx;
         this.g.y = this.moving.ty;
         this.moving = null;
@@ -1107,7 +1143,7 @@ export class FieldScene {
     const look = this.look;
     scr.setGrade(look.grade, look.amount);
     scr.vignette = look.vignette;
-    scr.bloom = look.dark ? 0.62 : 0.22;
+    scr.bloom = look.dark ? 0.78 : 0.42;
 
     // the 3D arena (ground, buildings, mass, closed chests, the player and
     // every NPC as camera-facing billboards) renders to its own offscreen
@@ -1121,6 +1157,16 @@ export class FieldScene {
     // than battle's — chests, signs and NPCs the player hasn't reached yet
     // still need to read clearly near the edges of the visible window.
     scr.tiltShift(this.canvas3D, 70, 200, 2);
+
+    // dusk / dawn wash over the outdoor sky so night is not a binary flip
+    if (m.outdoor || m.town) {
+      const night = this.nightAmount();
+      if (night > 0.1 && night < 0.78) {
+        const peak = night < 0.4 ? night / 0.4 : (0.78 - night) / 0.38;
+        const a = Math.max(0, Math.min(0.24, peak * 0.24));
+        scr.vgrad(0, 0, W, 86, `rgba(255,150,70,${a.toFixed(3)})`, 'rgba(255,150,70,0)');
+      }
+    }
 
     // dungeon exits — a warm daylight glow and label on the one tile that
     // leads back out, so it doesn't blend into a floor tile identical to
@@ -1213,7 +1259,27 @@ export class FieldScene {
       drawNpcGlyph(scr, p.x, p.y, n, this.animT, this.g);
     }
 
-    // lighting: a warm pool on the player, torches in the dark, ambient motes
+    // lighting: lamps and candles in the visible window, then a warm pool
+    // on the player, torches in the dark, ambient motes
+    {
+      const { w: mw, h: mh } = mapSize(m);
+      const cam = this.camera();
+      const x0 = Math.max(0, Math.floor(cam.x / TS) - 1);
+      const y0 = Math.max(0, Math.floor(cam.y / TS) - 1);
+      const x1 = Math.min(mw - 1, Math.ceil((cam.x + W) / TS) + 1);
+      const y1 = Math.min(mh - 1, Math.ceil((cam.y + H) / TS) + 1);
+      for (let ty = y0; ty <= y1; ty++) {
+        for (let tx = x0; tx <= x1; tx++) {
+          const name = tileAt(m, tx, ty)?.tile;
+          if (name !== 'lamp' && name !== 'candle') continue;
+          const p = this.tileScreenPos(tx, ty);
+          const flick = 0.38 + Math.sin(this.animT * 7 + tx * 1.7 + ty) * 0.08
+            + Math.sin(this.animT * 19 + ty) * 0.04;
+          const warm = name === 'candle' ? 'rgba(255,186,110,0.70)' : 'rgba(255,210,140,0.62)';
+          scr.light(p.x, p.y - 6, name === 'candle' ? 22 : 36, warm, flick);
+        }
+      }
+    }
     const pp = this.playerPixel();
     const lp = this.pixelScreenPos(pp.x + TS / 2, pp.y + TS / 2);
     const lx = Math.round(lp.x), ly = Math.round(lp.y);
