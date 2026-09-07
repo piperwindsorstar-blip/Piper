@@ -10,6 +10,7 @@ import { buildingSprite, hasStructure, isStructure } from '../../engine/building
 import { citySprite, pitstopSprite, CITY_W, CITY_H, PITSTOP_W, PITSTOP_H } from '../../engine/townmarker.js';
 import { towerSprite, TOWER_W, TOWER_H } from '../../engine/labyrinthmarker.js';
 import { caveSprite, CAVE_W, CAVE_H } from '../../engine/cavemarker.js';
+import { minimapSprite, MM_W, MM_H } from '../../engine/minimap.js';
 import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
@@ -1129,6 +1130,7 @@ export class FieldScene {
     if (this.thunderFlash > 0) scr.fade(this.thunderFlash * 2.5, '#dfe8ff');
 
     this.drawHud(scr);
+    if (m.id === 'world') this.drawMinimap(scr);
     if (this.banner > 0) this.drawBanner(scr);
     if (this.choice) this.drawChoice(scr);
     else this.dlg.draw(scr);
@@ -1153,6 +1155,25 @@ export class FieldScene {
     scr.text('G', 18, H - 23, PAL.accentDim);
     scr.text(`${g.gold}`, 28, H - 23, PAL.accent);
     scr.textRight(`Lv ${g.leader.level}`, 118, H - 23, PAL.text);
+  }
+
+  /** A small always-on overview of the overworld in the top-left corner —
+   *  the party HUD already owns the top-right. The terrain and every town/
+   *  dungeon dot come from a cached bake (see minimap.js); only the
+   *  player's own blip is redrawn each frame. */
+  drawMinimap(scr) {
+    const { w, h } = mapSize(this.map);
+    const x = 8, y = 8;
+    scr.panel(x - 3, y - 3, MM_W + 6, MM_H + 6, { alpha: 0.9 });
+    scr.ctx.drawImage(minimapSprite(this.map), x, y);
+    scr.outline(x, y, MM_W, MM_H, 'rgba(0,0,0,0.45)');
+    const px = x + Math.round(this.g.x / w * MM_W);
+    const py = y + Math.round(this.g.y / h * MM_H);
+    const pulse = 0.55 + 0.45 * Math.sin(this.animT * 6);
+    scr.ctx.save();
+    scr.ctx.fillStyle = `rgba(255,255,255,${pulse})`;
+    scr.ctx.fillRect(px - 1, py - 1, 3, 3);
+    scr.ctx.restore();
   }
 
   drawBanner(scr) {
