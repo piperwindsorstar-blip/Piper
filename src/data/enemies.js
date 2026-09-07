@@ -459,3 +459,12 @@ export const FORMATION_BY_ID = Object.fromEntries(FORMATIONS.map((x) => [x.id, x
 export function formationsForRegion(region) {
   return FORMATIONS.filter((x) => x.region === region && !x.boss && !x.rare);
 }
+
+/** [lowest, highest] enemy level a region's normal encounters can throw at
+ *  you — for labelling a dungeon's world-map entrance with what to expect
+ *  inside, without spoiling which enemies. Null for a region with no
+ *  normal (non-boss, non-rare) formations of its own. */
+export function regionLevelSpan(region) {
+  const levels = formationsForRegion(region).flatMap((f) => f.cells.map((c) => getEnemy(c.id).lv));
+  return levels.length ? [Math.min(...levels), Math.max(...levels)] : null;
+}

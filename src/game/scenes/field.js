@@ -13,7 +13,7 @@ import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
   resetDungeonFloors,
 } from '../../data/maps.js';
-import { formationsForRegion } from '../../data/enemies.js';
+import { formationsForRegion, regionLevelSpan } from '../../data/enemies.js';
 import { getItem } from '../../data/items.js';
 import { ARENA_TIERS } from '../../data/arena.js';
 import { stats, canPromote } from '../character.js';
@@ -1009,6 +1009,19 @@ export class FieldScene {
     // still need to read clearly near the edges of the visible window.
     scr.tiltShift(this.canvas3D, 70, 200, 2);
 
+    // dungeon exits — a warm daylight glow and label on the one tile that
+    // leads back out, so it doesn't blend into a floor tile identical to
+    // every other one in the room. Every warp flagged `exit` is the way
+    // out of the current area (back to the world, or back a segment for
+    // a multi-part dungeon), never a way deeper in.
+    for (const wp of m.warps ?? []) {
+      if (!wp.exit) continue;
+      const p = this.tileScreenPos(wp.x, wp.y);
+      const pulse = 0.5 + 0.5 * Math.sin(this.animT * 2);
+      scr.light(p.x, p.y, 16 + pulse * 4, 'rgba(255,214,150,0.55)', 0.3 + pulse * 0.15);
+      scr.textCenter('Exit', p.x, p.y - 15, PAL.gold);
+    }
+
     // boss markers — 2D glow/outline overlays, positioned by projecting
     // their tile through the same camera the arena itself rendered with
     for (const key of BOSS_SLOTS) {
@@ -1034,6 +1047,22 @@ export class FieldScene {
       const baseY = p.y + 10;
       scr.ctx.drawImage(sprite, Math.round(p.x - w / 2), Math.round(baseY - h), w, h);
       scr.textCenter(dest.name, p.x, baseY - h - 10, isCity ? PAL.gold : PAL.text);
+    }
+
+    // cave/dungeon entrances on the overworld — labelled with the region's
+    // normal-encounter level span, so a dungeon reads as a threat estimate
+    // before stepping in without spoiling which enemies actually wait
+    // inside. Scoped to the world map itself: a dungeon's own warps back
+    // out (or on to a linked segment) aren't "entrances" to label.
+    if (m.id === 'world') {
+      for (const wp of m.warps ?? []) {
+        const dest = getMap(wp.to);
+        if (!dest || dest.town || !dest.encounter) continue;
+        const span = regionLevelSpan(dest.encounter);
+        if (!span) continue;
+        const p = this.tileScreenPos(wp.x, wp.y);
+        scr.textCenter(`Lv ${span[0]}-${span[1]}`, p.x, p.y - 17, PAL.red);
+      }
     }
 
     // NPC glyphs (recruit "*", service marks) — same projection, drawn over
