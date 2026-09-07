@@ -1152,7 +1152,11 @@ export class FieldScene {
     const look = this.look;
     scr.setGrade(look.grade, look.amount);
     scr.vignette = look.vignette;
-    scr.bloom = look.dark ? 0.78 : 0.42;
+    // The HD-2D pass nearly doubled this (0.22/0.62 before it), enough
+    // haze bleeding off every edge to read as the game gone soft-focus
+    // rather than lit — pixel art needs its edges back more than it needs
+    // extra glow. Back to what this scene was tuned at.
+    scr.bloom = look.dark ? 0.62 : 0.22;
 
     // the 3D arena (ground, buildings, mass, closed chests, the player and
     // every NPC as camera-facing billboards) renders to its own offscreen
