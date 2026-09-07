@@ -8,6 +8,7 @@ import { tileSprite, actorSprite, npcSprite, TS } from '../../engine/sprites.js'
 import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terrain.js';
 import { buildingSprite, hasStructure, isStructure } from '../../engine/building.js';
 import { citySprite, pitstopSprite, CITY_W, CITY_H, PITSTOP_W, PITSTOP_H } from '../../engine/townmarker.js';
+import { towerSprite, TOWER_W, TOWER_H } from '../../engine/labyrinthmarker.js';
 import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
@@ -1053,15 +1054,34 @@ export class FieldScene {
     // normal-encounter level span, so a dungeon reads as a threat estimate
     // before stepping in without spoiling which enemies actually wait
     // inside. Scoped to the world map itself: a dungeon's own warps back
-    // out (or on to a linked segment) aren't "entrances" to label.
+    // out (or on to a linked segment) aren't "entrances" to label. A
+    // labyrinth is its own kind of dungeon (see the tower markers below),
+    // not a cave, so it's excluded here.
     if (m.id === 'world') {
       for (const wp of m.warps ?? []) {
         const dest = getMap(wp.to);
-        if (!dest || dest.town || !dest.encounter) continue;
+        if (!dest || dest.town || dest.tower || !dest.encounter) continue;
         const span = regionLevelSpan(dest.encounter);
         if (!span) continue;
         const p = this.tileScreenPos(wp.x, wp.y);
         scr.textCenter(`Lv ${span[0]}-${span[1]}`, p.x, p.y - 17, PAL.red);
+      }
+    }
+
+    // labyrinth entrances — a tall tower, deliberately distinct from a
+    // cave's mouth, labelled with its name and the same kind of level-span
+    // estimate a cave gets.
+    if (m.id === 'world') {
+      for (const wp of m.warps ?? []) {
+        const dest = getMap(wp.to);
+        if (!dest?.tower) continue;
+        const p = this.tileScreenPos(wp.x, wp.y);
+        const baseY = p.y + 10;
+        const sprite = towerSprite();
+        scr.ctx.drawImage(sprite, Math.round(p.x - TOWER_W / 2), Math.round(baseY - TOWER_H), TOWER_W, TOWER_H);
+        scr.textCenter(dest.name, p.x, baseY - TOWER_H - 20, PAL.magenta);
+        const span = regionLevelSpan(dest.encounter);
+        if (span) scr.textCenter(`Lv ${span[0]}-${span[1]}`, p.x, baseY - TOWER_H - 10, PAL.red);
       }
     }
 
