@@ -25,7 +25,7 @@ import { rng } from '../../engine/rng.js';
 import { STORY } from '../../data/story.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
-import { QUESTS, questState, questReady, startQuest, completeQuest } from '../../data/quests.js';
+import { QUESTS, questState, questReady, questAvailable, startQuest, completeQuest } from '../../data/quests.js';
 import * as THREE from '../../vendor/three.module.js';
 
 const STEP_TIME = 0.15;
@@ -430,6 +430,15 @@ export class FieldScene {
     this.thunderT = this.raining ? 3 + Math.random() * 8 : Infinity;
   }
 
+  /** What a battle started from right here should know about the sky —
+   *  same outdoor/town gate as `look` and rollWeather, so a fight picked
+   *  up in a cave or the Colosseum's arena floor never inherits either. */
+  battleWeather() {
+    const m = this.map;
+    if (!m.outdoor && !m.town) return { night: false, rain: false };
+    return { night: this.nightAmount() > 0.5, rain: this.raining };
+  }
+
   /** Look for the current map, driving grade, lights and ambient particles.
    *  Caves and the abyss keep their own fixed dark palette — night and
    *  weather are an outdoor/town condition only. A plain building interior
@@ -523,11 +532,11 @@ export class FieldScene {
         if (emptied && this.pendingBoss) {
           const boss = this.pendingBoss;
           this.pendingBoss = null;
-          this.app.push('battle', { formationId: boss.formation, bossFlag: boss.flag });
+          this.app.push('battle', { formationId: boss.formation, bossFlag: boss.flag, ...this.battleWeather() });
         } else if (emptied && this.pendingGauntletFormation) {
           const formationId = this.pendingGauntletFormation;
           this.pendingGauntletFormation = null;
-          this.app.push('battle', { formationId });
+          this.app.push('battle', { formationId, ...this.battleWeather() });
         } else if (emptied && this.pendingNGPlusChoice) {
           this.pendingNGPlusChoice = false;
           this.choice = {
@@ -624,7 +633,7 @@ export class FieldScene {
     // region's usual ceiling still hits harder than the same formation
     // would on the surface.
     const enemyScaleBonus = m.dungeonDepth ? 1 + 0.05 * m.dungeonDepth : 1;
-    this.app.push('battle', { formationId: f.id, preemptive, ambushed, enemyScaleBonus });
+    this.app.push('battle', { formationId: f.id, preemptive, ambushed, enemyScaleBonus, ...this.battleWeather() });
   }
 
   // --- interaction ---------------------------------------------------------
@@ -862,7 +871,14 @@ export class FieldScene {
       return true;
     }
 
-    const giving = Object.values(QUESTS).find((q) => q.npc === npc.name);
+    // An NPC can hold more than one quest in a chain — the active one takes
+    // priority (there's ever only one at a time), otherwise the first
+    // unstarted one whose `requires` gate (if any) has actually opened.
+    // A chain's later parts stay invisible — same as no quest at all —
+    // until the one before them is done.
+    const givable = Object.values(QUESTS).filter((q) => q.npc === npc.name);
+    const giving = givable.find((q) => questState(this.g, q.id) === 'active')
+      ?? givable.find((q) => questState(this.g, q.id) === 'unstarted' && questAvailable(this.g, q.id));
     if (!giving) return false;
     const state = questState(this.g, giving.id);
     if (state === 'unstarted') {
@@ -997,7 +1013,7 @@ export class FieldScene {
   startGauntlet(tier) {
     this.gauntlet = { tierId: tier.id, round: 0 };
     this.g.restParty();
-    this.app.push('battle', { formationId: tier.rounds[0] });
+    this.app.push('battle', { formationId: tier.rounds[0], ...this.battleWeather() });
   }
 
   /** Advances or ends the current gauntlet after a round's result. Returns
@@ -1287,6 +1303,9 @@ export class FieldScene {
     for (const c of m.chests ?? []) {
       if (this.g.flag(`chest.${c.id}`)) continue;
       scr.rect(x + c.x * cell - 1, y + c.y * cell - 1, cell + 2, cell + 2, PAL.gold);
+    }
+    if (m.boss && !this.g.flag(`boss.${m.boss.flag}`)) {
+      scr.rect(x + m.boss.x * cell - 1, y + m.boss.y * cell - 1, cell + 2, cell + 2, PAL.red);
     }
     const px = x + Math.round(this.g.x * cell + cell / 2) - 1;
     const py = y + Math.round(this.g.y * cell + cell / 2) - 1;

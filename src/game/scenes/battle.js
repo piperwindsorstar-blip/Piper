@@ -223,6 +223,7 @@ export class BattleScene {
         * (opts.enemyScaleBonus ?? 1),
       companion: this.g.companion
         ? { enemyId: this.g.companion.enemyId, rank: this.g.jobRankOf('tamer') } : null,
+      night: opts.night, rain: opts.rain,
     });
     this.state = 'intro';
     this.t = 0;

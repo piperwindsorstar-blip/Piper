@@ -155,6 +155,11 @@ function companionUnit(def, rank, row, col) {
 export class Battle {
   constructor(party, formationId, opts = {}) {
     this.rng = new RNG(opts.seed ?? (Math.random() * 0xffffffff) >>> 0);
+    // The field's own time-of-day/weather, carried in for the one fight it's
+    // relevant to — see computeDamage's elemental wheel. Both false for any
+    // battle started without opts.night/opts.rain (indoors, the Colosseum,
+    // every earlier save), so this is a pure addition, never a regression.
+    this.weather = { night: !!opts.night, rain: !!opts.rain };
     this.formation = FORMATION_BY_ID[formationId];
     if (!this.formation) throw new Error(`unknown formation: ${formationId}`);
     this.isBoss = !!this.formation.boss;
@@ -231,6 +236,8 @@ export class Battle {
     }
     if (this.preemptive) this.say('The party strikes first!');
     else if (this.ambushed) this.say('Ambushed from behind!');
+    if (this.weather.rain) this.say('Rain lashes the field — water strikes harder, fire gutters.');
+    if (this.weather.night) this.say('Night has fallen — dark strikes harder, light dims.');
     this.buildOrder();
   }
 
@@ -480,6 +487,17 @@ export class Battle {
       if (!nullify && target.isPC) mult *= elementalResistance(target.ref, atkEl);
       if (opts.undeadBonus && target.def?.family === 'undead') mult *= opts.undeadBonus;
       if (actor.isPC && actor.element === 'light' && target.def?.family === 'undead') mult *= 1.25;
+      // Rain feeds water and douses fire; true night feeds dark and dims
+      // light — the same symmetric bonus/penalty shape as the elemental
+      // wheel itself, just gated on the field's weather instead of a target.
+      if (!nullify && this.weather.rain) {
+        if (atkEl === 'water') mult *= 1.15;
+        else if (atkEl === 'fire') mult *= 0.85;
+      }
+      if (!nullify && this.weather.night) {
+        if (atkEl === 'dark') mult *= 1.15;
+        else if (atkEl === 'light') mult *= 0.85;
+      }
     }
     if (actor.isPC && actor.ref.jobId === 'hunter' && target.def?.family === 'beast') {
       mult *= 1 + 0.05 * jobRank(actor.ref);
@@ -892,13 +910,35 @@ export class Battle {
         break;
       }
       case 'raise': case 'bondbeast': {
-        this.say(`  ${this.label(actor)} calls a companion to the fifth cell.`);
-        this.thrall = { owner: actor.uid, hp: Math.round(actor.stats().magic * 3) };
+        const template = getEnemy(skill.id === 'raise' ? 'skeleton' : 'direwolf');
+        this.summonThrall(actor, template);
         break;
       }
       default:
         this.say('  Nothing happens.');
     }
+  }
+
+  /** Raise Thrall and Bond Beast: a temporary ally on the party's own grid,
+   *  built the exact way Tame's companion is (see companionUnit) but scoped
+   *  to this one battle only — it is never persisted to GameState, so it
+   *  simply stops existing once the Battle object does. A second summon
+   *  retires whichever one is already out rather than stacking. */
+  summonThrall(actor, def) {
+    if (this.thrall) {
+      const old = this.party.find((u) => u.uid === this.thrall.uid);
+      if (old) old.hp = 0;
+    }
+    const free = (r, c) => !this.party.some((u) => u.alive && u.grid.row === r && u.grid.col === c);
+    let spot = free(1, 1) ? { row: 1, col: 1 } : null;
+    for (let r = 0; !spot && r < 3; r++) for (let c = 0; !spot && c < 3; c++) if (free(r, c)) spot = { row: r, col: c };
+    if (!spot) { this.say('  No room on the grid for it.'); return; }
+    const casterLevel = actor.isPC ? actor.ref.level : def.lv;
+    const rank = Math.min(5, Math.max(1, Math.round(casterLevel / 15)));
+    const unit = companionUnit(def, rank, spot.row, spot.col);
+    this.thrall = { uid: unit.uid, owner: actor.uid };
+    this.party.push(unit);
+    this.say(`  ${this.label(actor)} calls ${unit.name} to the grid.`);
   }
 
   doSteal(actor, target, rare = false) {

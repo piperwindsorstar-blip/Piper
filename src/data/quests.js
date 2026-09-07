@@ -17,6 +17,13 @@
 //  `level` is a recommended character level, purely descriptive — nothing
 //  gates on it — used only to group quests into brackets for the menu's
 //  Quest page and to sort a bracket's quests low to high.
+//
+//  A quest can also carry `requires`: another quest's id, gating it from
+//  being offered at all until that quest is done — the minimal shape for a
+//  two-part chain (the giver just falls back to their ordinary line until
+//  then, same as any NPC with no quest at all). `requires` never points at
+//  more than one prior quest; a longer chain is just several quests each
+//  requiring the one before it.
 // ============================================================================
 
 import { ENEMIES } from './enemies.js';
@@ -58,6 +65,18 @@ export const QUESTS = {
     type: 'kill', family: 'beast', count: 3, level: 9,
     reward: { gold: 140, lp: 3 },
   },
+  wolfBountyAlpha: {
+    id: 'wolfBountyAlpha',
+    npc: 'Shepherd',
+    title: 'The One Behind Them',
+    hook: "Three down and the rest scattered, but scattered isn't gone. Something was leading them — "
+      + "bigger, smarter, still out there. Bring me that one and the flock finally sleeps.",
+    accept: "One. Just make sure it's the right one.",
+    reminder: "Flock's calmer, but not calm. The leader's still out there.",
+    turnIn: "That's the one. I'd know those scars anywhere — half my dogs gave it those. Sleep easy tonight.",
+    type: 'kill', family: 'beast', count: 1, level: 11, requires: 'wolfBounty',
+    reward: { gold: 220, lp: 4 },
+  },
   letter: {
     id: 'letter',
     npc: 'Guildmaster Orrin',
@@ -84,6 +103,19 @@ export const QUESTS = {
     type: 'item', itemId: 'mythril', count: 1, level: 12,
     reward: { gold: 200, lp: 4, item: 'luckycoin' },
   },
+  prospectorVein: {
+    id: 'prospectorVein',
+    npc: 'Old Prospector Mabb',
+    title: 'The Vein Runs Deeper',
+    hook: "Real mythril, and now I can't stop thinking about where it came from. If there's one "
+      + "piece down there, there's a vein. Bring me three more and I'll know I'm not chasing a fluke.",
+    accept: "Three more. I've waited thirty years — I can wait for the counting, too.",
+    reminder: "Still chasing that vein. Three pieces, whenever you find them.",
+    turnIn: "A vein. A real one. Thirty years of doubt and it turns out I was standing on the answer "
+      + "the whole time.",
+    type: 'item', itemId: 'mythril', count: 3, level: 16, requires: 'prospectorOre',
+    reward: { gold: 320, lp: 5 },
+  },
   spiritGlass: {
     id: 'spiritGlass',
     npc: 'Ruin Scholar',
@@ -96,6 +128,19 @@ export const QUESTS = {
       + "in a decade.",
     type: 'item', itemId: 'spiritglass', count: 2, level: 18,
     reward: { gold: 180, lp: 4 },
+  },
+  spiritGlassChoir: {
+    id: 'spiritGlassChoir',
+    npc: 'Ruin Scholar',
+    title: 'Silencing the Choir',
+    hook: "Theories aren't proof. If the Choir is what I think it is, killing enough of what sings "
+      + "there should thin it out — measurably. Two more, and I'll have my proof instead of my guess.",
+    accept: "Two. Try to notice if it gets quieter.",
+    reminder: "Still listening for the quiet. Two more of whatever sings in that ruin.",
+    turnIn: "It's quieter. Not gone — quieter. That's the difference between a theory and a fact, "
+      + "and you just handed me the fact.",
+    type: 'kill', family: 'undead', count: 2, level: 22, requires: 'spiritGlass',
+    reward: { gold: 260, lp: 5 },
   },
   quarryTools: {
     id: 'quarryTools',
@@ -267,6 +312,14 @@ export function questProgress(g, id) {
     return { have: Math.max(0, familyKills(g, q.family) - baseline), need: q.count };
   }
   return { have: 0, need: 0 };
+}
+
+/** False only while an unstarted quest's `requires` predecessor isn't done
+ *  yet — true for every quest with no `requires` at all, and true forever
+ *  once the gate has opened (it never re-locks). */
+export function questAvailable(g, id) {
+  const req = QUESTS[id].requires;
+  return !req || g.flag(`quest.${req}.done`);
 }
 
 export function questReady(g, id) {

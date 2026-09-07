@@ -26,7 +26,7 @@ import { SCHOOLS, STATUS, getSkill } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip, WEAPON_TYPES, ARMOR_CLASSES } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
-import { questState, questProgress, questReady, questsByLevel, questBand } from '../../data/quests.js';
+import { questState, questProgress, questReady, questAvailable, questsByLevel, questBand } from '../../data/quests.js';
 import { nextStoryHint } from '../../data/story.js';
 import { LORE, loreUnlocked } from '../../data/lore.js';
 import { SLOTS, saveSummary } from '../../engine/save.js';
@@ -1027,17 +1027,19 @@ export class MenuScene {
         items.push({ label: `— LV ${band - 9}-${band} —`, disabled: true, color: PAL.textFaint });
       }
       const state = questState(this.g, q.id);
+      const locked = state === 'unstarted' && !questAvailable(this.g, q.id);
       let note;
       if (state === 'done') note = 'Done';
       else if (state === 'active') {
         if (q.type !== 'deliver' && questReady(this.g, q.id)) note = 'Ready!';
         else if (q.type === 'deliver') note = 'Carrying it';
         else { const p = questProgress(this.g, q.id); note = `${p.have}/${p.need}`; }
-      } else note = `Lv ${q.level}`;
+      } else if (locked) note = 'Locked';
+      else note = `Lv ${q.level}`;
       items.push({
-        label: q.title, note, q, state,
-        color: state === 'done' ? PAL.textFaint : PAL.text,
-        noteColor: state === 'done' ? PAL.textFaint : state === 'active' ? PAL.accent : PAL.textDim,
+        label: locked ? '???' : q.title, note, q, state, locked,
+        color: state === 'done' || locked ? PAL.textFaint : PAL.text,
+        noteColor: state === 'done' || locked ? PAL.textFaint : state === 'active' ? PAL.accent : PAL.textDim,
       });
     }
     this.list.setItems(items, true);
@@ -1067,9 +1069,10 @@ export class MenuScene {
     this.list.draw(scr);
     const sel = this.list.current;
     if (sel?.q) {
-      const line = sel.state === 'done' ? sel.q.turnIn
-        : sel.state === 'active' ? sel.q.reminder
-          : `${sel.q.npc}: "${sel.q.hook}"`;
+      const line = sel.locked ? `Whoever gives this one hasn't mentioned it yet.`
+        : sel.state === 'done' ? sel.q.turnIn
+          : sel.state === 'active' ? sel.q.reminder
+            : `${sel.q.npc}: "${sel.q.hook}"`;
       scr.textWrap(line, IX, TOP + BODY_H - 22, IW, PAL.textDim, { lineHeight: 11, maxLines: 2 });
     }
   }

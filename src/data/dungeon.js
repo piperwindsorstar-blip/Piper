@@ -63,6 +63,25 @@ function chestSecurity(depth) {
   return out;
 }
 
+/** Every 5th floor gets a set-piece fight instead of just tougher trash —
+ *  reusing a labyrinth's own floor-5 formation (by depth tier, capped at
+ *  the deepest labyrinth once the climb runs past it) rather than
+ *  inventing a whole new cast. The flag carries a random suffix rolled
+ *  fresh every generation: a labyrinth's own `laby{n}_f5` flag would mark
+ *  that labyrinth's real progress complete without ever setting foot in
+ *  it, and a fixed flag would only ever fire on a player's very first
+ *  visit to this depth, since floors regenerate every dive but flags
+ *  never clear. A random one can never collide with either. */
+function bossForDepth(depth) {
+  if (depth % 5 !== 0) return null;
+  const tier = Math.min(6, Math.ceil(depth / 5));
+  return {
+    formation: `laby${tier}_f5`,
+    flag: `depths_${depth}_${rng.int(0, 999999)}`,
+    intro: 'Something down here is not random at all.',
+  };
+}
+
 function overlaps(a, b) {
   return a.x < b.x + b.w + 1 && a.x + a.w + 1 > b.x && a.y < b.y + b.h + 1 && a.y + a.h + 1 > b.y;
 }
@@ -112,6 +131,12 @@ export function generateDungeonFloor(depth) {
     chests.push({ x: cx, y: cy, id: `depths${depth}_c${i}`, ...depthLoot(depth), ...chestSecurity(depth) });
   }
 
+  const bossInfo = bossForDepth(depth);
+  // the entry room's own top-left corner: always floor, and — since every
+  // room is at least 3 wide/tall — never the same tile the down-stairs
+  // took at the room's center.
+  const boss = bossInfo ? { x: downRoom.x, y: downRoom.y, ...bossInfo } : undefined;
+
   return {
     id: `depths_${depth}`,
     name: `The Shifting Depths — B${depth}`,
@@ -129,5 +154,6 @@ export function generateDungeonFloor(depth) {
       { x: down.x, y: down.y, to: `depths_${depth + 1}`, tx: ENTRY.x, ty: ENTRY.y },
     ],
     chests,
+    boss,
   };
 }
