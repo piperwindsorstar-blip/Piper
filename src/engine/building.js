@@ -26,12 +26,76 @@ const isRoof = (n) => n === 'roof' || isDome(n);
 // A sign is an ordinary wall cell that trades its window for a small painted
 // plaque naming the trade behind it — placed one cell above a door in the map
 // data, so a player can tell a smithy from an inn without walking up to read it.
-const SIGN_KINDS = new Set(['sign_smithy', 'sign_pedlar', 'sign_inn', 'sign_temple', 'sign_guild', 'sign_store']);
+const SIGN_KINDS = new Set([
+  'sign_smithy', 'sign_pedlar', 'sign_inn', 'sign_temple', 'sign_guild', 'sign_store',
+  'sign_castle', 'sign_treasury', 'sign_garrison',
+]);
 const isSign = (n) => SIGN_KINDS.has(n);
 const isWall = (n) => n === 'house' || n === 'door' || isSign(n);
 const isBuilding = (n) => isRoof(n) || isWall(n);
 
 export const isStructure = (name) => isBuilding(name);
+
+// A building's own trade shows in more than its sign now: the roof tile, the
+// wall plaster and the door paint all shift per kind, so a smithy reads as a
+// smithy — and a plain, unsigned home keeps the regional default it always
+// had, unchanged. Each entry falls back to the regional THEME wherever it
+// doesn't override — an inn's warm terracotta already reads "inn," so it
+// isn't listed at all.
+const KIND_TILE = {
+  sign_smithy: ['#9296a0', '#767a84', '#585c66', '#3e4148', '#232529'],   // slate
+  sign_pedlar: ['#5cab58', '#458c42', '#316b2e', '#234e21', '#132c12'],   // market green
+  sign_store: ['#5cab58', '#458c42', '#316b2e', '#234e21', '#132c12'],
+  sign_temple: ['#f2ecda', '#ddd1af', '#b9a878', '#8d7b51', '#5a4c31'],   // pale stone
+  sign_guild: ['#6c74c2', '#545ca2', '#3e447a', '#2b2f58', '#191b36'],    // deep blue-violet
+  sign_castle: ['#a83838', '#8a2c2c', '#6a2020', '#4a1616', '#2c0c0c'],   // royal red
+  sign_treasury: ['#c8a848', '#a88838', '#846a28', '#5c4a1a', '#362c10'], // gold
+  sign_garrison: ['#7a828c', '#626870', '#4a5058', '#363a40', '#202226'], // steel
+};
+const KIND_WALL = {
+  sign_smithy: ['#c6c6cc', '#aaaab2', '#8c8c94', '#68686e'],
+  sign_temple: ['#faf6ec', '#eee6d2', '#d2c6a2', '#aa9a7a'],
+  sign_guild: ['#cad0f0', '#aab0e0', '#8a92c2', '#6870a2'],
+  sign_castle: ['#e2caca', '#caa2a2', '#aa7a7a', '#825a5a'],
+  sign_treasury: ['#ecdeb2', '#d6c28a', '#b29e62', '#8c7a46'],
+  sign_garrison: ['#c2c6ca', '#a6aaae', '#8a8e92', '#6a6e72'],
+};
+const KIND_TRIM = {
+  sign_smithy: '#3a3a42',
+  sign_temple: '#e8c860',
+  sign_guild: '#4a52a0',
+  sign_castle: '#c83030',
+  sign_treasury: '#e0b030',
+  sign_garrison: '#5a6068',
+};
+
+/** How far a building's own footprint runs, in every direction from `sample`'s
+ *  own cell — shared by the roof/wall drawers and by findKind below, which
+ *  needs the same bounding box to know where to stop looking for a sign. */
+function buildingExtent(sample) {
+  return {
+    left: run(sample, isBuilding, -1, 0),
+    right: run(sample, isBuilding, 1, 0),
+    up: run(sample, isBuilding, 0, -1),
+    down: run(sample, isBuilding, 0, 1),
+  };
+}
+
+/** Which trade this building is, found by scanning its own footprint for a
+ *  sign cell — so a roof cell two rows above the door still knows what's
+ *  below it, without the map data needing to repeat the kind on every tile.
+ *  Null for an unsigned building (a plain home), which keeps the regional
+ *  default look it always had. */
+function findKind(sample) {
+  const { left, right, up, down } = buildingExtent(sample);
+  for (let dy = -up; dy <= down; dy++) {
+    for (let dx = -left; dx <= right; dx++) {
+      const n = sample(dx, dy);
+      if (isSign(n)) return n;
+    }
+  }
+  return null;
+}
 
 /**
  * Two regional styles, same construction. 'green' is the FF6-ish countryside
@@ -78,8 +142,8 @@ function run(sample, pred, dx, dy) {
  * run down from it to an overhanging eave, so a two-row roof reads as one pitch
  * rather than as two bands of red.
  */
-function drawRoof(P, sample, T) {
-  const TILE = T.TILE;
+function drawRoof(P, sample, T, kind) {
+  const TILE = KIND_TILE[kind] ?? T.TILE;
   const up = run(sample, isRoof, 0, -1);
   const down = run(sample, isRoof, 0, 1);
   const left = run(sample, isBuilding, -1, 0);
@@ -88,6 +152,7 @@ function drawRoof(P, sample, T) {
   const yOff = up * TS;
   const xOff = left * TS;
   const blockW = (left + 1 + right) * TS;
+  const trim = KIND_TRIM[kind];
 
   for (let py = 0; py < TS; py++) {
     const by = yOff + py;                      // position down the whole roof
@@ -116,6 +181,23 @@ function drawRoof(P, sample, T) {
       else if (bx < 4) col = TILE[1];
       else if (bx >= blockW - 2) col = TILE[4];
       else if (bx >= blockW - 5) col = TILE[3];
+
+      // a trade-specific silhouette, layered on last so it always shows:
+      // a smithy's chimney, a temple's gilded finial, bunting along a
+      // guild's or a castle's ridge, an awning striping a store's eave.
+      if (kind === 'sign_smithy') {
+        const cx0 = blockW - 8;
+        if (bx >= cx0 && bx < cx0 + 3 && by < 10) {
+          col = by < 2 ? '#1c1c20' : bx === cx0 + 2 ? '#4a4a52' : '#2c2c32';
+        }
+      } else if (kind === 'sign_temple' && by < 4 && Math.abs(bx - Math.floor(blockW / 2)) <= 1) {
+        col = '#f8d868';
+      } else if ((kind === 'sign_guild' || kind === 'sign_castle') && by < 5 && bx % 10 < 4) {
+        col = trim;
+      } else if ((kind === 'sign_store' || kind === 'sign_pedlar')
+        && by >= blockH - 7 && by < blockH - 3 && Math.floor(bx / 3) % 2 === 0) {
+        col = '#e8e0d0';
+      }
       P.px(px, py, col);
     }
   }
@@ -215,12 +297,32 @@ function drawSign(P, kind, T) {
       P.rect(cx - 5, cy - 3, 10, 2, '#7c4b1e');
       P.rect(cx - 1, cy - 5, 2, 3, '#4a2c10');
       break;
+    case 'sign_castle':                                 // a small crown
+      P.rect(cx - 6, cy, 12, 5, '#c83030');
+      P.rect(cx - 6, cy - 4, 3, 5, '#e0b030');
+      P.rect(cx - 2, cy - 6, 4, 7, '#e0b030');
+      P.rect(cx + 3, cy - 4, 3, 5, '#e0b030');
+      P.px(cx, cy - 6, '#fff0b0');
+      break;
+    case 'sign_treasury':                               // stacked coins
+      P.rect(cx - 5, cy + 2, 10, 3, '#e0b030');
+      P.rect(cx - 4, cy - 1, 8, 3, '#e8c860');
+      P.rect(cx - 3, cy - 4, 6, 3, '#f0d878');
+      P.px(cx, cy - 3, '#fff4c0');
+      break;
+    case 'sign_garrison':                               // a shield behind crossed spears
+      P.rect(cx - 4, cy - 3, 8, 9, '#7a828c');
+      P.rect(cx - 4, cy - 3, 8, 1, '#9ea4ac');
+      P.rect(cx - 1, cy - 6, 2, 13, '#8a6a3e');
+      P.rect(cx - 6, cy - 1, 12, 2, '#8a6a3e');
+      break;
   }
 }
 
 /** Plaster wall with a timber frame, in shadow under the eaves. */
-function drawWall(P, sample, isDoor, T, self) {
-  const WALL = T.WALL, BEAM = T.BEAM;
+function drawWall(P, sample, isDoor, T, self, kind) {
+  const WALL = KIND_WALL[kind] ?? T.WALL, BEAM = T.BEAM;
+  const trim = KIND_TRIM[kind] ?? T.TRIM;
   const up = run(sample, isWall, 0, -1);
   const down = run(sample, isWall, 0, 1);
   const left = run(sample, isBuilding, -1, 0);
@@ -253,15 +355,20 @@ function drawWall(P, sample, isDoor, T, self) {
     P.rect(9, 10, 7, 2, T.GLASS[1]);
     P.rect(12, 10, 1, 6, BEAM[1]);
     P.rect(9, 13, 7, 1, BEAM[1]);
-    P.rect(7, 8, 11, 1, T.TRIM);                        // painted lintel — the accent that reads regional
+    P.rect(7, 8, 11, 1, trim);                          // painted lintel — the accent that reads the trade
   }
   if (sign) drawSign(P, self, T);
   if (isDoor) {
     const top = up === 0 ? 6 : 0;
     P.rect(6, top, 12, TS - top, BEAM[1]);
-    P.rect(7, top + 1, 10, TS - top - 1, T.TRIM);            // a painted door, the regional accent
-    P.rect(7, top + 1, 2, TS - top - 1, shade(T.TRIM, 0.35));
+    P.rect(7, top + 1, 10, TS - top - 1, trim);              // a painted door, the trade's own accent
+    P.rect(7, top + 1, 2, TS - top - 1, shade(trim, 0.35));
     P.rect(14, top + 9, 2, 2, '#e8c860');
+    if (kind === 'sign_treasury') {
+      // a reinforced, barred door — the one building worth locking twice
+      P.rect(7, top + 5, 10, 1, '#4a3a1a');
+      P.rect(7, top + 11, 10, 1, '#4a3a1a');
+    }
   }
 }
 
@@ -271,16 +378,20 @@ function drawWall(P, sample, isDoor, T, self) {
  * Drawn by the neighbouring cell, since a cell's canvas cannot reach outside it.
  */
 function drawCast(P, sample, T) {
-  const TILE = T.TILE;
   // the roof's overhang, from a building one cell to the left or right — a
-  // dome has no sideways overhang in this model, it is drawn self-contained
+  // dome has no sideways overhang in this model, it is drawn self-contained.
+  // Colored to match that neighbour's own trade, found the same way a roof
+  // cell finds its own — otherwise a smithy's slate roof would overhang onto
+  // the grass in the regional terracotta it just stopped being.
   if (sample(-1, 0) === 'roof') {
+    const TILE = KIND_TILE[findKind((dx, dy) => sample(dx - 1, dy))] ?? T.TILE;
     for (let py = 0; py < TS; py++) {
       P.px(0, py, TILE[3]);
       P.px(1, py, TILE[4]);
     }
   }
   if (sample(1, 0) === 'roof') {
+    const TILE = KIND_TILE[findKind((dx, dy) => sample(dx + 1, dy))] ?? T.TILE;
     for (let py = 0; py < TS; py++) {
       P.px(TS - 1, py, TILE[3]);
       P.px(TS - 2, py, TILE[4]);
@@ -314,8 +425,8 @@ function buildingSpriteRaw(mapId, x, y, sample, theme) {
   return make(`bldraw|${theme}|${mapId}|${x}|${y}`, TS, TS, (P) => {
     const self = sample(0, 0);
     if (isDome(self)) drawDome(P, sample, T);
-    else if (isRoof(self)) drawRoof(P, sample, T);
-    else if (isWall(self)) drawWall(P, sample, self === 'door', T, self);
+    else if (isRoof(self)) drawRoof(P, sample, T, findKind(sample));
+    else if (isWall(self)) drawWall(P, sample, self === 'door', T, self, findKind(sample));
     else drawCast(P, sample, T);
   });
 }
