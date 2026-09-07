@@ -393,6 +393,15 @@ export class FieldScene {
       if (doll) { this.scene3D.remove(doll.root); doll.dispose(); }
       doll = makeDoll(THREE, look);
       doll.lookKey = dollKey;
+      // The doll's raw geometry (see doll.js) stands nearly the full 2 world
+      // units its footprint is allotted, but the flat sprite it replaces
+      // only ever drew the actual character across about 63% of its 48px
+      // canvas (animeface.js's own bodyTop/ground constants: (45.5-15)/48)
+      // — the rest was headroom and a shadow margin. Left unscaled, the doll
+      // reads noticeably taller than the sprite ever did and its head pokes
+      // up into door frames and signs that used to clear it. Scaling down
+      // to match keeps its feet at the same tile position.
+      doll.root.scale.setScalar(0.65);
       this.scene3D.add(doll.root);
       this.fieldDolls.set('player', doll);
     }

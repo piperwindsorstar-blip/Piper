@@ -192,6 +192,11 @@ export class ShopScene {
         y += 12;
       }
     }
+    if (it.effect) {
+      y += 4;
+      const lines = scr.textWrap(it.effect, DX + 14, y, rowW, PAL.cyan, { lineHeight: 11, maxLines: 3 });
+      y += lines * 11;
+    }
 
     if (!isEquippable(it)) return;
     y += 6;

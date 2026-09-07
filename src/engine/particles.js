@@ -54,6 +54,21 @@ export class Particles {
     }
   }
 
+  /** A quick expanding flash ring, for impacts alongside a burst — particles
+   *  start already spread out at `radius` and drift outward briefly rather
+   *  than radiating from the point the way burst() does. */
+  ring(x, y, color, radius = 12, life = 0.25) {
+    const count = Math.max(6, Math.round(radius));
+    for (let i = 0; i < count; i++) {
+      const a = (Math.PI * 2 * i) / count;
+      this.spawn({
+        x: x + Math.cos(a) * radius, y: y + Math.sin(a) * radius,
+        vx: Math.cos(a) * 40, vy: Math.sin(a) * 40,
+        life, color, size: 1, glow: true, drag: 2,
+      });
+    }
+  }
+
   /** Ground dust, for footfalls and impacts. */
   dust(x, y, color = '#8a8070', count = 6) {
     for (let i = 0; i < count; i++) {

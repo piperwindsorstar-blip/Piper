@@ -124,16 +124,18 @@ export const ITEMS = [
   // computeDamage/dealDamage/applyTo for where each of these is actually
   // read (by item id, the same way voidring/phoenixdown/ipband already are).
   W('cinderfang', 'Cinderfang', 'sword', 110, 46000,
-    { element: 'fire', bonus: { str: 10 }, critBurns: true }),
+    { element: 'fire', bonus: { str: 10 }, critBurns: true, effect: 'A critical hit also sets the target ablaze.' }),
   W('gravebinder', 'Gravebinder', 'mace', 116, 50000,
-    { element: 'dark', bonus: { str: 8, vit: 6 }, killHealsRow: 0.12 }),
+    { element: 'dark', bonus: { str: 8, vit: 6 }, killHealsRow: 0.12, effect: 'A kill heals the wielder\'s whole lane for 12% max HP.' }),
   W('sunderingfang', 'Sundering Fang', 'axe', 122, 54000,
-    { bonus: { str: 12, agi: -4 }, executeBonus: 1.5 }),
-  ACC('widowslattice', "Widow's Lattice", 48000, { bonus: { agi: 6, spr: 6 }, reflect: 0.22 }),
+    { bonus: { str: 12, agi: -4 }, executeBonus: 1.5, effect: '+50% damage to targets below 25% HP.' }),
+  ACC('widowslattice', "Widow's Lattice", 48000,
+    { bonus: { agi: 6, spr: 6 }, reflect: 0.22, effect: 'Reflects 22% of damage taken back at the attacker.' }),
   // --- the Shifting Depths' own capstone (floor 50) — its one guaranteed
   // drop, a step above the labyrinth legendaries above it. --------------------
   ACC('endlesscrown', 'The Endless Crown', 260000,
-    { bonus: { str: 10, vit: 10, int: 10, spr: 10, lck: 10 }, statusShield: true }),
+    { bonus: { str: 10, vit: 10, int: 10, spr: 10, lck: 10 }, statusShield: true,
+      effect: 'Turns aside the first ailment aimed at its wearer each battle.' }),
   W('woodshield', 'Wooden Shield', 'shield', 0, 120, { slot: 'offhand', def: 6 }),
   W('ironshield', 'Iron Shield', 'shield', 0, 520, { slot: 'offhand', def: 14 }),
   W('aegisshield', 'Aegis', 'shield', 0, 3800, { slot: 'offhand', def: 30, bonus: { spr: 6, vit: 4 } }),
@@ -201,13 +203,16 @@ export const ITEMS = [
   ACC('wardamulet', 'Ward Amulet', 900, { bonus: { spr: 6 } }),
   ACC('luckycoin', 'Lucky Coin', 1100, { bonus: { lck: 10 } }),
   ACC('bloodpact', 'Blood Pact', 2400, { bonus: { str: 10, hp: -30 } }),
-  ACC('elemcharm', 'Element Charm', 2600, { resist: 'attuned', resistAmount: 0.35 }),
-  ACC('voidring', 'Void Ring', 5000, { nullify: true, bonus: { lck: 6 } }),
-  ACC('phoenixdown', 'Phoenix Pendant', 24000, { autoRevive: true }),
+  ACC('elemcharm', 'Element Charm', 2600,
+    { resist: 'attuned', resistAmount: 0.35, effect: 'Wards its wearer against their own element.' }),
+  ACC('voidring', 'Void Ring', 5000,
+    { nullify: true, bonus: { lck: 6 }, effect: 'Nullifies every elemental wheel bonus and penalty, for and against its wearer.' }),
+  ACC('phoenixdown', 'Phoenix Pendant', 24000,
+    { autoRevive: true, effect: 'Shatters to revive its wearer, fully healed, the one time they\'d otherwise fall.' }),
   ACC('titanring', 'Titan Ring', 40000, { bonus: { str: 28, vit: 20 } }),
   ACC('aeonpendant', 'Aeon Pendant', 44000, { bonus: { int: 24, spr: 24, mp: 60 } }),
   ACC('quicksilver', 'Quicksilver Band', 38000, { bonus: { agi: 30, lck: 14 } }),
-  ACC('ipband', 'Resonance Band', 3200, { ipGain: 1.5 }),
+  ACC('ipband', 'Resonance Band', 3200, { ipGain: 1.5, effect: 'Builds Instinct Points 50% faster.' }),
   // --- Cinderreach / Drowned Vale / Glassfields — dropped, not sold --------
   ACC('cindercrown', 'Cinder Crown', 8500, { bonus: { int: 10, spr: 8 } }),
   ACC('vicarlocket', "The Vicar's Locket", 19000, { bonus: { spr: 14, mp: 30 } }),
@@ -221,7 +226,8 @@ export const ITEMS = [
   // that, not a replacement) plus a faster-learning edge for a character
   // who's genuinely been through this more than once.
   ACC('wheelturnercoin', "The Wheel-Turner's Coin", 450000,
-    { bonus: { str: 8, vit: 8, agi: 8, int: 8, spr: 8, lck: 8 }, ipGain: 1.3 }),
+    { bonus: { str: 8, vit: 8, agi: 8, int: 8, spr: 8, lck: 8 }, ipGain: 1.3,
+      effect: 'Builds Instinct Points 30% faster.' }),
   // --- the Colosseum's own gauntlet rewards — never sold or dropped in the
   // wild, only granted for clearing that tier (see data/arena.js) ----------
   ACC('brawlersband', "Brawler's Band", 750, { bonus: { str: 5, agi: 3 } }),
