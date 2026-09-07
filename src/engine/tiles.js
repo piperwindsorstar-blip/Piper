@@ -131,6 +131,16 @@ T.rock = (P) => {
 T.wall = (P) => {
   P.rect(0, 0, TS, TS, '#4b4557');
   P.dither(0, 0, TS, TS, '#565068', 0.35);
+  // per-block tone so the coursing below reads as individual set stones
+  // rather than lines scored into one flat slab
+  for (let by = 0; by < TS; by += 8) {
+    const off = (by / 8) % 2 ? 6 : 0;
+    for (let bx = off - 12; bx < TS; bx += 12) {
+      const h = ((bx * 7 + by * 13 + 40) >>> 0) % 5;
+      if (h === 0) P.rect(bx, by, 12, 8, '#57516a');
+      else if (h === 1) P.rect(bx, by, 12, 8, '#443e54');
+    }
+  }
   for (let y = 0; y < TS; y += 8) {
     P.rect(0, y, TS, 1, '#292538');
     P.rect(0, y + 1, TS, 1, '#6a6480');
@@ -138,15 +148,25 @@ T.wall = (P) => {
     for (let x = off; x < TS; x += 12) P.rect(x, y, 1, 8, '#292538');
   }
   P.dither(0, 0, TS, 4, '#7e7896', 0.28);
+  P.speck([[3, 5], [14, 3], [19, 12], [7, 14], [10, 19], [21, 20]], '#726c88');
 };
 
 T.floor = (P) => {
   P.rect(0, 0, TS, TS, '#5d5770');
   P.dither(0, 0, TS, TS, '#6a6480', 0.34);
+  // laid floorboards: alternating plank tone across even seams, with a
+  // grain streak running the length of each board so the room reads as a
+  // built floor rather than one poured slab
+  for (let x = 0; x < TS; x += 8) {
+    if ((x / 8) % 2) P.rect(x, 0, 8, TS, '#655e79');
+    P.rect(x, 0, 1, TS, '#443f56');
+  }
+  for (const [x, y, len] of [[2, 2, 5], [3, 10, 4], [10, 5, 4], [11, 15, 5],
+    [18, 3, 4], [19, 13, 6], [5, 19, 3]]) {
+    P.rect(x, y, 1, len, '#514c66');
+  }
   P.rect(0, 0, TS, 1, '#7b7592');
   P.rect(0, 23, TS, 1, '#443f56');
-  P.rect(11, 0, 1, TS, '#4e4962');
-  P.speck([[4, 6], [16, 13], [9, 4], [20, 19], [2, 16], [14, 21]], '#514c66');
 };
 
 T.house = (P) => {

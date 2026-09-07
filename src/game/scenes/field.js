@@ -428,13 +428,18 @@ export class FieldScene {
 
   /** Look for the current map, driving grade, lights and ambient particles.
    *  Caves and the abyss keep their own fixed dark palette — night and
-   *  weather are an outdoor/town condition only. */
+   *  weather are an outdoor/town condition only. A plain building interior
+   *  (an inn, shop, temple, home — `encounter: null`, unlike a real dungeon
+   *  which always names a region) is lit like the town around it, not like
+   *  the dungeons that happen to share its wall/floor tiles: nobody lives in
+   *  the dark. */
   get look() {
     const m = this.map;
     const base = m.town ? { grade: '#ffb46a', amount: 0.09, vignette: 0.40, motes: '#ffd9a0', warm: true }
       : m.outdoor ? { grade: '#9ecdff', amount: 0.07, vignette: 0.36, motes: '#dff2ff' }
         : m.encounter === 'abyss' ? { grade: '#a06cff', amount: 0.22, vignette: 0.74, motes: '#c8a0ff', dark: true }
-          : { grade: '#5a7cc0', amount: 0.17, vignette: 0.68, motes: '#9ab4e0', dark: true };
+          : m.encounter === null ? { grade: '#ffcf94', amount: 0.10, vignette: 0.38, motes: '#ffe6b8', warm: true }
+            : { grade: '#5a7cc0', amount: 0.17, vignette: 0.68, motes: '#9ab4e0', dark: true };
     if (!m.outdoor && !m.town) return base;
 
     const night = this.nightAmount();
