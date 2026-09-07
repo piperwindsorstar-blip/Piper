@@ -450,6 +450,359 @@ function paintSeam(ctx, ax, ground, sprite, frame) {
   monsterEye(ctx, ax + 2.4, cy - 18, 1.8, c3);
 }
 
+// --- Bramble Warden (labyrinth 1, floors 1-4) -------------------------------
+// A woven thorn-vine sentinel — berry eyes on the torso instead of a face,
+// a real head kept small and half-hidden above it.
+function paintBrambleWarden(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const bob = frame === 1 ? 1 : 0;
+  shadow(ctx, ax, ground, 14);
+  const cy = ground - 20 + bob;
+  limb(ctx, ax - 6, cy + 14, ax - 8, ground - 1, 4, c3);
+  limb(ctx, ax + 6, cy + 14, ax + 8, ground - 1, 4, amShade(c3, -0.1));
+  ctx.beginPath();
+  ctx.ellipse(ax, cy, 11, 13, 0, 0, Math.PI * 2);
+  fillStroke(ctx, c1, 1.6);
+  ctx.strokeStyle = amShade(c1, -0.3); ctx.lineWidth = 1.4;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(ax + Math.cos(a) * 10, cy + Math.sin(a) * 12);
+    ctx.lineTo(ax + Math.cos(a) * 15, cy + Math.sin(a) * 17);
+    ctx.stroke();
+  }
+  ctx.fillStyle = c3;
+  ctx.beginPath(); ctx.arc(ax - 4, cy - 3, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ax + 4, cy - 3, 2, 0, Math.PI * 2); ctx.fill();
+  limb(ctx, ax - 10, cy - 6, ax - 18, cy + 8, 3, c1);
+  limb(ctx, ax + 10, cy - 6, ax + 18, cy + 8, 3, c1);
+  const hx = ax, hy = cy - 16;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 6, 6, 0, 0, Math.PI * 2); fillStroke(ctx, c2, 1.4);
+  monsterEye(ctx, hx - 2.4, hy, 1.8, INK);
+  monsterEye(ctx, hx + 2.4, hy, 1.8, INK);
+}
+
+// --- The Root Tyrant (labyrinth 1, floor 5) ---------------------------------
+// Every corridor in the Bramblemaze was a root — so this is a hub with six
+// root-limbs branching out like the maze's own map.
+function paintRootTyrant(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  shadow(ctx, ax, ground, 19);
+  const cy = ground - 22;
+  ctx.strokeStyle = amShade(c1, -0.2); ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI / 2 + (i - 2.5) * 0.5;
+    const x1 = ax + Math.cos(a) * 22, y1 = cy + 6 + Math.sin(a) * 16;
+    ctx.beginPath();
+    ctx.moveTo(ax, cy + 6);
+    ctx.quadraticCurveTo(ax + Math.cos(a) * 12, cy + 6 + Math.sin(a) * 8, x1, y1);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.ellipse(ax, cy, 12, 14, 0, 0, Math.PI * 2);
+  fillStroke(ctx, c1, 1.8);
+  ctx.strokeStyle = amShade(c1, -0.3); ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ax - 4, cy - 10); ctx.lineTo(ax - 6, cy + 10);
+  ctx.moveTo(ax + 5, cy - 9); ctx.lineTo(ax + 7, cy + 11);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(ax, cy - 18, 10, 7, 0, 0, Math.PI * 2);
+  fillStroke(ctx, c2, 1.6);
+  monsterEye(ctx, ax - 3.4, cy - 16, 2.2, c3);
+  monsterEye(ctx, ax + 3.4, cy - 16, 2.2, c3);
+}
+
+// --- Coil Wraith (labyrinth 2, floors 1-4) ----------------------------------
+// A ghostly serpent looped into a tight inward spiral instead of rearing
+// straight up — it loops the same corridor until the corridor is all there is.
+function paintCoilWraith(ctx, ax, ground, sprite, frame) {
+  const [c1, , c3] = sprite.palette;
+  const ph = frame === 1 ? 0.4 : 0;
+  shadow(ctx, ax, ground, 15);
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const ang = t * Math.PI * 5 + ph;
+    const r = 3 + (1 - t) * 17;
+    const xx = ax + Math.cos(ang) * r, yy = ground - 22 + Math.sin(ang) * r * 0.7;
+    if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+  }
+  ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.globalCompositeOperation = 'destination-over'; ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = c1; ctx.lineWidth = 5; ctx.stroke();
+  ctx.globalAlpha = 1;
+  const hx = ax + 20, hy = ground - 22;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 6, 5, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.4);
+  monsterEye(ctx, hx - 2, hy - 1, 2, c3);
+  monsterEye(ctx, hx + 2, hy - 1, 2, c3);
+}
+
+// --- The Hollow Oracle (labyrinth 2, floor 5) -------------------------------
+// A hooded oracle with a spiral third eye where a mouth would be, ringed by
+// floating orbs — answers every question with the same coil of an answer.
+function paintHollowOracle(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const flap = frame === 1 ? 2 : 0;
+  shadow(ctx, ax, ground, 14);
+  const cy = ground - 22 + flap * 0.2;
+  ctx.beginPath();
+  ctx.moveTo(ax - 9, cy - 4);
+  ctx.quadraticCurveTo(ax - 14, cy + 16, ax - 10, ground - 1);
+  ctx.lineTo(ax + 10, ground - 1);
+  ctx.quadraticCurveTo(ax + 14, cy + 16, ax + 9, cy - 4);
+  ctx.closePath();
+  fillStroke(ctx, c1, 1.6);
+  ctx.fillStyle = c3;
+  for (const [ox, oy] of [[-15, -8], [15, -6], [0, -24]]) {
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.arc(ax + ox, cy + oy, 2.6, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const hx = ax, hy = cy - 12;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 6.5, 7, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.6);
+  ctx.strokeStyle = c3; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i <= 16; i++) {
+    const t = i / 16, ang = t * Math.PI * 3, r = t * 3.4;
+    const xx = hx + Math.cos(ang) * r, yy = hy - 3 + Math.sin(ang) * r;
+    if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+  }
+  ctx.stroke();
+  monsterEye(ctx, hx - 2.6, hy + 3, 1.6, c2);
+  monsterEye(ctx, hx + 2.6, hy + 3, 1.6, c2);
+}
+
+// --- Cinder Sentinel (labyrinth 3, floors 1-4) ------------------------------
+// Banked coals in a shape that still remembers standing guard — a blocky
+// plate-armor statue with glowing seams and a halberd held at rest.
+function paintCinderSentinel(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  shadow(ctx, ax, ground, 15);
+  const cy = ground - 20;
+  limb(ctx, ax - 7, cy + 14, ax - 8, ground - 1, 5, c1);
+  limb(ctx, ax + 7, cy + 14, ax + 8, ground - 1, 5, amShade(c1, -0.1));
+  ctx.beginPath();
+  ctx.rect(ax - 10, cy - 12, 20, 26);
+  fillStroke(ctx, c1, 1.8);
+  ctx.strokeStyle = c3; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(ax - 6, cy - 10); ctx.lineTo(ax - 6, cy + 12);
+  ctx.moveTo(ax + 6, cy - 10); ctx.lineTo(ax + 6, cy + 12);
+  ctx.moveTo(ax - 10, cy); ctx.lineTo(ax + 10, cy);
+  ctx.stroke();
+  ctx.strokeStyle = amShade(c1, -0.3); ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(ax + 13, cy + 14); ctx.lineTo(ax + 13, cy - 24); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ax + 13, cy - 24); ctx.lineTo(ax + 18, cy - 18); ctx.lineTo(ax + 13, cy - 14); ctx.lineTo(ax + 9, cy - 19);
+  ctx.closePath(); fillStroke(ctx, c2, 1);
+  const hx = ax, hy = cy - 18;
+  ctx.beginPath(); ctx.rect(hx - 6, hy - 5, 12, 10); fillStroke(ctx, c2, 1.4);
+  ctx.fillStyle = c3;
+  ctx.beginPath(); ctx.rect(hx - 4, hy - 1, 8, 2); ctx.fill();
+}
+
+// --- The Molten Sovereign (labyrinth 3, floor 5) ----------------------------
+// A magma dragon coiled the way the whole spiral maze was always going to
+// end — the coil shape of Coil Wraith, given wings, a head, and heat.
+function paintMoltenSovereign(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const ph = frame === 1 ? 0.4 : 0;
+  shadow(ctx, ax, ground, 18);
+  const pts = [];
+  for (let i = 0; i <= 26; i++) {
+    const t = i / 26, ang = t * Math.PI * 3.2 + ph, r = 4 + t * 18;
+    pts.push([ax + Math.cos(ang) * r, ground - 8 - Math.sin(ang) * r * 0.6 - t * 4]);
+  }
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+  ctx.strokeStyle = INK; ctx.lineWidth = 11; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.strokeStyle = c1; ctx.lineWidth = 8.5; ctx.stroke();
+  ctx.strokeStyle = c3; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  for (let i = 2; i < 24; i += 6) { const [x, y] = pts[i]; ctx.moveTo(x - 2, y); ctx.lineTo(x + 2, y); }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  const [tx, ty] = pts[20];
+  wingShape(ctx, tx - 4, ty - 4, -1, 18, 14, amShade(c2, -0.1));
+  wingShape(ctx, tx + 4, ty - 4, 1, 18, 14, c2);
+  const [hx, hy] = pts[26];
+  ctx.beginPath(); ctx.ellipse(hx, hy, 7.5, 6, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.6);
+  monsterEye(ctx, hx - 2.4, hy - 1, 2.2, '#ffe090');
+  monsterEye(ctx, hx + 2.4, hy - 1, 2.2, '#ffe090');
+}
+
+// --- Vault Warden (labyrinth 4, floors 1-4) ---------------------------------
+// Set to open for no one — a round vault-door torso with a wheel-lock face.
+function paintVaultWarden(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const bob = frame === 1 ? 1 : 0;
+  shadow(ctx, ax, ground, 16);
+  const cy = ground - 20 + bob;
+  limb(ctx, ax - 8, cy + 14, ax - 9, ground - 1, 5.6, c3);
+  limb(ctx, ax + 8, cy + 14, ax + 9, ground - 1, 5.6, amShade(c3, -0.1));
+  ctx.beginPath(); ctx.arc(ax, cy, 13, 0, Math.PI * 2); fillStroke(ctx, c1, 1.8);
+  ctx.strokeStyle = c3; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(ax, cy, 6, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(ax + Math.cos(a) * 6, cy + Math.sin(a) * 6);
+    ctx.lineTo(ax + Math.cos(a) * 10, cy + Math.sin(a) * 10);
+    ctx.stroke();
+  }
+  limb(ctx, ax - 13, cy - 4, ax - 19, cy + 10, 5, c1);
+  limb(ctx, ax + 13, cy - 4, ax + 19, cy + 10, 5, amShade(c1, -0.08));
+  const hx = ax, hy = cy - 18;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 5.6, 5, 0, 0, Math.PI * 2); fillStroke(ctx, c2, 1.4);
+  monsterEye(ctx, hx - 2.2, hy, 1.7, c3);
+  monsterEye(ctx, hx + 2.2, hy, 1.7, c3);
+}
+
+// --- The Storm Tyrant (labyrinth 4, floor 5) --------------------------------
+// The vault only ever opened one way, and it just did — jagged lightning-
+// bolt wings instead of a smooth flyer's, a crown of small bolts.
+function paintStormTyrant(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const flap = frame === 1 ? 3 : 0;
+  shadow(ctx, ax, ground, 15);
+  const cy = ground - 24 - flap * 0.3;
+  for (const dir of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(ax + dir * 4, cy - 4);
+    ctx.lineTo(ax + dir * 16, cy - 14);
+    ctx.lineTo(ax + dir * 10, cy - 8);
+    ctx.lineTo(ax + dir * 22, cy + 2);
+    ctx.lineTo(ax + dir * 8, cy + 4);
+    ctx.closePath();
+    fillStroke(ctx, dir < 0 ? amShade(c1, -0.1) : c1, 1.2);
+  }
+  ctx.beginPath(); ctx.ellipse(ax, cy + 6, 10, 12, 0, 0, Math.PI * 2); fillStroke(ctx, c2, 1.6);
+  const hx = ax, hy = cy - 6;
+  ctx.beginPath(); ctx.arc(hx, hy, 6.5, 0, Math.PI * 2); fillStroke(ctx, c1, 1.6);
+  monsterEye(ctx, hx - 2.6, hy, 2.2, '#fffde0');
+  monsterEye(ctx, hx + 2.6, hy, 2.2, '#fffde0');
+  ctx.strokeStyle = c3; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(hx - 4, hy - 6); ctx.lineTo(hx - 2, hy - 11); ctx.lineTo(hx - 4, hy - 9); ctx.lineTo(hx - 1, hy - 15);
+  ctx.moveTo(hx + 4, hy - 6); ctx.lineTo(hx + 2, hy - 11); ctx.lineTo(hx + 4, hy - 9); ctx.lineTo(hx + 1, hy - 15);
+  ctx.stroke();
+}
+
+// --- Tideworn Sentinel (labyrinth 5, floors 1-4) ----------------------------
+// Wore the corridor smooth before the maze wore it down — wide, smooth arcs
+// instead of a jagged spine, with a sheen highlight down one side.
+function paintTidewornSentinel(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const ph = frame === 1 ? 0.5 : 0;
+  shadow(ctx, ax, ground, 15);
+  const pts = [];
+  for (let i = 0; i < 16; i++) { const t = i / 15; pts.push([ax + Math.sin(i * 0.5 + ph) * 10, ground - 4 - t * 32]); }
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+  ctx.strokeStyle = INK; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.strokeStyle = c1; ctx.lineWidth = 7.5; ctx.stroke();
+  ctx.strokeStyle = c2; ctx.lineWidth = 2; ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x - 2, y) : ctx.lineTo(x - 2, y)));
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  const [hx, hy] = pts[15];
+  ctx.beginPath(); ctx.ellipse(hx, hy, 7, 5.4, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.4);
+  monsterEye(ctx, hx - 2.4, hy - 1, 2, c3);
+  monsterEye(ctx, hx + 2.4, hy - 1, 2, c3);
+  ctx.beginPath();
+  ctx.moveTo(hx, hy - 5); ctx.lineTo(hx + 2, hy - 10); ctx.lineTo(hx - 1, hy - 6);
+  ctx.closePath(); fillStroke(ctx, c2, 0.8);
+}
+
+// --- The Drowned Regent (labyrinth 5, floor 5) ------------------------------
+// Still keeps court — a wide, seated silhouette with tattered hem streaks
+// and a barnacled crown, arms resting like they're still on a throne.
+function paintDrownedRegent(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const flap = frame === 1 ? 1 : 0;
+  shadow(ctx, ax, ground, 17);
+  const cy = ground - 20 + flap * 0.3;
+  ctx.beginPath();
+  ctx.moveTo(ax - 13, ground - 1);
+  ctx.quadraticCurveTo(ax - 14, cy - 2, ax - 7, cy - 12);
+  ctx.lineTo(ax + 7, cy - 12);
+  ctx.quadraticCurveTo(ax + 14, cy - 2, ax + 13, ground - 1);
+  ctx.closePath();
+  fillStroke(ctx, c1, 1.8);
+  ctx.strokeStyle = amShade(c1, -0.25); ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(ax - 9, ground - 1); ctx.lineTo(ax - 7, cy + 8);
+  ctx.moveTo(ax + 2, ground - 1); ctx.lineTo(ax + 1, cy + 9);
+  ctx.moveTo(ax + 9, ground - 1); ctx.lineTo(ax + 8, cy + 7);
+  ctx.stroke();
+  limb(ctx, ax - 7, cy - 6, ax - 16, cy + 2, 3.4, c1);
+  limb(ctx, ax + 7, cy - 6, ax + 16, cy + 2, 3.4, c1);
+  const hx = ax, hy = cy - 16;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 6.4, 7, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.6);
+  monsterEye(ctx, hx - 2.6, hy, 2, c3);
+  monsterEye(ctx, hx + 2.6, hy, 2, c3);
+  for (const dir of [-1, 0, 1]) {
+    ctx.beginPath(); ctx.arc(hx + dir * 3.4, hy - 8, 1.6, 0, Math.PI * 2); fillStroke(ctx, c2, 0.7);
+  }
+}
+
+// --- Abyss Warden (labyrinth 6, floors 1-4) ---------------------------------
+// Paces the last ring the way a held breath paces a chest — a prowling
+// quadruped with glowing ring markings and one asymmetric void eye.
+function paintAbyssWarden(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const cy = ground - 15;
+  const legSw = frame === 1 ? 1.5 : 0;
+  shadow(ctx, ax, ground, 17);
+  for (const [lx, sw] of [[-11, legSw], [-4, -legSw], [4, legSw], [11, -legSw]]) {
+    limb(ctx, ax + lx, cy + 6, ax + lx + sw, ground - 1, 3, c3);
+  }
+  ctx.beginPath(); ctx.ellipse(ax - 1, cy, 17, 9, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.8);
+  ctx.strokeStyle = c3; ctx.lineWidth = 1.2;
+  for (const [rx, ry, rr] of [[-6, -1, 3], [3, -3, 2.4], [9, 1, 2]]) {
+    ctx.beginPath(); ctx.ellipse(ax + rx, cy + ry, rr, rr * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  const hx = ax + 16, hy = cy - 7;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 7, 6, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.6);
+  monsterEye(ctx, hx + 1, hy - 1, 2.4, c3);
+  ctx.beginPath();
+  ctx.moveTo(hx - 4, hy - 6); ctx.lineTo(hx - 1, hy - 11); ctx.lineTo(hx + 2, hy - 6);
+  ctx.closePath(); fillStroke(ctx, c2, 1);
+  limb(ctx, ax - 17, cy + 2, ax - 25, cy + 8, 2.6, amShade(c1, -0.1));
+}
+
+// --- The Endless Maw (labyrinth 6, floor 5) ---------------------------------
+// Uncoils once, all the way to the centre, and is still hungry after — the
+// serpent spine ending in an actual gaping, toothed maw, not a small head.
+function paintEndlessMaw(ctx, ax, ground, sprite, frame) {
+  const [c1, c2, c3] = sprite.palette;
+  const ph = frame === 1 ? 0.4 : 0;
+  shadow(ctx, ax, ground, 19);
+  const pts = [];
+  for (let i = 0; i <= 22; i++) { const t = i / 22; pts.push([ax + Math.sin(i * 0.65 + ph) * 17, ground - 4 - t * 36]); }
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+  ctx.strokeStyle = INK; ctx.lineWidth = 13; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.strokeStyle = c1; ctx.lineWidth = 10; ctx.stroke();
+  ctx.strokeStyle = c2; ctx.lineWidth = 3; ctx.globalAlpha = 0.5; ctx.stroke();
+  ctx.globalAlpha = 1;
+  const [hx, hy] = pts[22];
+  ctx.beginPath(); ctx.ellipse(hx, hy, 10, 8, 0, 0, Math.PI * 2); fillStroke(ctx, c1, 1.8);
+  ctx.beginPath(); ctx.ellipse(hx, hy + 2, 7, 6, 0, 0, Math.PI * 2); ctx.fillStyle = '#050208'; ctx.fill();
+  ctx.fillStyle = '#e8e4d8';
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(hx + i * 2.4, hy - 2); ctx.lineTo(hx + i * 2.4 + 1, hy + 2); ctx.lineTo(hx + i * 2.4 - 1, hy + 2);
+    ctx.closePath(); ctx.fill();
+  }
+  monsterEye(ctx, hx - 5, hy - 6, 1.8, c3);
+  monsterEye(ctx, hx + 5, hy - 6, 1.8, c3);
+}
+
 export const BOSS_PAINTERS = {
   volk: paintVolk,
   anvilking: paintAnvilKing,
@@ -462,4 +815,16 @@ export const BOSS_PAINTERS = {
   vessia: paintVessia,
   thirteenth: paintThirteenth,
   seam: paintSeam,
+  bramblewarden: paintBrambleWarden,
+  roottyrant: paintRootTyrant,
+  coilwraith: paintCoilWraith,
+  holloworacle: paintHollowOracle,
+  cindersentinel: paintCinderSentinel,
+  moltensovereign: paintMoltenSovereign,
+  vaultwarden: paintVaultWarden,
+  stormtyrant: paintStormTyrant,
+  tidewornsentinel: paintTidewornSentinel,
+  drownedregent: paintDrownedRegent,
+  abysswarden: paintAbyssWarden,
+  endlessmaw: paintEndlessMaw,
 };

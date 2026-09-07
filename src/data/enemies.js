@@ -444,78 +444,78 @@ export const ENEMIES = [
   // levelled 10/20/30/40/50/60. Each floor 1-4 guards a mini-boss; floor 5's
   // real boss is the only source of that labyrinth's ultra rune. ------------
   e('bramblewarden', 'Bramble Warden', 'plant', 'nature', 14, [1500, 10, 59, 50, 33, 30, 8], {
-    sprite: sp('plant', '#5a8a3c', '#9ac86a', '#2c4a1e', 1.5),
+    sprite: sp('bramblewarden', '#5a8a3c', '#9ac86a', '#2c4a1e', 1.5),
     skills: ['beastcall', 'trapset'], ai: 'boss', gold: 1000, exp: 1200,
     drops: [['hipotion', 1.0]],
     blurb: 'The Bramblemaze grew a gatekeeper before it grew a gate.',
   }),
   e('roottyrant', 'The Root Tyrant', 'plant', 'nature', 17, [2700, 20, 108, 90, 60, 55, 14], {
-    sprite: sp('plant', '#3c6a28', '#8ab84a', '#1a2e12', 2.0),
+    sprite: sp('roottyrant', '#3c6a28', '#8ab84a', '#1a2e12', 2.0),
     skills: ['stampede', 'cataclysm', 'ironwall'], ai: 'boss', gold: 3800, exp: 4500,
     drops: [['bramblecrown', 1.0]],
     blurb: 'Every path in the maze was a root the whole time.',
   }),
 
   e('coilwraith', 'Coil Wraith', 'undead', 'dark', 25, [4000, 250, 71, 50, 88, 61, 27], {
-    sprite: sp('serpent', '#4a2a5c', '#8a5ab0', '#1e1028', 1.4),
+    sprite: sp('coilwraith', '#4a2a5c', '#8a5ab0', '#1e1028', 1.4),
     skills: ['drain', 'rot'], ai: 'boss', gold: 5500, exp: 11000,
     drops: [['xpotion', 1.0]],
     blurb: 'Loops the same corridor until it is the only corridor left.',
   }),
   e('holloworacle', 'The Hollow Oracle', 'spirit', 'dark', 28, [7200, 450, 130, 90, 160, 110, 50], {
-    sprite: sp('humanoid', '#2e1a3c', '#7a4aa0', '#100a18', 1.8),
+    sprite: sp('holloworacle', '#2e1a3c', '#7a4aa0', '#100a18', 1.8),
     skills: ['oblivion', 'soulbind', 'drain'], ai: 'boss', gold: 21000, exp: 42000,
     drops: [['coilcrown', 1.0]],
     blurb: 'Answers every question with the same coil of an answer.',
   }),
 
   e('cindersentinel', 'Cinder Sentinel', 'construct', 'fire', 37, [6000, 260, 121, 80, 121, 77, 30], {
-    sprite: sp('construct', '#c05c2a', '#f0a05a', '#5c2410', 1.6),
+    sprite: sp('cindersentinel', '#c05c2a', '#f0a05a', '#5c2410', 1.6),
     skills: ['primebolt', 'shieldbash'], ai: 'boss', gold: 9000, exp: 24000,
     drops: [['elixir', 1.0]],
     blurb: 'Banked coals in a shape that still remembers standing guard.',
   }),
   e('moltensovereign', 'The Molten Sovereign', 'dragon', 'fire', 40, [11000, 480, 220, 145, 220, 140, 55], {
-    sprite: sp('dragon', '#d8501e', '#f8a850', '#5c1c08', 2.0),
+    sprite: sp('moltensovereign', '#d8501e', '#f8a850', '#5c1c08', 2.0),
     skills: ['cataclysm', 'primeforce', 'ironwall'], ai: 'boss', gold: 32000, exp: 90000,
     drops: [['cindercrownrune', 1.0]],
     blurb: 'The spiral was always going to end in this.',
   }),
 
   e('vaultwarden', 'Vault Warden', 'construct', 'lightning', 43, [7200, 230, 138, 91, 143, 96, 36], {
-    sprite: sp('construct', '#4a6ac0', '#9ac0f0', '#1e2c58', 1.7),
+    sprite: sp('vaultwarden', '#4a6ac0', '#9ac0f0', '#1e2c58', 1.7),
     skills: ['shieldbash', 'ironwall'], ai: 'boss', gold: 11500, exp: 33000,
     drops: [['adamantite', 1.0]],
     blurb: 'Was set to open for no one. Has not been told otherwise since.',
   }),
   e('stormtyrant', 'The Storm Tyrant', 'spirit', 'lightning', 46, [13200, 420, 250, 165, 260, 175, 65], {
-    sprite: sp('flyer', '#5a7ad0', '#c8dcf8', '#22305c', 2.0),
+    sprite: sp('stormtyrant', '#5a7ad0', '#c8dcf8', '#22305c', 2.0),
     skills: ['primeforce', 'warcry', 'unyielding'], ai: 'boss', gold: 42000, exp: 125000,
     drops: [['vaultcrown', 1.0]],
     blurb: 'The vault only ever opened one way, and it just did.',
   }),
 
   e('tidewornsentinel', 'Tideworn Sentinel', 'beast', 'water', 55, [8800, 420, 165, 113, 160, 116, 33], {
-    sprite: sp('serpent', '#1e5a78', '#5aa8c8', '#0c2432', 1.6),
+    sprite: sp('tidewornsentinel', '#1e5a78', '#5aa8c8', '#0c2432', 1.6),
     skills: ['leviathan', 'drain'], ai: 'boss', gold: 19000, exp: 75000,
     drops: [['holywater', 1.0]],
     blurb: 'Wore the corridor smooth long before it wore the maze down.',
   }),
   e('drownedregent', 'The Drowned Regent', 'undead', 'water', 58, [16000, 760, 300, 205, 290, 210, 60], {
-    sprite: sp('humanoid', '#123a4c', '#3a7898', '#081c28', 1.9),
+    sprite: sp('drownedregent', '#123a4c', '#3a7898', '#081c28', 1.9),
     skills: ['leviathan', 'soulbind', 'oblivion'], ai: 'boss', gold: 68000, exp: 271000,
     drops: [['tidecrown', 1.0]],
     blurb: 'Still keeps court. The maze is the only one left to attend it.',
   }),
 
   e('abysswarden', 'Abyss Warden', 'aberration', 'void', 63, [10200, 520, 176, 118, 198, 138, 41], {
-    sprite: sp('quadruped', '#2a2038', '#6a5a90', '#100c18', 1.8),
+    sprite: sp('abysswarden', '#2a2038', '#6a5a90', '#100c18', 1.8),
     skills: ['anathemahex', 'soulbind'], ai: 'boss', gold: 26000, exp: 110000,
     drops: [['voidring', 1.0]],
     blurb: 'Paces the last ring the way a held breath paces a chest.',
   }),
   e('endlessmaw', 'The Endless Maw', 'aberration', 'void', 66, [18500, 950, 320, 215, 360, 250, 75], {
-    sprite: sp('serpent', '#08060c', '#3a2c50', '#000000', 2.3),
+    sprite: sp('endlessmaw', '#08060c', '#3a2c50', '#000000', 2.3),
     skills: ['worldsend', 'unmaking', 'soulbind'], ai: 'boss', gold: 95000, exp: 400000,
     drops: [['lastcoilcrown', 1.0]],
     blurb: 'Uncoils once, all the way to the centre, and is still hungry after.',
