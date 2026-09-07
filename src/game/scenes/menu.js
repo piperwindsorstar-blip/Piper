@@ -14,7 +14,7 @@ import { actorPortraitSprite } from '../../engine/sprites.js';
 import {
   stats, knownSkills, upcomingSkills, jobInfo, jobProgress, equipItem, unequipSlot,
   promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL, trainStat, TRAIN_COST,
-  runeLevel,
+  runeLevel, revive, clearBadStatuses, characterHasTrait,
 } from '../character.js';
 import { CLASSES, TIER_NAME, PROMOTION_LEVELS, STAT_KEYS } from '../../data/classes.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
@@ -79,6 +79,14 @@ const ATLAS_LIST_Y = TOP + 34, ATLAS_LIST_ROWS = 10;
 // have/need, gold) fills the right, mirroring Equip's own two-column split.
 const CRAFT_LIST_Y = TOP + 34, CRAFT_LIST_ROWS = 10;
 
+/** MP a character pays to cast `skill` outside battle — mirrors
+ *  Battle.mpCost's own arcaneblood discount (every heal-type Art is
+ *  magical) without needing a Battle instance to ask. */
+function artsMpCost(ch, skill) {
+  if (!skill.mp) return 0;
+  return characterHasTrait(ch, 'arcaneblood') ? Math.max(1, Math.round(skill.mp * 0.85)) : skill.mp;
+}
+
 /** The procedural bust portrait, scaled to fit a box. */
 function drawBust(scr, x, y, w, h, ch, alpha = 1) {
   scr.ctx.save();
@@ -141,6 +149,7 @@ export class MenuScene {
       sfx.cancel();
       if (this.mode === 'equipList') { this.mode = 'equip'; return; }
       if (this.mode === 'itemTarget') { this.mode = 'items'; return; }
+      if (this.mode === 'artsTarget') { this.mode = 'arts'; this.who = this.artsCasterIdx; return; }
       if (this.mode === 'transcribeTarget') { this.openTranscribeSkillPick(); return; }
       if (this.mode === 'transcribeSkill') { this.mode = 'jobs'; return; }
       this.mode = 'root';
@@ -152,6 +161,7 @@ export class MenuScene {
       case 'transcribeSkill': return this.updateTranscribeSkill(input);
       case 'transcribeTarget': return this.updateTranscribeTarget(input);
       case 'arts': return this.updateArts(input);
+      case 'artsTarget': return this.updateArtsTarget(input);
       case 'items': return this.updateItems(input);
       case 'itemTarget': return this.updateItemTarget(input);
       case 'equip': return this.updateEquip(input);
@@ -222,6 +232,66 @@ export class MenuScene {
     if (input.tap('shift')) {
       this.who = (this.who + 1) % this.g.party.length;
       this.refreshArts();
+    }
+    if (input.tap('confirm') && this.list.current?.skill && !this.list.current.disabled) {
+      const skill = this.list.current.skill;
+      if (skill.type !== 'heal') { sfx.error(); this.say('Nothing happens outside a fight.'); return; }
+      const caster = this.ch;
+      const cost = artsMpCost(caster, skill);
+      if (cost > caster.mp) { sfx.error(); this.say(`${caster.name} lacks the MP.`); return; }
+      if (skill.target === 'ally') {
+        this.artsCasterIdx = this.who;
+        this.pendingArt = skill;
+        this.mode = 'artsTarget';
+        this.who = 0;
+        return;
+      }
+      // 'self' and 'allies' need no target picker — resolve immediately.
+      const targets = skill.target === 'allies' ? this.g.party : [caster];
+      caster.mp -= cost;
+      this.castHeal(caster, skill, targets);
+      sfx.heal();
+      this.say(`${caster.name} uses ${skill.name}.`);
+    }
+  }
+
+  updateArtsTarget(input) {
+    this.cycleChar(input);
+    if (input.tap('confirm')) {
+      const caster = this.g.party[this.artsCasterIdx];
+      const skill = this.pendingArt;
+      const target = this.ch;
+      const cost = artsMpCost(caster, skill);
+      if (cost > caster.mp) {
+        sfx.error(); this.say(`${caster.name} lacks the MP.`);
+        this.mode = 'arts'; this.who = this.artsCasterIdx;
+        return;
+      }
+      if (target.hp <= 0 && !skill.revives) { sfx.error(); this.say(`${target.name} needs more than that.`); return; }
+      caster.mp -= cost;
+      this.castHeal(caster, skill, [target]);
+      sfx.heal();
+      this.say(`${caster.name} uses ${skill.name} on ${target.name}.`);
+      this.mode = 'arts';
+      this.who = this.artsCasterIdx;
+      this.refreshArts();
+    }
+  }
+
+  /** Field casting of a heal-type Art — the same math useSkill's own 'heal'
+   *  case runs in battle, just against plain character objects instead of
+   *  battle units, since there's no Battle instance out here. */
+  castHeal(caster, skill, targets) {
+    const casterStats = stats(caster);
+    for (const t of targets) {
+      if (skill.revives && t.hp <= 0) { revive(t, skill.power || 0.5); continue; }
+      if (t.hp <= 0) continue;
+      if (skill.power > 0) {
+        const s = stats(t);
+        const amount = Math.round(casterStats.magic * skill.power + s.maxHp * skill.power * 0.35);
+        t.hp = Math.min(s.maxHp, t.hp + amount);
+      }
+      if (skill.cleanse) clearBadStatuses(t);
     }
   }
 
@@ -441,7 +511,7 @@ export class MenuScene {
     else {
       switch (this.mode) {
         case 'status': this.drawStatus(scr); break;
-        case 'arts': this.drawArts(scr); break;
+        case 'arts': case 'artsTarget': this.drawArts(scr); break;
         case 'items': case 'itemTarget': this.drawItems(scr); break;
         case 'equip': case 'equipList': this.drawEquip(scr); break;
         case 'craft': this.drawCraft(scr); break;
@@ -505,8 +575,7 @@ export class MenuScene {
   }
 
   /** Portrait + identity strip every per-character page shares. */
-  charHeader(scr) {
-    const ch = this.ch;
+  charHeader(scr, ch = this.ch, showSwitchHint = true) {
     const cls = CLASSES[ch.classId];
     const el = ELEMENT_BY_ID[ch.elementId];
     const race = raceInfo(ch);
@@ -517,7 +586,7 @@ export class MenuScene {
     scr.rect(IX + 44, TOP + 36, 4, 6, el.color);
     scr.text(el.name, IX + 52, TOP + 35, el.color);
     scr.textRight(`${TIER_NAME[cls.tier]} · tier ${cls.tier}/7`, IX + IW, TOP + 8, PAL.magenta);
-    scr.textRight('← → switch member', IX + IW, TOP + 34, PAL.textFaint);
+    if (showSwitchHint) scr.textRight('← → switch member', IX + IW, TOP + 34, PAL.textFaint);
     scr.rect(IX, TOP + 44, IW, 1, PAL.line);
     return TOP + 50;
   }
@@ -598,14 +667,17 @@ export class MenuScene {
 
   // --- arts ------------------------------------------------------------------
   drawArts(scr) {
-    const top = this.charHeader(scr);
-    const cls = CLASSES[this.ch.classId];
+    const targeting = this.mode === 'artsTarget';
+    const caster = targeting ? this.g.party[this.artsCasterIdx] : this.ch;
+    const top = this.charHeader(scr, caster, !targeting);
+    const cls = CLASSES[caster.classId];
     scr.text(cls.schools.map((s) => SCHOOLS[s].name).join('  ·  '), IX, top, PAL.cyan);
+    scr.textRight(`${caster.mp}/${stats(caster).maxMp} MP`, IX + IW, top, PAL.cyan);
     this.list.x = IX + 12; this.list.y = top + 16;
-    this.list.cellW = CW + 4; this.list.rows = 11; this.list.cellH = 13;
-    this.list.draw(scr);
+    this.list.cellW = CW + 4; this.list.rows = targeting ? 7 : 11; this.list.cellH = 13;
+    this.list.draw(scr, { inactive: targeting });
 
-    const k = this.list.current?.skill;
+    const k = targeting ? this.pendingArt : this.list.current?.skill;
     if (k) {
       const x = this.colX(1) + 8;
       scr.panel(x - 8, top + 12, CW + 8, 128, { alpha: 0.9 });
@@ -618,7 +690,24 @@ export class MenuScene {
       statRow(scr, 'Reach', k.range, x, yy, CW - 8); yy += 12;
       statRow(scr, 'Targets', k.target, x, yy, CW - 8);
     }
-    scr.textRight('SHIFT next member', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
+
+    if (targeting) {
+      const py = TOP + BODY_H - 62;
+      scr.panel(IX, py, IW, 54, { accent: true });
+      scr.text('CAST ON', IX + 12, py + 8, PAL.accent);
+      const cardW = Math.floor((IW - 24) / this.g.party.length);
+      const nameChars = Math.max(3, Math.floor((cardW - 4) / 5));
+      this.g.party.forEach((ch, i) => {
+        const x = IX + 12 + i * cardW;
+        const s = stats(ch);
+        const sel = i === this.who;
+        if (sel) scr.rect(x - 4, py + 20, cardW - 4, 26, 'rgba(120,155,235,0.20)');
+        scr.text(ch.name.slice(0, nameChars), x, py + 24, sel ? PAL.white : PAL.textDim);
+        scr.text(`${ch.hp}/${s.maxHp}`, x, py + 35, hpColor(ch.hp / s.maxHp));
+      });
+    } else {
+      scr.textRight('SHIFT next member', IX + IW, TOP + BODY_H - 22, PAL.textFaint);
+    }
   }
 
   // --- items -----------------------------------------------------------------
