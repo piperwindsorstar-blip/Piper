@@ -425,7 +425,7 @@ export const MAPS = {
       {"x": 9, "y": 17, "to": "wren_guildhall", "tx": 4, "ty": 4},
       {"x": 29, "y": 5, "to": "wren_cottage1", "tx": 4, "ty": 4},
       {"x": 29, "y": 12, "to": "wren_cottage2", "tx": 4, "ty": 4},
-      {"x": 11, "y": 0, "to": "wren_castle", "tx": 14, "ty": 12},
+      {"x": 11, "y": 0, "to": "wren_castle", "tx": 14, "ty": 13},
     ],
     npcs: [
       {"x": 22, "y": 8, "kind": "talk", "name": "Old Fisher",
@@ -465,6 +465,7 @@ export const MAPS = {
     encounter: null, rate: 0, town: true, bg: "#182038",
     tiles: [
       'TTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+      'T.........O......O..........T',
       'T..RRRRRR.ORRRRRRO..RRRRRR..T',
       'T..RRRRRR.RRRRRRRR..RRRRRR..T',
       'T..HHQHHH.HHHHKHHH..HHGHHH..T',
@@ -480,15 +481,15 @@ export const MAPS = {
       'TTTTTTTTTTTTTTDTTTTTTTTTTTTTT',
     ],
     warps: [
-      {"x": 14, "y": 13, "to": "wren", "tx": 11, "ty": 1},
-      {"x": 5, "y": 4, "to": "wren_treasury", "tx": 4, "ty": 4},
-      {"x": 14, "y": 4, "to": "wren_throneroom", "tx": 4, "ty": 4},
-      {"x": 22, "y": 4, "to": "wren_barracks", "tx": 4, "ty": 4},
+      {"x": 14, "y": 14, "to": "wren", "tx": 11, "ty": 1},
+      {"x": 5, "y": 5, "to": "wren_treasury", "tx": 4, "ty": 4},
+      {"x": 14, "y": 5, "to": "wren_throneroom", "tx": 4, "ty": 4},
+      {"x": 22, "y": 5, "to": "wren_barracks", "tx": 4, "ty": 4},
     ],
     npcs: [
-      {"x": 12, "y": 5, "kind": "talk", "name": "Castle Guard",
+      {"x": 12, "y": 6, "kind": "talk", "name": "Castle Guard",
         "text": "Stand easy. The Ford hasn't needed real guarding in longer than I've been alive — but the King likes the look of us out here regardless."},
-      {"x": 16, "y": 5, "kind": "talk", "name": "Castle Guard",
+      {"x": 16, "y": 6, "kind": "talk", "name": "Castle Guard",
         "text": "Ask him about the Marches sometime. He'll tell you the whole tedious history whether you want it or not.",
         "reactions": { "thirteenth": "He's been quieter about the Marches lately. Word from the Hollow Between does that to a man, crown or no crown." }},
     ],
@@ -506,7 +507,7 @@ export const MAPS = {
       '#___D___#',
       '#########',
     ],
-    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 14, "ty": 5}],
+    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 14, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "talk", "name": "King Aldric",
         "text": "Warden of the Nine Marches, they still call me, though I've never once had to defend a march from anything worse than a bad harvest. My grandfather's grandfather earned the title putting down bandits on roads that don't need numbers anymore.",
@@ -528,7 +529,7 @@ export const MAPS = {
       '#___D___#',
       '#########',
     ],
-    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 5, "ty": 5}],
+    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 5, "ty": 6}],
     chests: [
       {"x": 2, "y": 3, "id": "wtc1", "gold": 500},
       {"x": 6, "y": 3, "id": "wtc2", "gold": 500},
@@ -551,7 +552,7 @@ export const MAPS = {
       '#___D___#',
       '#########',
     ],
-    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 22, "ty": 5}],
+    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 22, "ty": 6}],
     npcs: [
       {"x": 4, "y": 2, "kind": "talk", "name": "Guard Captain Row",
         "text": "We drill twice a week and haven't fought anything larger than a testy goose in a decade. I'd rather keep it that way, if it's the same to you.",

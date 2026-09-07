@@ -75,15 +75,30 @@ const KIND_DOME = {
 };
 
 /** How far a building's own footprint runs, in every direction from `sample`'s
- *  own cell — shared by the roof/wall drawers and by findKind below, which
- *  needs the same bounding box to know where to stop looking for a sign. */
+ *  own cell — used by findKind below, which needs a bounding box to know
+ *  where to stop looking for a sign. A plain left/right/up/down probe from
+ *  the cell's own row and column is enough for a solid rectangle, but a
+ *  castle's corner tower rises from a tip cell that has no building beside
+ *  it on either side — only the tower shaft below connects it to the rest
+ *  of the building — so the box is found by flooding outward through
+ *  connected building cells instead of assuming the cell's own row and
+ *  column span the whole thing. */
 function buildingExtent(sample) {
-  return {
-    left: run(sample, isBuilding, -1, 0),
-    right: run(sample, isBuilding, 1, 0),
-    up: run(sample, isBuilding, 0, -1),
-    down: run(sample, isBuilding, 0, 1),
-  };
+  const seen = new Set(['0,0']);
+  const queue = [[0, 0]];
+  let left = 0, right = 0, up = 0, down = 0;
+  while (queue.length && seen.size < 400) {
+    const [dx, dy] = queue.shift();
+    left = Math.max(left, -dx); right = Math.max(right, dx);
+    up = Math.max(up, -dy); down = Math.max(down, dy);
+    for (const [ndx, ndy] of [[dx - 1, dy], [dx + 1, dy], [dx, dy - 1], [dx, dy + 1]]) {
+      const key = `${ndx},${ndy}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (isBuilding(sample(ndx, ndy))) queue.push([ndx, ndy]);
+    }
+  }
+  return { left, right, up, down };
 }
 
 /** Which trade this building is, found by scanning its own footprint for a
@@ -205,16 +220,22 @@ function drawRoof(P, sample, T, kind) {
       } else if (kind === 'sign_guild' && by < 5 && bx % 10 < 4) {
         col = trim;
       } else if (kind === 'sign_castle' && by < 6) {
-        // a crenellated parapet: solid merlons alternating with open notches,
-        // instead of one smooth pitched ridge — the one silhouette in this
-        // file that isn't just a pitched roof underneath
-        const merlon = Math.floor(bx / 4) % 2 === 0;
-        col = merlon ? (by < 2 ? TILE[4] : TILE[0]) : '#1c0e0e';
+        // a crenellated parapet: solid merlons standing on a continuous
+        // ledge, with open notches between them left unpainted so the grass
+        // behind the building shows through — a real break in the roofline,
+        // not just a texture, the one silhouette in this file that isn't a
+        // pitched roof underneath
+        if (by < 4) {
+          const merlon = Math.floor(bx / 4) % 2 === 0;
+          col = merlon ? (by < 2 ? TILE[4] : TILE[0]) : null;
+        } else {
+          col = TILE[3];
+        }
       } else if ((kind === 'sign_store' || kind === 'sign_pedlar')
         && by >= blockH - 7 && by < blockH - 3 && Math.floor(bx / 3) % 2 === 0) {
         col = '#e8e0d0';
       }
-      P.px(px, py, col);
+      if (col) P.px(px, py, col);
     }
   }
 }
@@ -233,18 +254,28 @@ function drawDome(P, sample, T, kind) {
   const yOff = up * TS;
   const cx = TS / 2;
   const r = TS / 2 - 1;
+  const turret = kind === 'sign_castle';
   // A dome reads as a dome only if its cap is roughly as tall as it is wide —
   // stretch that cap over the whole block and a hemisphere becomes a spike.
   // The cap sits on a cylindrical drum that takes up whatever height is left,
-  // however tall the tower itself is.
-  const domeH = r * 1.15;
+  // however tall the tower itself is. A castle's corner tower skips the dome
+  // entirely for a flat, crenellated top — the same battlement motif as the
+  // main roof, so the tower reads as part of the same fortress.
+  const domeH = turret ? 7 : r * 1.15;
 
   for (let py = 0; py < TS; py++) {
     const by = yOff + py;
     for (let px = 0; px < TS; px++) {
       const dx = px - cx;
       let col = null;
-      if (by < domeH) {
+      if (turret && by < domeH) {
+        if (Math.abs(dx) < 2 && by < 2) {
+          col = '#c83030';                          // a pennant on a pole above the wall
+        } else if (by >= 2 && Math.abs(dx) <= r) {
+          const merlon = Math.floor((px + 1) / 3) % 2 === 0;
+          if (merlon) col = by < 4 ? D[0] : D[1];   // solid tooth; the gaps stay open
+        }
+      } else if (!turret && by < domeH) {
         // a hemisphere: at height `by`, the dome's half-width shrinks toward the apex
         const t = by / domeH;                  // 0 at apex, 1 at the springline
         const hw = r * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t)));
@@ -254,7 +285,6 @@ function drawDome(P, sample, T, kind) {
           else if (dx < -hw * 0.15) col = t < 0.3 ? D[0] : D[1]; // lit face
           else col = t < 0.5 ? D[1] : D[2];                     // shadow face
           if (by < 2 && Math.abs(dx) < 2) col = D[3];           // finial
-          if (kind === 'sign_castle' && by < 2 && dx > -1 && dx < 3) col = '#c83030'; // a pennant at the tip
         }
       } else if (by < blockH - 3) {
         // a short cylindrical drum below the dome
