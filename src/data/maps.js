@@ -3020,6 +3020,14 @@ export function signAt(map, x, y) {
 // off the world map, but is just as worth surfacing on a world overview.
 export const REGIONS = [...MAPS.world.warps.map((w) => w.to), 'hollowbetween'];
 
+// Where the overworld itself drops you when you warp into a region — the
+// same landing point a Cartographer's fast-travel reuses (see field.js's
+// beginFastTravel), so a warped-to town never lands you anywhere its own
+// front gate wouldn't.
+export const WORLD_ENTRY_BY_MAP = Object.fromEntries(
+  MAPS.world.warps.map((w) => [w.to, { tx: w.tx, ty: w.ty }]),
+);
+
 // The overworld is one shared map, so it can't carry a single `theme` field
 // the way an individual region map can — instead a handful of named patches
 // (in overworld tile coordinates, centred roughly on the warp into the

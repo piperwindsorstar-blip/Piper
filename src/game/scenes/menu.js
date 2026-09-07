@@ -141,11 +141,16 @@ export class MenuScene {
       sfx.cancel();
       if (this.mode === 'equipList') { this.mode = 'equip'; return; }
       if (this.mode === 'itemTarget') { this.mode = 'items'; return; }
+      if (this.mode === 'transcribeTarget') { this.openTranscribeSkillPick(); return; }
+      if (this.mode === 'transcribeSkill') { this.mode = 'jobs'; return; }
       this.mode = 'root';
       return;
     }
     switch (this.mode) {
-      case 'status': case 'jobs': case 'ladder': return this.cycleChar(input);
+      case 'status': case 'ladder': return this.cycleChar(input);
+      case 'jobs': return this.updateJobs(input);
+      case 'transcribeSkill': return this.updateTranscribeSkill(input);
+      case 'transcribeTarget': return this.updateTranscribeTarget(input);
       case 'arts': return this.updateArts(input);
       case 'items': return this.updateItems(input);
       case 'itemTarget': return this.updateItemTarget(input);
@@ -443,6 +448,7 @@ export class MenuScene {
         case 'formation': this.drawFormation(scr); break;
         case 'train': this.drawTrain(scr); break;
         case 'jobs': this.drawJobs(scr); break;
+        case 'transcribeSkill': case 'transcribeTarget': this.drawTranscribe(scr); break;
         case 'ladder': this.drawLadder(scr); break;
         case 'save': this.drawSave(scr); break;
         case 'controls': this.drawControls(scr); break;
@@ -815,6 +821,62 @@ export class MenuScene {
       scr.text(el.name, cx + 6, ry, el.color);
       cx += scr.textWidth(el.name) + 18;
     }
+    if (ch.jobId === 'scribe') {
+      scr.textRight('Z: Transcribe a skill', this.colX(1) + CW, top + BODY_H - 60, PAL.accentDim);
+    }
+  }
+
+  // --- transcribe --------------------------------------------------------------
+  // Scribe's field ability: copies one of the Scribe's OWN known skills onto
+  // whichever other party member is picked next, as a one-shot grant —
+  // knownSkills() folds `scrollSkill` in exactly like a rune's grantSkill,
+  // and battle.js's useSkill clears it the moment it's actually cast.
+  openTranscribeSkillPick() {
+    const ch = this.ch;
+    const skills = knownSkills(ch);
+    if (!skills.length) { this.say('Nothing yet to transcribe.'); this.mode = 'jobs'; return; }
+    this.list.x = IX + 12; this.list.y = TOP + 40;
+    this.list.cellW = IW - 24; this.list.cellH = 13; this.list.rows = 12;
+    this.list.setItems(skills.map((k) => ({ label: k.name, id: k.id })), true);
+    this.transcribeFrom = ch;
+    this.mode = 'transcribeSkill';
+  }
+
+  updateJobs(input) {
+    this.cycleChar(input);
+    if (input.tap('confirm') && this.ch.jobId === 'scribe') { sfx.confirm(); this.openTranscribeSkillPick(); }
+  }
+
+  updateTranscribeSkill(input) {
+    this.list.handle(input);
+    if (input.tap('confirm') && this.list.current?.id) {
+      this.transcribeSkillId = this.list.current.id;
+      const targets = this.g.party.filter((c) => c !== this.transcribeFrom);
+      if (!targets.length) { this.say('Nobody else to give it to.'); this.mode = 'jobs'; return; }
+      sfx.confirm();
+      this.list.setItems(targets.map((c) => ({ label: c.name, id: c.id, ch: c })), true);
+      this.mode = 'transcribeTarget';
+    }
+  }
+
+  updateTranscribeTarget(input) {
+    this.list.handle(input);
+    if (input.tap('confirm') && this.list.current?.ch) {
+      const target = this.list.current.ch;
+      target.scrollSkill = this.transcribeSkillId;
+      sfx.confirm();
+      this.say(`${target.name} can use ${getSkill(this.transcribeSkillId).name} once.`);
+      const m = this.g.jobTick(this.transcribeFrom, 12);
+      if (m) this.say(m);
+      this.mode = 'jobs';
+    }
+  }
+
+  drawTranscribe(scr) {
+    const title = this.mode === 'transcribeSkill' ? `${this.transcribeFrom.name}'S SKILLS` : 'GIVE IT TO WHOM';
+    scr.text(title, IX, TOP + 10, PAL.accent);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+    this.list.draw(scr);
   }
 
   // --- ladder ----------------------------------------------------------------
@@ -1087,21 +1149,33 @@ export class MenuScene {
     this.list.x = IX + 12; this.list.y = ATLAS_LIST_Y;
     this.list.cellW = IW - 24; this.list.cellH = 13; this.list.rows = ATLAS_LIST_ROWS;
     const step = nextStoryHint(this.g);
+    // Cartographer's waypoints passive: fast-travel to any town this party's
+    // own Cartographer has personally walked into (g.mapped — see field.js's
+    // completeWarp), not merely one some other means revealed on the map.
+    const canChart = this.g.hasJob('cartographer');
     this.list.setItems(REGIONS.map((id) => {
       const m = MAPS[id];
       const visited = !!this.g.visitedMaps[id];
       const isNext = step?.mapId === id;
+      const canTravel = canChart && !!m.town && !!this.g.mapped[id];
       return {
         label: visited || isNext ? m.name : '???',
-        note: isNext ? 'Next' : visited ? 'Visited' : '',
-        id, visited, isNext,
+        note: canTravel ? 'Travel' : isNext ? 'Next' : visited ? 'Visited' : '',
+        id, visited, isNext, canTravel,
         color: isNext ? PAL.accent : visited ? PAL.text : PAL.textFaint,
-        noteColor: isNext ? PAL.accent : PAL.textDim,
+        noteColor: canTravel ? PAL.green : isNext ? PAL.accent : PAL.textDim,
       };
     }), true);
   }
 
-  updateAtlas(input) { this.list.handle(input); }
+  updateAtlas(input) {
+    this.list.handle(input);
+    if (input.tap('confirm')) {
+      const sel = this.list.current;
+      if (sel?.canTravel) { sfx.confirm(); this.app.pop({ fastTravel: sel.id }); }
+      else sfx.error();
+    }
+  }
 
   drawAtlas(scr) {
     scr.text('ATLAS', IX, TOP + 10, PAL.accent);
@@ -1111,7 +1185,10 @@ export class MenuScene {
 
     this.list.draw(scr);
     const sel = this.list.current;
-    if (sel?.isNext) {
+    if (sel?.canTravel) {
+      scr.textWrap('Z: fast-travel here.', IX, TOP + BODY_H - 22, IW, PAL.green,
+        { lineHeight: 11, maxLines: 2 });
+    } else if (sel?.isNext) {
       scr.textWrap('The main story\'s next stop.', IX, TOP + BODY_H - 22, IW, PAL.accentDim,
         { lineHeight: 11, maxLines: 2 });
     } else if (sel?.visited === false) {

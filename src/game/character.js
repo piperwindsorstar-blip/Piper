@@ -257,14 +257,22 @@ export function promotionPath(ch) {
 // ---------------------------------------------------------------------------
 export function knownSkills(ch) {
   const cls = getClass(ch.classId);
-  const base = skillsForSchools(cls.schools, ch.level);
+  const out = skillsForSchools(cls.schools, ch.level);
   const runeId = ch.equip.rune;
-  if (!runeId) return base;
-  const granted = getSkill(getItem(runeId).grantSkill);
-  // A rune's grant is available immediately regardless of class or level —
-  // the item itself is the gate, same as any other piece of gear — so it's
-  // simply unioned in rather than passed through skillsForSchools' filter.
-  return base.some((k) => k.id === granted.id) ? base : [...base, granted];
+  if (runeId) {
+    // A rune's grant is available immediately regardless of class or level —
+    // the item itself is the gate, same as any other piece of gear — so it's
+    // simply unioned in rather than passed through skillsForSchools' filter.
+    const granted = getSkill(getItem(runeId).grantSkill);
+    if (!out.some((k) => k.id === granted.id)) out.push(granted);
+  }
+  if (ch.scrollSkill) {
+    // A Scribe's Transcribe: a one-shot grant, the same union as a rune's,
+    // consumed the moment it's actually cast (see battle.js's useSkill).
+    const scrolled = getSkill(ch.scrollSkill);
+    if (!out.some((k) => k.id === scrolled.id)) out.push(scrolled);
+  }
+  return out;
 }
 
 export function usableSkills(ch) {

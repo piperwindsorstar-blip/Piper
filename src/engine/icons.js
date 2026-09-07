@@ -80,6 +80,15 @@ const ICONS = {
     P.rect(13, 4, 3, 4, LEATHER);
     P.px(3, 7, LEATHER_D); P.px(8, 5, LEATHER_D); P.px(13, 7, LEATHER_D);
   },
+  turret: (P) => {
+    // a squat deployable barrel on a tripod base
+    P.rect(6, 3, 6, 8, STEEL);
+    P.rect(6, 3, 3, 8, STEEL_D);
+    P.rect(4, 1, 10, 2, STEEL_D);
+    P.px(16, 4, GOLD);
+    P.rect(3, 11, 12, 3, STEEL_D);
+    P.rect(2, 14, 3, 3, STEEL_D); P.rect(13, 14, 3, 3, STEEL_D); P.rect(8, 15, 2, 2, STEEL_D);
+  },
 };
 
 export function iconSprite(name) {

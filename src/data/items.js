@@ -329,3 +329,57 @@ export function canEquip(cls, item) {
   }
   return true; // accessories and runes: always equippable by any class
 }
+
+// ---------------------------------------------------------------------------
+//  FORGE / REFIT — the Blacksmith and Armorer field abilities, worked at the
+//  'anvil' tile every smithy already has sitting in its floor (see
+//  data/maps.js's LEGEND and field.js's openForge). Each entry names the
+//  next item one step up the same weapon type or armour class, its ore
+//  (and, for armour, leather) cost, and the resulting item's `tier` — the
+//  Blacksmith/Armorer's own rank must meet or beat `tier`, which is what
+//  "+1 tier per upgrade, up to rank" actually gates: a rank-1 smith can
+//  still make the first upgrade on anything, but needs rank 2 to push an
+//  already-upgraded piece a second step.
+// ---------------------------------------------------------------------------
+export const WEAPON_UPGRADE = {
+  bronzesword: { to: 'ironsword', ore: 3, tier: 1 },
+  ironsword: { to: 'knightblade', ore: 6, tier: 2 },
+  handaxe: { to: 'battleaxe', ore: 3, tier: 1 },
+  battleaxe: { to: 'ruinaxe', ore: 6, tier: 2 },
+  club: { to: 'warhammer', ore: 3, tier: 1 },
+  bronzedagger: { to: 'mainGauche', ore: 3, tier: 1 },
+  mainGauche: { to: 'shadowedge', ore: 6, tier: 2 },
+  wraps: { to: 'ironclaws', ore: 3, tier: 1 },
+  ironclaws: { to: 'kaiserknuckle', ore: 6, tier: 2 },
+  kaiserknuckle: { to: 'dragonfists', ore: 9, tier: 3 },
+  shortspear: { to: 'halberd', ore: 3, tier: 1 },
+  halberd: { to: 'wyvernlance', ore: 6, tier: 2 },
+  leatherwhip: { to: 'chainwhip', ore: 3, tier: 1 },
+  chainwhip: { to: 'serpentlash', ore: 6, tier: 2 },
+  shortbow: { to: 'longbow', ore: 3, tier: 1 },
+  longbow: { to: 'windbow', ore: 6, tier: 2 },
+  windbow: { to: 'artemisbow', ore: 9, tier: 3 },
+  oakstaff: { to: 'runestaff', ore: 3, tier: 1 },
+  runestaff: { to: 'stormrod', ore: 6, tier: 2 },
+  woodshield: { to: 'ironshield', ore: 3, tier: 1 },
+  ironshield: { to: 'aegisshield', ore: 6, tier: 2 },
+};
+
+export const ARMOR_UPGRADE = {
+  clothrobe: { to: 'silkrobe', ore: 2, leather: 1, tier: 1 },
+  silkrobe: { to: 'magerobe', ore: 4, leather: 2, tier: 2 },
+  leatherarmor: { to: 'studded', ore: 2, leather: 2, tier: 1 },
+  studded: { to: 'shadowgarb', ore: 4, leather: 3, tier: 2 },
+  chainmail: { to: 'scalemail', ore: 3, leather: 2, tier: 1 },
+  scalemail: { to: 'bishopvest', ore: 5, leather: 3, tier: 2 },
+  ironplate: { to: 'knightplate', ore: 4, leather: 2, tier: 1 },
+  knightplate: { to: 'adamantplate', ore: 7, leather: 3, tier: 2 },
+  circlet: { to: 'crownofstars', ore: 3, leather: 1, tier: 1 },
+};
+
+/** The next step for `itemId`, or null if it has none — weapons and armour
+ *  share one lookup since Forge and Refit each only ever query their own
+ *  half (weapon slots vs. body/head/offhand), never both. */
+export function forgeUpgrade(itemId) {
+  return WEAPON_UPGRADE[itemId] ?? ARMOR_UPGRADE[itemId] ?? null;
+}

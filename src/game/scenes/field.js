@@ -14,12 +14,12 @@ import { minimapSprite, MM_W, MM_H } from '../../engine/minimap.js';
 import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
-  resetDungeonFloors,
+  resetDungeonFloors, WORLD_ENTRY_BY_MAP,
 } from '../../data/maps.js';
 import { formationsForRegion, regionLevelSpan } from '../../data/enemies.js';
-import { getItem } from '../../data/items.js';
+import { getItem, forgeUpgrade } from '../../data/items.js';
 import { ARENA_TIERS } from '../../data/arena.js';
-import { stats, canPromote } from '../character.js';
+import { stats, canPromote, jobRank } from '../character.js';
 import { getJob } from '../../data/jobs.js';
 import { rng } from '../../engine/rng.js';
 import { STORY } from '../../data/story.js';
@@ -636,6 +636,8 @@ export class FieldScene {
     const sign = signAt(m, x, y);
     if (sign) { this.dlg.say(sign.text); return; }
 
+    if (tileAt(m, x, y)?.tile === 'anvil') { this.openForge(); return; }
+
     const chest = chestAt(m, x, y) ?? chestAt(m, this.g.x, this.g.y);
     if (chest && !this.g.flag(`chest.${chest.id}`)) { this.openChest(chest); return; }
 
@@ -680,6 +682,51 @@ export class FieldScene {
       const smith = this.g.party.find((c) => c.jobId === 'locksmith');
       if (smith) { const m = this.g.jobTick(smith, 12); if (m) this.dlg.say(m); }
     }
+  }
+
+  /** Forge (Blacksmith, weapons) and Refit (Armorer, armour/shields) — every
+   *  smithy's own anvil tile, previously just floor dressing. Scans the
+   *  WHOLE party for the first upgradeable piece in the right slots rather
+   *  than only the smith's own gear, so a party of one blacksmith can still
+   *  improve everyone's weapon, not just their own. */
+  openForge() {
+    const findable = (jobId, slots) => {
+      const smith = this.g.party.find((c) => c.jobId === jobId);
+      if (!smith) return null;
+      const rank = jobRank(smith);
+      for (const holder of this.g.party) {
+        for (const slot of slots) {
+          const id = holder.equip[slot];
+          if (!id) continue;
+          const up = forgeUpgrade(id);
+          if (up && rank >= up.tier) return { smith, holder, slot, from: id, up };
+        }
+      }
+      return null;
+    };
+    const found = findable('blacksmith', ['weapon']) ?? findable('armorer', ['body', 'head', 'offhand']);
+    if (!found) { this.dlg.say('Nothing here is ready to forge.'); return; }
+    const { smith, holder, slot, from, up } = found;
+    const fromItem = getItem(from), toItem = getItem(up.to);
+    const costText = up.leather ? `${up.ore} Iron Ore, ${up.leather} Cured Leather` : `${up.ore} Iron Ore`;
+    this.choice = {
+      title: `${holder.name}'s ${fromItem.name} into a ${toItem.name}, for ${costText}?`,
+      options: ['Forge it', 'Not now'],
+      onPick: (i) => {
+        if (i !== 0) return;
+        if (this.g.countItem('ironore') < up.ore || (up.leather && this.g.countItem('leather') < up.leather)) {
+          this.dlg.say('Not enough materials.');
+          return;
+        }
+        this.g.removeItem('ironore', up.ore);
+        if (up.leather) this.g.removeItem('leather', up.leather);
+        holder.equip[slot] = up.to;
+        sfx.chest();
+        this.dlg.say(`${holder.name}'s ${fromItem.name} becomes a ${toItem.name}!`);
+        const m = this.g.jobTick(smith, 15);
+        if (m) this.dlg.say(m);
+      },
+    };
   }
 
   talkTo(npc) {
@@ -928,6 +975,22 @@ export class FieldScene {
   /** The scene stack calls this when a pushed scene pops back to us. */
   onResume(result) {
     if (result?.outcome) this.onBattleResult(result);
+    else if (result?.fastTravel) this.beginFastTravel(result.fastTravel);
+  }
+
+  /** Cartographer's waypoints passive: the Atlas page (menu.js) hands back
+   *  a town id once a fully-mapped destination is confirmed there. Reuses
+   *  the exact fade-and-warp machinery any door already uses (see
+   *  completeWarp) and the overworld's own landing point for that town, so
+   *  arriving this way looks and lands exactly like walking there would. */
+  beginFastTravel(mapId) {
+    const entry = WORLD_ENTRY_BY_MAP[mapId];
+    if (!entry) return;
+    sfx.door();
+    this.pendingWarp = { to: mapId, tx: entry.tx, ty: entry.ty };
+    this.fadeDir = 1;
+    const cart = this.g.party.find((c) => c.jobId === 'cartographer');
+    if (cart) { const m = this.g.jobTick(cart, 10); if (m) this.dlg.say(m); }
   }
 
   // --- the Colosseum ---------------------------------------------------------
@@ -1152,6 +1215,7 @@ export class FieldScene {
 
     this.drawHud(scr);
     if (m.id === 'world') this.drawMinimap(scr);
+    else if (m.dungeonDepth && this.g.hasJob('cartographer')) this.drawDungeonChart(scr);
     if (this.banner > 0) this.drawBanner(scr);
     if (this.choice) this.drawChoice(scr);
     else this.dlg.draw(scr);
@@ -1194,6 +1258,42 @@ export class FieldScene {
     scr.ctx.save();
     scr.ctx.fillStyle = `rgba(255,255,255,${pulse})`;
     scr.ctx.fillRect(px - 1, py - 1, 3, 3);
+    scr.ctx.restore();
+  }
+
+  /** Chart, worked passively rather than as a one-off action: the current
+   *  dungeon floor's own layout, in the same corner the overworld minimap
+   *  uses (the two never show at once — one is `m.id === 'world'`, this is
+   *  `m.dungeonDepth`), plus a marker over every chest still unopened. Nothing
+   *  here is hidden behind a fog of war to lift, so the real value is seeing
+   *  the whole floor's shape and loot at a glance instead of piecing it
+   *  together by walking it — "auto-map the floor and mark unopened chests,"
+   *  read literally for a game with no fog to begin with. */
+  drawDungeonChart(scr) {
+    const m = this.map;
+    const rows = m.tiles;
+    const w = rows[0].length, h = rows.length;
+    const cell = 3;
+    const x = 8, y = 8;
+    scr.panel(x - 3, y - 3, w * cell + 6, h * cell + 6, { alpha: 0.9 });
+    for (let ty = 0; ty < h; ty++) {
+      for (let tx = 0; tx < w; tx++) {
+        const c = rows[ty][tx];
+        const col = c === '#' ? 'rgba(20,22,34,0.9)'
+          : c === 's' ? PAL.cyan : c === 'D' ? PAL.accentDim : 'rgba(150,175,235,0.35)';
+        scr.rect(x + tx * cell, y + ty * cell, cell, cell, col);
+      }
+    }
+    for (const c of m.chests ?? []) {
+      if (this.g.flag(`chest.${c.id}`)) continue;
+      scr.rect(x + c.x * cell - 1, y + c.y * cell - 1, cell + 2, cell + 2, PAL.gold);
+    }
+    const px = x + Math.round(this.g.x * cell + cell / 2) - 1;
+    const py = y + Math.round(this.g.y * cell + cell / 2) - 1;
+    const pulse = 0.55 + 0.45 * Math.sin(this.animT * 6);
+    scr.ctx.save();
+    scr.ctx.fillStyle = `rgba(255,255,255,${pulse})`;
+    scr.ctx.fillRect(px, py, 2, 2);
     scr.ctx.restore();
   }
 

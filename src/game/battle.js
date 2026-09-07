@@ -206,6 +206,8 @@ export class Battle {
     this.round = 0;
     this.order = [];
     this.turnIndex = 0;
+    this.turretBuilt = false;
+    this.turretDamage = 0;
     // Lane discipline: only one unit per formation column (a "1", "2" or "3"
     // lane running front-to-back through rows A/B/C) may act per round.
     // Keyed by lane -> the uid that used it, not just a Set, so a boss's own
@@ -380,6 +382,18 @@ export class Battle {
           if (u.element === 'spirit') u.mp = Math.min(us.maxMp, u.mp + 3);
           if (trait(u, 'glimmer')) u.mp = Math.min(us.maxMp, u.mp + 4);
           if (trait(u, 'regrow')) u.hp = Math.min(us.maxHp, u.hp + Math.max(1, Math.floor(us.maxHp * 0.03)));
+        }
+      }
+      // Artificer's Build: the deployed turret fires once at the end of
+      // every round it's stood, for the rest of this fight — `actor: null`
+      // skips dealDamage's own actor-side IP gain, since a turret has no
+      // stats of its own to speak of.
+      if (this.turretBuilt) {
+        const foes = this.livingEnemies();
+        if (foes.length) {
+          const t = this.rng.pick(foes);
+          this.dealDamage(null, t, this.turretDamage, { element: 'metal' });
+          this.say(`The turret fires on ${this.label(t)} for ${this.turretDamage}.`);
         }
       }
       this.checkEnd();
@@ -589,8 +603,20 @@ export class Battle {
       }
       case 'flee': return this.tryFlee(actor);
       case 'tame': return this.tryTame(actor, action.target);
+      case 'build': return this.tryBuild(actor);
       default: return this.say('...');
     }
+  }
+
+  /** Artificer's field ability, brought into battle: one deployable turret
+   *  per fight (see the "one deployable turret per battle" in jobs.js),
+   *  which then fires on its own at the end of every round — see advance(). */
+  tryBuild(actor) {
+    if (this.turretBuilt) return this.say('Already built one this battle.');
+    const rank = actor.isPC ? jobRank(actor.ref) : 1;
+    this.turretBuilt = true;
+    this.turretDamage = 12 + rank * 8;
+    this.say(`${this.label(actor)} deploys a turret.`);
   }
 
   /** A Tamer's field ability, brought into battle: recruit a weakened,
@@ -713,6 +739,8 @@ export class Battle {
     const runeGrant = !!runeId && getItem(runeId).grantSkill === skill.id;
     if (runeGrant) awardRuneExp(actor.ref, runeId, 10);
     const power = skill.power * (runeGrant ? runePowerMult(runeLevel(actor.ref, runeId)) : 1);
+    // A Scribe's Transcribe: a scroll grant is good for exactly one cast.
+    if (actor.isPC && actor.ref.scrollSkill === skill.id) delete actor.ref.scrollSkill;
     this.say(`${this.label(actor)} uses ${skill.name}!`);
     const element = actor.isPC ? skillElement(actor.ref, skill)
       : (skill.element === 'attuned' ? actor.element : skill.element);

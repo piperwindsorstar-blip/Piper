@@ -974,6 +974,8 @@ export class BattleScene {
       { id: 'character', label: 'Character', icon: 'party', pos: [5, 0], disabled: !this.battle.readySwapPool(this.actor).length },
       { id: 'tame', label: 'Tame', icon: 'paw', pos: [6, 0],
         disabled: !this.g.hasJob('tamer') || !this.battle.livingEnemies().some((e) => e.def.tame) },
+      { id: 'build', label: 'Build', icon: 'turret', pos: [7, 0],
+        disabled: !this.g.hasJob('artificer') || this.battle.turretBuilt },
     ], { defaultId: 'attack' });
     this.state = 'command';
   }
@@ -1012,6 +1014,8 @@ export class BattleScene {
         this.perform({ kind: 'flee' });
       } else if (id === 'tame') {
         this.beginTarget({ target: 'tameable' }, (t) => this.perform({ kind: 'tame', target: t }));
+      } else if (id === 'build') {
+        this.perform({ kind: 'build' });
       }
     }
   }

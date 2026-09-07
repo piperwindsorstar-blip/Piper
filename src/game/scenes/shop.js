@@ -6,13 +6,14 @@
 import { PAL, W, H } from '../../engine/screen.js';
 import { Menu, header, statRow } from '../../engine/ui.js';
 import { SHOPS } from '../../data/maps.js';
-import { getItem, canEquip, isEquippable } from '../../data/items.js';
+import { getItem, canEquip, isEquippable, ITEM_IDS } from '../../data/items.js';
 import { getSkill } from '../../data/skills.js';
 import { CLASSES } from '../../data/classes.js';
 import { RACE_BY_ID } from '../../data/races.js';
 import { actorSprite } from '../../engine/sprites.js';
-import { stats } from '../character.js';
+import { stats, jobRank } from '../character.js';
 import { sfx } from '../../engine/audio.js';
+import { rng } from '../../engine/rng.js';
 
 const LX = 16, LW = 212;              // stock list
 const DX = 240, DW = W - DX - 16;     // detail panel
@@ -27,18 +28,46 @@ export class ShopScene {
     this.title = opts.name ?? this.shop?.name ?? 'Shop';
     this.mode = 'root';
     this.msg = null; this.msgT = 0; this.t = 0;
-    this.root = new Menu({ items: ['Buy', 'Sell', 'Leave'], x: LX + 24, y: TOP + 20, cellW: LW - 40, cellH: 18, rows: 3 });
+    // Haggle's back room: session-only extra stock, forgotten the moment the
+    // shop closes — nothing here is ever forged- or drop-only, see
+    // buildHaggleExtras for why.
+    this.haggleExtras = [];
+    const canHaggle = this.g.hasJob('merchant');
+    this.root = new Menu({
+      items: canHaggle ? ['Buy', 'Sell', 'Haggle', 'Leave'] : ['Buy', 'Sell', 'Leave'],
+      x: LX + 24, y: TOP + 20, cellW: LW - 40, cellH: 18, rows: canHaggle ? 4 : 3,
+    });
     this.list = new Menu({ items: [], x: LX + 24, y: TOP + 20, cellW: LW - 40, cellH: 14, rows: 11 });
   }
 
   say(m) { this.msg = m; this.msgT = 2.4; }
 
   buildBuy() {
-    this.list.setItems((this.shop?.stock ?? []).map((id) => {
+    this.list.setItems([...(this.shop?.stock ?? []), ...this.haggleExtras].map((id) => {
       const it = getItem(id);
       const price = this.g.buyPrice(id);
       return { label: it.name, note: `${price}G`, id, price, item: it, disabled: price > this.g.gold };
     }));
+  }
+
+  /** Haggle: a Merchant re-rolls a handful of items this counter doesn't
+   *  normally carry into view for the rest of this visit — pulled from the
+   *  regular sellable catalog at roughly this shop's own price tier, never
+   *  from the forged-only or drop-only pools (those stay exactly as
+   *  exclusive as recipes.js and the boss tables already say). Rank widens
+   *  how many turn up. */
+  buildHaggleExtras() {
+    const merchant = this.g.party.find((c) => c.jobId === 'merchant');
+    const rank = merchant ? jobRank(merchant) : 1;
+    const already = new Set(this.shop?.stock ?? []);
+    const cap = Math.max(200, ...(this.shop?.stock ?? []).map((id) => getItem(id).price ?? 0)) * 1.5;
+    const pool = ITEM_IDS.filter((id) => {
+      if (already.has(id)) return false;
+      const it = getItem(id);
+      if (!['weapon', 'armor', 'accessory', 'rune', 'consumable'].includes(it.kind)) return false;
+      return typeof it.price === 'number' && it.price > 0 && it.price <= cap;
+    });
+    return rng.shuffle(pool).slice(0, 2 + rank);
   }
 
   buildSell() {
@@ -63,7 +92,15 @@ export class ShopScene {
         const pick = this.root.current;
         if (pick === 'Buy') { this.buildBuy(); this.mode = 'buy'; }
         else if (pick === 'Sell') { this.buildSell(); this.mode = 'sell'; }
-        else this.app.pop();
+        else if (pick === 'Haggle') {
+          this.haggleExtras = this.buildHaggleExtras();
+          const merchant = this.g.party.find((c) => c.jobId === 'merchant');
+          if (merchant) { const t = this.g.jobTick(merchant, 8); if (t) this.say(t); }
+          this.buildBuy();
+          this.mode = 'buy';
+          this.say(this.haggleExtras.length
+            ? `The back room turns up ${this.haggleExtras.length} more.` : 'Nothing more to offer today.');
+        } else this.app.pop();
       }
       return;
     }
@@ -110,7 +147,8 @@ export class ShopScene {
       this.root.draw(scr);
       scr.panel(DX, TOP, DW, 78, { accent: true });
       scr.heading('TRADE', DX + 14, TOP + 10, DW - 28);
-      scr.textWrap('A Merchant in the party buys cheaper and sells dearer as their rank climbs. A Provisioner cuts inn prices.',
+      scr.textWrap('A Merchant in the party buys cheaper and sells dearer as their rank climbs, and can Haggle up a few things '
+        + 'this counter doesn\'t normally carry. A Provisioner cuts inn prices.',
         DX + 14, TOP + 28, DW - 28, PAL.textDim, { lineHeight: 11, maxLines: 4 });
     } else {
       scr.panel(LX, TOP, LW, BODY_H, { accent: true });
