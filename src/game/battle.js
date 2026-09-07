@@ -149,6 +149,22 @@ function companionUnit(def, rank, row, col) {
   return u;
 }
 
+// Raise Thrall and Bond Beast climb through the same undead/beast roster
+// the world already has rather than a fixed skeleton or direwolf forever —
+// three tiers apiece, all existing (non-boss) enemy templates so this adds
+// no new content, just lets the thrall actually reflect the caster's level.
+const THRALL_TIERS = {
+  raise: [[0, 'skeleton'], [20, 'lich'], [40, 'bonedragon']],
+  bondbeast: [[0, 'direwolf'], [20, 'chimera'], [40, 'krakenspawn']],
+};
+
+function thrallTemplateFor(skillId, casterLevel) {
+  const tiers = THRALL_TIERS[skillId];
+  let id = tiers[0][1];
+  for (const [minLevel, tierId] of tiers) if (casterLevel >= minLevel) id = tierId;
+  return getEnemy(id);
+}
+
 // ---------------------------------------------------------------------------
 //  BATTLE
 // ---------------------------------------------------------------------------
@@ -968,8 +984,7 @@ export class Battle {
         break;
       }
       case 'raise': case 'bondbeast': {
-        const template = getEnemy(skill.id === 'raise' ? 'skeleton' : 'direwolf');
-        this.summonThrall(actor, template);
+        this.summonThrall(actor, thrallTemplateFor(skill.id, levelOf(actor)));
         break;
       }
       default:
@@ -977,25 +992,33 @@ export class Battle {
     }
   }
 
-  /** Raise Thrall and Bond Beast: a temporary ally on the party's own grid,
-   *  built the exact way Tame's companion is (see companionUnit) but scoped
-   *  to this one battle only — it is never persisted to GameState, so it
-   *  simply stops existing once the Battle object does. A second summon
-   *  retires whichever one is already out rather than stacking. */
+  /** Raise Thrall and Bond Beast: a temporary ally on the CASTER's own grid
+   *  (the Lesser Lich knows Raise Thrall too, so this has to work for an
+   *  enemy caster and not just a PC one), built the exact way Tame's
+   *  companion is (see companionUnit) but scoped to this one battle only —
+   *  never persisted to GameState, so it simply stops existing once the
+   *  Battle object does. A second summon on the SAME side retires whichever
+   *  one that side already has out rather than stacking; each side tracks
+   *  its own thrall independently (`this.thrall` stays the party's own, for
+   *  the achievement/UI code that only cares whether the player raised one;
+   *  `this.enemyThrall` is Battle-internal bookkeeping only). */
   summonThrall(actor, def) {
-    if (this.thrall) {
-      const old = this.party.find((u) => u.uid === this.thrall.uid);
+    const side = actor.side;
+    const roster = side === 'party' ? this.party : this.enemies;
+    const slot = side === 'party' ? 'thrall' : 'enemyThrall';
+    if (this[slot]) {
+      const old = roster.find((u) => u.uid === this[slot].uid);
       if (old) old.hp = 0;
     }
-    const free = (r, c) => !this.party.some((u) => u.alive && u.grid.row === r && u.grid.col === c);
+    const free = (r, c) => !roster.some((u) => u.alive && u.grid.row === r && u.grid.col === c);
     let spot = free(1, 1) ? { row: 1, col: 1 } : null;
     for (let r = 0; !spot && r < 3; r++) for (let c = 0; !spot && c < 3; c++) if (free(r, c)) spot = { row: r, col: c };
     if (!spot) { this.say('  No room on the grid for it.'); return; }
-    const casterLevel = actor.isPC ? actor.ref.level : def.lv;
-    const rank = Math.min(5, Math.max(1, Math.round(casterLevel / 15)));
+    const rank = Math.min(5, Math.max(1, Math.round(levelOf(actor) / 15)));
     const unit = companionUnit(def, rank, spot.row, spot.col);
-    this.thrall = { uid: unit.uid, owner: actor.uid };
-    this.party.push(unit);
+    if (side === 'enemy') unit.side = 'enemy';
+    this[slot] = { uid: unit.uid, owner: actor.uid };
+    roster.push(unit);
     this.say(`  ${this.label(actor)} calls ${unit.name} to the grid.`);
   }
 

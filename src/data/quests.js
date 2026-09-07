@@ -53,6 +53,19 @@ export const QUESTS = {
     type: 'kill', family: 'beast', count: 4, level: 8,
     reward: { gold: 200, lp: 3 },
   },
+  wardensLedgerCrown: {
+    id: 'wardensLedgerCrown',
+    npc: 'King Aldric',
+    title: "A Warden's Actual Business",
+    hook: "The garrison's asking who cleared the boundary stones, and I'd rather they kept asking. "
+      + "There's a den past them now, bigger than the last one. Handle it quietly and the title "
+      + "starts meaning something to me, not just the ledger.",
+    accept: "Quietly. I mean that. The garrison hears about this from no one.",
+    reminder: "The den past the boundary stones — still there, still quiet, still yours to handle.",
+    turnIn: "Quiet as asked. I'm starting to think I hired the right outsider after all — don't let it go to your head.",
+    type: 'kill', family: 'beast', count: 5, level: 11, requires: 'wardensLedger',
+    reward: { gold: 320, lp: 4 },
+  },
   wolfBounty: {
     id: 'wolfBounty',
     npc: 'Shepherd',
@@ -168,6 +181,18 @@ export const QUESTS = {
     type: 'kill', family: 'aberration', count: 3, level: 25,
     reward: { gold: 260, lp: 5 },
   },
+  lampVigilRelit: {
+    id: 'lampVigilRelit',
+    npc: 'Last Lamplighter',
+    title: 'The Lamp, Relit',
+    hook: "I put the lamp out too soon. Something's using the dark I gave it. Four more, dead, and "
+      + "this time I'll believe the road stays lit for good.",
+    accept: "Four. I should've asked for that count the first time.",
+    reminder: "The lamp's lit again, badly. Four more, same as before, only meant this time.",
+    turnIn: "Four. The lamp stays lit now — not out of hope this time, out of certainty.",
+    type: 'kill', family: 'aberration', count: 4, level: 29, requires: 'lampVigil',
+    reward: { gold: 440, lp: 6 },
+  },
   lancersReach: {
     id: 'lancersReach',
     npc: 'Retired Lancer',
@@ -231,6 +256,19 @@ export const QUESTS = {
     turnIn: "Season might take after all. Funny what a field needs to grow, some years.",
     type: 'kill', family: 'undead', count: 3, level: 57,
     reward: { gold: 720, lp: 6 },
+  },
+  harrowsSoilDeep: {
+    id: 'harrowsSoilDeep',
+    npc: 'Harrowed Farmer',
+    title: 'What the Roots Remember',
+    hook: "Crop took, same as I hoped. Then the roots came up wrong — pulling at things deeper than "
+      + "three dead things ever explained. Four more, further down this time, and I'll stop "
+      + "asking what's under my own field.",
+    accept: "Four. Deeper. I'll be up here, not asking questions I don't want answered.",
+    reminder: "The roots are still wrong. Four, further down — same deal as before.",
+    turnIn: "Whatever's down there, it's quiet now. I'm done digging for answers. The crop's enough.",
+    type: 'kill', family: 'undead', count: 4, level: 60, requires: 'harrowsSoil',
+    reward: { gold: 980, lp: 7 },
   },
   wellDepths: {
     id: 'wellDepths',
