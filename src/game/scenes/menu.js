@@ -27,6 +27,7 @@ import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
 import { questState, questProgress, questReady, questsByLevel, questBand } from '../../data/quests.js';
 import { nextStoryHint } from '../../data/story.js';
+import { LORE, loreUnlocked } from '../../data/lore.js';
 import { SLOTS, saveSummary } from '../../engine/save.js';
 import { getTouchMode, cycleTouchMode, TOUCH_LABEL, getBattleSpeed, cycleBattleSpeed } from '../../engine/settings.js';
 import {
@@ -45,6 +46,7 @@ const PAGES = [
   { id: 'ladder', label: 'Ladder' },
   { id: 'quest', label: 'Quest' },
   { id: 'atlas', label: 'Atlas' },
+  { id: 'lore', label: 'Lore' },
   { id: 'bestiary', label: 'Bestiary' },
   { id: 'trophies', label: 'Trophies' },
   { id: 'save', label: 'Save' },
@@ -62,6 +64,9 @@ const HEAD_PORTRAIT_W = 40, HEAD_PORTRAIT_H = 38; // procedural bust in charHead
 // Quest page: side-quest list sits below the main-story block, leaving room
 // at the panel's own bottom for the selected entry's hook/reminder text.
 const QUEST_LIST_Y = TOP + 96, QUEST_LIST_ROWS = 6;
+// Lore page: a shorter list than the others, since what it's leaving room
+// for at the bottom is a real paragraph, not a one-line blurb.
+const LORE_LIST_Y = TOP + 34, LORE_LIST_ROWS = 5;
 // Bestiary page: one list fills the body, leaving room at the bottom for the
 // selected entry's family/element/blurb line.
 const BESTIARY_LIST_Y = TOP + 34, BESTIARY_LIST_ROWS = 10;
@@ -152,6 +157,7 @@ export class MenuScene {
       case 'controls': return this.updateControls(input);
       case 'quest': return this.updateQuest(input);
       case 'atlas': return this.updateAtlas(input);
+      case 'lore': return this.updateLore(input);
       case 'bestiary': return this.updateBestiary(input);
       case 'trophies': return this.updateTrophies(input);
       default: break;
@@ -179,6 +185,7 @@ export class MenuScene {
     if (id === 'craft') this.refreshCraft();
     if (id === 'quest') this.refreshQuest();
     if (id === 'atlas') this.refreshAtlas();
+    if (id === 'lore') this.refreshLore();
     if (id === 'bestiary') this.refreshBestiary();
     if (id === 'trophies') this.refreshTrophies();
   }
@@ -440,6 +447,7 @@ export class MenuScene {
         case 'controls': this.drawControls(scr); break;
         case 'quest': this.drawQuest(scr); break;
         case 'atlas': this.drawAtlas(scr); break;
+        case 'lore': this.drawLore(scr); break;
         case 'bestiary': this.drawBestiary(scr); break;
         case 'trophies': this.drawTrophies(scr); break;
         default: break;
@@ -1106,6 +1114,43 @@ export class MenuScene {
     } else if (sel?.visited === false) {
       scr.textWrap("Not yet on the map.", IX, TOP + BODY_H - 22, IW, PAL.textFaint,
         { lineHeight: 11, maxLines: 2 });
+    }
+  }
+
+  // --- lore ------------------------------------------------------------------
+  // The Codex: a handful of entries are always visible (general worldbuilding
+  // any traveler could ask about); the rest unlock as the boss they're about
+  // falls (see lore.js's loreUnlocked), so it fills in on its own as the
+  // story does rather than needing a separate flag to track.
+  refreshLore() {
+    this.list.x = IX + 12; this.list.y = LORE_LIST_Y;
+    this.list.cellW = IW - 24; this.list.cellH = 13; this.list.rows = LORE_LIST_ROWS;
+    this.list.setItems(LORE.map((entry) => {
+      const seen = loreUnlocked(entry, this.g);
+      return {
+        label: seen ? entry.title : '???',
+        entry, seen,
+        color: seen ? PAL.text : PAL.textFaint,
+      };
+    }), true);
+  }
+
+  updateLore(input) { this.list.handle(input); }
+
+  drawLore(scr) {
+    scr.text('LORE', IX, TOP + 10, PAL.accent);
+    const seenCount = LORE.filter((e) => loreUnlocked(e, this.g)).length;
+    scr.textRight(`${seenCount}/${LORE.length} known`, IX + IW, TOP + 10, PAL.textFaint);
+    scr.rect(IX, TOP + 22, IW, 1, PAL.line);
+
+    this.list.draw(scr);
+    scr.rect(IX, LORE_LIST_Y + LORE_LIST_ROWS * 13 + 6, IW, 1, PAL.line);
+    const sel = this.list.current;
+    const textY = LORE_LIST_Y + LORE_LIST_ROWS * 13 + 16;
+    if (sel?.seen) {
+      scr.textWrap(sel.entry.text, IX, textY, IW, PAL.textDim, { lineHeight: 11, maxLines: 7 });
+    } else if (sel) {
+      scr.textWrap('Not yet known.', IX, textY, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
     }
   }
 

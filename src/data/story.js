@@ -54,13 +54,20 @@ export const STORY = {
   intro: [
     "The wheel has nine sides, and four more besides it — nine that chase each "
     + "other around the ring, and four that stand apart from it.",
+    "Nobody in Wren's Ford could tell you anymore why it matters — only that "
+    + "their grandparents could, and that the answer used to matter enough to carve into the well.",
     'Guildmaster Orrin used to say a wheel that turns clean doesn\'t need '
     + 'watching. Lately he doesn\'t say it with much confidence.',
+    "You've never walked the Hollow road yourself. That's about to change.",
     "Something is stirring past the Ford. It's time somebody went and looked.",
   ],
   midpoint: [
     "The Ruins are quiet now the way a held breath is quiet — not empty, just waiting for a reason to let go.",
+    "Half the road behind you now reads like a different story than the half still ahead — fewer "
+    + "bandits and mountains, more things that were never meant to be counted at all.",
     "Nine on the wheel, four beside it. Aurelith made thirteen names, and Aurelith is done. The count still doesn't come out even.",
+    "Whoever kept that count miscounted on purpose, or didn't count itself at all, on purpose. "
+    + "Either way, the wheel keeps turning like nothing is wrong with it.",
     "Somewhere past all of it, something that was never on the wheel to begin with is still turning it anyway.",
   ],
   epilogue: [
@@ -69,5 +76,18 @@ export const STORY = {
     + "finally, after all of it, counted.",
     "The wheel turns the same as it always did. It just turns like something "
     + "is missing from it now, on purpose, the way a good ring is missing its seam.",
+    "Nobody in Wren's Ford will ever know exactly what happened past the Hollow. "
+    + "That was always going to be true, whichever way it went.",
+    "But a seam, once you know to look for one, has a way of catching the light. "
+    + "Somewhere past everything the wheel ever counted, something is still catching it.",
+  ],
+  // The true ending — shown once you find and clear the Seam itself, the
+  // fourteenth thing the wheel's count never had room for.
+  trueEnd: [
+    "The wheel doesn't turn different, after. It just turns like a wheel again — "
+    + "nothing left standing outside it, keeping its own count on the side.",
+    "Whatever the thirteen ever were, they were never the whole of it. Now, for the "
+    + "first time since anyone thought to carve a wheel into a well, they are.",
+    "Nine on the wheel. Four beside it. Nothing left uncounted at all.",
   ],
 };

@@ -109,6 +109,9 @@ export class FieldScene {
       this.g.setFlag('story.epilogue');
       for (const line of STORY.epilogue) this.dlg.say(line);
       this.pendingNGPlusChoice = true;
+    } else if (this.g.flag('boss.seam') && !this.g.flag('story.trueEnd')) {
+      this.g.setFlag('story.trueEnd');
+      for (const line of STORY.trueEnd) this.dlg.say(line);
     } else if (this.g.flag('boss.aurelith') && !this.g.flag('story.midpoint')) {
       this.g.setFlag('story.midpoint');
       for (const line of STORY.midpoint) this.dlg.say(line);
@@ -596,7 +599,7 @@ export class FieldScene {
         this.dlg.say('The way is sealed. Something further in has not been dealt with.');
         return;
       }
-      this.dlg.say(boss.intro);
+      for (const line of Array.isArray(boss.intro) ? boss.intro : [boss.intro]) this.dlg.say(line);
       this.pendingBoss = boss;
       return;
     }
@@ -740,12 +743,12 @@ export class FieldScene {
         break;
       }
       case 'guild':
-        this.dlg.say(npc.text, npc.name, this.npcPortrait(npc));
+        this.dlg.say(this.reactionLine(npc), npc.name, this.npcPortrait(npc));
         this.dlg.say('(Open the party menu with C or TAB for Formation, Jobs and the class ladder.)');
         break;
       case 'recruit': {
         const flag = `story.recruited.${npc.id}`;
-        if (this.g.flag(flag)) { this.dlg.say(npc.text, npc.name, this.npcPortrait(npc)); break; }
+        if (this.g.flag(flag)) { this.dlg.say(this.reactionLine(npc), npc.name, this.npcPortrait(npc)); break; }
         this.choice = {
           title: `${npc.name}: "${npc.hook}"`,
           options: ['Recruit', 'Not yet'],
@@ -971,7 +974,15 @@ export class FieldScene {
     }
     this.g.stepsSinceBattle = 0;
     this.encounterCooldown = 4;
-    if (result.bossFlag) this.g.setFlag(`boss.${result.bossFlag}`);
+    if (result.bossFlag) {
+      this.g.setFlag(`boss.${result.bossFlag}`);
+      // one closing beat on the spot where the boss just fell, distinct from
+      // (and shorter than) any broader reflection the story shows once you
+      // leave and warp somewhere new — see resume()'s epilogue/midpoint/
+      // trueEnd triggers above.
+      const boss = BOSS_SLOTS.map((k) => this.map[k]).find((b) => b?.flag === result.bossFlag);
+      if (boss?.victory) this.dlg.say(boss.victory);
+    }
     if (this.gauntlet) { this.handleGauntletResult(result); return; }
     // The battle scene already showed the spoils, level-ups and drops in its own
     // message box. Replaying them here made you read every line twice.

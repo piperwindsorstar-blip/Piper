@@ -429,13 +429,23 @@ export const MAPS = {
         "reactions": { "thirteenth": "Well. Now we all count the four. I don't know if that's better." }},
       {"x": 2, "y": 8, "kind": "talk", "name": "Boy with a stick",
         "text": "My brother went to the Gorge. He said the King there used to be a mountain.",
-        "reactions": { "anvil_king": "That was my brother's mountain. You brought it down. He can come home now." }},
+        "reactions": {
+          "thirteenth": "Nine on the wheel, four beside it, they're saying now. My brother says the mountain's the only one of them he actually saw fall. I believe him.",
+          "anvil_king": "That was my brother's mountain. You brought it down. He can come home now."
+        }},
       {"x": 21, "y": 17, "kind": "talk", "name": "Traveller",
         "text": "Fight in ranks. A spear reaches past the front line; a dagger never will.",
-        "reactions": { "volk": "Heard the road's clear past the Hollow now. First good news out of there in years." }},
+        "reactions": {
+          "thirteenth": "Still on the road, still hearing new endings to the story every week. This is the first one I actually believe.",
+          "volk": "Heard the road's clear past the Hollow now. First good news out of there in years."
+        }},
       {"x": 12, "y": 6, "kind": "recruit", "id": "fenn", "name": "Fenn",
         "hook": "I've watched the Hollow road longer than anyone still breathing. Point me at whatever you're hunting.",
         "text": "Still with you. Still watching the road, just a longer one now.",
+        "reactions": {
+          "thirteenth": "Nine on the wheel, four beside it, they're saying at the crossroads now, like it's a nursery rhyme again instead of a warning. Feels like the road's allowed to just be a road, finally.",
+          "volk": "Heard it myself, finally — the Hollow road, quiet the ordinary way instead of the waiting way. Strange thing to grieve a little."
+        },
         "recruit": { "name": "Fenn", "classId": "thief", "raceId": "lupine", "elementId": "wind", "jobId": "scout" }},
     ],
   },
@@ -526,7 +536,11 @@ export const MAPS = {
     ],
     warps: [{"x": 4, "y": 5, "to": "wren", "tx": 9, "ty": 18}],
     npcs: [
-      {"x": 4, "y": 2, "kind": "guild", "name": "Guildmaster Orrin", "text": "The Guild keeps the rolls. Formation, jobs, the whole ledger of who you are."},
+      {"x": 4, "y": 2, "kind": "guild", "name": "Guildmaster Orrin", "text": "The Guild keeps the rolls. Formation, jobs, the whole ledger of who you are.",
+        "reactions": {
+          "thirteenth": "Nine on the wheel, four beside it — I've updated the ledger accordingly. It's the strangest entry I've ever recorded, and I've recorded some strange ones.",
+          "volk": "The Hollow's clear. I said a wheel that turns clean doesn't need watching. I may finally get to stop pretending I believe that."
+        }},
     ],
   },
 
@@ -546,7 +560,10 @@ export const MAPS = {
     npcs: [
       {"x": 4, "y": 2, "kind": "talk", "name": "Weaver Ada",
         "text": "I weave what the temple can't afford not to have. Bandages, mostly, these days.",
-        "reactions": { "choir": "The choir's silence reached us even here. I finally sleep through the night." }},
+        "reactions": {
+          "thirteenth": "I still sleep through the night. Lately I dream about the wheel instead of the silence. Trading one kind of quiet for another, I suppose.",
+          "choir": "The choir's silence reached us even here. I finally sleep through the night."
+        }},
     ],
   },
   wren_cottage2: {
@@ -565,7 +582,10 @@ export const MAPS = {
     npcs: [
       {"x": 4, "y": 2, "kind": "talk", "name": "Retired Carter",
         "text": "Forty years driving that road and I never once looked up. Didn't want to know what was circling.",
-        "reactions": { "aurelith": "They say a wyrm's shadow doesn't cross the sky anymore. The horses believed it before I did." }},
+        "reactions": {
+          "thirteenth": "Nine on the wheel, four beside it — my horses still won't say what they believe about that. Wiser than me, probably.",
+          "aurelith": "They say a wyrm's shadow doesn't cross the sky anymore. The horses believed it before I did."
+        }},
     ],
   },
 
@@ -614,13 +634,23 @@ export const MAPS = {
     npcs: [
       {"x": 21, "y": 8, "kind": "talk", "name": "Ruin Scholar",
         "text": "The Choir sings with every voice it has taken. Bring Light, or bring a very large shield.",
-        "reactions": { "choir": "The Choir's gone quiet. I keep waiting for it to start again. It hasn't." }},
+        "reactions": {
+          "thirteenth": "It never did start again. Turns out I was waiting for the wrong ending. This one's stranger, and I like it better.",
+          "choir": "The Choir's gone quiet. I keep waiting for it to start again. It hasn't."
+        }},
       {"x": 2, "y": 13, "kind": "talk", "name": "Retired Lancer",
         "text": "I stood in the second column for thirty years. Reach is a virtue.",
-        "reactions": { "aurelith": "A wyrm that old, gone. I served under men who weren't born when it was." }},
+        "reactions": {
+          "thirteenth": "A wyrm that old, gone, and now the count that killed it is gone too. I've served through fewer endings than beginnings. This one I'll remember.",
+          "aurelith": "A wyrm that old, gone. I served under men who weren't born when it was."
+        }},
       {"x": 12, "y": 6, "kind": "recruit", "id": "rasha", "name": "Rasha",
         "hook": "Everyone here has already lost something to the desert. I'd rather lose it fighting.",
         "text": "The sand keeps its dead quiet. I'd rather make some noise with you instead.",
+        "reactions": {
+          "thirteenth": "Thirteen names, and the sand still won't say which of them were real. I've stopped needing it to. That's new for me too.",
+          "kharos": "Kharos went quiet and the desert didn't throw a parade. Grief and relief taste about the same out here."
+        },
         "recruit": { "name": "Rasha", "classId": "archer", "raceId": "draconian", "elementId": "fire", "jobId": "hunter" }},
     ],
   },
@@ -711,7 +741,10 @@ export const MAPS = {
     ],
     warps: [{"x": 4, "y": 5, "to": "kelda", "tx": 9, "ty": 18}],
     npcs: [
-      {"x": 4, "y": 2, "kind": "guild", "name": "Recorder Ish", "text": "Jobs are ranked by use, not by level. Do the work, earn the rank."},
+      {"x": 4, "y": 2, "kind": "guild", "name": "Recorder Ish", "text": "Jobs are ranked by use, not by level. Do the work, earn the rank.",
+        "reactions": {
+          "thirteenth": "Orrin's letters still arrive light on details and heavy on nerve. Some things the ledger will never fix."
+        }},
     ],
   },
 
@@ -786,7 +819,10 @@ export const MAPS = {
     npcs: [
       {"x": 11, "y": 6, "kind": "talk", "name": "Miller's Widow",
         "text": "Volk took the mill's grain three winters running. Whatever's left of him, I hope it's cold.",
-        "reactions": { "volk": "Cold, then. Good. Sit, eat something — the mill owes you at least that." }},
+        "reactions": {
+          "thirteenth": "Sit, eat something — the mill still owes you, and now the whole road probably does too, if roads could pay debts.",
+          "volk": "Cold, then. Good. Sit, eat something — the mill owes you at least that."
+        }},
     ],
   },
 
@@ -825,6 +861,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "garrick", "name": "Garrick",
         "hook": "I held a shield on that road for nine years before I stopped believing anyone was coming to relieve me. You're the first who looked like they might.",
         "text": "Off the road and still standing. That's new for me.",
+        "reactions": {
+          "gatekeeper": "A door that size, finally open. I know exactly how long a thing can stand guard over nothing. Glad it's done standing.",
+          "volk": "The Hollow road's clear, they tell me. Nine years guarding it and I still flinch checking over my shoulder."
+        },
         "recruit": { "name": "Garrick", "classId": "guardian", "raceId": "human", "elementId": "metal", "jobId": "hunter" }},
     ],
   },
@@ -857,7 +897,10 @@ export const MAPS = {
     npcs: [
       {"x": 11, "y": 6, "kind": "talk", "name": "Quarry Foreman",
         "text": "We stopped digging the day it stood up. Nobody's gone back for their tools.",
-        "reactions": { "anvil_king": "Sent a crew back for the tools this morning. First time in years this quarry's felt like ours." }},
+        "reactions": {
+          "thirteenth": "This quarry's felt like ours for a while now. Didn't expect the whole wheel to feel like it belonged to somebody again too.",
+          "anvil_king": "Sent a crew back for the tools this morning. First time in years this quarry's felt like ours."
+        }},
     ],
   },
 
@@ -896,6 +939,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "doran", "name": "Doran",
         "hook": "I've drawn every plate on that golem twice over from a safe distance. I would very much like to see the inside of it, and I would very much like you to arrange that.",
         "text": "Still cataloguing. There's more inside these quarries than the King ever was.",
+        "reactions": {
+          "worldheart": "Every gear in my workshop hummed the same note, that day. I still haven't found who tuned them, or why they listened.",
+          "kharos": "Forge-heat like that leaves traces in the metal. Three new alloys out of Kharos's ruin, and I still don't know what any of them are for yet."
+        },
         "recruit": { "name": "Doran", "classId": "mage", "raceId": "gnome", "elementId": "metal", "jobId": "artificer" }},
     ],
   },
@@ -966,6 +1013,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "wyn", "name": "Wyn",
         "hook": "I've followed these flocks along every safe path there is. I'm told you're headed somewhere that isn't one. I'd like to see it anyway.",
         "text": "The flock's fine without me a while longer. This is more interesting.",
+        "reactions": {
+          "worldheart": "Every plant in Farview turned the same direction that day — mine too, the ones I was carrying. I felt it before I understood it.",
+          "nerith": "The flock drinks easier now the Vale's settled. I still check the water before they do. Old habit, older fear."
+        },
         "recruit": { "name": "Wyn", "classId": "dancer", "raceId": "elf", "elementId": "nature", "jobId": "herbalist" }},
     ],
   },
@@ -1039,6 +1090,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "mireth", "name": "Mireth",
         "hook": "I have been dead longer than this vale has had a name for me, and I still don't understand what sings in that Choir. Take me with you and let's finally find out.",
         "text": "The ruins keep fewer secrets from me now. Not none. Fewer.",
+        "reactions": {
+          "aurelith": "The ladder had an end after all. I spent longer dead than most people spend alive, and I still didn't guess where.",
+          "choir": "The Ruins don't sing anymore. I find I miss the sound more than I expected to, for something that never once sang for me."
+        },
         "recruit": { "name": "Mireth", "classId": "spiritist", "raceId": "revenant", "elementId": "spirit", "jobId": "scribe" }},
     ],
   },
@@ -1090,7 +1145,11 @@ export const MAPS = {
     encounter: "caverns",
     rate: 0.085,
     bg: "#120e18",
-    boss: {"x": 13, "y": 20, "formation": "boss_anvil", "flag": "anvil_king", "intro": "Something the size of a quarry stands up."},
+    boss: {"x": 13, "y": 20, "formation": "boss_anvil", "flag": "anvil_king", "intro": [
+      "The gorge floor has been shaking for an hour — a slow, patient tremor, like something enormous breathing in its sleep.",
+      "Then the sleep ends.",
+      "Something the size of a quarry stands up.",
+    ], "victory": "It falls the way a cliff face falls — all at once, and the silence afterward has a shape to it, where the mountain used to be."},
     tiles: [
       '##################################',
       '##################################',
@@ -1131,7 +1190,11 @@ export const MAPS = {
     encounter: "caverns",
     rate: 0.07,
     bg: "#101418",
-    boss: {"x": 4, "y": 17, "formation": "boss_volk", "flag": "volk", "intro": "A voice from the dark: \"The road is mine. So is everything on it.\""},
+    boss: {"x": 4, "y": 17, "formation": "boss_volk", "flag": "volk", "intro": [
+      "The tunnel narrows to a single throat of rock, and the dark at the end of it has been waiting.",
+      "Something shifts in the black — the specific, unhurried shift of something that has never once had to run.",
+      "A voice from the dark: \"The road is mine. So is everything on it.\"",
+    ], "victory": "Volk goes down loud, the way he did everything else — and the road behind you, for the first time in years, is only a road."},
     tiles: [
       '####################################',
       '####################################',
@@ -1175,8 +1238,16 @@ export const MAPS = {
     encounter: "ruins",
     rate: 0.08,
     bg: "#160f1c",
-    boss: {"x": 22, "y": 22, "formation": "boss_choir", "flag": "choir", "intro": "The singing stops. Every voice in it turns to look at you."},
-    boss2: {"x": 5, "y": 2, "formation": "boss_aurelith", "flag": "aurelith", "intro": "Gold uncoils from the dark. \"You reached the end of the ladder. Show me.\"", "requires": "choir"},
+    boss: {"x": 22, "y": 22, "formation": "boss_choir", "flag": "choir", "intro": [
+      "The Ruins have been singing since before anyone could say what they were mourning.",
+      "You've been walking toward that sound for an hour. It has been walking toward you the whole time.",
+      "The singing stops. Every voice in it turns to look at you.",
+    ], "victory": "The last voice holds its note a moment past when it should, the way a held breath does — and then, at last, lets go."},
+    boss2: {"x": 5, "y": 2, "formation": "boss_aurelith", "flag": "aurelith", "intro": [
+      "Deeper than the Choir ever sang, something older kept its own count, in its own dark, long before there was a ladder to reach the end of.",
+      "Scale slides against stone, unhurried, patient as a held coin.",
+      "Gold uncoils from the dark. \"You reached the end of the ladder. Show me.\"",
+    ], "victory": "Aurelith goes still the way old gold goes still — not gone, just spent — and something it was keeping count of finally stops climbing.", "requires": "choir"},
     tiles: [
       '####################################',
       '##_______###########################',
@@ -1262,11 +1333,28 @@ export const MAPS = {
       {"x": 14, "y": 3, "id": "hbc4", "gold": 25000},
       {"x": 9, "y": 20, "id": "hbc5", "item": "elixir"},
     ],
-    boss: {"x": 32, "y": 11, "formation": "boss_gate", "flag": "gatekeeper", "intro": "Something enormous unfolds from the wall. \"Nobody has been through.\"", "requires": "kharos"},
-    boss2: {"x": 34, "y": 20, "formation": "boss_worldheart", "flag": "worldheart", "requires": "nerith", "intro": "Every green thing in the world turns to face you at once."},
-    boss3: {"x": 23, "y": 25, "formation": "boss_thirteenth", "flag": "thirteenth", "requires": "vessia", "intro": "\"Nine on the wheel. Four beside it. And then there is me.\""},
+    boss: {"x": 32, "y": 11, "formation": "boss_gate", "flag": "gatekeeper", "intro": [
+      "The Hollow Between doesn't feel like a place so much as a held door — every wall here has the wrongness of something built to keep a promise.",
+      "Whatever kept that promise has been standing here longer than the walls have.",
+      "Something enormous unfolds from the wall. \"Nobody has been through.\"",
+    ], "victory": "It comes apart the way a held door does when the hand holding it finally lets go — and past it, for the first time, the Hollow Between actually goes somewhere.", "requires": "kharos"},
+    boss2: {"x": 34, "y": 20, "formation": "boss_worldheart", "flag": "worldheart", "requires": "nerith", "intro": [
+      "Something in the Hollow Between has been listening to every root and blade of grass in the world, and lately it's started answering back.",
+      "The air itself feels rooted here, waiting on an answer only it can hear.",
+      "Every green thing in the world turns to face you at once.",
+    ], "victory": "Whatever was listening stops, all at once, and somewhere very far from here, an entire field exhales."},
+    boss3: {"x": 23, "y": 25, "formation": "boss_thirteenth", "flag": "thirteenth", "requires": "vessia", "intro": [
+      "Nine chase each other around the wheel. Four stand apart from it. You've met all thirteen now, one at a time, never once suspecting they were the same count.",
+      "The last one waited in the middle the whole time, exactly where a spoke meets a hub, exactly where nothing is supposed to stand.",
+      "It has been watching you climb toward it since the Hollow. Possibly since before that.",
+      "\"Nine on the wheel. Four beside it. And then there is me.\"",
+    ], "victory": "For exactly one breath, the count comes out even."},
     boss4: {"x": 34, "y": 3, "formation": "boss_seam", "flag": "seam", "requires": "thirteenth",
-      "intro": "The room was never on any map of this place. It was always going to be exactly this empty."},
+      "intro": [
+        "Past the Thirteenth, past everything the wheel ever counted, there's a room the maps forgot to have an opinion about.",
+        "Nothing living put a door here. Something did, though — the hinges are worn smooth, like a door used constantly by something that was never once in a hurry.",
+        "The room was never on any map of this place. It was always going to be exactly this empty.",
+      ], "victory": "It doesn't fall so much as stop being insisted on — and the wheel, wherever it is now, turns one spoke lighter, seamless at last."},
   },
 
   cinderreach: {
@@ -1308,7 +1396,11 @@ export const MAPS = {
       {"x": 32, "y": 4, "id": "cdc2", "item": "elixir"},
       {"x": 27, "y": 12, "id": "cdc3", "gold": 8000},
     ],
-    boss: {"x": 31, "y": 17, "formation": "boss_kharos", "flag": "kharos", "requires": "aurelith", "intro": "The forge-heat rises off the walls. Something vast turns to face you, wreathed in embers."},
+    boss: {"x": 31, "y": 17, "formation": "boss_kharos", "flag": "kharos", "requires": "aurelith", "intro": [
+      "Cinderreach hasn't cooled in years. Lately the heat has a rhythm to it, like something enormous breathing through banked coals.",
+      "The walls glow brighter as you go deeper, until the light isn't coming from the walls at all.",
+      "The forge-heat rises off the walls. Something vast turns to face you, wreathed in embers.",
+    ], "victory": "Kharos burns out the way a forge does when the bellows finally stop — all at once, and then just embers, dimming."},
   },
 
   drownedvale: {
@@ -1350,7 +1442,11 @@ export const MAPS = {
       {"x": 3, "y": 21, "id": "dvc2", "item": "elixir"},
       {"x": 8, "y": 13, "id": "dvc3", "gold": 20000},
     ],
-    boss: {"x": 4, "y": 8, "formation": "boss_nerith", "flag": "nerith", "requires": "gatekeeper", "intro": "The water goes still, then rises without a current, gathering into a shape wearing a crown."},
+    boss: {"x": 4, "y": 8, "formation": "boss_nerith", "flag": "nerith", "requires": "gatekeeper", "intro": [
+      "The Vale's water has been rising for longer than anyone downstream wants to admit, with no rain and no source anyone's found.",
+      "It isn't rising anymore. It's arriving.",
+      "The water goes still, then rises without a current, gathering into a shape wearing a crown.",
+    ], "victory": "The crown goes under first, then the rest of it, and the water that's left settles the way water settles when whatever was holding it up finally stops."},
   },
 
   glassfields: {
@@ -1392,7 +1488,11 @@ export const MAPS = {
       {"x": 32, "y": 21, "id": "glc2", "item": "elixir"},
       {"x": 27, "y": 13, "id": "glc3", "gold": 70000},
     ],
-    boss: {"x": 31, "y": 8, "formation": "boss_vessia", "flag": "vessia", "requires": "worldheart", "intro": "Every reflection off the glass sand turns at once, pointing to the same warden of light."},
+    boss: {"x": 31, "y": 8, "formation": "boss_vessia", "flag": "vessia", "requires": "worldheart", "intro": [
+      "The Glassfields have thrown light in only one direction for weeks now, every grain of fused sand aimed at the same fixed point, like a compass with only one true north.",
+      "You're standing in it now, and it isn't light anymore so much as attention.",
+      "Every reflection off the glass sand turns at once, pointing to the same warden of light.",
+    ], "victory": "The light scatters back to every direction at once, ordinary and directionless again, and for a moment the whole field looks faintly surprised to be so unwatched."},
   },
 
   ashfall: {
@@ -1440,6 +1540,9 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "ondra", "name": "Ondra",
         "hook": "I've beaten swords out of stone that fell from Kharos's own reach. Whatever's still up there, I want to see it cool.",
         "text": "The reach doesn't scorch what I forge from it anymore. Neither does he.",
+        "reactions": {
+          "thirteenth": "Thirteen names on a wheel, and Kharos was only ever one of the nine. Makes the reach feel smaller, somehow, knowing that."
+        },
         "recruit": { "name": "Ondra", "classId": "warrior", "raceId": "ogrekin", "elementId": "fire", "jobId": "miner" }},
     ],
   },
@@ -1489,6 +1592,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "iona", "name": "Iona",
         "hook": "I know every current from here to the Vale. I've been waiting for a reason to use that for something other than fishing.",
         "text": "Still reading the water. It tells you more than the shore ever will.",
+        "reactions": {
+          "thirteenth": "Every current I know still runs the same, after. Turns out the world doesn't change how water moves. Just what's allowed to live in it.",
+          "nerith": "The Vale's crown went under and stayed under. I read that current for a week straight before I believed it."
+        },
         "recruit": { "name": "Iona", "classId": "dancer", "raceId": "merfolk", "elementId": "water", "jobId": "sailor" }},
     ],
   },
@@ -1538,6 +1645,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "corvin", "name": "Corvin",
         "hook": "I was raised on prayers to something that turned out to be the Vicar wearing a congregation's faith like a coat. I'd like new prayers. Better ones.",
         "text": "Still finding the words. They're mine to choose now, at least.",
+        "reactions": {
+          "thirteenth": "New prayers, still. Turns out the ending needed several. I'm still choosing which ones are mine.",
+          "nerith": "The Vicar's crown went under the water same as she made everyone else believe was holy. I said a prayer anyway. Old habit."
+        },
         "recruit": { "name": "Corvin", "classId": "spiritist", "raceId": "merfolk", "elementId": "water", "jobId": "fisher" }},
     ],
   },
@@ -1587,6 +1698,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "nyx", "name": "Nyx",
         "hook": "I've picked every lock the Hollow Between ever grew, and it keeps growing new ones. I want to see what's behind the last one.",
         "text": "Still picking locks. The last one's just further out than I thought.",
+        "reactions": {
+          "thirteenth": "Nine on the wheel, four beside it — turns out that was the lock the whole time. I still would've liked to pick it myself.",
+          "gatekeeper": "The last lock in the Hollow Between finally gave, and it wasn't even mine that opened it. Mixed feelings, professionally."
+        },
         "recruit": { "name": "Nyx", "classId": "thief", "raceId": "automaton", "elementId": "dark", "jobId": "locksmith" }},
     ],
   },
@@ -1674,7 +1789,10 @@ export const MAPS = {
     tiles: ['#########','#j_____j#','#_______#','#___u___#','#_t___x_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "harrowsrest", "tx": 9, "ty": 18}],
     npcs: [
-      {"x": 4, "y": 2, "kind": "guild", "name": "Registrar Voss", "text": "A satellite ledger. Everything gets copied back to Orrin's rolls at the Ford eventually."},
+      {"x": 4, "y": 2, "kind": "guild", "name": "Registrar Voss", "text": "A satellite ledger. Everything gets copied back to Orrin's rolls at the Ford eventually.",
+        "reactions": {
+          "thirteenth": "Everything gets copied back to the Ford eventually. Even this. I still don't know how they'll shelve an ending."
+        }},
     ],
   },
   harrowsrest_cottage1: {
@@ -1685,6 +1803,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "sable", "name": "Sable",
         "hook": "I've dug wells in this ground my whole life and never once liked what I found at the bottom. I'd rather dig somewhere that at least tells me what it is.",
         "text": "Still digging. Better company down here than there used to be.",
+        "reactions": {
+          "thirteenth": "Still digging. Whatever's at the bottom now, at least it isn't pretending to be something else.",
+          "kharos": "Cinderreach cooled off and half the mines stopped complaining about the heat. I almost missed having something to blame."
+        },
         "recruit": { "name": "Sable", "classId": "guardian", "raceId": "dwarf", "elementId": "earth", "jobId": "miner" }},
     ],
   },
@@ -1696,6 +1818,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "petra", "name": "Petra",
         "hook": "I've mapped every road out of Harrow's Rest and every one of them dead-ends at a story I haven't finished. Let me finish one.",
         "text": "Still mapping. The roads keep getting longer, which I've decided to enjoy.",
+        "reactions": {
+          "thirteenth": "The roads keep getting longer, same as always. I've decided that's the actual ending. The rest was just a very long chapter.",
+          "gatekeeper": "Finally found what my roads kept dead-ending at. Wish I could say the map felt more finished for it."
+        },
         "recruit": { "name": "Petra", "classId": "thief", "raceId": "gnome", "elementId": "earth", "jobId": "cartographer" }},
     ],
   },
@@ -1786,7 +1912,10 @@ export const MAPS = {
     tiles: ['#########','#j_____j#','#_______#','#___u___#','#_t___x_#','#___D___#','#########'],
     warps: [{"x": 4, "y": 5, "to": "glasshaven", "tx": 9, "ty": 18}],
     npcs: [
-      {"x": 4, "y": 2, "kind": "guild", "name": "Master Registrar Thane", "text": "The furthest ledger from the Ford, and the busiest. Everyone passes through Glasshaven eventually."},
+      {"x": 4, "y": 2, "kind": "guild", "name": "Master Registrar Thane", "text": "The furthest ledger from the Ford, and the busiest. Everyone passes through Glasshaven eventually.",
+        "reactions": {
+          "thirteenth": "Everyone passes through Glasshaven eventually, they always said — right up until the day nothing else needed to. Strange, being the last ledger to close."
+        }},
     ],
   },
   glasshaven_cottage1: {
@@ -1797,6 +1926,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "selwyn", "name": "Selwyn",
         "hook": "I was built to keep vigil over the Fields until Vessia woke, judged, and dismissed me. I would like a purpose that isn't waiting.",
         "text": "Still keeping vigil. Just not alone anymore, and not for her.",
+        "reactions": {
+          "thirteenth": "Nine on the wheel. Four beside it. I was built to watch a count I was never part of. I find I don't mind, now.",
+          "vessia": "She judged, and dismissed me, and now she's gone, and neither of those things un-happened. I'm still keeping vigil. Just not for her."
+        },
         "recruit": { "name": "Selwyn", "classId": "cleric", "raceId": "automaton", "elementId": "light", "jobId": "pilgrim" }},
     ],
   },
@@ -1808,6 +1941,10 @@ export const MAPS = {
       {"x": 4, "y": 2, "kind": "recruit", "id": "iskra", "name": "Iskra",
         "hook": "I've sung the Warden's vigil at every shrine from here to the Fields. I'd rather sing about what comes after her than keep singing to her.",
         "text": "New verses. Turns out the ending needed one after all.",
+        "reactions": {
+          "thirteenth": "Nine on the wheel, four beside it — that's thirteen verses now, not one. I know which one is hers. I haven't decided yet which one is mine.",
+          "vessia": "New verses, same as I promised myself I would write once she fell. Funny how hard the first line still was."
+        },
         "recruit": { "name": "Iskra", "classId": "archer", "raceId": "saurian", "elementId": "light", "jobId": "bard" }},
     ],
   },
