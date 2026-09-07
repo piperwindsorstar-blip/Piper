@@ -271,6 +271,25 @@ export const SKILLS = [
   s('everguard', 'Everguard', 'apex', 82, 55, 'buff', 0, 'allies', 0, { status: 'barrier', extraStatus: 'shell', blurb: 'Nothing gets through while it holds.' }),
   s('rebirth', 'Rebirth', 'apex', 85, 70, 'heal', 1.0, 'allies', 0, { revives: true, cleanse: true, blurb: 'Everyone stands up. Everyone is whole.' }),
   s('worldsend', "World's End", 'apex', 90, 90, 'mag', 4.6, 'all', 9, { element: 'attuned', status: 'doom', blurb: 'The name is not a metaphor.' }),
+
+  // --- Labyrinth ultra arts --------------------------------------------------
+  // Never learned by level or class — each comes bound to exactly one ultra
+  // rune, the guaranteed drop from one labyrinth's floor-5 boss (see
+  // maps.js's labyrinth1..6). `lv` here is display flavour only, matching
+  // that labyrinth's own tier; knownSkills() grants these purely off the
+  // equipped rune, the same as any other rune-granted skill.
+  s('thornbindrequiem', 'Thornbind Requiem', 'elem', 10, 10, 'mag', 4.5, 'all', 9,
+    { element: 'nature', blurb: 'Every root in the maze answers at once.' }),
+  s('coilofruin', 'Coil of Ruin', 'dark', 20, 14, 'mag', 6.0, 'one', 9,
+    { element: 'dark', blurb: 'Wraps once. Does not loosen.' }),
+  s('cinderspiralnova', 'Cinderspiral Nova', 'elem', 30, 18, 'mag', 7.5, 'all', 9,
+    { element: 'fire', blurb: 'The spiral was always going to end in this.' }),
+  s('stormvaultjudgment', 'Stormvault Judgment', 'elem', 40, 22, 'mag', 9.0, 'one', 9,
+    { element: 'lightning', blurb: 'The vault only ever opened one way.' }),
+  s('tideworndeluge', 'Tideworn Deluge', 'elem', 50, 26, 'mag', 10.5, 'all', 9,
+    { element: 'water', blurb: 'The tide that wore the maze down remembers the shape.' }),
+  s('thelastcoil', 'The Last Coil', 'apex', 60, 30, 'mag', 12.0, 'all', 9,
+    { element: 'void', blurb: 'Uncoils once, all the way to the centre.' }),
 ];
 
 export const SKILL_BY_ID = Object.fromEntries(SKILLS.map((k) => [k.id, k]));

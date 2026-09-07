@@ -379,6 +379,87 @@ export const ENEMIES = [
     drops: [['seamring', 1.0]],
     blurb: "Not a fourteenth element. The gap a good ring keeps, so it still has room to turn.",
   }),
+
+  // --- Labyrinths — six optional dungeons, one per cave on the world map,
+  // levelled 10/20/30/40/50/60. Each floor 1-4 guards a mini-boss; floor 5's
+  // real boss is the only source of that labyrinth's ultra rune. ------------
+  e('bramblewarden', 'Bramble Warden', 'plant', 'nature', 14, [1500, 10, 59, 50, 33, 30, 8], {
+    sprite: sp('plant', '#5a8a3c', '#9ac86a', '#2c4a1e', 1.5),
+    skills: ['beastcall', 'trapset'], ai: 'boss', gold: 1000, exp: 1200,
+    drops: [['hipotion', 1.0]],
+    blurb: 'The Bramblemaze grew a gatekeeper before it grew a gate.',
+  }),
+  e('roottyrant', 'The Root Tyrant', 'plant', 'nature', 17, [2700, 20, 108, 90, 60, 55, 14], {
+    sprite: sp('plant', '#3c6a28', '#8ab84a', '#1a2e12', 2.0),
+    skills: ['stampede', 'cataclysm', 'ironwall'], ai: 'boss', gold: 3800, exp: 4500,
+    drops: [['bramblecrown', 1.0]],
+    blurb: 'Every path in the maze was a root the whole time.',
+  }),
+
+  e('coilwraith', 'Coil Wraith', 'undead', 'dark', 25, [4000, 250, 71, 50, 88, 61, 27], {
+    sprite: sp('serpent', '#4a2a5c', '#8a5ab0', '#1e1028', 1.4),
+    skills: ['drain', 'rot'], ai: 'boss', gold: 5500, exp: 11000,
+    drops: [['xpotion', 1.0]],
+    blurb: 'Loops the same corridor until it is the only corridor left.',
+  }),
+  e('holloworacle', 'The Hollow Oracle', 'spirit', 'dark', 28, [7200, 450, 130, 90, 160, 110, 50], {
+    sprite: sp('humanoid', '#2e1a3c', '#7a4aa0', '#100a18', 1.8),
+    skills: ['oblivion', 'soulbind', 'drain'], ai: 'boss', gold: 21000, exp: 42000,
+    drops: [['coilcrown', 1.0]],
+    blurb: 'Answers every question with the same coil of an answer.',
+  }),
+
+  e('cindersentinel', 'Cinder Sentinel', 'construct', 'fire', 37, [6000, 260, 121, 80, 121, 77, 30], {
+    sprite: sp('construct', '#c05c2a', '#f0a05a', '#5c2410', 1.6),
+    skills: ['primebolt', 'shieldbash'], ai: 'boss', gold: 9000, exp: 24000,
+    drops: [['elixir', 1.0]],
+    blurb: 'Banked coals in a shape that still remembers standing guard.',
+  }),
+  e('moltensovereign', 'The Molten Sovereign', 'dragon', 'fire', 40, [11000, 480, 220, 145, 220, 140, 55], {
+    sprite: sp('dragon', '#d8501e', '#f8a850', '#5c1c08', 2.0),
+    skills: ['cataclysm', 'primeforce', 'ironwall'], ai: 'boss', gold: 32000, exp: 90000,
+    drops: [['cindercrownrune', 1.0]],
+    blurb: 'The spiral was always going to end in this.',
+  }),
+
+  e('vaultwarden', 'Vault Warden', 'construct', 'lightning', 43, [7200, 230, 138, 91, 143, 96, 36], {
+    sprite: sp('construct', '#4a6ac0', '#9ac0f0', '#1e2c58', 1.7),
+    skills: ['shieldbash', 'ironwall'], ai: 'boss', gold: 11500, exp: 33000,
+    drops: [['adamantite', 1.0]],
+    blurb: 'Was set to open for no one. Has not been told otherwise since.',
+  }),
+  e('stormtyrant', 'The Storm Tyrant', 'spirit', 'lightning', 46, [13200, 420, 250, 165, 260, 175, 65], {
+    sprite: sp('flyer', '#5a7ad0', '#c8dcf8', '#22305c', 2.0),
+    skills: ['primeforce', 'warcry', 'unyielding'], ai: 'boss', gold: 42000, exp: 125000,
+    drops: [['vaultcrown', 1.0]],
+    blurb: 'The vault only ever opened one way, and it just did.',
+  }),
+
+  e('tidewornsentinel', 'Tideworn Sentinel', 'beast', 'water', 55, [8800, 420, 165, 113, 160, 116, 33], {
+    sprite: sp('serpent', '#1e5a78', '#5aa8c8', '#0c2432', 1.6),
+    skills: ['leviathan', 'drain'], ai: 'boss', gold: 19000, exp: 75000,
+    drops: [['holywater', 1.0]],
+    blurb: 'Wore the corridor smooth long before it wore the maze down.',
+  }),
+  e('drownedregent', 'The Drowned Regent', 'undead', 'water', 58, [16000, 760, 300, 205, 290, 210, 60], {
+    sprite: sp('humanoid', '#123a4c', '#3a7898', '#081c28', 1.9),
+    skills: ['leviathan', 'soulbind', 'oblivion'], ai: 'boss', gold: 68000, exp: 271000,
+    drops: [['tidecrown', 1.0]],
+    blurb: 'Still keeps court. The maze is the only one left to attend it.',
+  }),
+
+  e('abysswarden', 'Abyss Warden', 'aberration', 'void', 63, [10200, 520, 176, 118, 198, 138, 41], {
+    sprite: sp('quadruped', '#2a2038', '#6a5a90', '#100c18', 1.8),
+    skills: ['anathemahex', 'soulbind'], ai: 'boss', gold: 26000, exp: 110000,
+    drops: [['voidring', 1.0]],
+    blurb: 'Paces the last ring the way a held breath paces a chest.',
+  }),
+  e('endlessmaw', 'The Endless Maw', 'aberration', 'void', 66, [18500, 950, 320, 215, 360, 250, 75], {
+    sprite: sp('serpent', '#08060c', '#3a2c50', '#000000', 2.3),
+    skills: ['worldsend', 'unmaking', 'soulbind'], ai: 'boss', gold: 95000, exp: 400000,
+    drops: [['lastcoilcrown', 1.0]],
+    blurb: 'Uncoils once, all the way to the centre, and is still hungry after.',
+  }),
 ];
 
 export const ENEMY_BY_ID = Object.fromEntries(ENEMIES.map((x) => [x.id, x]));
@@ -452,6 +533,73 @@ export const FORMATIONS = [
   f('boss_thirteenth', 'boss', [at('boss_thirteenth', 1, 1), at('nullweaver', 0, 0), at('nullweaver', 2, 0)], { boss: true }),
   f('boss_seam', 'boss', [at('boss_seam', 1, 1), at('starweaver', 0, 0), at('starweaver', 2, 0)], { boss: true }),
   f('boss_arenachampion', 'boss', [at('boss_arenachampion', 1, 1)], { boss: true }),
+
+  // --- Labyrinth ambient encounters (wandering trash, one region per
+  // labyrinth so its world-map cave label shows a level span of its own) ---
+  f('laby1_a1', 'laby1', [at('skeleton', 1, 0)]),
+  f('laby1_a2', 'laby1', [at('ghoul', 1, 0), at('skeleton', 0, 0)]),
+  f('laby1_a3', 'laby1', [at('golemshard', 1, 0), at('fireimp', 0, 1)]),
+
+  f('laby2_a1', 'laby2', [at('sorcerer', 1, 0)]),
+  f('laby2_a2', 'laby2', [at('mimic', 1, 0), at('sorcerer', 0, 0)]),
+  f('laby2_a3', 'laby2', [at('chimera', 1, 0), at('lich', 0, 1)]),
+
+  f('laby3_a1', 'laby3', [at('cinderhound', 1, 0)]),
+  f('laby3_a2', 'laby3', [at('cinderhound', 1, 0), at('cinderhound', 0, 0)]),
+  f('laby3_a3', 'laby3', [at('frostcolossus', 1, 1), at('ashwraith', 0, 0)]),
+
+  f('laby4_a1', 'laby4', [at('sparkhawk', 1, 0)]),
+  f('laby4_a2', 'laby4', [at('sparkhawk', 1, 0), at('sparkhawk', 0, 0)]),
+  f('laby4_a3', 'laby4', [at('moltenguard', 1, 1), at('stormdjinn', 0, 0)]),
+
+  f('laby5_a1', 'laby5', [at('tidewraith', 1, 0)]),
+  f('laby5_a2', 'laby5', [at('tidewraith', 1, 0), at('tidewraith', 0, 0)]),
+  f('laby5_a3', 'laby5', [at('drownedknight', 1, 1), at('bonedragon', 0, 0)]),
+
+  f('laby6_a1', 'laby6', [at('krakenspawn', 1, 0)]),
+  f('laby6_a2', 'laby6', [at('krakenspawn', 1, 0), at('seraph', 0, 0)]),
+  f('laby6_a3', 'laby6', [at('deepwarden', 1, 1), at('stormsiren', 0, 0)]),
+
+  // --- Labyrinth mini-bosses (floors 1-4) and floor-5 bosses. Each floor's
+  // fight gets its own formation id even where the core enemy repeats, so
+  // escorts can build up floor to floor without four unique enemy designs
+  // per labyrinth. lpBonus on a floor-5 formation is the flat, exact LP
+  // jackpot Battle.spoils() awards in place of the usual per-enemy trickle. --
+  f('laby1_f1', 'laby1', [at('bramblewarden', 1, 0)], { boss: true }),
+  f('laby1_f2', 'laby1', [at('bramblewarden', 1, 0), at('skeleton', 0, 0)], { boss: true }),
+  f('laby1_f3', 'laby1', [at('bramblewarden', 1, 0), at('skeleton', 0, 0), at('ghoul', 2, 0)], { boss: true }),
+  f('laby1_f4', 'laby1', [at('bramblewarden', 1, 0), at('golemshard', 0, 0), at('fireimp', 2, 0)], { boss: true }),
+  f('laby1_f5', 'laby1', [at('roottyrant', 1, 1)], { boss: true, lpBonus: 1000 }),
+
+  f('laby2_f1', 'laby2', [at('coilwraith', 1, 0)], { boss: true }),
+  f('laby2_f2', 'laby2', [at('coilwraith', 1, 0), at('mimic', 0, 0)], { boss: true }),
+  f('laby2_f3', 'laby2', [at('coilwraith', 1, 0), at('mimic', 0, 0), at('sorcerer', 2, 0)], { boss: true }),
+  f('laby2_f4', 'laby2', [at('coilwraith', 1, 0), at('chimera', 0, 0), at('lich', 2, 0)], { boss: true }),
+  f('laby2_f5', 'laby2', [at('holloworacle', 1, 1), at('coilwraith', 0, 0)], { boss: true, lpBonus: 1000 }),
+
+  f('laby3_f1', 'laby3', [at('cindersentinel', 1, 0)], { boss: true }),
+  f('laby3_f2', 'laby3', [at('cindersentinel', 1, 0), at('cinderhound', 0, 0)], { boss: true }),
+  f('laby3_f3', 'laby3', [at('cindersentinel', 1, 0), at('cinderhound', 0, 0), at('ashwraith', 2, 0)], { boss: true }),
+  f('laby3_f4', 'laby3', [at('cindersentinel', 1, 0), at('frostcolossus', 0, 0), at('ashwraith', 2, 0)], { boss: true }),
+  f('laby3_f5', 'laby3', [at('moltensovereign', 1, 1), at('cindersentinel', 0, 0), at('cindersentinel', 2, 0)], { boss: true, lpBonus: 1000 }),
+
+  f('laby4_f1', 'laby4', [at('vaultwarden', 1, 0)], { boss: true }),
+  f('laby4_f2', 'laby4', [at('vaultwarden', 1, 0), at('sparkhawk', 0, 0)], { boss: true }),
+  f('laby4_f3', 'laby4', [at('vaultwarden', 1, 0), at('sparkhawk', 0, 0), at('moltenguard', 2, 0)], { boss: true }),
+  f('laby4_f4', 'laby4', [at('vaultwarden', 1, 0), at('stormdjinn', 0, 0), at('moltenguard', 2, 0)], { boss: true }),
+  f('laby4_f5', 'laby4', [at('stormtyrant', 1, 1), at('vaultwarden', 0, 0)], { boss: true, lpBonus: 1000 }),
+
+  f('laby5_f1', 'laby5', [at('tidewornsentinel', 1, 0)], { boss: true }),
+  f('laby5_f2', 'laby5', [at('tidewornsentinel', 1, 0), at('tidewraith', 0, 0)], { boss: true }),
+  f('laby5_f3', 'laby5', [at('tidewornsentinel', 1, 0), at('tidewraith', 0, 0), at('bonedragon', 2, 0)], { boss: true }),
+  f('laby5_f4', 'laby5', [at('tidewornsentinel', 1, 0), at('drownedknight', 0, 0), at('bonedragon', 2, 0)], { boss: true }),
+  f('laby5_f5', 'laby5', [at('drownedregent', 1, 1), at('tidewornsentinel', 0, 0), at('tidewornsentinel', 2, 0)], { boss: true, lpBonus: 1000 }),
+
+  f('laby6_f1', 'laby6', [at('abysswarden', 1, 0)], { boss: true }),
+  f('laby6_f2', 'laby6', [at('abysswarden', 1, 0), at('krakenspawn', 0, 0)], { boss: true }),
+  f('laby6_f3', 'laby6', [at('abysswarden', 1, 0), at('krakenspawn', 0, 0), at('seraph', 2, 0)], { boss: true }),
+  f('laby6_f4', 'laby6', [at('abysswarden', 1, 0), at('deepwarden', 0, 0), at('stormsiren', 2, 0)], { boss: true }),
+  f('laby6_f5', 'laby6', [at('endlessmaw', 1, 1), at('abysswarden', 0, 0), at('abysswarden', 2, 0)], { boss: true, lpBonus: 1000 }),
 ];
 
 export const FORMATION_BY_ID = Object.fromEntries(FORMATIONS.map((x) => [x.id, x]));

@@ -946,6 +946,10 @@ export class Battle {
     }
     exp = Math.round(exp * (1 + 0.05 * scribe));
     gold = Math.round(gold * (1 + 0.15 * merchant)) + (this.stolenGold ?? 0);
+    // A labyrinth's floor-5 boss awards a flat, exact LP jackpot instead
+    // of the usual per-enemy-EXP trickle — set on the formation itself so
+    // it stays a property of that one fight, not a new global rule.
+    if (this.formation.lpBonus) lp = this.formation.lpBonus;
     return { exp, gold, items, lp };
   }
 }

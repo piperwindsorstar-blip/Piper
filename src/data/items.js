@@ -41,7 +41,8 @@ const ACC = (id, name, price, extra = {}) => ({ id, name, kind: 'accessory', slo
 // borrowed access to another school's tool, not tied to class or level (the
 // item itself is the gate). See character.js's knownSkills for where the
 // grant actually gets folded into a character's skill list.
-const RUNE = (id, name, price, grantSkill) => ({ id, name, kind: 'rune', slot: 'rune', price, grantSkill });
+const RUNE = (id, name, price, grantSkill, extra = {}) =>
+  ({ id, name, kind: 'rune', slot: 'rune', price, grantSkill, ...extra });
 const U = (id, name, price, extra = {}) => ({ id, name, kind: 'consumable', price, ...extra });
 const M = (id, name, price, extra = {}) => ({ id, name, kind: 'material', price, ...extra });
 
@@ -181,6 +182,18 @@ export const ITEMS = [
   RUNE('solarrune', 'Solar Rune', 4600, 'judgement'),
   RUNE('chorusrune', 'Chorus Rune', 9000, 'healall'),
   RUNE('reliquaryrune', 'Reliquary Rune', 15000, 'revive'),
+
+  // --- ultra runes -----------------------------------------------------------
+  // Never sold — each is the guaranteed drop from exactly one labyrinth's
+  // floor-5 boss (see maps.js's labyrinth1..6) and nowhere else. Unlike a
+  // regular rune, an ultra rune also carries a stat bonus far past anything
+  // sold at that point in the game, on top of the one-of-a-kind art it grants.
+  RUNE('bramblecrown', 'Bramblecrown Rune', 20000, 'thornbindrequiem', { bonus: { str: 8, vit: 8, mag: 8 } }),
+  RUNE('coilcrown', 'Coilcrown Rune', 45000, 'coilofruin', { bonus: { str: 14, vit: 12, mag: 14 } }),
+  RUNE('cindercrownrune', 'Cindercrown Rune', 95000, 'cinderspiralnova', { bonus: { str: 20, vit: 18, mag: 20 } }),
+  RUNE('vaultcrown', 'Vaultcrown Rune', 160000, 'stormvaultjudgment', { bonus: { str: 28, vit: 24, mag: 28 } }),
+  RUNE('tidecrown', 'Tidecrown Rune', 260000, 'tideworndeluge', { bonus: { str: 36, vit: 30, mag: 36 } }),
+  RUNE('lastcoilcrown', 'Last Coil Rune', 400000, 'thelastcoil', { bonus: { str: 46, vit: 38, mag: 46, lck: 10 } }),
 
   // --- consumables ---------------------------------------------------------
   U('potion', 'Potion', 30, { heal: 80, target: 'ally' }),

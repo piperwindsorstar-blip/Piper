@@ -94,6 +94,9 @@ for (const f of groups) (byRegion[f.region] ??= []).push(f);
 const REGION_LEVEL = {
   greenfield: 4, caverns: 11, ruins: 20, abyss: 55, boss: 0,
   cinder: 35, drowned: 53, glass: 73,
+  // the six labyrinths — ambient encounters tested at each one's own
+  // roughly-centred level (see enemies.js's laby1..6 formations)
+  laby1: 10, laby2: 20, laby3: 32, laby4: 38, laby5: 50, laby6: 57,
 };
 const BOSS_LEVEL = {
   boss_volk: 9, boss_anvil: 16, boss_choir: 24, boss_aurelith: 30,
@@ -103,6 +106,14 @@ const BOSS_LEVEL = {
   // simulated a little past that, as a party would actually be by the time
   // they came back to attempt it.
   boss_arenachampion: 78,
+  // labyrinth mini-bosses (floors 1-4 share one, escorts alone escalate)
+  // and each labyrinth's floor-5 real boss.
+  laby1_f1: 14, laby1_f2: 14, laby1_f3: 14, laby1_f4: 14, laby1_f5: 17,
+  laby2_f1: 25, laby2_f2: 25, laby2_f3: 25, laby2_f4: 25, laby2_f5: 28,
+  laby3_f1: 37, laby3_f2: 37, laby3_f3: 37, laby3_f4: 37, laby3_f5: 40,
+  laby4_f1: 43, laby4_f2: 43, laby4_f3: 43, laby4_f4: 43, laby4_f5: 46,
+  laby5_f1: 55, laby5_f2: 55, laby5_f3: 55, laby5_f4: 55, laby5_f5: 58,
+  laby6_f1: 63, laby6_f2: 63, laby6_f3: 63, laby6_f4: 63, laby6_f5: 66,
 };
 
 console.log(`\n  QUEST OF THE THIRTEEN — battle simulation (${RUNS} runs each)\n`);
