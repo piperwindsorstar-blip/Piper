@@ -86,6 +86,18 @@ export const ACHIEVEMENTS = [
     check: (g) => g.ngPlus > 0,
   },
   {
+    id: 'ngPlus3', name: 'Worn Smooth', desc: 'Reach New Game+3.',
+    check: (g) => g.ngPlus >= 3,
+  },
+  {
+    id: 'ngPlus5', name: 'The Wheel Doesn\'t Remember Starting', desc: 'Reach New Game+5.',
+    check: (g) => g.ngPlus >= 5,
+  },
+  {
+    id: 'wheelTurner', name: 'Something Only the Wheel Would Give', desc: 'Defeat the Seam again, with the wheel already turning.',
+    check: (g) => g.flag('ngplus.wheelTurnerFound'),
+  },
+  {
     id: 'arenaChampion', name: 'The New Undefeated', desc: 'Clear the Colosseum\'s Champion Gauntlet.',
     check: (g) => g.flag('arena.champion.cleared'),
   },

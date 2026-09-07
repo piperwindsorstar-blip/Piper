@@ -215,6 +215,13 @@ export const ITEMS = [
   // --- postgame — the Seam's own drop, a step above everything else here ---
   ACC('seamring', 'The Missing Seam', 400000,
     { bonus: { str: 20, vit: 20, agi: 20, int: 20, spr: 20, lck: 20 } }),
+  // --- New Game+ only: the Seam's second drop once the wheel has actually
+  // turned at least once — see battle.js's spoils() for the ngPlus gate.
+  // A smaller stat spread than seamring itself (it's a bonus on top of
+  // that, not a replacement) plus a faster-learning edge for a character
+  // who's genuinely been through this more than once.
+  ACC('wheelturnercoin', "The Wheel-Turner's Coin", 450000,
+    { bonus: { str: 8, vit: 8, agi: 8, int: 8, spr: 8, lck: 8 }, ipGain: 1.3 }),
   // --- the Colosseum's own gauntlet rewards — never sold or dropped in the
   // wild, only granted for clearing that tier (see data/arena.js) ----------
   ACC('brawlersband', "Brawler's Band", 750, { bonus: { str: 5, agi: 3 } }),

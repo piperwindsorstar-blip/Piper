@@ -223,7 +223,7 @@ export class BattleScene {
         * (opts.enemyScaleBonus ?? 1),
       companion: this.g.companion
         ? { enemyId: this.g.companion.enemyId, rank: this.g.jobRankOf('tamer') } : null,
-      night: opts.night, rain: opts.rain, partyGold: this.g.gold,
+      night: opts.night, rain: opts.rain, partyGold: this.g.gold, ngPlus: this.g.ngPlus,
     });
     this.state = 'intro';
     this.t = 0;
@@ -1253,6 +1253,10 @@ export class BattleScene {
       this.g.earn(spoils.gold);
       for (const id of spoils.items) {
         if (this.g.addItem(id)) msgs.push(`Found ${getItem(id).name}.`);
+        // Set once on the spot rather than checked later by rummaging the
+        // inventory — the item can be equipped, sold, or spent afterward
+        // without the achievement caring.
+        if (id === 'wheelturnercoin') this.g.setFlag('ngplus.wheelTurnerFound', true);
       }
       const promos = [];
       const leveledRefs = new Set();

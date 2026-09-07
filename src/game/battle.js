@@ -179,6 +179,9 @@ export class Battle {
     // Gold Toss's own resource pool — see useSkill's goldCost handling.
     this.partyGold = opts.partyGold ?? 0;
     this.goldSpent = 0;
+    // How many New Game+ cycles the save has completed — see spoils()'s
+    // ngPlus-gated bonus drop from the Seam.
+    this.ngPlus = opts.ngPlus ?? 0;
     this.formation = FORMATION_BY_ID[formationId];
     if (!this.formation) throw new Error(`unknown formation: ${formationId}`);
     this.isBoss = !!this.formation.boss;
@@ -445,7 +448,10 @@ export class Battle {
 
   // --- damage --------------------------------------------------------------
   gainIp(unit, amount) {
-    const mult = unit.isPC && unit.ref.equip.accessory === 'ipband' ? 1.5 : 1;
+    // Any accessory can carry its own ipGain now, not just ipband by name —
+    // the Wheel-Turner's Coin (New Game+ only) is the second one to.
+    const acc = unit.isPC && unit.ref.equip.accessory ? getItem(unit.ref.equip.accessory) : null;
+    const mult = acc?.ipGain ?? 1;
     unit.ip = Math.min(100, unit.ip + amount * mult);
   }
 
@@ -1206,6 +1212,9 @@ export class Battle {
     // of the usual per-enemy-EXP trickle — set on the formation itself so
     // it stays a property of that one fight, not a new global rule.
     if (this.formation.lpBonus) lp = this.formation.lpBonus;
+    // The Seam's second drop only exists once the wheel has actually turned
+    // — a first playthrough only ever gets the seamring, same as always.
+    if (this.formation.id === 'boss_seam' && this.ngPlus >= 1) items.push('wheelturnercoin');
     return { exp, gold, items, lp };
   }
 }
