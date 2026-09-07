@@ -68,6 +68,15 @@ export const ENEMIES = [
     skills: ['spark'], ai: 'caster', reach: 9,
     drops: [['manaflower', 0.4], ['spiritglass', 0.05]],
   }),
+  e('ashslime', 'Ember Slime', 'aberration', 'fire', 3, [34, 0, 13, 4, 6, 3, 5], {
+    sprite: sp('blob', '#d0562f', '#f5a670', '#7a2810'), tame: true,
+    drops: [['healherb', 0.35], ['firebomb', 0.1]], blurb: 'Slime that picked up a very bad habit near a campfire.',
+  }),
+  e('fieldhound', 'Field Hound', 'beast', 'wind', 5, [62, 0, 22, 9, 4, 5, 16], {
+    sprite: sp('quadruped', '#8a8a78', '#c4c4ac', '#4a4a3c'), tame: true,
+    skills: ['jinx'], drops: [['beastfang', 0.45], ['leather', 0.3]],
+    blurb: 'Runs the fence line faster than the fence can be fixed.',
+  }),
   e('thornvine', 'Thornvine', 'plant', 'nature', 6, [80, 12, 24, 16, 10, 8, 6], {
     sprite: sp('plant', '#3f7a2f', '#7ab84a', '#22491a', 1.2), reach: 3,
     skills: ['trapset'], drops: [['healherb', 0.6], ['manaflower', 0.2]],
@@ -87,6 +96,15 @@ export const ENEMIES = [
     sprite: sp('humanoid', '#d8d0b8', '#f4eeda', '#8a8270'),
     skills: ['slash'], drops: [['bronzesword', 0.12], ['holywater', 0.2]],
     blurb: 'Held together by grudge.',
+  }),
+  e('frostbat', 'Frost Bat', 'beast', 'ice', 7, [52, 0, 21, 9, 12, 10, 26], {
+    sprite: sp('flyer', '#8fd0ec', '#d8f4ff', '#3a6a88'), tame: true,
+    skills: ['jinx'], drops: [['beastfang', 0.4], ['frostbomb', 0.15]],
+  }),
+  e('ironskeleton', 'Iron Skeleton', 'undead', 'metal', 9, [102, 0, 36, 26, 6, 14, 10], {
+    sprite: sp('humanoid', '#9098a8', '#c8d0dc', '#4a4e5a'),
+    skills: ['slash'], drops: [['ironore', 0.4], ['holywater', 0.2]],
+    blurb: 'Held together by grudge, and a surprising amount of rivets.',
   }),
   e('ghoul', 'Ghoul', 'undead', 'poison', 10, [130, 10, 40, 22, 12, 12, 10], {
     sprite: sp('humanoid', '#6a7a5a', '#9aae86', '#3a442e'),
@@ -125,6 +143,11 @@ export const ENEMIES = [
     drops: [['spiritglass', 0.25], ['holywater', 0.3]],
     blurb: 'Takes what it needs and remembers where it got it.',
   }),
+  e('gravewraith', 'Grave Wraith', 'undead', 'poison', 16, [190, 55, 44, 24, 42, 30, 24], {
+    sprite: sp('flyer', '#5a7a4a', '#9ac47a', '#2a3e22'),
+    skills: ['drain', 'wither'], ai: 'caster', reach: 9,
+    drops: [['venomcap', 0.3], ['holywater', 0.25]],
+  }),
   e('armoredknight', 'Fallen Knight', 'undead', 'metal', 16, [260, 20, 66, 52, 14, 26, 18], {
     sprite: sp('humanoid', '#8a8fa0', '#c8cdd8', '#4a4e5a', 1.15),
     skills: ['crossslash', 'guardstance'], ai: 'defensive',
@@ -134,6 +157,11 @@ export const ENEMIES = [
     sprite: sp('serpent', '#8a9a4a', '#c4d47a', '#4a5424', 1.2),
     skills: ['soulbind', 'rot'], drops: [['goldneedle', 0.4], ['dragonscale', 0.1]],
     blurb: 'Do not make eye contact. Do not make any contact.',
+  }),
+  e('boneserpent', 'Bone Serpent', 'undead', 'dark', 19, [255, 20, 66, 44, 28, 26, 18], {
+    sprite: sp('serpent', '#c8c0a8', '#ece4cc', '#6a6250'),
+    skills: ['soulbind'], drops: [['goldneedle', 0.3], ['holywater', 0.2]],
+    blurb: "The basilisk's bones kept moving out of spite.",
   }),
   e('sorcerer', 'Ruin Sorcerer', 'humanoid', 'dark', 18, [200, 120, 44, 30, 68, 40, 24], {
     sprite: sp('humanoid', '#6a4a8c', '#a888c8', '#3a2450'),
@@ -238,6 +266,16 @@ export const ENEMIES = [
     drops: [['ironore', 0.5], ['adamantite', 0.2]],
     blurb: 'Slow the way lava is slow — right up until it isn\'t.',
   }),
+  e('cinderjackal', 'Cinder Jackal', 'beast', 'fire', 34, [1420, 0, 148, 88, 54, 60, 58], {
+    sprite: sp('quadruped', '#e0782a', '#f8c080', '#4a1c08'),
+    skills: ['maul'], ai: 'aggressive', drops: [['beastfang', 0.55], ['sunpetal', 0.15]],
+  }),
+  e('slagsentinel', 'Slag Sentinel', 'construct', 'fire', 37, [1980, 0, 160, 138, 66, 90, 26], {
+    sprite: sp('construct', '#3a2016', '#8a4a2a', '#160a06'),
+    skills: ['shieldbash', 'guardstance'], ai: 'defensive',
+    drops: [['ironore', 0.45], ['adamantite', 0.22]],
+    blurb: "The forge's own slag, cooled just enough to hold a shape.",
+  }),
   e('sparkhawk', 'Sparkhawk', 'beast', 'lightning', 38, [1660, 0, 168, 100, 122, 96, 88], {
     sprite: sp('flyer', '#e0d840', '#fff8a0', '#7a7010', 1.15),
     skills: ['aimshot', 'cripple'], reach: 9,
@@ -255,6 +293,16 @@ export const ENEMIES = [
     sprite: sp('humanoid', '#3a5a68', '#7a9aa8', '#1a2a30', 1.25),
     skills: ['crossslash', 'guardstance'], ai: 'defensive',
     drops: [['chainmail', 0.2], ['riverpearl', 0.35]],
+  }),
+  e('brinewraith', 'Brine Wraith', 'undead', 'poison', 51, [3380, 240, 190, 128, 200, 145, 58], {
+    sprite: sp('flyer', '#3a5a3a', '#7aa878', '#1a2a1a'),
+    skills: ['bonespear', 'wither'], ai: 'caster', reach: 9,
+    drops: [['venomcap', 0.3], ['spiritglass', 0.25]],
+  }),
+  e('drownedsentinel', 'Drowned Sentinel', 'undead', 'water', 53, [3960, 0, 224, 190, 96, 140, 40], {
+    sprite: sp('humanoid', '#1e3a44', '#4a7888', '#0c1c20'),
+    skills: ['crossslash', 'guardstance'], ai: 'defensive',
+    drops: [['chainmail', 0.22], ['riverpearl', 0.3]],
   }),
   e('krakenspawn', 'Krakenspawn', 'beast', 'water', 54, [3720, 0, 216, 150, 140, 140, 68], {
     sprite: sp('serpent', '#1e4a5c', '#4a8898', '#0c2028', 1.5),
@@ -279,6 +327,18 @@ export const ENEMIES = [
     sprite: sp('construct', '#f0e8c0', '#ffffff', '#b8a860', 1.6),
     skills: ['shieldbash', 'ironwall'], ai: 'defensive',
     drops: [['adamantite', 0.5], ['titanhelm', 0.08]],
+  }),
+  e('shardwraith', 'Shard Wraith', 'aberration', 'void', 71, [7200, 440, 262, 178, 300, 214, 78], {
+    sprite: sp('flyer', '#4a3a68', '#8a70b0', '#1e1830'),
+    skills: ['bonespear', 'phantasm'], ai: 'caster', reach: 9,
+    drops: [['spiritglass', 0.5], ['voidring', 0.05]],
+    blurb: 'Glass that shattered toward the dark instead of the light.',
+  }),
+  e('gleamguard', 'Gleam Guard', 'construct', 'light', 73, [8420, 0, 290, 218, 160, 188, 60], {
+    sprite: sp('construct', '#c8a848', '#f0d888', '#5a4218', 1.6),
+    skills: ['shieldbash', 'ironwall'], ai: 'defensive',
+    drops: [['adamantite', 0.5], ['titanhelm', 0.08]],
+    blurb: 'Gold instead of white — the Fields keep more than one honor guard.',
   }),
   e('duskstalker', 'Duskstalker', 'spirit', 'dark', 74, [7700, 260, 296, 182, 204, 214, 98], {
     sprite: sp('quadruped', '#2a1c3a', '#5a4278', '#120a1c', 1.4),
@@ -482,6 +542,8 @@ export const FORMATIONS = [
   f('gf4', 'greenfield', [at('bandit', 1, 0), at('bandit', 0, 0), at('rat', 2, 1)]),
   f('gf5', 'greenfield', [at('thornvine', 1, 1), at('greenslime', 0, 0), at('greenslime', 2, 0)]),
   f('gf6', 'greenfield', [at('wisp', 1, 2), at('bandit', 1, 0), at('boar', 0, 0)]),
+  f('gf7', 'greenfield', [at('ashslime', 1, 0), at('slime', 0, 0)]),
+  f('gf8', 'greenfield', [at('fieldhound', 1, 0), at('fieldhound', 0, 1)]),
 
   f('cv1', 'caverns', [at('bat', 0, 0), at('bat', 2, 0), at('kobold', 1, 0)]),
   f('cv2', 'caverns', [at('skeleton', 1, 0), at('skeleton', 0, 0), at('bat', 2, 1)]),
@@ -489,6 +551,8 @@ export const FORMATIONS = [
   f('cv4', 'caverns', [at('ghoul', 1, 0), at('ghoul', 0, 0), at('fireimp', 1, 2)]),
   f('cv5', 'caverns', [at('iceelemental', 1, 1), at('direwolf', 0, 0), at('direwolf', 2, 0)]),
   f('cv6', 'caverns', [at('harpy', 0, 2), at('harpy', 2, 2), at('direwolf', 1, 0)]),
+  f('cv7', 'caverns', [at('frostbat', 0, 0), at('frostbat', 2, 0), at('kobold', 1, 0)]),
+  f('cv8', 'caverns', [at('ironskeleton', 1, 0), at('ironskeleton', 0, 0), at('bat', 2, 1)]),
 
   f('rn1', 'ruins', [at('wraith', 1, 2), at('skeleton', 0, 0), at('skeleton', 2, 0), at('armoredknight', 1, 0)]),
   f('rn2', 'ruins', [at('armoredknight', 0, 0), at('armoredknight', 2, 0), at('sorcerer', 1, 2)]),
@@ -497,6 +561,8 @@ export const FORMATIONS = [
   f('rn5', 'ruins', [at('chimera', 1, 0), at('harpy', 0, 2), at('harpy', 2, 2)]),
   f('rn6', 'ruins', [at('lich', 1, 2), at('ironsentinel', 1, 0), at('wraith', 0, 1), at('wraith', 2, 1)]),
   f('rn7', 'ruins', [at('wyvern', 1, 1), at('voidspawn', 0, 2), at('voidspawn', 2, 2)]),
+  f('rn8', 'ruins', [at('gravewraith', 1, 2), at('skeleton', 0, 0), at('skeleton', 2, 0)]),
+  f('rn9', 'ruins', [at('boneserpent', 1, 0), at('ghoul', 0, 1), at('ghoul', 2, 1)]),
 
   f('ab1', 'abyss', [at('frostcolossus', 1, 0), at('abyssalmaw', 0, 2), at('abyssalmaw', 2, 2)]),
   f('ab2', 'abyss', [at('stormdjinn', 1, 2), at('frostcolossus', 0, 0), at('frostcolossus', 2, 0)]),
@@ -510,16 +576,22 @@ export const FORMATIONS = [
   f('cd2', 'cinder', [at('moltenguard', 1, 1), at('cinderhound', 0, 0)]),
   f('cd3', 'cinder', [at('sparkhawk', 0, 2), at('sparkhawk', 2, 2), at('ashwraith', 1, 0)]),
   f('cd4', 'cinder', [at('moltenguard', 1, 0), at('moltenguard', 0, 1), at('sparkhawk', 2, 2)]),
+  f('cd5', 'cinder', [at('cinderjackal', 1, 0), at('cinderjackal', 0, 0), at('ashwraith', 1, 2)]),
+  f('cd6', 'cinder', [at('slagsentinel', 1, 1), at('sparkhawk', 0, 2)]),
 
   f('dv1', 'drowned', [at('drownedknight', 1, 0), at('drownedknight', 0, 0), at('tidewraith', 1, 2)]),
   f('dv2', 'drowned', [at('krakenspawn', 1, 1), at('tidewraith', 0, 0)]),
   f('dv3', 'drowned', [at('stormsiren', 0, 2), at('stormsiren', 2, 2), at('drownedknight', 1, 0)]),
   f('dv4', 'drowned', [at('krakenspawn', 1, 0), at('krakenspawn', 0, 1), at('stormsiren', 2, 2)]),
+  f('dv5', 'drowned', [at('brinewraith', 1, 2), at('drownedknight', 0, 0), at('drownedknight', 2, 0)]),
+  f('dv6', 'drowned', [at('drownedsentinel', 1, 0), at('drownedsentinel', 0, 1), at('tidewraith', 2, 2)]),
 
   f('gl1', 'glass', [at('radiantguard', 1, 0), at('radiantguard', 0, 0), at('glasswraith', 1, 2)]),
   f('gl2', 'glass', [at('duskstalker', 1, 1), at('glasswraith', 0, 0)]),
   f('gl3', 'glass', [at('starweaver', 0, 2), at('starweaver', 2, 2), at('duskstalker', 1, 0)]),
   f('gl4', 'glass', [at('radiantguard', 1, 0), at('duskstalker', 0, 1), at('starweaver', 2, 2)]),
+  f('gl5', 'glass', [at('shardwraith', 1, 2), at('duskstalker', 1, 0)]),
+  f('gl6', 'glass', [at('gleamguard', 1, 0), at('gleamguard', 0, 1), at('glasswraith', 2, 2)]),
 
   f('boss_volk', 'boss', [at('boss_brigand', 1, 0), at('bandit', 0, 0), at('bandit', 2, 0)], { boss: true }),
   f('boss_anvil', 'boss', [at('boss_golemking', 1, 0), at('golemshard', 0, 1), at('golemshard', 2, 1)], { boss: true }),
