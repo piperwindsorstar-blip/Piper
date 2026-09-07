@@ -10,15 +10,15 @@
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 function rgbToHex(r, g, b) { return '#' + [r, g, b].map((v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join(''); }
-function amShade(hex, amt) {
+export function amShade(hex, amt) {
   const [r, g, b] = hexToRgb(hex);
   const f = (c) => (amt >= 0 ? c + (255 - c) * amt : c + c * amt);
   return rgbToHex(f(r), f(g), f(b));
 }
 
-const INK = '#1c1420';
+export const INK = '#1c1420';
 
-function fillStroke(ctx, fill, lw = 1.4) {
+export function fillStroke(ctx, fill, lw = 1.4) {
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.strokeStyle = INK;
@@ -28,7 +28,7 @@ function fillStroke(ctx, fill, lw = 1.4) {
 
 /** A simple round anime-monster eye: white, iris, pupil, one highlight —
  *  no lashes or brow, which would read as fussy at creature scale. */
-function monsterEye(ctx, ex, ey, r, iris) {
+export function monsterEye(ctx, ex, ey, r, iris) {
   ctx.beginPath();
   ctx.arc(ex, ey, r, 0, Math.PI * 2);
   ctx.fillStyle = '#faf6ec';
@@ -50,7 +50,7 @@ function monsterEye(ctx, ex, ey, r, iris) {
   ctx.fill();
 }
 
-function limb(ctx, x1, y1, x2, y2, w, color) {
+export function limb(ctx, x1, y1, x2, y2, w, color) {
   ctx.lineCap = 'round';
   ctx.strokeStyle = INK;
   ctx.lineWidth = w + 1;
@@ -60,7 +60,7 @@ function limb(ctx, x1, y1, x2, y2, w, color) {
   ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
 }
 
-function wingShape(ctx, x0, y0, dir, span, height, color) {
+export function wingShape(ctx, x0, y0, dir, span, height, color) {
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.quadraticCurveTo(x0 + dir * span * 0.5, y0 - height, x0 + dir * span, y0 - height * 0.3);

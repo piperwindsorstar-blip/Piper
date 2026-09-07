@@ -8,6 +8,7 @@
 
 import { upscale } from './pixel.js';
 import { paintAnimeMonster } from './animemonster.js';
+import { BOSS_PAINTERS } from './bossart.js';
 
 export const MW = 64, MH = 52;
 
@@ -25,7 +26,8 @@ function monsterBase(sprite, frame) {
   const cv = document.createElement('canvas');
   cv.width = MW; cv.height = MH;
   const ctx = cv.getContext('2d');
-  paintAnimeMonster(ctx, MW / 2, MH - 2, sprite, frame);
+  const paint = BOSS_PAINTERS[sprite.plan] ?? paintAnimeMonster;
+  paint(ctx, MW / 2, MH - 2, sprite, frame);
   cache.set(key, cv);
   return cv;
 }

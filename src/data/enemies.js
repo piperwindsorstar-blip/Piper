@@ -355,63 +355,63 @@ export const ENEMIES = [
 
   // --- Bosses --------------------------------------------------------------
   e('boss_brigand', 'Brigand Chief Volk', 'humanoid', 'fire', 9, [760, 40, 52, 30, 20, 18, 20], {
-    sprite: sp('humanoid', '#a04a2c', '#d88a5a', '#5a240e', 1.3),
+    sprite: sp('volk', '#a04a2c', '#d88a5a', '#5a240e', 1.3),
     skills: ['crossslash', 'warcry', 'recklessblow'], ai: 'boss', gold: 1200, exp: 900,
     drops: [['battleaxe', 1.0]], steal: 'hipotion',
     blurb: 'Runs the road between here and anywhere.',
   }),
   e('boss_golemking', 'The Anvil King', 'construct', 'earth', 16, [2400, 0, 96, 80, 24, 48, 12], {
-    sprite: sp('construct', '#9a7042', '#c9a06a', '#5a4020', 1.7),
+    sprite: sp('anvilking', '#9a7042', '#c9a06a', '#5a4020', 1.7),
     skills: ['shieldbash', 'ironwall', 'stampede'], ai: 'boss', gold: 3000, exp: 3200,
     drops: [['adamantite', 1.0], ['ironshield', 1.0]],
     blurb: 'Was a mountain. Got up.',
   }),
   e('boss_shadow', 'The Hollow Choir', 'spirit', 'dark', 23, [4200, 300, 132, 68, 122, 74, 38], {
-    sprite: sp('flyer', '#4a2a5c', '#9a6ab4', '#22122e', 1.7),
+    sprite: sp('choir', '#4a2a5c', '#9a6ab4', '#22122e', 1.7),
     skills: ['oblivion', 'anathemahex', 'phantasm', 'drain'], ai: 'boss', gold: 8000, exp: 12000,
     drops: [['crownofstars', 1.0]],
     blurb: 'Sings with every voice it has collected.',
   }),
   e('boss_wyrm', 'Aurelith, the Last Wyrm', 'dragon', 'light', 28, [7000, 400, 148, 96, 130, 92, 48], {
-    sprite: sp('dragon', '#d8b850', '#f8e8a0', '#8a6a18', 2.0),
+    sprite: sp('aurelith', '#d8b850', '#f8e8a0', '#8a6a18', 2.0),
     skills: ['exalt', 'dragondive', 'primeforce', 'consecration'], ai: 'boss', gold: 20000, exp: 40000,
     drops: [['sunblade', 1.0], ['dragonscale', 1.0]],
     blurb: 'Remembers the wheel being made.',
   }),
   e('boss_kharos', 'Kharos, the Cinder Sovereign', 'spirit', 'fire', 37, [9800, 500, 205, 135, 178, 128, 52], {
-    sprite: sp('flyer', '#c0442a', '#f0985a', '#5c1c0e', 1.8),
+    sprite: sp('kharos', '#c0442a', '#f0985a', '#5c1c0e', 1.8),
     skills: ['cataclysm', 'primeforce', 'elemward', 'warcry'], ai: 'boss', gold: 28000, exp: 75000,
     drops: [['emberrod', 1.0], ['cindercrown', 1.0]],
     blurb: 'Ruled the reach by never once letting it cool.',
   }),
   e('boss_gate', 'The Gatekeeper', 'construct', 'metal', 46, [13000, 400, 268, 178, 232, 168, 56], {
-    sprite: sp('construct', '#b8bcc8', '#eef2fa', '#5a606c', 2.2),
+    sprite: sp('gatekeeper', '#b8bcc8', '#eef2fa', '#5a606c', 2.2),
     skills: ['unyielding', 'breakpoint', 'grandsigil', 'shieldbash'], ai: 'boss',
     gold: 40000, exp: 120000,
     drops: [['titanplate', 1.0], ['bulwarkshield', 1.0], ['titanring', 1.0]],
     blurb: 'Was told to let nobody through. Nobody has been through.',
   }),
   e('boss_nerith', 'Nerith, the Drowned Vicar', 'undead', 'water', 55, [15000, 700, 295, 195, 270, 198, 60], {
-    sprite: sp('flyer', '#2a5a70', '#6aa8c0', '#122a38', 1.9),
+    sprite: sp('nerith', '#2a5a70', '#6aa8c0', '#122a38', 1.9),
     skills: ['leviathan', 'soulbind', 'rot', 'drain'], ai: 'boss', gold: 60000, exp: 230000,
     drops: [['drownedcrozier', 1.0], ['vicarlocket', 1.0]],
     blurb: 'Kept preaching long after the congregation stopped surfacing.',
   }),
   e('boss_worldheart', 'The World Heart', 'spirit', 'nature', 66, [18000, 900, 330, 220, 325, 238, 68], {
-    sprite: sp('plant', '#4a9a4a', '#9ae07a', '#1e4a1c', 2.4),
+    sprite: sp('worldheart', '#4a9a4a', '#9ae07a', '#1e4a1c', 2.4),
     skills: ['worldvoice', 'finalhour', 'mendworld', 'anathemahex', 'stampede'], ai: 'boss',
     gold: 90000, exp: 380000,
     drops: [['voidweave', 1.0], ['aeonpendant', 1.0], ['godsfist', 1.0]],
     blurb: 'Everything green has been waiting for you to arrive.',
   }),
   e('boss_vessia', 'Vessia, the Glass Warden', 'construct', 'light', 75, [19500, 1150, 336, 237, 324, 258, 78], {
-    sprite: sp('construct', '#f0e8c0', '#ffffff', '#a89ac0', 2.1),
+    sprite: sp('vessia', '#f0e8c0', '#ffffff', '#a89ac0', 2.1),
     skills: ['consecration', 'judgement', 'ironwall', 'breakpoint'], ai: 'boss', gold: 150000, exp: 750000,
     drops: [['glasslance', 1.0], ['glasshalo', 1.0]],
     blurb: 'Stands where the reliquary asked her to stand. Has not been relieved.',
   }),
   e('boss_thirteenth', 'The Thirteenth', 'aberration', 'void', 88, [22000, 1600, 345, 262, 320, 288, 92], {
-    sprite: sp('humanoid', '#3a3450', '#8a82ac', '#16121f', 2.6),
+    sprite: sp('thirteenth', '#3a3450', '#8a82ac', '#16121f', 2.6),
     skills: ['worldsend', 'lastword', 'unmaking', 'everguard', 'rebirth', 'soulbind'], ai: 'boss',
     gold: 250000, exp: 1400000,
     drops: [['worldedge', 1.0], ['nullstaff', 1.0], ['crownvoid', 1.0]],
@@ -433,7 +433,7 @@ export const ENEMIES = [
   // Thirteenth is counted, per the epilogue's own last line about the wheel
   // turning "like something is missing from it now, on purpose" -----------
   e('boss_seam', 'The Seam', 'aberration', 'void', 96, [40000, 2500, 460, 340, 430, 380, 105], {
-    sprite: sp('humanoid', '#050208', '#3a3450', '#000000', 2.9),
+    sprite: sp('seam', '#050208', '#3a3450', '#000000', 2.9),
     skills: ['worldsend', 'lastword', 'unmaking', 'everguard', 'rebirth', 'soulbind'], ai: 'boss',
     gold: 500000, exp: 3000000,
     drops: [['seamring', 1.0]],
