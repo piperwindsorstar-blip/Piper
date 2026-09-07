@@ -446,7 +446,7 @@ export const MAPS = {
           "thirteenth": "Nine on the wheel, four beside it, they're saying at the crossroads now, like it's a nursery rhyme again instead of a warning. Feels like the road's allowed to just be a road, finally.",
           "volk": "Heard it myself, finally — the Hollow road, quiet the ordinary way instead of the waiting way. Strange thing to grieve a little."
         },
-        "recruit": { "name": "Fenn", "classId": "thief", "raceId": "lupine", "elementId": "wind", "jobId": "scout" }},
+        "recruit": { "name": "Fenn", "classId": "thief", "raceId": "lupine", "elementId": "wind", "jobId": "scout", "skin": 2, "hair": 2 }},
     ],
   },
 
@@ -651,7 +651,7 @@ export const MAPS = {
           "thirteenth": "Thirteen names, and the sand still won't say which of them were real. I've stopped needing it to. That's new for me too.",
           "kharos": "Kharos went quiet and the desert didn't throw a parade. Grief and relief taste about the same out here."
         },
-        "recruit": { "name": "Rasha", "classId": "archer", "raceId": "draconian", "elementId": "fire", "jobId": "hunter" }},
+        "recruit": { "name": "Rasha", "classId": "archer", "raceId": "draconian", "elementId": "fire", "jobId": "hunter", "skin": 3, "hair": 1 }},
     ],
   },
 
@@ -865,7 +865,7 @@ export const MAPS = {
           "gatekeeper": "A door that size, finally open. I know exactly how long a thing can stand guard over nothing. Glad it's done standing.",
           "volk": "The Hollow road's clear, they tell me. Nine years guarding it and I still flinch checking over my shoulder."
         },
-        "recruit": { "name": "Garrick", "classId": "guardian", "raceId": "human", "elementId": "metal", "jobId": "hunter" }},
+        "recruit": { "name": "Garrick", "classId": "guardian", "raceId": "human", "elementId": "metal", "jobId": "hunter", "skin": 1, "hair": 4 }},
     ],
   },
 
@@ -943,7 +943,7 @@ export const MAPS = {
           "worldheart": "Every gear in my workshop hummed the same note, that day. I still haven't found who tuned them, or why they listened.",
           "kharos": "Forge-heat like that leaves traces in the metal. Three new alloys out of Kharos's ruin, and I still don't know what any of them are for yet."
         },
-        "recruit": { "name": "Doran", "classId": "mage", "raceId": "gnome", "elementId": "metal", "jobId": "artificer" }},
+        "recruit": { "name": "Doran", "classId": "mage", "raceId": "gnome", "elementId": "metal", "jobId": "artificer", "skin": 2, "hair": 3 }},
     ],
   },
 
@@ -1017,7 +1017,7 @@ export const MAPS = {
           "worldheart": "Every plant in Farview turned the same direction that day — mine too, the ones I was carrying. I felt it before I understood it.",
           "nerith": "The flock drinks easier now the Vale's settled. I still check the water before they do. Old habit, older fear."
         },
-        "recruit": { "name": "Wyn", "classId": "dancer", "raceId": "elf", "elementId": "nature", "jobId": "herbalist" }},
+        "recruit": { "name": "Wyn", "classId": "dancer", "raceId": "elf", "elementId": "nature", "jobId": "herbalist", "skin": 3, "hair": 2 }},
     ],
   },
 
@@ -1094,7 +1094,7 @@ export const MAPS = {
           "aurelith": "The ladder had an end after all. I spent longer dead than most people spend alive, and I still didn't guess where.",
           "choir": "The Ruins don't sing anymore. I find I miss the sound more than I expected to, for something that never once sang for me."
         },
-        "recruit": { "name": "Mireth", "classId": "spiritist", "raceId": "revenant", "elementId": "spirit", "jobId": "scribe" }},
+        "recruit": { "name": "Mireth", "classId": "spiritist", "raceId": "revenant", "elementId": "spirit", "jobId": "scribe", "skin": 1, "hair": 2 }},
     ],
   },
 
@@ -1543,7 +1543,7 @@ export const MAPS = {
         "reactions": {
           "thirteenth": "Thirteen names on a wheel, and Kharos was only ever one of the nine. Makes the reach feel smaller, somehow, knowing that."
         },
-        "recruit": { "name": "Ondra", "classId": "warrior", "raceId": "ogrekin", "elementId": "fire", "jobId": "miner" }},
+        "recruit": { "name": "Ondra", "classId": "warrior", "raceId": "ogrekin", "elementId": "fire", "jobId": "miner", "skin": 3, "hair": 1 }},
     ],
   },
 
@@ -1596,7 +1596,7 @@ export const MAPS = {
           "thirteenth": "Every current I know still runs the same, after. Turns out the world doesn't change how water moves. Just what's allowed to live in it.",
           "nerith": "The Vale's crown went under and stayed under. I read that current for a week straight before I believed it."
         },
-        "recruit": { "name": "Iona", "classId": "dancer", "raceId": "merfolk", "elementId": "water", "jobId": "sailor" }},
+        "recruit": { "name": "Iona", "classId": "dancer", "raceId": "merfolk", "elementId": "water", "jobId": "sailor", "skin": 1, "hair": 3 }},
     ],
   },
 
@@ -1649,7 +1649,7 @@ export const MAPS = {
           "thirteenth": "New prayers, still. Turns out the ending needed several. I'm still choosing which ones are mine.",
           "nerith": "The Vicar's crown went under the water same as she made everyone else believe was holy. I said a prayer anyway. Old habit."
         },
-        "recruit": { "name": "Corvin", "classId": "spiritist", "raceId": "merfolk", "elementId": "water", "jobId": "fisher" }},
+        "recruit": { "name": "Corvin", "classId": "spiritist", "raceId": "merfolk", "elementId": "water", "jobId": "fisher", "skin": 2, "hair": 1 }},
     ],
   },
 
@@ -1702,7 +1702,7 @@ export const MAPS = {
           "thirteenth": "Nine on the wheel, four beside it — turns out that was the lock the whole time. I still would've liked to pick it myself.",
           "gatekeeper": "The last lock in the Hollow Between finally gave, and it wasn't even mine that opened it. Mixed feelings, professionally."
         },
-        "recruit": { "name": "Nyx", "classId": "thief", "raceId": "automaton", "elementId": "dark", "jobId": "locksmith" }},
+        "recruit": { "name": "Nyx", "classId": "thief", "raceId": "automaton", "elementId": "dark", "jobId": "locksmith", "skin": 2, "hair": 2 }},
     ],
   },
 
@@ -1807,7 +1807,7 @@ export const MAPS = {
           "thirteenth": "Still digging. Whatever's at the bottom now, at least it isn't pretending to be something else.",
           "kharos": "Cinderreach cooled off and half the mines stopped complaining about the heat. I almost missed having something to blame."
         },
-        "recruit": { "name": "Sable", "classId": "guardian", "raceId": "dwarf", "elementId": "earth", "jobId": "miner" }},
+        "recruit": { "name": "Sable", "classId": "guardian", "raceId": "dwarf", "elementId": "earth", "jobId": "miner", "skin": 2, "hair": 1 }},
     ],
   },
   harrowsrest_cottage2: {
@@ -1822,7 +1822,7 @@ export const MAPS = {
           "thirteenth": "The roads keep getting longer, same as always. I've decided that's the actual ending. The rest was just a very long chapter.",
           "gatekeeper": "Finally found what my roads kept dead-ending at. Wish I could say the map felt more finished for it."
         },
-        "recruit": { "name": "Petra", "classId": "thief", "raceId": "gnome", "elementId": "earth", "jobId": "cartographer" }},
+        "recruit": { "name": "Petra", "classId": "thief", "raceId": "gnome", "elementId": "earth", "jobId": "cartographer", "skin": 1, "hair": 1 }},
     ],
   },
 
@@ -1930,7 +1930,7 @@ export const MAPS = {
           "thirteenth": "Nine on the wheel. Four beside it. I was built to watch a count I was never part of. I find I don't mind, now.",
           "vessia": "She judged, and dismissed me, and now she's gone, and neither of those things un-happened. I'm still keeping vigil. Just not for her."
         },
-        "recruit": { "name": "Selwyn", "classId": "cleric", "raceId": "automaton", "elementId": "light", "jobId": "pilgrim" }},
+        "recruit": { "name": "Selwyn", "classId": "cleric", "raceId": "automaton", "elementId": "light", "jobId": "pilgrim", "skin": 0, "hair": 1 }},
     ],
   },
   glasshaven_cottage2: {
@@ -1945,7 +1945,7 @@ export const MAPS = {
           "thirteenth": "Nine on the wheel, four beside it — that's thirteen verses now, not one. I know which one is hers. I haven't decided yet which one is mine.",
           "vessia": "New verses, same as I promised myself I would write once she fell. Funny how hard the first line still was."
         },
-        "recruit": { "name": "Iskra", "classId": "archer", "raceId": "saurian", "elementId": "light", "jobId": "bard" }},
+        "recruit": { "name": "Iskra", "classId": "archer", "raceId": "saurian", "elementId": "light", "jobId": "bard", "skin": 2, "hair": 1 }},
     ],
   },
 
