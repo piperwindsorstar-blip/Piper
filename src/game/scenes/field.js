@@ -655,6 +655,16 @@ export class FieldScene {
   openChest(chest) {
     const locked = chest.locked && !this.g.hasJob('locksmith');
     if (locked) { this.dlg.say('Locked. A Locksmith could open this.'); return; }
+    // A Locksmith disarms a trap on the way in — anyone else springs it,
+    // then still gets the chest underneath. Damage is clamped to leave
+    // everyone at 1 HP rather than turning a chest into a cheap game over.
+    if (chest.trap && !this.g.hasJob('locksmith')) {
+      for (const ch of this.g.party) if (ch.hp > 0) ch.hp = Math.max(1, ch.hp - chest.trap.dmg);
+      sfx.error();
+      this.dlg.say(`A trap! The party takes ${chest.trap.dmg} damage each.`);
+    } else if (chest.trap) {
+      this.dlg.say('A trap, disarmed before it could spring.');
+    }
     this.g.setFlag(`chest.${chest.id}`);
     this.markWorldTextureDirty();
     if (chest.gold) {
@@ -666,7 +676,7 @@ export class FieldScene {
       if (this.g.addItem(chest.item)) { sfx.chest(); this.dlg.say(`Found ${it.name}.`); }
       else { this.g.setFlag(`chest.${chest.id}`, false); sfx.error(); this.dlg.say('The pack is full.'); }
     }
-    if (chest.locked) {
+    if (chest.locked || chest.trap) {
       const smith = this.g.party.find((c) => c.jobId === 'locksmith');
       if (smith) { const m = this.g.jobTick(smith, 12); if (m) this.dlg.say(m); }
     }

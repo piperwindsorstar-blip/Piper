@@ -16,6 +16,7 @@ import { Battle, PHASE, autoPartyAction } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '../character.js';
 import { getSkill, STATUS } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
+import { getEnemy } from '../../data/enemies.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
 import { DIFFICULTY_BY_ID } from '../../data/difficulty.js';
 import { getBattleSpeed } from '../../engine/settings.js';
@@ -220,6 +221,8 @@ export class BattleScene {
       // for every fight outside that dungeon, so this is a no-op elsewhere.
       enemyScale: (DIFFICULTY_BY_ID[this.g.difficulty]?.scale ?? 1) * (1 + 0.4 * (this.g.ngPlus ?? 0))
         * (opts.enemyScaleBonus ?? 1),
+      companion: this.g.companion
+        ? { enemyId: this.g.companion.enemyId, rank: this.g.jobRankOf('tamer') } : null,
     });
     this.state = 'intro';
     this.t = 0;
@@ -927,7 +930,9 @@ export class BattleScene {
       this.enemyDelay = (this.enemyDelay ?? 0) + dt;
       if (this.enemyDelay > 0.35) {
         this.enemyDelay = 0;
-        this.runAction(u, b.enemyAction(u));
+        // the tamed companion isn't a real enemy — enemyAction assumes the
+        // party is its prey, so it gets its own small, side-aware heuristic
+        this.runAction(u, u.side === 'party' ? b.companionAction(u) : b.enemyAction(u));
       }
     }
   }
@@ -967,6 +972,8 @@ export class BattleScene {
       { id: 'item', label: 'Item', icon: 'bag', pos: [3, 0], disabled: this.g.usableInBattle().length === 0 },
       { id: 'flee', label: 'Flee', icon: 'boot', pos: [4, 0], disabled: this.battle.isBoss },
       { id: 'character', label: 'Character', icon: 'party', pos: [5, 0], disabled: !this.battle.readySwapPool(this.actor).length },
+      { id: 'tame', label: 'Tame', icon: 'paw', pos: [6, 0],
+        disabled: !this.g.hasJob('tamer') || !this.battle.livingEnemies().some((e) => e.def.tame) },
     ], { defaultId: 'attack' });
     this.state = 'command';
   }
@@ -1003,6 +1010,8 @@ export class BattleScene {
         this.perform({ kind: 'defend' });
       } else if (id === 'flee') {
         this.perform({ kind: 'flee' });
+      } else if (id === 'tame') {
+        this.beginTarget({ target: 'tameable' }, (t) => this.perform({ kind: 'tame', target: t }));
       }
     }
   }
@@ -1042,10 +1051,12 @@ export class BattleScene {
 
   beginTarget(spec, onPick, extra = {}) {
     const b = this.battle;
-    let pool = b.validTargets(this.actor, spec);
+    let pool = spec.target === 'tameable' ? [] : b.validTargets(this.actor, spec);
     if (spec.target === 'ally' || spec.target === 'allies') {
       pool = this.actor.side === 'party' ? this.battle.party : this.battle.enemies;
       pool = pool.filter((u) => u.alive || spec.revives);
+    } else if (spec.target === 'tameable') {
+      pool = this.battle.livingEnemies().filter((u) => u.def.tame);
     }
     if (!pool.length) { this.state = 'command'; return; }
     this.targetPool = pool;
@@ -1232,6 +1243,12 @@ export class BattleScene {
       if (leveledRefs.size) sfx.levelUp();
       this.leveledUids = new Set(b.party.filter((u) => leveledRefs.has(u.ref)).map((u) => u.uid));
       msgs.push(...this.g.jobTickAll(6));
+      if (b.tamedSpecies) {
+        this.g.setCompanion(b.tamedSpecies);
+        msgs.push(`${getEnemy(b.tamedSpecies).name} joins you as a companion.`);
+        const tamer = this.g.party.find((c) => c.jobId === 'tamer');
+        if (tamer) { const m = this.g.jobTick(tamer, 15); if (m) msgs.push(m); }
+      }
       // record the bestiary
       for (const e of b.enemies) this.g.bestiary[e.def.id] = (this.g.bestiary[e.def.id] ?? 0) + 1;
       if (promos.length) {
@@ -1498,7 +1515,7 @@ export class BattleScene {
       const border = isCandidate ? PAL.accent : (!picking && u.uid === this.actor.uid ? PAL.accent : PAL.line);
       scr.panel(x, y, colW, chipH, { alpha: u.alive ? 0.92 : 0.55, border });
       const ratio = u.hp / u.stats().maxHp;
-      scr.text(u.ref.name.slice(0, 7), x + 4, y + 2, u.alive ? PAL.text : PAL.grey, { size: 7 });
+      scr.text((u.isPC ? u.ref.name : u.name).slice(0, 7), x + 4, y + 2, u.alive ? PAL.text : PAL.grey, { size: 7 });
       scr.bar(x + 4, y + 11, colW - 8, 3, ratio, u.alive ? hpColor(ratio) : PAL.grey);
     });
 
@@ -1518,12 +1535,12 @@ export class BattleScene {
     const x = W - pw - 6, y = 20;
     scr.panel(x, y, pw, ph, { alpha: 0.92 });
     party.forEach((u, i) => {
-      const ch = u.ref;
+      const name = u.isPC ? u.ref.name : u.name;
       const s = u.stats();
       const ratio = u.hp / s.maxHp;
       const ry = y + 8 + i * rowH;
       const acting = this.actor?.uid === u.uid;
-      scr.text(ch.name.slice(0, 8), x + 6, ry, !u.alive ? PAL.grey : acting ? PAL.accent : PAL.text);
+      scr.text(name.slice(0, 8), x + 6, ry, !u.alive ? PAL.grey : acting ? PAL.accent : PAL.text);
       scr.textRight(`${u.hp}`, x + pw - 6, ry, hpColor(ratio));
       scr.bar(x + 6, ry + 9, pw - 12, 3, ratio, hpColor(ratio));
       scr.bar(x + 6, ry + 13, pw - 12, 2, s.maxMp ? u.mp / s.maxMp : 0, PAL.cyan);

@@ -71,6 +71,15 @@ const ICONS = {
     P.rect(12, 13, 2, 1, GOLD_D);
     P.rect(12, 15, 2, 1, GOLD_D);
   },
+  paw: (P) => {
+    // a pawprint: one large pad and three toes above it
+    P.rect(6, 9, 6, 5, LEATHER);
+    P.rect(6, 13, 6, 1, LEATHER_D);
+    P.rect(3, 4, 3, 4, LEATHER);
+    P.rect(8, 2, 3, 4, LEATHER);
+    P.rect(13, 4, 3, 4, LEATHER);
+    P.px(3, 7, LEATHER_D); P.px(8, 5, LEATHER_D); P.px(13, 7, LEATHER_D);
+  },
 };
 
 export function iconSprite(name) {

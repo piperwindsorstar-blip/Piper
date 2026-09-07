@@ -139,6 +139,16 @@ function enemyUnit(def, row, col, index, scale = 1) {
   };
 }
 
+/** A tamed monster fighting on the party's own side — the same stat block an
+ *  encounter would build from this species, boosted by the Tamer's kinship
+ *  rank and reusing `enemyUnit` rather than a second stat formula, then
+ *  relabeled onto the party. */
+function companionUnit(def, rank, row, col) {
+  const u = enemyUnit(def, row, col, -1, 1 + 0.1 * Math.max(0, rank));
+  u.side = 'party';
+  return u;
+}
+
 // ---------------------------------------------------------------------------
 //  BATTLE
 // ---------------------------------------------------------------------------
@@ -149,6 +159,21 @@ export class Battle {
     if (!this.formation) throw new Error(`unknown formation: ${formationId}`);
     this.isBoss = !!this.formation.boss;
     this.party = party.filter(Boolean).map((c) => pcUnit(c, this));
+    this.companion = null;
+    // A tamed companion takes the grid's center cell — the strongest slot,
+    // see GRID_SHARE above — unless a real party member already stands
+    // there, in which case it takes whatever cell is still open. A full
+    // 3x3 party leaves it no room at all, and it simply sits out that fight.
+    if (opts.companion) {
+      const def = getEnemy(opts.companion.enemyId);
+      const free = (r, c) => !this.party.some((u) => u.grid.row === r && u.grid.col === c);
+      let spot = free(1, 1) ? { row: 1, col: 1 } : null;
+      for (let r = 0; !spot && r < 3; r++) for (let c = 0; !spot && c < 3; c++) if (free(r, c)) spot = { row: r, col: c };
+      if (spot) {
+        this.companion = companionUnit(def, opts.companion.rank, spot.row, spot.col);
+        this.party.push(this.companion);
+      }
+    }
     // Front-rank wipe (the Lufia: The Legend Returns rule): losing every
     // unit that STARTED in the front column is instant defeat, even with a
     // healthy back line. Snapshotted once here rather than recomputed live,
@@ -198,6 +223,7 @@ export class Battle {
 
     // party passives that fire at battle start
     for (const u of this.party) {
+      if (!u.isPC) continue;
       const bard = u.ref.jobId === 'bard' ? jobRank(u.ref) : 0;
       if (bard) u.ip = Math.min(100, u.ip + 8 * bard);
     }
@@ -324,7 +350,7 @@ export class Battle {
     return this.order
       .slice(this.turnIndex + 1)
       .map((e) => e.u)
-      .filter((u) => u.side === 'party' && u.uid !== exclude.uid && u.alive && canAct(u.ref)
+      .filter((u) => u.side === 'party' && u.isPC && u.uid !== exclude.uid && u.alive && canAct(u.ref)
         && (this.actedLane.party.get(this.lane(u)) ?? u.uid) === u.uid);
   }
 
@@ -562,8 +588,43 @@ export class Battle {
         return this.say(`${this.label(actor)} shifts position.`);
       }
       case 'flee': return this.tryFlee(actor);
+      case 'tame': return this.tryTame(actor, action.target);
       default: return this.say('...');
     }
+  }
+
+  /** A Tamer's field ability, brought into battle: recruit a weakened,
+   *  `tame`-flagged enemy instead of finishing it off. Chance rises the
+   *  lower the target's HP is and with the Tamer's own rank. A success ends
+   *  the target's part in the fight exactly like a kill — spoils() already
+   *  counts every enemy that started the formation regardless of how it
+   *  left, so this is a bonus on top of the normal reward, not instead of
+   *  it — and records the species so the caller can turn it into a lasting
+   *  companion once the battle resolves. */
+  tryTame(actor, target) {
+    if (!target || !target.alive || !target.def?.tame) return this.say('Nothing here can be tamed.');
+    const rank = actor.isPC ? jobRank(actor.ref) : 0;
+    const frac = target.hp / target.stats().maxHp;
+    const chance = Math.min(0.9, 0.1 + (1 - frac) * 0.65 + 0.06 * rank);
+    if (!this.rng.chance(chance)) {
+      return this.say(`${this.label(actor)} tries to calm ${this.label(target)}, but it won't settle.`);
+    }
+    target.hp = 0;
+    this.tamedSpecies = target.def.id;
+    this.say(`${this.label(actor)} calms ${this.label(target)}. It stops fighting.`);
+    this.checkEnd();
+  }
+
+  /** The tamed companion's own turn — a small, fixed heuristic rather than
+   *  the full enemy AI (it has no skill list worth casting from), and
+   *  side-aware unlike enemyAction, since it fights on the party's side. */
+  companionAction(unit) {
+    const foes = this.livingEnemies();
+    if (!foes.length) return { kind: 'defend' };
+    const weights = foes.map((f) => [f, 1 / (this.effCol(f) + 1)]);
+    const target = this.rng.weighted(weights);
+    if (!this.inReach(unit, target, unit.stats().reach)) return { kind: 'defend' };
+    return { kind: 'attack', target };
   }
 
   basicAttack(actor, target) {

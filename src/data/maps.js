@@ -531,8 +531,8 @@ export const MAPS = {
     ],
     warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 5, "ty": 6}],
     chests: [
-      {"x": 2, "y": 3, "id": "wtc1", "gold": 500},
-      {"x": 6, "y": 3, "id": "wtc2", "gold": 500},
+      {"x": 2, "y": 3, "id": "wtc1", "gold": 500, "locked": true},
+      {"x": 6, "y": 3, "id": "wtc2", "gold": 500, "locked": true},
     ],
     npcs: [
       {"x": 4, "y": 2, "kind": "talk", "name": "Royal Treasurer",

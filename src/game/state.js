@@ -40,6 +40,7 @@ export class GameState {
     this.ngPlus = 0;                // New Game+ cycles completed — see startNewGamePlus
     this.deepestDepth = 0;          // best floor ever reached in the Shifting Depths
     this.slot = 1;
+    this.companion = null;          // a Tamer's catch — { enemyId } — see data/jobs.js's tamer
   }
 
   get map() { return getMap(this.mapId); }
@@ -242,6 +243,11 @@ export class GameState {
 
   hasJob(jobId) { return this.jobRankOf(jobId) > 0; }
 
+  /** A Tamer's catch replaces any earlier one — only one companion fights
+   *  at a time, the "fifth grid cell" the job's own text promises, not a
+   *  second roster. */
+  setCompanion(enemyId) { this.companion = { enemyId }; }
+
   // --- world ---------------------------------------------------------------
   setFlag(k, v = true) { this.flags[k] = v; }
   flag(k) { return !!this.flags[k]; }
@@ -299,6 +305,7 @@ export class GameState {
       difficulty: this.difficulty,
       ngPlus: this.ngPlus,
       deepestDepth: this.deepestDepth,
+      companion: this.companion,
     };
   }
 
@@ -348,6 +355,7 @@ export class GameState {
     g.difficulty = d.difficulty ?? 'normal';
     g.ngPlus = d.ngPlus ?? 0;
     g.deepestDepth = d.deepestDepth ?? 0;
+    g.companion = d.companion ?? null;
     return g;
   }
 

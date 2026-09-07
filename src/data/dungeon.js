@@ -52,6 +52,17 @@ function depthLoot(depth) {
   return { item: rng.pick(pool) };
 }
 
+/** Deeper floors start locking and trapping their chests — the Locksmith's
+ *  own reason to come down here rather than just carry the rank passively.
+ *  A chest can be both at once; a Locksmith clears either without incident,
+ *  and everyone else pays the trap's damage but still gets the loot. */
+function chestSecurity(depth) {
+  const out = {};
+  if (rng.chance(Math.min(0.5, 0.05 + depth * 0.015))) out.locked = true;
+  if (rng.chance(Math.min(0.4, 0.04 + depth * 0.012))) out.trap = { dmg: Math.round(12 + depth * 3.5) };
+  return out;
+}
+
 function overlaps(a, b) {
   return a.x < b.x + b.w + 1 && a.x + a.w + 1 > b.x && a.y < b.y + b.h + 1 && a.y + a.h + 1 > b.y;
 }
@@ -98,7 +109,7 @@ export function generateDungeonFloor(depth) {
     const rm = lootRooms[i];
     const cx = rng.int(rm.x, rm.x + rm.w - 1), cy = rng.int(rm.y, rm.y + rm.h - 1);
     if (grid[cy][cx] !== '_') continue;
-    chests.push({ x: cx, y: cy, id: `depths${depth}_c${i}`, ...depthLoot(depth) });
+    chests.push({ x: cx, y: cy, id: `depths${depth}_c${i}`, ...depthLoot(depth), ...chestSecurity(depth) });
   }
 
   return {
