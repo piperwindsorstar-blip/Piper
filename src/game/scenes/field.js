@@ -9,6 +9,7 @@ import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terra
 import { buildingSprite, hasStructure, isStructure } from '../../engine/building.js';
 import { citySprite, pitstopSprite, CITY_W, CITY_H, PITSTOP_W, PITSTOP_H } from '../../engine/townmarker.js';
 import { towerSprite, TOWER_W, TOWER_H } from '../../engine/labyrinthmarker.js';
+import { caveSprite, CAVE_W, CAVE_H } from '../../engine/cavemarker.js';
 import { Particles } from '../../engine/particles.js';
 import {
   getMap, tileAt, isSolid, mapSize, warpAt, npcAt, chestAt, signAt, bossAt, BOSS_SLOTS, SHOPS, themeAt,
@@ -1050,21 +1051,24 @@ export class FieldScene {
       scr.textCenter(dest.name, p.x, baseY - h - 10, isCity ? PAL.gold : PAL.text);
     }
 
-    // cave/dungeon entrances on the overworld — labelled with the region's
-    // normal-encounter level span, so a dungeon reads as a threat estimate
-    // before stepping in without spoiling which enemies actually wait
-    // inside. Scoped to the world map itself: a dungeon's own warps back
-    // out (or on to a linked segment) aren't "entrances" to label. A
-    // labyrinth is its own kind of dungeon (see the tower markers below),
-    // not a cave, so it's excluded here.
+    // cave/dungeon entrances on the overworld — a bigger rocky mouth than
+    // the ground itself can show, labelled with the region's normal-
+    // encounter level span so a dungeon reads as a threat estimate before
+    // stepping in without spoiling which enemies actually wait inside.
+    // Scoped to the world map itself: a dungeon's own warps back out (or
+    // on to a linked segment) aren't "entrances" to mark. A labyrinth is
+    // its own kind of dungeon (see the tower markers below), not a cave,
+    // so it's excluded here.
     if (m.id === 'world') {
       for (const wp of m.warps ?? []) {
         const dest = getMap(wp.to);
         if (!dest || dest.town || dest.tower || !dest.encounter) continue;
-        const span = regionLevelSpan(dest.encounter);
-        if (!span) continue;
         const p = this.tileScreenPos(wp.x, wp.y);
-        scr.textCenter(`Lv ${span[0]}-${span[1]}`, p.x, p.y - 17, PAL.red);
+        const baseY = p.y + 10;
+        const sprite = caveSprite();
+        scr.ctx.drawImage(sprite, Math.round(p.x - CAVE_W / 2), Math.round(baseY - CAVE_H), CAVE_W, CAVE_H);
+        const span = regionLevelSpan(dest.encounter);
+        if (span) scr.textCenter(`Lv ${span[0]}-${span[1]}`, p.x, baseY - CAVE_H - 10, PAL.red);
       }
     }
 
@@ -1168,10 +1172,11 @@ export class FieldScene {
 }
 
 /** Tiles that still want their own stamp drawn over the terrain. */
-// 'town' isn't drawn here — the overlay town marker (see CITY_TOWNS above)
-// now owns that tile's whole visual, bigger and labelled instead of a
-// 24px prop that'd otherwise double up underneath it.
-const FEATURE = new Set(['cave', 'bridge', 'flower', 'well', 'stall', 'lamp']);
+// 'town' and 'cave' aren't drawn here — their overlay markers (see
+// CITY_TOWNS and the cave-marker loop below) own those tiles' whole
+// visual, bigger and labelled instead of a 24px prop that'd otherwise
+// double up underneath it.
+const FEATURE = new Set(['bridge', 'flower', 'well', 'stall', 'lamp']);
 
 /**
  * A neighbourhood reader for the terrain layer: `sample(dx, dy)` gives the tile
