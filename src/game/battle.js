@@ -649,7 +649,11 @@ export class Battle {
   act(actor, action) {
     this.fx.length = 0;
     this.actedLane[actor.side].set(this.lane(actor), actor.uid);
-    if (actor.statuses.confuse && this.rng.chance(0.5)) {
+    // A unit already committed to a Jump/Dragon Dive return swing lands it
+    // regardless — confusion doesn't get a say over a strike already in
+    // motion, and letting it hijack this turn would leave pendingStrike
+    // stuck forever with nothing left to ever resolve or clear it.
+    if (actor.statuses.confuse && !actor.pendingStrike && this.rng.chance(0.5)) {
       const pool = this.units().filter((u) => u.alive && u.uid !== actor.uid);
       if (pool.length) {
         const t = this.rng.pick(pool);
@@ -802,29 +806,45 @@ export class Battle {
 
   useSkill(actor, skill, chosen) {
     const s = actor.stats();
-    const cost = this.mpCost(actor, skill);
-    if (cost > actor.mp) return this.say(`${this.label(actor)} lacks the MP.`);
-    if (skill.ip && actor.ip < skill.ip) return this.say(`${this.label(actor)} lacks the IP.`);
-    actor.mp -= cost;
-    if (skill.ip) actor.ip -= skill.ip;
-    if (skill.hpCost) {
-      const cost = Math.max(1, Math.floor(s.maxHp * skill.hpCost));
-      actor.hp = Math.max(1, actor.hp - cost);
-    }
-    if (skill.goldCost) {
-      if (this.partyGold < skill.goldCost) return this.say(`${this.label(actor)} doesn't have the gold to throw.`);
-      this.partyGold -= skill.goldCost;
-      this.goldSpent += skill.goldCost;
+    // Jump / Dragon Dive: this is the SECOND of the two calls useSkill sees
+    // for one cast — see the `skill.delay` branch below for the first.
+    // scenes/battle.js auto-fires this one the moment this actor's next
+    // turn comes up (see its updateMessages), passing back the target
+    // locked in on the wind-up, so no player/AI input happens for it.
+    // Every cost below was already paid on that first call.
+    const isReturnSwing = skill.delay && actor.pendingStrike?.skillId === skill.id;
+    if (isReturnSwing) {
+      actor.pendingStrike = null;
+      actor.airborne = false;
+      this.say(`${this.label(actor)} comes down!`);
+    } else {
+      const cost = this.mpCost(actor, skill);
+      if (cost > actor.mp) return this.say(`${this.label(actor)} lacks the MP.`);
+      if (skill.ip && actor.ip < skill.ip) return this.say(`${this.label(actor)} lacks the IP.`);
+      actor.mp -= cost;
+      if (skill.ip) actor.ip -= skill.ip;
+      if (skill.hpCost) {
+        const cost = Math.max(1, Math.floor(s.maxHp * skill.hpCost));
+        actor.hp = Math.max(1, actor.hp - cost);
+      }
+      if (skill.goldCost) {
+        if (this.partyGold < skill.goldCost) return this.say(`${this.label(actor)} doesn't have the gold to throw.`);
+        this.partyGold -= skill.goldCost;
+        this.goldSpent += skill.goldCost;
+      }
     }
     // A rune's granted Art grows sharper with use, the same "rank rises with
     // use, not level" idea a Job's own field ability already runs on:
     // casting it awards the rune experience, and its current level scales
     // the Art's own power for this cast. `power` replaces every `skill.power`
     // read below rather than mutating the shared skill definition itself.
+    // The return swing doesn't award exp a second time for what is, start
+    // to finish, a single use of the Art — but still gets the power benefit
+    // of whatever the rune's level actually is by the time it lands.
     const runeId = actor.isPC ? actor.ref.equip.rune : null;
-    const runeGrant = !!runeId && getItem(runeId).grantSkill === skill.id;
-    if (runeGrant) awardRuneExp(actor.ref, runeId, 10);
-    let power = skill.power * (runeGrant ? runePowerMult(runeLevel(actor.ref, runeId)) : 1);
+    const grantsThis = !!runeId && getItem(runeId).grantSkill === skill.id;
+    if (grantsThis && !isReturnSwing) awardRuneExp(actor.ref, runeId, 10);
+    let power = skill.power * (grantsThis ? runePowerMult(runeLevel(actor.ref, runeId)) : 1);
     // Gold Toss: the toss is only as big as the purse backing it — reads the
     // remaining party gold snapshotted onto the battle at its start (see the
     // constructor), not a live GameState reference Battle doesn't otherwise
@@ -833,9 +853,26 @@ export class Battle {
     if (skill.goldCost) power *= Math.min(2.5, 1 + this.partyGold / 3000);
     // A Scribe's Transcribe: a scroll grant is good for exactly one cast.
     if (actor.isPC && actor.ref.scrollSkill === skill.id) delete actor.ref.scrollSkill;
-    this.say(`${this.label(actor)} uses ${skill.name}!`);
+    if (!isReturnSwing) this.say(`${this.label(actor)} uses ${skill.name}!`);
     const element = actor.isPC ? skillElement(actor.ref, skill)
       : (skill.element === 'attuned' ? actor.element : skill.element);
+
+    // The wind-up half of Jump / Dragon Dive: lock in a target now and
+    // leave without resolving anything — see the isReturnSwing branch above
+    // for where this same cast actually lands. Doesn't make the caster
+    // untargetable in the meantime (that would mean excluding it from
+    // livingParty/livingEnemies, which checkEnd and a dozen other call
+    // sites also rely on for non-targeting bookkeeping); it just means
+    // this turn's hit is delayed rather than instant.
+    if (skill.delay && !isReturnSwing) {
+      const target = this.expandTargets(actor, skill, chosen)[0];
+      if (!target) return this.say(`${this.label(actor)} finds nothing worth the leap.`);
+      actor.pendingStrike = { skillId: skill.id, targetUid: target.uid };
+      actor.airborne = true;
+      this.say(`${this.label(actor)} leaps out of reach.`);
+      return;
+    }
+
     const targets = this.expandTargets(actor, skill, chosen);
 
     switch (skill.type) {

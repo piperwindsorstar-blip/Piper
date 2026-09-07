@@ -920,6 +920,19 @@ export class BattleScene {
     const u = b.current();
     if (!u) { this.needsAdvance = true; return; }
     this.actor = u;
+    // Jump / Dragon Dive: this actor is mid-return-swing (see battle.js's
+    // useSkill), so this turn isn't a real decision for player, AI, or
+    // companion alike — it auto-fires at whoever's still standing where the
+    // wind-up aimed it, same pacing as a normal enemy turn.
+    if (u.pendingStrike) {
+      this.enemyDelay = (this.enemyDelay ?? 0) + dt;
+      if (this.enemyDelay > 0.35) {
+        this.enemyDelay = 0;
+        const target = b.units().find((x) => x.uid === u.pendingStrike.targetUid && x.alive) ?? null;
+        this.runAction(u, { kind: 'skill', skillId: u.pendingStrike.skillId, target });
+      }
+      return;
+    }
     if (u.isPC && this.autoBattle) {
       this.enemyDelay = (this.enemyDelay ?? 0) + dt;
       if (this.enemyDelay > 0.35) {
