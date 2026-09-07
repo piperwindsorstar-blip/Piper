@@ -391,7 +391,7 @@ export const MAPS = {
     town: true,
     bg: "#182038",
     tiles: [
-      'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+      'TTTTTTTTTTTDTTTTTTTTTTTTTTTTTTTTTTTTTT',
       'T..f...................f......l......T',
       'T..RRRRRR......RRRRRR.......RRRR.....T',
       'T..RRRRRR......RRRRRR.......RRRR.....T',
@@ -422,6 +422,7 @@ export const MAPS = {
       {"x": 9, "y": 17, "to": "wren_guildhall", "tx": 4, "ty": 4},
       {"x": 29, "y": 5, "to": "wren_cottage1", "tx": 4, "ty": 4},
       {"x": 29, "y": 12, "to": "wren_cottage2", "tx": 4, "ty": 4},
+      {"x": 11, "y": 0, "to": "wren_castle", "tx": 14, "ty": 12},
     ],
     npcs: [
       {"x": 22, "y": 8, "kind": "talk", "name": "Old Fisher",
@@ -447,6 +448,113 @@ export const MAPS = {
           "volk": "Heard it myself, finally — the Hollow road, quiet the ordinary way instead of the waiting way. Strange thing to grieve a little."
         },
         "recruit": { "name": "Fenn", "classId": "thief", "raceId": "lupine", "elementId": "wind", "jobId": "scout", "skin": 2, "hair": 2 }},
+    ],
+  },
+
+  // The March Throne — Wren's Ford keeps a King the way it keeps the wheel
+  // carved into its well: out of habit, and a vague sense the title used to
+  // matter. "Warden of the Nine Marches" is where the world's own name (see
+  // data/lore.js's ninemarches entry) actually comes from — an old military
+  // habit of numbering roads, calcified into a crown nobody's gotten around
+  // to retiring. Reached through Wren's Ford's own north gate.
+  wren_castle: {
+    id: 'wren_castle', name: "The March Throne",
+    encounter: null, rate: 0, town: true, bg: "#182038",
+    tiles: [
+      'TTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+      'T..RRRRRR.ORRRRRRO..RRRRRR..T',
+      'T..RRRRRR.RRRRRRRR..RRRRRR..T',
+      'T..HHHHHH.HHHHHHHH..HHHHHH..T',
+      'T..HHDHHH.HHHHDHHH..HHDHHH..T',
+      'T...........................T',
+      'T.............w.............T',
+      'T........l.........l........T',
+      'T...........................T',
+      'T.....f................f....T',
+      'T...........................T',
+      'T,,,,,,,,,,,,,,,,,,,,,,,,,,,T',
+      'T...........................T',
+      'TTTTTTTTTTTTTTDTTTTTTTTTTTTTT',
+    ],
+    warps: [
+      {"x": 14, "y": 13, "to": "wren", "tx": 11, "ty": 1},
+      {"x": 5, "y": 4, "to": "wren_treasury", "tx": 4, "ty": 4},
+      {"x": 14, "y": 4, "to": "wren_throneroom", "tx": 4, "ty": 4},
+      {"x": 22, "y": 4, "to": "wren_barracks", "tx": 4, "ty": 4},
+    ],
+    npcs: [
+      {"x": 12, "y": 5, "kind": "talk", "name": "Castle Guard",
+        "text": "Stand easy. The Ford hasn't needed real guarding in longer than I've been alive — but the King likes the look of us out here regardless."},
+      {"x": 16, "y": 5, "kind": "talk", "name": "Castle Guard",
+        "text": "Ask him about the Marches sometime. He'll tell you the whole tedious history whether you want it or not.",
+        "reactions": { "thirteenth": "He's been quieter about the Marches lately. Word from the Hollow Between does that to a man, crown or no crown." }},
+    ],
+  },
+
+  wren_throneroom: {
+    id: 'wren_throneroom', name: "The March Throne",
+    encounter: null, rate: 0, bg: "#182038",
+    tiles: [
+      '#########',
+      '#d_____d#',
+      '#_______#',
+      '#___u___#',
+      '#j_____j#',
+      '#___D___#',
+      '#########',
+    ],
+    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 14, "ty": 5}],
+    npcs: [
+      {"x": 4, "y": 2, "kind": "talk", "name": "King Aldric",
+        "text": "Warden of the Nine Marches, they still call me, though I've never once had to defend a march from anything worse than a bad harvest. My grandfather's grandfather earned the title putting down bandits on roads that don't need numbers anymore.",
+        "reactions": {
+          "thirteenth": "They tell me the wheel's been settled. I've worn a warden's title my whole life without once meeting the thing it was apparently coined to watch for. Strange, outliving the reason for your own job."
+        }},
+    ],
+  },
+
+  wren_treasury: {
+    id: 'wren_treasury', name: "The Royal Treasury",
+    encounter: null, rate: 0, bg: "#182038",
+    tiles: [
+      '#########',
+      '#j_____j#',
+      '#_______#',
+      '#_______#',
+      '#x_____x#',
+      '#___D___#',
+      '#########',
+    ],
+    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 5, "ty": 5}],
+    chests: [
+      {"x": 2, "y": 3, "id": "wtc1", "gold": 500},
+      {"x": 6, "y": 3, "id": "wtc2", "gold": 500},
+    ],
+    npcs: [
+      {"x": 4, "y": 2, "kind": "talk", "name": "Royal Treasurer",
+        "text": "Every coin that passes through the Ford gets counted twice: once by the merchants, and once by us, for a ledger nobody outside this room has read in forty years."},
+    ],
+  },
+
+  wren_barracks: {
+    id: 'wren_barracks', name: "The Ford Garrison",
+    encounter: null, rate: 0, bg: "#182038",
+    tiles: [
+      '#########',
+      '#B_____B#',
+      '#_______#',
+      '#___u___#',
+      '#_t___x_#',
+      '#___D___#',
+      '#########',
+    ],
+    warps: [{"x": 4, "y": 5, "to": "wren_castle", "tx": 22, "ty": 5}],
+    npcs: [
+      {"x": 4, "y": 2, "kind": "talk", "name": "Guard Captain Row",
+        "text": "We drill twice a week and haven't fought anything larger than a testy goose in a decade. I'd rather keep it that way, if it's the same to you.",
+        "reactions": {
+          "thirteenth": "Still haven't fought anything larger than a goose. I've decided that's a fine legacy for a Captain to leave."
+        }},
     ],
   },
 

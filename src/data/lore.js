@@ -38,6 +38,16 @@ export const LORE = [
       + "nine, specifically. Draw your own conclusions.",
   },
   {
+    id: 'marchthrone',
+    title: "The Marchwarden's Throne",
+    unlock: null,
+    text: "Wren's Ford keeps a King the way it keeps the wheel carved into its well — out of "
+      + "habit, and a vague sense the carving mattered once. The title is older than the town "
+      + "remembers clearly: Warden of the Nine Marches, from back when the roads out of the "
+      + "Ford were numbered because nobody had gotten around to naming where they led. The "
+      + "roads got names eventually. The title never did.",
+  },
+  {
     id: 'thethirteen',
     title: "The Thirteen",
     unlock: 'volk',

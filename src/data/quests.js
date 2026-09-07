@@ -34,6 +34,18 @@ export const QUESTS = {
     type: 'item', itemId: 'healherb', count: 3, level: 3,
     reward: { gold: 60, lp: 2 },
   },
+  wardensLedger: {
+    id: 'wardensLedger',
+    npc: 'King Aldric',
+    title: "The Warden's Ledger",
+    hook: "Every so often something on the Hollow road needs a Warden's attention, technically. "
+      + "Break up whatever's denning near the old boundary stones, and I can at least say the title still means something this season.",
+    accept: "See it done, and don't let the garrison hear I asked an outsider first.",
+    reminder: "The boundary stones, still. Four down, and the title earns its keep a while longer.",
+    turnIn: "Four. That's more than the garrison's managed in a year, and they drill for it. Don't tell them I said that.",
+    type: 'kill', family: 'beast', count: 4, level: 8,
+    reward: { gold: 200, lp: 3 },
+  },
   wolfBounty: {
     id: 'wolfBounty',
     npc: 'Shepherd',
