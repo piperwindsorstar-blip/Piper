@@ -49,16 +49,17 @@ const KIND_TILE = {
   sign_temple: ['#f2ecda', '#ddd1af', '#b9a878', '#8d7b51', '#5a4c31'],   // pale stone
   sign_guild: ['#6c74c2', '#545ca2', '#3e447a', '#2b2f58', '#191b36'],    // deep blue-violet
   sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c', '#24272b'],  // fortress ashlar
-  sign_treasury: ['#c8a848', '#a88838', '#846a28', '#5c4a1a', '#362c10'], // gold
-  sign_garrison: ['#7a828c', '#626870', '#4a5058', '#363a40', '#202226'], // steel
+  sign_treasury: ['#c8a848', '#a88838', '#846a28', '#5c4a1a', '#362c10'], // gold ashlar, a vault built of coin-colored stone
+  sign_garrison: ['#7a828c', '#626870', '#4a5058', '#363a40', '#202226'], // steel-grey ashlar
+  sign_inn: ['#d9c17a', '#c2a85c', '#a68a42', '#8a6f2e', '#5c4a1e'],    // bundled straw thatch
 };
 const KIND_WALL = {
-  sign_smithy: ['#c6c6cc', '#aaaab2', '#8c8c94', '#68686e'],
-  sign_temple: ['#faf6ec', '#eee6d2', '#d2c6a2', '#aa9a7a'],
-  sign_guild: ['#cad0f0', '#aab0e0', '#8a92c2', '#6870a2'],
-  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c'],   // the same stone as the rampart above
-  sign_treasury: ['#ecdeb2', '#d6c28a', '#b29e62', '#8c7a46'],
-  sign_garrison: ['#c2c6ca', '#a6aaae', '#8a8e92', '#6a6e72'],
+  sign_smithy: ['#9a5a44', '#7a4434', '#5c3226', '#3e2018'],    // soot-stained brick, not plaster
+  sign_temple: ['#faf6ec', '#eee6d2', '#d2c6a2', '#aa9a7a'],    // marble, fluted into a colonnade
+  sign_guild: ['#5a5ea0', '#484c86', '#383c6c', '#282a50'],     // dark indigo brick
+  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c'],    // the same stone as the rampart above
+  sign_treasury: ['#ecdeb2', '#d6c28a', '#b29e62', '#8c7a46'],  // pale gold ashlar — the same stone as its roof
+  sign_garrison: ['#c2c6ca', '#a6aaae', '#8a8e92', '#6a6e72'],  // grey ashlar
 };
 const KIND_TRIM = {
   sign_smithy: '#3a3a42',
@@ -174,13 +175,23 @@ function drawRoof(P, sample, T, kind) {
   const blockW = (left + 1 + right) * TS;
   const trim = KIND_TRIM[kind];
 
+  // Three trades get a whole different roof material, not just a different
+  // color of the cottage's clay tile: a smithy's corrugated tin, a fortress's
+  // coursed stone (shared by the castle, its garrison, and the treasury
+  // vault — three buildings that are all, structurally, the same kind of
+  // blockhouse), and an inn's bundled straw thatch. A market stall gets
+  // striped canvas instead — a tent, not a roof at all.
+  const corrugated = kind === 'sign_smithy';
+  const crenellated = kind === 'sign_castle' || kind === 'sign_garrison';
+  const masonry = crenellated || kind === 'sign_treasury';
+  const thatch = kind === 'sign_inn';
+  const tentroof = kind === 'sign_store' || kind === 'sign_pedlar';
+
   for (let py = 0; py < TS; py++) {
     const by = yOff + py;                      // position down the whole roof
     for (let px = 0; px < TS; px++) {
       const bx = xOff + px;
       let col;
-      const corrugated = kind === 'sign_smithy';
-      const masonry = kind === 'sign_castle';
       if (by < 2) {
         col = TILE[4];                         // the ridge's own keyline
       } else if (by < 5) {
@@ -193,13 +204,27 @@ function drawRoof(P, sample, T, kind) {
         col = ridge === 0 ? TILE[3] : ridge < 3 ? TILE[1] : TILE[2];
       } else if (masonry) {
         // coursed ashlar stone, climbing straight up from the wall below —
-        // a keep's rampart, not a pitched roof wearing a castle's colors
+        // a blockhouse's rampart, not a pitched roof wearing its colors
         const course = Math.floor((by - 5) / 5);
         const inCourse = (by - 5) % 5;
         const stagger = (course % 2) * 5;
         col = TILE[1];
         if (inCourse === 0) col = TILE[0];              // the lit top of a course
         if ((bx + stagger) % 10 === 0) col = TILE[3];    // the joints between blocks
+      } else if (thatch) {
+        // bundled straw, overlapped course on course — a travellers' inn,
+        // not a tile roof painted straw-colored
+        const row = Math.floor((by - 5) / 3);
+        const inRow = (by - 5) % 3;
+        const stagger = (row % 2) * 3;
+        col = inRow === 0 ? TILE[0] : TILE[1];
+        if ((bx + stagger) % 6 < 1) col = TILE[3];      // where one bundle overlaps the next
+      } else if (tentroof) {
+        // canvas stretched over a stall's frame, striped and stitched —
+        // a market tent, not a shingled roof in market colors
+        const stripe = Math.floor(bx / 4) % 2 === 0;
+        col = stripe ? TILE[1] : '#e8e0d0';
+        if ((by - 5) % 7 === 0) col = TILE[3];          // a seam between canvas panels
       } else {
         // courses of tiles, offset every other row like real tiling
         const course = Math.floor((by - 5) / 6);
@@ -218,18 +243,27 @@ function drawRoof(P, sample, T, kind) {
       else if (bx >= blockW - 5) col = TILE[3];
 
       // a trade-specific silhouette, layered on last so it always shows: a
-      // smithy's chimney, a temple's gilded finial, bunting along a guild's
-      // ridge, an awning striping a store's eave, crenellations on a castle.
-      if (kind === 'sign_smithy') {
+      // smithy's chimney, an inn's own chimney, a temple's pediment, bunting
+      // along a guild's ridge, crenellations on a fortress, a scalloped
+      // valance over a market stall.
+      if (kind === 'sign_smithy' || kind === 'sign_inn') {
         const cx0 = blockW - 8;
+        const lit = kind === 'sign_smithy' ? '#4a4a52' : '#8a7058';
+        const mid = kind === 'sign_smithy' ? '#2c2c32' : '#6e5844';
+        const dark = kind === 'sign_smithy' ? '#1c1c20' : '#5c4a3a';
         if (bx >= cx0 && bx < cx0 + 3 && by < 10) {
-          col = by < 2 ? '#1c1c20' : bx === cx0 + 2 ? '#4a4a52' : '#2c2c32';
+          col = by < 2 ? dark : bx === cx0 + 2 ? lit : mid;
         }
-      } else if (kind === 'sign_temple' && by < 4 && Math.abs(bx - Math.floor(blockW / 2)) <= 1) {
-        col = '#f8d868';
+      } else if (kind === 'sign_temple') {
+        // a pediment: a pale triangular gable rising to the ridge, with a
+        // gilded finial at its peak — not a plain pitched roof
+        const mid = Math.floor(blockW / 2);
+        const spread = Math.min(6, Math.floor(by / 1.5));
+        if (Math.abs(bx - mid) <= spread && by < 9) col = '#f8f2e0';
+        if (by < 4 && Math.abs(bx - mid) <= 1) col = '#f8d868';
       } else if (kind === 'sign_guild' && by < 5 && bx % 10 < 4) {
         col = trim;
-      } else if (kind === 'sign_castle' && by < 8) {
+      } else if (crenellated && by < 8) {
         // a crenellated parapet: solid merlons standing on a continuous
         // ledge, with open notches between them left unpainted so the grass
         // behind the building shows through — a real break in the roofline,
@@ -241,9 +275,9 @@ function drawRoof(P, sample, T, kind) {
         } else {
           col = TILE[3];
         }
-      } else if ((kind === 'sign_store' || kind === 'sign_pedlar')
-        && by >= blockH - 7 && by < blockH - 3 && Math.floor(bx / 3) % 2 === 0) {
-        col = '#e8e0d0';
+      } else if ((kind === 'sign_store' || kind === 'sign_pedlar') && by >= blockH - 3 && by < blockH - 1) {
+        // a scalloped valance along the eave, the edge of the canvas itself
+        if (bx % 6 < 3) col = shade(trim, -0.2);
       }
       if (col) P.px(px, py, col);
     }
@@ -389,12 +423,15 @@ function drawSign(P, kind, T) {
   }
 }
 
-/** Plaster wall with a timber frame, in shadow under the eaves — or, for a
- *  castle, coursed fortress stone with no timber in it at all. */
+/** Plaster wall with a timber frame, in shadow under the eaves — or coursed
+ *  fortress stone, soot-brick, or a fluted marble colonnade, depending on
+ *  what the building actually is. */
 function drawWall(P, sample, isDoor, T, self, kind) {
   const WALL = KIND_WALL[kind] ?? T.WALL, BEAM = T.BEAM;
   const trim = KIND_TRIM[kind] ?? T.TRIM;
-  const masonry = kind === 'sign_castle';
+  const masonry = kind === 'sign_castle' || kind === 'sign_garrison' || kind === 'sign_treasury';
+  const brick = kind === 'sign_smithy' || kind === 'sign_guild';
+  const colonnade = kind === 'sign_temple';
   const up = run(sample, isWall, 0, -1);
   const down = run(sample, isWall, 0, 1);
   const left = run(sample, isBuilding, -1, 0);
@@ -418,6 +455,20 @@ function drawWall(P, sample, isDoor, T, self, kind) {
         col = (inCourse === 0) ? WALL[0] : ((bx + stagger) % 10 === 0) ? WALL[2] : WALL[1];
         if (by >= blockH - 3) col = WALL[3];             // foundation course
         if (bx < 3 || bx >= blockW - 3) col = inCourse < 2 ? WALL[0] : WALL[3];  // a squared quoin, not a timber post
+      } else if (brick) {
+        // a running bond of fired brick — a working smithy or an arcane
+        // tower, either way not a plastered wall
+        const course = Math.floor(by / 4);
+        const inCourse = by % 4;
+        const stagger = (course % 2) * 4;
+        col = inCourse === 0 ? WALL[3] : ((bx + stagger) % 8 === 0) ? WALL[3] : WALL[1];
+        if (by >= blockH - 3) col = WALL[3];
+      } else if (colonnade) {
+        // fluted marble pilasters at regular intervals, not a plastered
+        // wall with a smithy's speckle of relief on it
+        const period = 6, within = bx % period;
+        col = within < 2 ? WALL[0] : within === 2 ? WALL[3] : WALL[1];
+        if (by >= blockH - 3) col = WALL[3];              // a stone plinth underfoot
       } else {
         if (by < 4) col = WALL[3];                       // under the eaves
         else if (by < 6) col = WALL[2];
@@ -436,15 +487,30 @@ function drawWall(P, sample, isDoor, T, self, kind) {
   // else still gets exactly the one row of windows they always had.
   const twoStorey = kind === 'sign_inn';
   const shopfront = kind === 'sign_store' || kind === 'sign_pedlar';
+  const arched = kind === 'sign_temple' || kind === 'sign_guild';
   const hasWindow = !isDoor && !sign && blockH > TS && (twoStorey ? true : (yOff % TS === 0 && up === 0));
   if (hasWindow) {
     if (masonry) {
-      // an arrow slit, not a glazed window — a keep doesn't let a cottage
-      // window into a wall built to stop something
-      P.rect(10, 5, 4, 17, WALL[3]);
-      P.rect(11, 6, 2, 15, '#161719');
-      P.rect(9, 10, 6, 2, WALL[3]);                       // the cross-slit
-      P.rect(10, 10, 4, 2, '#161719');
+      // an arrow slit, not a glazed window — a fortress doesn't let a
+      // cottage window into a wall built to stop something. The vault gets
+      // no window at all: the stone above just keeps going.
+      if (kind !== 'sign_treasury') {
+        P.rect(10, 5, 4, 17, WALL[3]);
+        P.rect(11, 6, 2, 15, '#161719');
+        P.rect(9, 10, 6, 2, WALL[3]);                     // the cross-slit
+        P.rect(10, 10, 4, 2, '#161719');
+      }
+    } else if (arched) {
+      // a tall pointed-arch window, stained glass instead of a cottage's
+      // small square pane — a shrine or an arcane tower, either way
+      // something taller than a house
+      const glow = kind === 'sign_guild' ? '#8a6cf0' : '#f8d868';
+      const glow2 = kind === 'sign_guild' ? '#c8b0ff' : '#fff0b0';
+      P.rect(9, 4, 7, 13, BEAM[1]);
+      P.rect(10, 6, 5, 11, glow);
+      P.rect(10, 6, 5, 3, glow2);
+      P.rect(12, 4, 1, 2, BEAM[1]);                       // the arch's peak
+      P.rect(11, 3, 3, 1, trim);
     } else if (shopfront) {
       // full-width glass, edge to edge, so neighbouring cells' panes read as
       // one continuous shopfront window broken only by its own thin mullions
@@ -462,6 +528,13 @@ function drawWall(P, sample, isDoor, T, self, kind) {
       P.rect(12, 10, 1, 6, BEAM[1]);
       P.rect(9, 13, 7, 1, BEAM[1]);
       P.rect(7, 8, 11, 1, trim);                        // painted lintel — the accent that reads the trade
+      if (twoStorey) {
+        // shutters — a travellers' inn dresses its windows, a plain cottage doesn't
+        P.rect(5, 9, 3, 8, trim);
+        P.rect(16, 9, 3, 8, trim);
+        P.rect(6, 10, 1, 6, shade(trim, 0.3));
+        P.rect(17, 10, 1, 6, shade(trim, 0.3));
+      }
     }
   }
   if (twoStorey && up > 0) {
@@ -477,7 +550,7 @@ function drawWall(P, sample, isDoor, T, self, kind) {
       P.rect(3, 6, TS - 6, TS - 7, trim);
       P.rect(3, 6, TS - 6, 1, shade(trim, 0.3));
       for (let gy = 9; gy < TS - 2; gy += 4) P.rect(3, gy, TS - 6, 1, shade(trim, -0.35));
-    } else if (masonry) {
+    } else if (kind === 'sign_castle') {
       // a fortified gate: iron-braced double doors set into a deep stone
       // archway, wide and dark enough to look like the way an army would
       // actually come in — not a cottage door painted a different color
@@ -492,17 +565,33 @@ function drawWall(P, sample, isDoor, T, self, kind) {
         P.rect(2, 0, TS - 4, 2, WALL[0]);                      // the arch's stone lintel
         P.rect(TS / 2 - 2, 2, 4, 3, trim);                     // a small crest above the gate
       }
+    } else if (kind === 'sign_treasury') {
+      // a vault door: a slab of banded iron with a locking wheel at its
+      // center, not a house door with bars nailed across it
+      const top = up === 0 ? 6 : 0;
+      P.rect(4, top, TS - 8, TS - top, '#3a3226');
+      P.rect(5, top + 1, TS - 10, TS - top - 1, '#4e4534');
+      const wcx = TS / 2, wcy = top + 9;
+      for (let a = 0; a < 8; a++) {
+        const ang = (a / 8) * Math.PI * 2;
+        P.px(Math.round(wcx + Math.cos(ang) * 3), Math.round(wcy + Math.sin(ang) * 3), '#c8a848');
+      }
+      P.rect(wcx - 1, wcy - 1, 2, 2, '#c8a848');               // the wheel's hub
+    } else if (kind === 'sign_garrison') {
+      // a reinforced door with a small barred viewing slit — a guardhouse,
+      // not a home
+      const top = up === 0 ? 6 : 0;
+      P.rect(6, top, 12, TS - top, '#3a3e44');
+      P.rect(7, top + 1, 10, TS - top - 1, shade(trim, -0.2));
+      P.rect(10, top + 2, 4, 3, '#161719');
+      P.rect(10, top + 2, 4, 1, '#4a4e54');
+      P.rect(14, top + 9, 2, 2, '#e8c860');
     } else {
       const top = up === 0 ? 6 : 0;
       P.rect(6, top, 12, TS - top, BEAM[1]);
       P.rect(7, top + 1, 10, TS - top - 1, trim);            // a painted door, the trade's own accent
       P.rect(7, top + 1, 2, TS - top - 1, shade(trim, 0.35));
       P.rect(14, top + 9, 2, 2, '#e8c860');
-      if (kind === 'sign_treasury') {
-        // a reinforced, barred door — the one building worth locking twice
-        P.rect(7, top + 5, 10, 1, '#4a3a1a');
-        P.rect(7, top + 11, 10, 1, '#4a3a1a');
-      }
     }
   }
 }
