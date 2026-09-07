@@ -62,3 +62,17 @@ export function cycleBattleSpeed() {
   write({ battleSpeed: next });
   return next;
 }
+
+// The field scene's party HUD (name/HP/MP per member, top-right) can run to
+// nine rows in a full party — plenty of screen on a desktop monitor, a real
+// chunk of a phone's landscape view. Defaults on; the field scene's own
+// 'list' button (see input.js) flips it per the player's own screen.
+export function getPartyHudVisible() {
+  return read().partyHud !== false;
+}
+
+export function togglePartyHudVisible() {
+  const next = !getPartyHudVisible();
+  write({ partyHud: next });
+  return next;
+}

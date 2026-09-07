@@ -1,7 +1,7 @@
 // ============================================================================
 //  INPUT — keyboard, gamepad-ish key repeat, and on-screen touch controls.
 //
-//  Buttons: up down left right confirm cancel menu shift
+//  Buttons: up down left right confirm cancel menu shift list
 // ============================================================================
 
 const KEYMAP = {
@@ -13,9 +13,10 @@ const KEYMAP = {
   Escape: 'cancel', KeyX: 'cancel', Backspace: 'cancel',
   ShiftLeft: 'shift', ShiftRight: 'shift',
   Tab: 'menu', KeyC: 'menu',
+  KeyL: 'list',
 };
 
-const BUTTONS = ['up', 'down', 'left', 'right', 'confirm', 'cancel', 'menu', 'shift'];
+const BUTTONS = ['up', 'down', 'left', 'right', 'confirm', 'cancel', 'menu', 'shift', 'list'];
 
 const REPEAT_DELAY = 0.28;
 const REPEAT_RATE = 0.07;

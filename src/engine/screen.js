@@ -36,9 +36,10 @@ const TOUCH_BOTTOM_GUTTER = 170;
 const DPAD_SIZE = 140;
 const SIDE_BTN_W = 56;
 const SIDE_MARGIN_GAP = 16;           // breathing room around the pad within its margin
-const SIDE_STACK = [                   // the four non-dpad buttons, stacked in the right margin
+const SIDE_STACK = [                   // the five non-dpad buttons, stacked in the right margin
   { sel: '[data-btn="menu"]', w: 56, h: 34 },
   { sel: '[data-btn="shift"]', w: 56, h: 34 },
+  { sel: '[data-btn="list"]', w: 56, h: 34 },
   { sel: '[data-btn="confirm"]', w: 56, h: 56 },
   { sel: '[data-btn="cancel"]', w: 50, h: 50 },
 ];

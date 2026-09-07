@@ -25,6 +25,7 @@ import { getJob } from '../../data/jobs.js';
 import { rng } from '../../engine/rng.js';
 import { STORY } from '../../data/story.js';
 import { sfx, playMusic } from '../../engine/audio.js';
+import { getPartyHudVisible, togglePartyHudVisible } from '../../engine/settings.js';
 import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 import { QUESTS, questState, questReady, questAvailable, startQuest, completeQuest } from '../../data/quests.js';
 import * as THREE from '../../vendor/three.module.js';
@@ -614,6 +615,7 @@ export class FieldScene {
     }
 
     if (input.tap('menu')) { this.app.push('menu'); return; }
+    if (input.tap('list')) { sfx.confirm(); togglePartyHudVisible(); return; }
 
     if (this.moving) {
       this.stepT += dt;
@@ -1361,18 +1363,27 @@ export class FieldScene {
 
   drawHud(scr) {
     const g = this.g;
-    const rows = g.party.length;
-    const pw = 116, ph = 12 + rows * 17;
-    scr.panel(W - pw - 8, 8, pw, ph, { alpha: 0.94 });
-    g.party.forEach((ch, i) => {
-      const y = 16 + i * 17;
-      const s = stats(ch);
-      const ratio = ch.hp / s.maxHp;
-      scr.text(ch.name.slice(0, 8), W - pw, y, ch.hp > 0 ? PAL.text : PAL.grey);
-      scr.textRight(`${ch.hp}`, W - 16, y, hpColor(ratio));
-      scr.bar(W - pw, y + 10, pw - 24, 3, ratio, hpColor(ratio));
-      scr.bar(W - pw, y + 14, pw - 24, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
-    });
+    // The party list (name/HP/MP per member) can run to nine rows and cover
+    // real ground on both the overworld and a dungeon floor — the 'list'
+    // button (L, or the on-screen LIST pad next to Menu/Shift) hides it, and
+    // a small tag stands in its place so the control is never a surprise.
+    if (getPartyHudVisible()) {
+      const rows = g.party.length;
+      const pw = 116, ph = 12 + rows * 17;
+      scr.panel(W - pw - 8, 8, pw, ph, { alpha: 0.94 });
+      g.party.forEach((ch, i) => {
+        const y = 16 + i * 17;
+        const s = stats(ch);
+        const ratio = ch.hp / s.maxHp;
+        scr.text(ch.name.slice(0, 8), W - pw, y, ch.hp > 0 ? PAL.text : PAL.grey);
+        scr.textRight(`${ch.hp}`, W - 16, y, hpColor(ratio));
+        scr.bar(W - pw, y + 10, pw - 24, 3, ratio, hpColor(ratio));
+        scr.bar(W - pw, y + 14, pw - 24, 2, s.maxMp ? ch.mp / s.maxMp : 0, PAL.cyan);
+      });
+    } else {
+      scr.panel(W - 32, 8, 24, 16, { alpha: 0.7 });
+      scr.textCenter('L', W - 20, 12, PAL.textFaint);
+    }
     scr.panel(8, H - 30, 118, 22, { alpha: 0.94 });
     scr.text('G', 18, H - 23, PAL.accentDim);
     scr.text(`${g.gold}`, 28, H - 23, PAL.accent);

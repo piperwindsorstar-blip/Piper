@@ -30,7 +30,10 @@ import { questState, questProgress, questReady, questAvailable, questsByLevel, q
 import { nextStoryHint } from '../../data/story.js';
 import { LORE, loreUnlocked } from '../../data/lore.js';
 import { SLOTS, saveSummary } from '../../engine/save.js';
-import { getTouchMode, cycleTouchMode, TOUCH_LABEL, getBattleSpeed, cycleBattleSpeed } from '../../engine/settings.js';
+import {
+  getTouchMode, cycleTouchMode, TOUCH_LABEL, getBattleSpeed, cycleBattleSpeed,
+  getPartyHudVisible, togglePartyHudVisible,
+} from '../../engine/settings.js';
 import {
   sfx, isMuted, toggleMuted, getSfxVolume, setSfxVolume, getMusicVolume, setMusicVolume,
 } from '../../engine/audio.js';
@@ -474,7 +477,7 @@ export class MenuScene {
 
   // --- controls ----------------------------------------------------------
   updateControls(input) {
-    const ROWS = 5; // touch mode, sfx volume, music volume, mute, battle speed
+    const ROWS = 6; // touch mode, sfx volume, music volume, mute, battle speed, party list
     if (input.tap('up')) { this.controlsIdx = (this.controlsIdx + ROWS - 1) % ROWS; sfx.move(); }
     if (input.tap('down')) { this.controlsIdx = (this.controlsIdx + 1) % ROWS; sfx.move(); }
     if (this.controlsIdx === 0) {
@@ -489,6 +492,8 @@ export class MenuScene {
       if (input.tap('confirm')) { toggleMuted(); sfx.confirm(); }
     } else if (this.controlsIdx === 4) {
       if (input.tap('confirm') || input.tap('left') || input.tap('right')) { cycleBattleSpeed(); sfx.confirm(); }
+    } else if (this.controlsIdx === 5) {
+      if (input.tap('confirm')) { togglePartyHudVisible(); sfx.confirm(); }
     }
   }
 
@@ -1090,7 +1095,11 @@ export class MenuScene {
     row(4, 'Battle speed', TOP + 110);
     scr.textRight(`${getBattleSpeed()}x`, IX + IW, TOP + 110, PAL.accent);
 
-    scr.rect(IX, TOP + 126, IW, 1, PAL.line);
+    row(5, 'Party list on the field', TOP + 128);
+    scr.textRight(getPartyHudVisible() ? 'SHOWN' : 'HIDDEN', IX + IW, TOP + 128,
+      getPartyHudVisible() ? PAL.accent : PAL.textDim);
+
+    scr.rect(IX, TOP + 142, IW, 1, PAL.line);
     const desc = {
       auto: 'Shown automatically on a touchscreen, hidden otherwise.',
       on: 'Always shown — even with a mouse or keyboard attached.',
@@ -1100,8 +1109,9 @@ export class MenuScene {
       : this.controlsIdx === 3 ? 'Silences sound effects and music together.'
         : this.controlsIdx === 4 ? 'Speeds up windups, strikes and message dwell time in battle. '
           + 'Shift also toggles Auto-Battle mid-fight.'
-          : '◀▶ adjusts the volume.';
-    scr.textWrap(hint, IX, TOP + 138, IW, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+          : this.controlsIdx === 5 ? "L, or the pad's LIST button, does the same thing without opening this menu."
+            : '◀▶ adjusts the volume.';
+    scr.textWrap(hint, IX, TOP + 154, IW, PAL.textDim, { lineHeight: 11, maxLines: 3 });
     scr.textWrap('▲▼ choose a row   ·   Z toggles   ·   ◀▶ adjusts',
       IX, TOP + BODY_H - 22, IW, PAL.textFaint, { lineHeight: 11, maxLines: 2 });
   }

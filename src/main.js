@@ -177,7 +177,7 @@ class App {
       el.addEventListener('pointercancel', up);
       el.addEventListener('pointerleave', up);
     };
-    for (const b of ['up', 'down', 'left', 'right', 'confirm', 'cancel', 'menu', 'shift']) {
+    for (const b of ['up', 'down', 'left', 'right', 'confirm', 'cancel', 'menu', 'shift', 'list']) {
       bind(pad.querySelector(`[data-btn="${b}"]`), b);
     }
     // 'auto' (the default) shows the pad only where touch is the primary
