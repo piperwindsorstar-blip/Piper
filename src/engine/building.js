@@ -68,6 +68,11 @@ const KIND_TRIM = {
   sign_treasury: '#e0b030',
   sign_garrison: '#5a6068',
 };
+// A castle's corner towers are gold against its red walls rather than the
+// regional dome's default — a coronet, not a watchtower.
+const KIND_DOME = {
+  sign_castle: ['#e8c860', '#c8a040', '#9c7830', '#5a4818'],
+};
 
 /** How far a building's own footprint runs, in every direction from `sample`'s
  *  own cell — shared by the roof/wall drawers and by findKind below, which
@@ -159,12 +164,17 @@ function drawRoof(P, sample, T, kind) {
     for (let px = 0; px < TS; px++) {
       const bx = xOff + px;
       let col;
+      const corrugated = kind === 'sign_smithy';
       if (by < 2) {
         col = TILE[4];                         // the ridge's own keyline
       } else if (by < 5) {
         col = TILE[0];                         // ridge cap, catching the light
       } else if (by >= blockH - 3) {
         col = by >= blockH - 1 ? TILE[4] : TILE[3];   // eave lip
+      } else if (corrugated) {
+        // corrugated tin, not clay tile — a mechanic's shop, not a cottage
+        const ridge = bx % 4;
+        col = ridge === 0 ? TILE[3] : ridge < 3 ? TILE[1] : TILE[2];
       } else {
         // courses of tiles, offset every other row like real tiling
         const course = Math.floor((by - 5) / 6);
@@ -182,9 +192,9 @@ function drawRoof(P, sample, T, kind) {
       else if (bx >= blockW - 2) col = TILE[4];
       else if (bx >= blockW - 5) col = TILE[3];
 
-      // a trade-specific silhouette, layered on last so it always shows:
-      // a smithy's chimney, a temple's gilded finial, bunting along a
-      // guild's or a castle's ridge, an awning striping a store's eave.
+      // a trade-specific silhouette, layered on last so it always shows: a
+      // smithy's chimney, a temple's gilded finial, bunting along a guild's
+      // ridge, an awning striping a store's eave, crenellations on a castle.
       if (kind === 'sign_smithy') {
         const cx0 = blockW - 8;
         if (bx >= cx0 && bx < cx0 + 3 && by < 10) {
@@ -192,8 +202,14 @@ function drawRoof(P, sample, T, kind) {
         }
       } else if (kind === 'sign_temple' && by < 4 && Math.abs(bx - Math.floor(blockW / 2)) <= 1) {
         col = '#f8d868';
-      } else if ((kind === 'sign_guild' || kind === 'sign_castle') && by < 5 && bx % 10 < 4) {
+      } else if (kind === 'sign_guild' && by < 5 && bx % 10 < 4) {
         col = trim;
+      } else if (kind === 'sign_castle' && by < 6) {
+        // a crenellated parapet: solid merlons alternating with open notches,
+        // instead of one smooth pitched ridge — the one silhouette in this
+        // file that isn't just a pitched roof underneath
+        const merlon = Math.floor(bx / 4) % 2 === 0;
+        col = merlon ? (by < 2 ? TILE[4] : TILE[0]) : '#1c0e0e';
       } else if ((kind === 'sign_store' || kind === 'sign_pedlar')
         && by >= blockH - 7 && by < blockH - 3 && Math.floor(bx / 3) % 2 === 0) {
         col = '#e8e0d0';
@@ -209,8 +225,8 @@ function drawRoof(P, sample, T, kind) {
  * never spans multiple columns: a dome tops one narrow tower, so only the
  * vertical run matters and the shape stays centred in its own TS-wide column.
  */
-function drawDome(P, sample, T) {
-  const D = T.DOME;
+function drawDome(P, sample, T, kind) {
+  const D = KIND_DOME[kind] ?? T.DOME;
   const up = run(sample, isDome, 0, -1);
   const down = run(sample, isDome, 0, 1);
   const blockH = (up + 1 + down) * TS;
@@ -238,6 +254,7 @@ function drawDome(P, sample, T) {
           else if (dx < -hw * 0.15) col = t < 0.3 ? D[0] : D[1]; // lit face
           else col = t < 0.5 ? D[1] : D[2];                     // shadow face
           if (by < 2 && Math.abs(dx) < 2) col = D[3];           // finial
+          if (kind === 'sign_castle' && by < 2 && dx > -1 && dx < 3) col = '#c83030'; // a pennant at the tip
         }
       } else if (by < blockH - 3) {
         // a short cylindrical drum below the dome
@@ -348,26 +365,56 @@ function drawWall(P, sample, isDoor, T, self, kind) {
   }
 
   const sign = isSign(self);
-  // a window per wall cell, except where the door or a sign is
-  if (!isDoor && !sign && yOff % TS === 0 && up === 0 && blockH > TS) {
-    P.rect(8, 9, 9, 8, BEAM[1]);
-    P.rect(9, 10, 7, 6, T.GLASS[0]);
-    P.rect(9, 10, 7, 2, T.GLASS[1]);
-    P.rect(12, 10, 1, 6, BEAM[1]);
-    P.rect(9, 13, 7, 1, BEAM[1]);
-    P.rect(7, 8, 11, 1, trim);                          // painted lintel — the accent that reads the trade
+  // The Ford Inn reads as two storeys, not one: a window in the wall row
+  // below the sign row too, and a lit floor ledge dividing them — everyone
+  // else still gets exactly the one row of windows they always had.
+  const twoStorey = kind === 'sign_inn';
+  const shopfront = kind === 'sign_store' || kind === 'sign_pedlar';
+  const hasWindow = !isDoor && !sign && blockH > TS && (twoStorey ? true : (yOff % TS === 0 && up === 0));
+  if (hasWindow) {
+    if (shopfront) {
+      // full-width glass, edge to edge, so neighbouring cells' panes read as
+      // one continuous shopfront window broken only by its own thin mullions
+      // — not another cottage with a bigger square cut into the wall
+      P.rect(0, 9, TS, 8, BEAM[1]);
+      P.rect(1, 10, TS - 2, 6, T.GLASS[0]);
+      P.rect(1, 10, TS - 2, 2, T.GLASS[1]);
+      P.rect(1, 13, TS - 2, 1, BEAM[1]);
+      P.rect(0, 8, TS, 1, trim);
+      P.speck([[4, 12], [9, 11], [14, 12], [19, 11]], '#e8c860');   // goods on display
+    } else {
+      P.rect(8, 9, 9, 8, BEAM[1]);
+      P.rect(9, 10, 7, 6, T.GLASS[0]);
+      P.rect(9, 10, 7, 2, T.GLASS[1]);
+      P.rect(12, 10, 1, 6, BEAM[1]);
+      P.rect(9, 13, 7, 1, BEAM[1]);
+      P.rect(7, 8, 11, 1, trim);                        // painted lintel — the accent that reads the trade
+    }
+  }
+  if (twoStorey && up > 0) {
+    // the floor ledge between storeys, on the ground-floor cell only
+    P.rect(0, 0, TS, 1, BEAM[0]);
+    P.rect(0, 1, TS, 1, BEAM[1]);
   }
   if (sign) drawSign(P, self, T);
   if (isDoor) {
-    const top = up === 0 ? 6 : 0;
-    P.rect(6, top, 12, TS - top, BEAM[1]);
-    P.rect(7, top + 1, 10, TS - top - 1, trim);              // a painted door, the trade's own accent
-    P.rect(7, top + 1, 2, TS - top - 1, shade(trim, 0.35));
-    P.rect(14, top + 9, 2, 2, '#e8c860');
-    if (kind === 'sign_treasury') {
-      // a reinforced, barred door — the one building worth locking twice
-      P.rect(7, top + 5, 10, 1, '#4a3a1a');
-      P.rect(7, top + 11, 10, 1, '#4a3a1a');
+    if (kind === 'sign_smithy') {
+      // a wide garage-style door, not a household one — this is a working shop
+      P.rect(2, 5, TS - 4, TS - 5, BEAM[1]);
+      P.rect(3, 6, TS - 6, TS - 7, trim);
+      P.rect(3, 6, TS - 6, 1, shade(trim, 0.3));
+      for (let gy = 9; gy < TS - 2; gy += 4) P.rect(3, gy, TS - 6, 1, shade(trim, -0.35));
+    } else {
+      const top = up === 0 ? 6 : 0;
+      P.rect(6, top, 12, TS - top, BEAM[1]);
+      P.rect(7, top + 1, 10, TS - top - 1, trim);            // a painted door, the trade's own accent
+      P.rect(7, top + 1, 2, TS - top - 1, shade(trim, 0.35));
+      P.rect(14, top + 9, 2, 2, '#e8c860');
+      if (kind === 'sign_treasury') {
+        // a reinforced, barred door — the one building worth locking twice
+        P.rect(7, top + 5, 10, 1, '#4a3a1a');
+        P.rect(7, top + 11, 10, 1, '#4a3a1a');
+      }
     }
   }
 }
@@ -424,7 +471,7 @@ function buildingSpriteRaw(mapId, x, y, sample, theme) {
   const T = THEMES[theme] ?? THEMES.green;
   return make(`bldraw|${theme}|${mapId}|${x}|${y}`, TS, TS, (P) => {
     const self = sample(0, 0);
-    if (isDome(self)) drawDome(P, sample, T);
+    if (isDome(self)) drawDome(P, sample, T, findKind(sample));
     else if (isRoof(self)) drawRoof(P, sample, T, findKind(sample));
     else if (isWall(self)) drawWall(P, sample, self === 'door', T, self, findKind(sample));
     else drawCast(P, sample, T);
