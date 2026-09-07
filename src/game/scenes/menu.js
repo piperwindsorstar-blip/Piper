@@ -316,6 +316,13 @@ export class MenuScene {
         this.g.restParty();
         this.say('The party makes camp. Everyone recovers.');
         this.refreshItems();
+      } else if (it.warpTown) {
+        // Reuses the exact fast-travel machinery the Atlas page's Cartographer
+        // waypoints already trigger (field.js's beginFastTravel via onResume)
+        // rather than needing a town picker — a Wing Feather always returns
+        // to the last town the party actually stood in.
+        this.g.removeItem(it.id);
+        this.app.pop({ fastTravel: this.g.lastTownId });
       } else {
         this.say('Not something to use here.');
       }
@@ -725,10 +732,11 @@ export class MenuScene {
       scr.panel(x - 8, TOP + 28, CW + 8, 92, { alpha: 0.9 });
       scr.text(it.name, x, TOP + 38, PAL.accent);
       scr.rect(x, TOP + 50, CW - 8, 1, PAL.line);
-      const desc = it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
-        : it.cures ? `Cures ${it.cures.join(', ')}.` : it.camp ? 'Rest anywhere.'
-          : it.grantSkill ? `Grants ${getSkill(it.grantSkill).name} while worn, to any class.`
-            : it.kind === 'material' ? 'A crafting material.' : `Worth ${it.price} gold.`;
+      const desc = it.effect ? it.effect
+        : it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
+          : it.cures ? `Cures ${it.cures.join(', ')}.` : it.camp ? 'Rest anywhere.'
+            : it.grantSkill ? `Grants ${getSkill(it.grantSkill).name} while worn, to any class.`
+              : it.kind === 'material' ? 'A crafting material.' : `Worth ${it.price} gold.`;
       scr.textWrap(desc, x, TOP + 58, CW - 8, PAL.textDim, { lineHeight: 11, maxLines: 3 });
     }
 

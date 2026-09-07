@@ -300,13 +300,34 @@ export const ITEMS = [
   U('echoherb', 'Echo Herb', 30, { cures: ['silence'], target: 'ally' }),
   U('goldneedle', 'Gold Needle', 90, { cures: ['stone', 'paralyze'], target: 'ally' }),
   U('holywater', 'Holy Water', 120, { cures: ['curse', 'doom'], target: 'ally' }),
-  U('revivalleaf', 'Revival Leaf', 400, { revives: true, heal: 200, target: 'ally' }),
-  U('firebomb', 'Fire Flask', 120, { damage: 200, element: 'fire', target: 'row' }),
-  U('frostbomb', 'Frost Flask', 120, { damage: 200, element: 'ice', target: 'row' }),
-  U('boltbomb', 'Bolt Flask', 120, { damage: 200, element: 'lightning', target: 'row' }),
-  U('smokebomb', 'Smoke Bomb', 80, { escape: true, target: 'allies' }),
-  U('tent', 'Tent', 250, { camp: true, target: 'allies' }),
-  U('wingfeather', 'Wing Feather', 100, { warpTown: true }),
+  U('revivalleaf', 'Revival Leaf', 400, {
+    revives: true, heal: 200, target: 'ally',
+    effect: 'Revives a fallen ally and restores 200 HP.',
+  }),
+  U('firebomb', 'Fire Flask', 120, {
+    damage: 200, element: 'fire', target: 'row',
+    effect: 'Douses a whole enemy row in fire for 200 damage.',
+  }),
+  U('frostbomb', 'Frost Flask', 120, {
+    damage: 200, element: 'ice', target: 'row',
+    effect: 'Douses a whole enemy row in frost for 200 damage.',
+  }),
+  U('boltbomb', 'Bolt Flask', 120, {
+    damage: 200, element: 'lightning', target: 'row',
+    effect: 'Douses a whole enemy row in lightning for 200 damage.',
+  }),
+  U('smokebomb', 'Smoke Bomb', 80, {
+    escape: true, target: 'allies',
+    effect: 'Guarantees the party escapes the battle, no roll needed.',
+  }),
+  U('tent', 'Tent', 250, {
+    camp: true, target: 'allies',
+    effect: 'The party makes camp on the spot: HP and MP fully restored, ailments cleared, the fallen revived.',
+  }),
+  U('wingfeather', 'Wing Feather', 100, {
+    warpTown: true,
+    effect: 'Warps the party back to the last town they stood in.',
+  }),
 
   // --- materials -----------------------------------------------------------
   M('copperore', 'Copper Ore', 25),

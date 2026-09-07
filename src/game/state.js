@@ -27,6 +27,7 @@ export class GameState {
     this.inventory = [];            // [{id, count}]
     this.flags = {};                // world flags: opened chests, defeated bosses
     this.mapId = 'wren';
+    this.lastTownId = 'wren';       // wingfeather warps here — see field.js's enter/completeWarp
     this.x = 12; this.y = 18;
     this.facing = 'down';
     this.playtime = 0;
@@ -211,6 +212,7 @@ export class GameState {
     this.visitedMaps = {};
     this.mapped = {};
     this.mapId = 'wren';
+    this.lastTownId = 'wren';
     this.x = 12; this.y = 18; this.facing = 'down';
     this.stepsSinceBattle = 0;
     for (const ch of this.roster) fullRestore(ch);
@@ -296,6 +298,7 @@ export class GameState {
       inventory: this.inventory,
       flags: this.flags,
       mapId: this.mapId,
+      lastTownId: this.lastTownId,
       mapName: this.map.name,
       x: this.x, y: this.y, facing: this.facing,
       playtime: Math.round(this.playtime),
@@ -348,6 +351,7 @@ export class GameState {
     g.inventory = d.inventory ?? [];
     g.flags = d.flags ?? {};
     g.mapId = d.mapId ?? 'wren';
+    g.lastTownId = d.lastTownId ?? (getMap(g.mapId)?.town ? g.mapId : 'wren');
     g.x = d.x ?? 12; g.y = d.y ?? 18;
     g.facing = d.facing ?? 'down';
     g.playtime = d.playtime ?? 0;

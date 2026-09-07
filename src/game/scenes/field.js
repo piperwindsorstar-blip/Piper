@@ -34,6 +34,18 @@ import { makeDoll, lookFromActor } from '../../engine/doll.js';
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
+/** How deep into its own dungeon a map sits — labyrinth floor 1 has no
+ *  "_fN" suffix (it's the implicit floor 1), a Shifting Depths floor
+ *  carries its own `dungeonDepth`, and the antechamber above depths_1 is
+ *  floor 0. Used only to tell an `exit`-less stairs warp apart as Up or
+ *  Down (see draw()'s stairs-label loop) — never for gameplay. */
+function floorDepthOf(m) {
+  if (m.dungeonDepth != null) return m.dungeonDepth;
+  if (m.id === 'depths_entrance') return 0;
+  const fm = /_f(\d+)$/.exec(m.id);
+  return fm ? Number(fm[1]) : 1;
+}
+
 // One world unit = one tile (TS pixels), so every existing pixel-space
 // measurement (tile positions, sprite dimensions) converts to 3D world
 // units just by dividing by TS — no separate scale to keep in sync.
@@ -84,6 +96,7 @@ export class FieldScene {
   enter(opts = {}) {
     this.g = this.app.game;
     this.g.visitedMaps[this.g.mapId] = true;
+    if (this.g.map.town) this.g.lastTownId = this.g.mapId;
     this.dlg = new Dialogue();
     this.fxp = new Particles(220);
     this.ambientT = 0;
@@ -378,14 +391,19 @@ export class FieldScene {
 
     for (const n of this.map.npcs ?? []) {
       const cv = npcSprite(n.kind, (n.x + n.y) % 4, Math.floor(this.animT * 1.6 + n.x * 0.7 + n.y * 0.3) % 2);
-      sync(`npc:${n.x},${n.y}`, cv, n.x * TS, n.y * TS + TS);
+      sync(`npc:${n.x},${n.y}`, cv, n.x * TS + TS / 2, n.y * TS + TS);
     }
     const leader = this.g.leader;
     const frame = this.moving
       ? (Math.floor(this.animT * 8) % 2 === 0 ? 1 : 4)
       : (Math.floor(this.animT * 1.35) % 2 === 0 ? 0 : 5);
     const pp = this.playerPixel();
-    const { world } = this.billboardFor(null, pp.x, pp.y + TS);
+    // billboardFor/worldFromScreenPx treat the pixel it's given as the
+    // sprite's own centre, but pp.x (like n.x*TS above) is the tile's LEFT
+    // edge — every field billboard rendered a half-tile west of the tile it
+    // was actually standing on, invisible over open ground but glaring next
+    // to a door or chest baked into the ground texture at its true position.
+    const { world } = this.billboardFor(null, pp.x + TS / 2, pp.y + TS);
     const look = lookFromActor(leader);
     const dollKey = `${look.raceId}|${look.classId}|${look.skin}|${look.hair}`;
     let doll = this.fieldDolls.get('player');
@@ -1017,6 +1035,7 @@ export class FieldScene {
     this.g.x = wp.tx;
     this.g.y = wp.ty;
     this.g.visitedMaps[wp.to] = true;
+    if (getMap(wp.to)?.town) this.g.lastTownId = wp.to;
     const depthMatch = /^depths_(\d+)$/.exec(wp.to);
     if (depthMatch) this.g.deepestDepth = Math.max(this.g.deepestDepth, Number(depthMatch[1]));
     this.g.stepsSinceBattle = 0;
@@ -1192,6 +1211,24 @@ export class FieldScene {
       const pulse = 0.5 + 0.5 * Math.sin(this.animT * 2);
       scr.light(p.x, p.y, 16 + pulse * 4, 'rgba(255,214,150,0.55)', 0.3 + pulse * 0.15);
       scr.textCenter('Exit', p.x, p.y - 15, PAL.gold);
+    }
+
+    // stairs to another floor of the SAME dungeon — every other floor-to-
+    // floor connection a labyrinth or the Shifting Depths has, labelled Up
+    // or Down (by comparing floorDepthOf against the destination) the same
+    // way the exit warp above reads at a glance rather than looking like
+    // one more floor tile identical to the rest of the room.
+    if (m.tower || m.dungeonDepth != null) {
+      for (const wp of m.warps ?? []) {
+        if (!wp.stairs) continue;
+        const dest = getMap(wp.to);
+        if (!dest) continue;
+        const p = this.tileScreenPos(wp.x, wp.y);
+        const pulse = 0.5 + 0.5 * Math.sin(this.animT * 2);
+        scr.light(p.x, p.y, 16 + pulse * 4, 'rgba(150,200,255,0.5)', 0.3 + pulse * 0.15);
+        const goingDown = floorDepthOf(dest) > floorDepthOf(m);
+        scr.textCenter(goingDown ? 'Down' : 'Up', p.x, p.y - 15, PAL.cyan);
+      }
     }
 
     // boss markers — 2D glow/outline overlays, positioned by projecting

@@ -1734,8 +1734,9 @@ export class BattleScene {
           const it = getItem(this.listMenu.current.id);
           scr.text(it.name, bx, 100, PAL.accent);
           scr.rect(bx, 110, bw, 1, PAL.line);
-          const d = it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
-            : it.cures ? `Cures ${it.cures.join(', ')}.` : it.damage ? `${it.damage} damage.` : '';
+          const d = it.effect ? it.effect
+            : it.heal ? `Restores ${it.heal} HP.` : it.healMp ? `Restores ${it.healMp} MP.`
+              : it.cures ? `Cures ${it.cures.join(', ')}.` : it.damage ? `${it.damage} damage.` : '';
           scr.textWrap(d, bx, 118, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
         }
       }

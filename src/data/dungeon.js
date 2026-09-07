@@ -166,13 +166,20 @@ export function generateDungeonFloor(depth) {
     dungeonDepth: depth,
     bg: '#0e0c16',
     tiles: grid.map((row) => row.join('')),
+    // exit/stairs flags mirror the hand-authored labyrinths' own convention
+    // (data/maps.js): the one warp leading back to this dungeon's own
+    // "surface" is `exit`, every other floor-to-floor connection is
+    // `stairs` — field.js's draw() uses these to label each tile Exit,
+    // Up or Down instead of leaving it looking like plain floor.
     warps: [
       {
         x: DOOR.x, y: DOOR.y,
         to: depth === 1 ? 'depths_entrance' : `depths_${depth - 1}`,
         tx: depth === 1 ? 5 : ENTRY.x, ty: depth === 1 ? 4 : ENTRY.y,
+        exit: depth === 1,
+        stairs: depth !== 1,
       },
-      { x: down.x, y: down.y, to: `depths_${depth + 1}`, tx: ENTRY.x, ty: ENTRY.y },
+      { x: down.x, y: down.y, to: `depths_${depth + 1}`, tx: ENTRY.x, ty: ENTRY.y, stairs: true },
     ],
     chests,
     boss,
