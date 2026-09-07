@@ -1043,17 +1043,23 @@ export class FieldScene {
     // town markers — bigger, labelled entrances so a destination reads as
     // one from a screen away instead of blending into the ground tile
     // underneath it; the four full cities get the grand arch, every other
-    // town gets the plain roadside signpost (see CITY_TOWNS).
-    for (const wp of m.warps ?? []) {
-      const dest = getMap(wp.to);
-      if (!dest?.town) continue;
-      const isCity = CITY_TOWNS.has(wp.to);
-      const sprite = isCity ? citySprite() : pitstopSprite();
-      const w = isCity ? CITY_W : PITSTOP_W, h = isCity ? CITY_H : PITSTOP_H;
-      const p = this.tileScreenPos(wp.x, wp.y);
-      const baseY = p.y + 10;
-      scr.ctx.drawImage(sprite, Math.round(p.x - w / 2), Math.round(baseY - h), w, h);
-      scr.textCenter(dest.name, p.x, baseY - h - 10, isCity ? PAL.gold : PAL.text);
+    // town gets the plain roadside signpost (see CITY_TOWNS). Scoped to the
+    // world map itself, same as the cave/tower loops below: a building's
+    // own warp back out to its town is an exit, not a town entrance, and
+    // drawing a full gated arch over the door inside a tiny inn room was
+    // exactly that bug.
+    if (m.id === 'world') {
+      for (const wp of m.warps ?? []) {
+        const dest = getMap(wp.to);
+        if (!dest?.town) continue;
+        const isCity = CITY_TOWNS.has(wp.to);
+        const sprite = isCity ? citySprite() : pitstopSprite();
+        const w = isCity ? CITY_W : PITSTOP_W, h = isCity ? CITY_H : PITSTOP_H;
+        const p = this.tileScreenPos(wp.x, wp.y);
+        const baseY = p.y + 10;
+        scr.ctx.drawImage(sprite, Math.round(p.x - w / 2), Math.round(baseY - h), w, h);
+        scr.textCenter(dest.name, p.x, baseY - h - 10, isCity ? PAL.gold : PAL.text);
+      }
     }
 
     // cave/dungeon entrances on the overworld — a bigger rocky mouth than
