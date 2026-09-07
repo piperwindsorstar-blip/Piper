@@ -43,6 +43,28 @@ const ACC = (id, name, price, extra = {}) => ({ id, name, kind: 'accessory', slo
 // grant actually gets folded into a character's skill list.
 const RUNE = (id, name, price, grantSkill, extra = {}) =>
   ({ id, name, kind: 'rune', slot: 'rune', price, grantSkill, ...extra });
+
+// A rune bonds to whoever wears it and sharpens with use — see
+// character.js's runeLevel/awardRuneExp, which track this per character per
+// rune id, and battle.js's useSkill, which pays out the exp and applies the
+// multiplier below whenever a rune's own granted Art is actually cast. The
+// curve and shape deliberately mirror jobs.js's JOB_RANK_EXP/jobBonus: this
+// game already has one "grows with use, not level" pattern, so runes reuse
+// it instead of inventing a second one.
+export const RUNE_LEVEL_EXP = [0, 40, 120, 280, 600];
+export const MAX_RUNE_LEVEL = 5;
+
+export function runeLevelFromExp(exp) {
+  let lv = 1;
+  for (let i = 0; i < RUNE_LEVEL_EXP.length; i++) if (exp >= RUNE_LEVEL_EXP[i]) lv = i + 1;
+  return Math.min(lv, MAX_RUNE_LEVEL);
+}
+
+/** +15% per level past the first, capped at level 5 (+60%) — applied to the
+ *  granted skill's own `power` only, the same shape as jobBonus's rank curve. */
+export function runePowerMult(level) {
+  return 1 + 0.15 * (Math.max(1, level) - 1);
+}
 const U = (id, name, price, extra = {}) => ({ id, name, kind: 'consumable', price, ...extra });
 const M = (id, name, price, extra = {}) => ({ id, name, kind: 'material', price, ...extra });
 
@@ -140,6 +162,22 @@ export const ITEMS = [
   W('emberweaverod', 'Emberweave Rod', 'staff', 26, 1900, { element: 'fire', bonus: { int: 8 } }),
   A('alloyweavevest', 'Alloyweave Vest', 'body', 'light', 24, 1300, { bonus: { agi: 2, vit: 2 } }),
   A('mythrilcirclet', 'Mythril Circlet', 'head', 'cloth', 20, 2600, { bonus: { int: 6, spr: 6 } }),
+  // --- forged, tier two — rarer materials, one recipe per weapon type the
+  // first wave didn't cover plus the Forge's first shield, armour and
+  // accessory, so a well-farmed party has somewhere to keep spending drops
+  // instead of outgrowing the Craft page right after unlocking it. --------
+  W('stormcleaver', 'Stormcleaver', 'axe', 58, 4200, { element: 'lightning', bonus: { str: 6 } }),
+  W('moonlitblade', 'Moonlit Blade', 'sword', 56, 4000, { element: 'ice', bonus: { agi: 4 } }),
+  W('frostmace', 'Frost Mace', 'mace', 54, 3900, { element: 'ice', bonus: { int: 5 } }),
+  W('nightfang', 'Nightfang', 'dagger', 52, 4100, { element: 'dark', bonus: { agi: 6, lck: 2 } }),
+  W('stonefistguard', 'Stonefist Guard', 'fist', 60, 4300, { bonus: { str: 6, vit: 4 } }),
+  W('stormlance', 'Stormlance', 'spear', 62, 5200, { element: 'lightning', bonus: { agi: 5 } }),
+  W('thornlash', 'Thornlash', 'whip', 50, 4600, { element: 'nature', bonus: { agi: 4, spr: 3 } }),
+  W('stormfletcher', 'Stormfletcher Bow', 'bow', 58, 4700, { element: 'wind', bonus: { agi: 6 } }),
+  W('tidalstaff', 'Tidal Staff', 'staff', 44, 4400, { element: 'water', bonus: { int: 12, mp: 15 } }),
+  W('wardenshield', "Warden's Shield", 'shield', 0, 4800, { slot: 'offhand', def: 40, bonus: { vit: 6 } }),
+  A('duskweavevest', 'Duskweave Vest', 'body', 'medium', 46, 4500, { bonus: { vit: 6, spr: 4 } }),
+  ACC('smithssignet', "Smith's Signet", 3800, { bonus: { str: 4, vit: 4, agi: 4 } }),
 
   // --- accessories ---------------------------------------------------------
   ACC('powerband', 'Power Band', 700, { bonus: { str: 6 } }),
@@ -182,6 +220,34 @@ export const ITEMS = [
   RUNE('solarrune', 'Solar Rune', 4600, 'judgement'),
   RUNE('chorusrune', 'Chorus Rune', 9000, 'healall'),
   RUNE('reliquaryrune', 'Reliquary Rune', 15000, 'revive'),
+  // A second wave, reaching into every school the first eight never touched
+  // — one cheap, early rune per school for breadth, and a pricier mid-tier
+  // rune for eight of those schools for a real reason to trade back up.
+  RUNE('crossrune', 'Cross Rune', 900, 'crossslash'),
+  RUNE('furyrune', 'Fury Rune', 550, 'recklessblow'),
+  RUNE('piercerune', 'Pierce Rune', 500, 'thrust'),
+  RUNE('stonefistrune', 'Stonefist Rune', 600, 'jab'),
+  RUNE('breathrune', 'Breath Rune', 550, 'breathe'),
+  RUNE('shadowfangrune', 'Shadowfang Rune', 650, 'backstab'),
+  RUNE('thiefrune', 'Thief Rune', 900, 'steal'),
+  RUNE('huntersrune', "Hunter's Rune", 550, 'aimshot'),
+  RUNE('snarerune', 'Snare Rune', 500, 'trapset'),
+  RUNE('quickrune', 'Quickstep Rune', 1400, 'stepdance'),
+  RUNE('marchrune', 'March Rune', 1400, 'marchsong'),
+  RUNE('gamblersrune', "Gambler's Rune", 700, 'coinflip'),
+  RUNE('mistrune', 'Mist Rune', 600, 'blindmist'),
+  RUNE('wisprune', 'Wisp Rune', 1600, 'lesser'),
+  RUNE('houndrune', 'Hound Rune', 550, 'houndcall'),
+  RUNE('jinxrune', 'Jinx Rune', 500, 'jinx'),
+  RUNE('linkrune', 'Link Rune', 900, 'spiritlink'),
+  RUNE('parryrune', 'Parry Rune', 4200, 'riposte'),
+  RUNE('crimsonrune', 'Crimson Rune', 5200, 'bloodrush'),
+  RUNE('skewerrune', 'Skewer Rune', 4600, 'impale'),
+  RUNE('galerune', 'Gale Rune', 5400, 'whirlkick'),
+  RUNE('phantomrune', 'Phantom Rune', 3200, 'vanish'),
+  RUNE('brigandrune', 'Brigand Rune', 2200, 'mug'),
+  RUNE('stormshotrune', 'Stormshot Rune', 4800, 'volley'),
+  RUNE('echorune', 'Echo Rune', 5600, 'mirrordance'),
 
   // --- ultra runes -----------------------------------------------------------
   // Never sold — each is the guaranteed drop from exactly one labyrinth's

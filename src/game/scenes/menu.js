@@ -14,6 +14,7 @@ import { actorPortraitSprite } from '../../engine/sprites.js';
 import {
   stats, knownSkills, upcomingSkills, jobInfo, jobProgress, equipItem, unequipSlot,
   promotionPath, refreshPromotion, expForLevel, raceInfo, MAX_LEVEL, trainStat, TRAIN_COST,
+  runeLevel,
 } from '../character.js';
 import { CLASSES, TIER_NAME, PROMOTION_LEVELS, STAT_KEYS } from '../../data/classes.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
@@ -668,7 +669,9 @@ export class MenuScene {
         scr.rect(this.colX(0) - 6, y - 3, 2, 15, PAL.accent);
       }
       scr.text(slot.toUpperCase(), this.colX(0), y, PAL.textDim);
-      scr.text(id ? getItem(id).name : '—', this.colX(0) + 62, y, id ? PAL.text : PAL.grey);
+      let label = id ? getItem(id).name : '—';
+      if (id && slot === 'rune') label += `  Lv${runeLevel(ch, id)}`;
+      scr.text(label, this.colX(0) + 62, y, id ? PAL.text : PAL.grey);
       y += 15;
     });
     y += 6;

@@ -20,7 +20,9 @@ import { STAT_KEYS, getClass, pendingPromotion, PROMOTION_BONUS, classLineage } 
 import { ELEMENT_BY_ID } from '../data/elements.js';
 import { getJob, jobBonus, jobRankFromExp, jobAffinityBonus, JOB_RANK_EXP, MAX_JOB_RANK } from '../data/jobs.js';
 import { skillsForSchools, getSkill, STATUS } from '../data/skills.js';
-import { getItem, canEquip, WEAPON_TYPES } from '../data/items.js';
+import {
+  getItem, canEquip, WEAPON_TYPES, RUNE_LEVEL_EXP, MAX_RUNE_LEVEL, runeLevelFromExp,
+} from '../data/items.js';
 import { getRace, hasTrait, raceResist, raceJobAffinity } from '../data/races.js';
 
 export const BASE_STATS = { hp: 34, mp: 8, str: 8, vit: 8, agi: 8, int: 8, spr: 8, lck: 8 };
@@ -49,6 +51,7 @@ export function createCharacter(o) {
     exp: 0,
     acc: Object.fromEntries(STAT_KEYS.map((k) => [k, 0])),
     jobExp: 0,
+    runeProgress: {},
     lp: 0,
     equip: { weapon: null, offhand: null, body: null, head: null, accessory: null, rune: null },
     grid: { row: o.row ?? 1, col: o.col ?? 0 },
@@ -318,6 +321,37 @@ export function jobInfo(ch) {
   const j = getJob(ch.jobId);
   const rank = jobRank(ch);
   return { ...j, rank, bonus: jobBonus(ch.jobId, rank) };
+}
+
+// ---------------------------------------------------------------------------
+//  RUNES
+// ---------------------------------------------------------------------------
+// A rune bonds to whoever wears it: progress is tracked per character, per
+// rune id (not on the item itself — this game's inventory is plain stacks
+// with no unique instances, the same reason job rank lives on the character
+// rather than on a "Blacksmith badge" object). Swapping a rune to someone
+// else starts that pairing fresh without losing the original wearer's
+// progress, which picks back up if it ever returns to them.
+export function runeExp(ch, runeId) { return ch.runeProgress?.[runeId] ?? 0; }
+export function runeLevel(ch, runeId) { return runeLevelFromExp(runeExp(ch, runeId)); }
+
+/** Called only when the rune's own granted Art is actually cast (see
+ *  battle.js's useSkill) — grows with use, not with battles merely survived. */
+export function awardRuneExp(ch, runeId, amount) {
+  if (!ch.runeProgress) ch.runeProgress = {};
+  const before = runeLevel(ch, runeId);
+  ch.runeProgress[runeId] = (ch.runeProgress[runeId] ?? 0) + Math.round(amount);
+  const after = runeLevel(ch, runeId);
+  return after > before ? { levelUp: true, level: after } : { levelUp: false, level: after };
+}
+
+export function runeProgress(ch, runeId) {
+  const level = runeLevel(ch, runeId);
+  if (level >= MAX_RUNE_LEVEL) return { level, ratio: 1, next: null };
+  const exp = runeExp(ch, runeId);
+  const floor = RUNE_LEVEL_EXP[level - 1];
+  const ceil = RUNE_LEVEL_EXP[level];
+  return { level, ratio: (exp - floor) / (ceil - floor), next: ceil - exp };
 }
 
 // ---------------------------------------------------------------------------

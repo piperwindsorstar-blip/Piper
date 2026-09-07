@@ -2881,7 +2881,9 @@ export const SHOPS = {
     name: "Dell's Arms",
     stock: ['bronzesword', 'handaxe', 'club', 'bronzedagger', 'wraps', 'shortspear',
             'leatherwhip', 'shortbow', 'oakstaff', 'woodshield', 'clothrobe',
-            'leatherarmor', 'leathercap', 'sparkrune', 'mercyrune'],
+            'leatherarmor', 'leathercap', 'sparkrune', 'mercyrune',
+            'crossrune', 'furyrune', 'piercerune', 'stonefistrune', 'breathrune',
+            'shadowfangrune', 'thiefrune', 'huntersrune', 'snarerune'],
   },
   wren_items: {
     name: "Moss's Sundries",
@@ -2892,7 +2894,9 @@ export const SHOPS = {
     stock: ['ironsword', 'battleaxe', 'warhammer', 'mainGauche', 'ironclaws', 'halberd',
             'chainwhip', 'longbow', 'runestaff', 'ironshield', 'silkrobe', 'studded',
             'chainmail', 'ironplate', 'ironhelm', 'circlet', 'powerband', 'swiftboots',
-            'sagering', 'wardamulet', 'aegisrune', 'emberrune'],
+            'sagering', 'wardamulet', 'aegisrune', 'emberrune',
+            'quickrune', 'marchrune', 'gamblersrune', 'mistrune', 'wisprune',
+            'houndrune', 'jinxrune', 'linkrune', 'brigandrune', 'phantomrune'],
   },
   kelda_items: {
     name: "Pell's Flasks",
@@ -2935,7 +2939,8 @@ export const SHOPS = {
     name: "Smith Talia's",
     stock: ['flametongue', 'frostbrand', 'ruinaxe', 'shadowedge', 'wyvernlance',
             'stormrod', 'aegisshield', 'knightplate', 'bishopvest', 'greathelm',
-            'umbralrune', 'solarrune'],
+            'umbralrune', 'solarrune',
+            'parryrune', 'crimsonrune', 'skewerrune', 'galerune', 'stormshotrune', 'echorune'],
   },
   harrowsrest_items: {
     name: "Pedlar Once's",

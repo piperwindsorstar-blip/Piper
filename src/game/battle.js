@@ -19,12 +19,12 @@
 
 import {
   stats, canAct, tickStatuses, applyStatus, clearBadStatuses, revive, skillElement, jobRank,
-  characterHasTrait, elementalResistance, usableSkills,
+  characterHasTrait, elementalResistance, usableSkills, runeLevel, awardRuneExp,
 } from './character.js';
 import { getSkill, STATUS } from '../data/skills.js';
 import { elementMultiplier, ELEMENT_BY_ID } from '../data/elements.js';
 import { getEnemy, FORMATION_BY_ID } from '../data/enemies.js';
-import { getItem } from '../data/items.js';
+import { getItem, runePowerMult } from '../data/items.js';
 import { RNG } from '../engine/rng.js';
 
 export const PHASE = {
@@ -704,6 +704,15 @@ export class Battle {
       const cost = Math.max(1, Math.floor(s.maxHp * skill.hpCost));
       actor.hp = Math.max(1, actor.hp - cost);
     }
+    // A rune's granted Art grows sharper with use, the same "rank rises with
+    // use, not level" idea a Job's own field ability already runs on:
+    // casting it awards the rune experience, and its current level scales
+    // the Art's own power for this cast. `power` replaces every `skill.power`
+    // read below rather than mutating the shared skill definition itself.
+    const runeId = actor.isPC ? actor.ref.equip.rune : null;
+    const runeGrant = !!runeId && getItem(runeId).grantSkill === skill.id;
+    if (runeGrant) awardRuneExp(actor.ref, runeId, 10);
+    const power = skill.power * (runeGrant ? runePowerMult(runeLevel(actor.ref, runeId)) : 1);
     this.say(`${this.label(actor)} uses ${skill.name}!`);
     const element = actor.isPC ? skillElement(actor.ref, skill)
       : (skill.element === 'attuned' ? actor.element : skill.element);
@@ -720,7 +729,7 @@ export class Battle {
             let el = element;
             if (skill.adaptive) el = this.weakestElementFor(t) ?? element;
             const r = this.computeDamage(actor, t, {
-              power: skill.power * spread(skill.target),
+              power: power * spread(skill.target),
               element: el, magical: skill.type === 'mag',
               pierce: skill.pierce, crit: skill.crit, missChance: skill.missChance,
               undeadBonus: skill.undeadBonus,
@@ -753,12 +762,12 @@ export class Battle {
       case 'heal': {
         for (const t of targets) {
           if (skill.revives && !t.alive) {
-            if (t.isPC) { revive(t.ref, skill.power || 0.5); this.say(`  ${t.name} returns to the fight.`); }
+            if (t.isPC) { revive(t.ref, power || 0.5); this.say(`  ${t.name} returns to the fight.`); }
             continue;
           }
           if (!t.alive) continue;
-          if (skill.power > 0) {
-            const amount = Math.round(actor.stats().magic * skill.power + t.stats().maxHp * skill.power * 0.35);
+          if (power > 0) {
+            const amount = Math.round(actor.stats().magic * power + t.stats().maxHp * power * 0.35);
             const done = this.healUnit(t, amount);
             this.say(`  ${this.label(t)} recovers ${done}.`);
           }

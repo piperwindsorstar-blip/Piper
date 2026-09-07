@@ -289,6 +289,7 @@ export class GameState {
         level: c.level, exp: c.exp, acc: c.acc, jobExp: c.jobExp, lp: c.lp, equip: c.equip,
         grid: c.grid, ip: c.ip, statuses: c.statuses, hp: c.hp, mp: c.mp,
         classHistory: c.classHistory, skin: c.skin, hair: c.hair, alive: c.hp > 0,
+        runeProgress: c.runeProgress,
       })),
       partyIds: this.party.map((c) => c.id),
       gold: this.gold,
@@ -323,6 +324,7 @@ export class GameState {
       ch.exp = c.exp ?? 0;
       for (const k of STAT_KEYS) ch.acc[k] = c.acc?.[k] ?? ch.acc[k];
       ch.jobExp = c.jobExp ?? 0;
+      ch.runeProgress = c.runeProgress ?? {};
       // Learning Points used to be one pool shared across the whole roster
       // (`d.lp`); a save from before it became per-character had no `c.lp`
       // of its own, so every returning character picks up that old shared

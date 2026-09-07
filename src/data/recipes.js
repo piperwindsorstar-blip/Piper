@@ -18,6 +18,20 @@ export const RECIPES = [
   { itemId: 'emberweaverod', gold: 900, materials: [{ id: 'manaflower', count: 3 }, { id: 'sunpetal', count: 2 }] },
   { itemId: 'alloyweavevest', gold: 600, materials: [{ id: 'copperore', count: 3 }, { id: 'leather', count: 3 }] },
   { itemId: 'mythrilcirclet', gold: 1200, materials: [{ id: 'mythril', count: 2 }, { id: 'silkthread', count: 2 }] },
+  // --- tier two — rarer materials, priced and gated to sit above the first
+  // wave and below the endgame gear nothing but a boss will ever drop -------
+  { itemId: 'stormcleaver', gold: 2600, materials: [{ id: 'adamantite', count: 2 }, { id: 'beastfang', count: 3 }] },
+  { itemId: 'moonlitblade', gold: 2400, materials: [{ id: 'mythril', count: 2 }, { id: 'spiritglass', count: 1 }] },
+  { itemId: 'frostmace', gold: 2200, materials: [{ id: 'mythril', count: 2 }, { id: 'manaflower', count: 3 }] },
+  { itemId: 'nightfang', gold: 2500, materials: [{ id: 'silkthread', count: 3 }, { id: 'spiritglass', count: 1 }, { id: 'beastfang', count: 2 }] },
+  { itemId: 'stonefistguard', gold: 2600, materials: [{ id: 'adamantite', count: 2 }, { id: 'leather', count: 3 }] },
+  { itemId: 'stormlance', gold: 3200, materials: [{ id: 'adamantite', count: 2 }, { id: 'dragonscale', count: 1 }] },
+  { itemId: 'thornlash', gold: 2800, materials: [{ id: 'silkthread', count: 4 }, { id: 'manaflower', count: 3 }] },
+  { itemId: 'stormfletcher', gold: 2900, materials: [{ id: 'riverpearl', count: 2 }, { id: 'dragonscale', count: 1 }] },
+  { itemId: 'tidalstaff', gold: 2700, materials: [{ id: 'riverpearl', count: 3 }, { id: 'manaflower', count: 2 }] },
+  { itemId: 'wardenshield', gold: 3000, materials: [{ id: 'adamantite', count: 3 }, { id: 'leather', count: 3 }] },
+  { itemId: 'duskweavevest', gold: 2600, materials: [{ id: 'leather', count: 3 }, { id: 'silkthread', count: 3 }] },
+  { itemId: 'smithssignet', gold: 3400, materials: [{ id: 'mythril', count: 2 }, { id: 'adamantite', count: 1 }] },
 ];
 
 export function canCraft(g, recipe) {
