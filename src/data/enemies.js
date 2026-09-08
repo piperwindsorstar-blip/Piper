@@ -1,9 +1,10 @@
 // ============================================================================
 //  ENEMIES & FORMATIONS
 //
-//  Enemies occupy the same 3x3 grid the party does, so a formation is a list of
-//  {id,row,col}. Anything in column 0 is the enemy front rank; melee weapons of
-//  reach 2 cannot touch column 2 until the ranks in front of it are gone.
+//  Enemies occupy the same 4-row x 2-column grid the party does, so a
+//  formation is a list of {id,row,col}. Column 0 is the enemy front rank;
+//  melee weapons of reach 2 cannot touch column 1 until the ranks in front
+//  of it are gone.
 //
 //  `sprite` describes a body plan for the procedural pixel-art renderer rather
 //  than pointing at an image file — see src/engine/sprites.js.
@@ -550,57 +551,57 @@ export const FORMATIONS = [
   f('gf3', 'greenfield', [at('boar', 1, 0), at('greenslime', 0, 1)]),
   f('gf4', 'greenfield', [at('bandit', 1, 0), at('bandit', 0, 0), at('rat', 2, 1)]),
   f('gf5', 'greenfield', [at('thornvine', 1, 1), at('greenslime', 0, 0), at('greenslime', 2, 0)]),
-  f('gf6', 'greenfield', [at('wisp', 1, 2), at('bandit', 1, 0), at('boar', 0, 0)]),
+  f('gf6', 'greenfield', [at('wisp', 1, 1), at('bandit', 1, 0), at('boar', 0, 0)]),
   f('gf7', 'greenfield', [at('ashslime', 1, 0), at('slime', 0, 0)]),
   f('gf8', 'greenfield', [at('fieldhound', 1, 0), at('fieldhound', 0, 1)]),
 
   f('cv1', 'caverns', [at('bat', 0, 0), at('bat', 2, 0), at('kobold', 1, 0)]),
   f('cv2', 'caverns', [at('skeleton', 1, 0), at('skeleton', 0, 0), at('bat', 2, 1)]),
   f('cv3', 'caverns', [at('kobold', 0, 0), at('kobold', 2, 0), at('golemshard', 1, 1)]),
-  f('cv4', 'caverns', [at('ghoul', 1, 0), at('ghoul', 0, 0), at('fireimp', 1, 2)]),
+  f('cv4', 'caverns', [at('ghoul', 1, 0), at('ghoul', 0, 0), at('fireimp', 1, 1)]),
   f('cv5', 'caverns', [at('iceelemental', 1, 1), at('direwolf', 0, 0), at('direwolf', 2, 0)]),
-  f('cv6', 'caverns', [at('harpy', 0, 2), at('harpy', 2, 2), at('direwolf', 1, 0)]),
+  f('cv6', 'caverns', [at('harpy', 0, 1), at('harpy', 2, 1), at('direwolf', 1, 0)]),
   f('cv7', 'caverns', [at('frostbat', 0, 0), at('frostbat', 2, 0), at('kobold', 1, 0)]),
   f('cv8', 'caverns', [at('ironskeleton', 1, 0), at('ironskeleton', 0, 0), at('bat', 2, 1)]),
 
-  f('rn1', 'ruins', [at('wraith', 1, 2), at('skeleton', 0, 0), at('skeleton', 2, 0), at('armoredknight', 1, 0)]),
-  f('rn2', 'ruins', [at('armoredknight', 0, 0), at('armoredknight', 2, 0), at('sorcerer', 1, 2)]),
+  f('rn1', 'ruins', [at('wraith', 1, 1), at('skeleton', 0, 0), at('skeleton', 2, 0), at('armoredknight', 1, 0)]),
+  f('rn2', 'ruins', [at('armoredknight', 0, 0), at('armoredknight', 2, 0), at('sorcerer', 1, 1)]),
   f('rn3', 'ruins', [at('basilisk', 1, 0), at('ghoul', 0, 1), at('ghoul', 2, 1)]),
   f('rn4', 'ruins', [at('mimic', 1, 0)], { rare: true }),
-  f('rn5', 'ruins', [at('chimera', 1, 0), at('harpy', 0, 2), at('harpy', 2, 2)]),
-  f('rn6', 'ruins', [at('lich', 1, 2), at('ironsentinel', 1, 0), at('wraith', 0, 1), at('wraith', 2, 1)]),
-  f('rn7', 'ruins', [at('wyvern', 1, 1), at('voidspawn', 0, 2), at('voidspawn', 2, 2)]),
-  f('rn8', 'ruins', [at('gravewraith', 1, 2), at('skeleton', 0, 0), at('skeleton', 2, 0)]),
+  f('rn5', 'ruins', [at('chimera', 1, 0), at('harpy', 0, 1), at('harpy', 2, 1)]),
+  f('rn6', 'ruins', [at('lich', 1, 1), at('ironsentinel', 1, 0), at('wraith', 0, 1), at('wraith', 2, 1)]),
+  f('rn7', 'ruins', [at('wyvern', 1, 1), at('voidspawn', 0, 1), at('voidspawn', 2, 1)]),
+  f('rn8', 'ruins', [at('gravewraith', 1, 1), at('skeleton', 0, 0), at('skeleton', 2, 0)]),
   f('rn9', 'ruins', [at('boneserpent', 1, 0), at('ghoul', 0, 1), at('ghoul', 2, 1)]),
 
-  f('ab1', 'abyss', [at('frostcolossus', 1, 0), at('abyssalmaw', 0, 2), at('abyssalmaw', 2, 2)]),
-  f('ab2', 'abyss', [at('stormdjinn', 1, 2), at('frostcolossus', 0, 0), at('frostcolossus', 2, 0)]),
+  f('ab1', 'abyss', [at('frostcolossus', 1, 0), at('abyssalmaw', 0, 1), at('abyssalmaw', 2, 1)]),
+  f('ab2', 'abyss', [at('stormdjinn', 1, 1), at('frostcolossus', 0, 0), at('frostcolossus', 2, 0)]),
   f('ab3', 'abyss', [at('bonedragon', 1, 1), at('abyssalmaw', 0, 0), at('abyssalmaw', 2, 0)]),
-  f('ab4', 'abyss', [at('seraph', 1, 2), at('bonedragon', 1, 0), at('stormdjinn', 0, 1)]),
-  f('ab5', 'abyss', [at('deepwarden', 1, 1), at('nullweaver', 0, 2), at('seraph', 2, 2)]),
-  f('ab6', 'abyss', [at('ashtitan', 1, 0), at('nullweaver', 1, 2), at('bonedragon', 0, 1), at('bonedragon', 2, 1)]),
-  f('ab7', 'abyss', [at('nullweaver', 1, 2), at('ashtitan', 0, 0), at('ashtitan', 2, 0), at('seraph', 1, 1)]),
+  f('ab4', 'abyss', [at('seraph', 1, 1), at('bonedragon', 1, 0), at('stormdjinn', 0, 1)]),
+  f('ab5', 'abyss', [at('deepwarden', 1, 1), at('nullweaver', 0, 1), at('seraph', 2, 1)]),
+  f('ab6', 'abyss', [at('ashtitan', 1, 0), at('nullweaver', 1, 1), at('bonedragon', 0, 1), at('bonedragon', 2, 1)]),
+  f('ab7', 'abyss', [at('nullweaver', 3, 1), at('ashtitan', 0, 0), at('ashtitan', 2, 0), at('seraph', 1, 1)]),
 
-  f('cd1', 'cinder', [at('cinderhound', 1, 0), at('cinderhound', 0, 0), at('ashwraith', 1, 2)]),
+  f('cd1', 'cinder', [at('cinderhound', 1, 0), at('cinderhound', 0, 0), at('ashwraith', 1, 1)]),
   f('cd2', 'cinder', [at('moltenguard', 1, 1), at('cinderhound', 0, 0)]),
-  f('cd3', 'cinder', [at('sparkhawk', 0, 2), at('sparkhawk', 2, 2), at('ashwraith', 1, 0)]),
-  f('cd4', 'cinder', [at('moltenguard', 1, 0), at('moltenguard', 0, 1), at('sparkhawk', 2, 2)]),
-  f('cd5', 'cinder', [at('cinderjackal', 1, 0), at('cinderjackal', 0, 0), at('ashwraith', 1, 2)]),
-  f('cd6', 'cinder', [at('slagsentinel', 1, 1), at('sparkhawk', 0, 2)]),
+  f('cd3', 'cinder', [at('sparkhawk', 0, 1), at('sparkhawk', 2, 1), at('ashwraith', 1, 0)]),
+  f('cd4', 'cinder', [at('moltenguard', 1, 0), at('moltenguard', 0, 1), at('sparkhawk', 2, 1)]),
+  f('cd5', 'cinder', [at('cinderjackal', 1, 0), at('cinderjackal', 0, 0), at('ashwraith', 1, 1)]),
+  f('cd6', 'cinder', [at('slagsentinel', 1, 1), at('sparkhawk', 0, 1)]),
 
-  f('dv1', 'drowned', [at('drownedknight', 1, 0), at('drownedknight', 0, 0), at('tidewraith', 1, 2)]),
+  f('dv1', 'drowned', [at('drownedknight', 1, 0), at('drownedknight', 0, 0), at('tidewraith', 1, 1)]),
   f('dv2', 'drowned', [at('krakenspawn', 1, 1), at('tidewraith', 0, 0)]),
-  f('dv3', 'drowned', [at('stormsiren', 0, 2), at('stormsiren', 2, 2), at('drownedknight', 1, 0)]),
-  f('dv4', 'drowned', [at('krakenspawn', 1, 0), at('krakenspawn', 0, 1), at('stormsiren', 2, 2)]),
-  f('dv5', 'drowned', [at('brinewraith', 1, 2), at('drownedknight', 0, 0), at('drownedknight', 2, 0)]),
-  f('dv6', 'drowned', [at('drownedsentinel', 1, 0), at('drownedsentinel', 0, 1), at('tidewraith', 2, 2)]),
+  f('dv3', 'drowned', [at('stormsiren', 0, 1), at('stormsiren', 2, 1), at('drownedknight', 1, 0)]),
+  f('dv4', 'drowned', [at('krakenspawn', 1, 0), at('krakenspawn', 0, 1), at('stormsiren', 2, 1)]),
+  f('dv5', 'drowned', [at('brinewraith', 1, 1), at('drownedknight', 0, 0), at('drownedknight', 2, 0)]),
+  f('dv6', 'drowned', [at('drownedsentinel', 1, 0), at('drownedsentinel', 0, 1), at('tidewraith', 2, 1)]),
 
-  f('gl1', 'glass', [at('radiantguard', 1, 0), at('radiantguard', 0, 0), at('glasswraith', 1, 2)]),
+  f('gl1', 'glass', [at('radiantguard', 1, 0), at('radiantguard', 0, 0), at('glasswraith', 1, 1)]),
   f('gl2', 'glass', [at('duskstalker', 1, 1), at('glasswraith', 0, 0)]),
-  f('gl3', 'glass', [at('starweaver', 0, 2), at('starweaver', 2, 2), at('duskstalker', 1, 0)]),
-  f('gl4', 'glass', [at('radiantguard', 1, 0), at('duskstalker', 0, 1), at('starweaver', 2, 2)]),
-  f('gl5', 'glass', [at('shardwraith', 1, 2), at('duskstalker', 1, 0)]),
-  f('gl6', 'glass', [at('gleamguard', 1, 0), at('gleamguard', 0, 1), at('glasswraith', 2, 2)]),
+  f('gl3', 'glass', [at('starweaver', 0, 1), at('starweaver', 2, 1), at('duskstalker', 1, 0)]),
+  f('gl4', 'glass', [at('radiantguard', 1, 0), at('duskstalker', 0, 1), at('starweaver', 2, 1)]),
+  f('gl5', 'glass', [at('shardwraith', 1, 1), at('duskstalker', 1, 0)]),
+  f('gl6', 'glass', [at('gleamguard', 1, 0), at('gleamguard', 0, 1), at('glasswraith', 2, 1)]),
 
   f('boss_volk', 'boss', [at('boss_brigand', 1, 0), at('bandit', 0, 0), at('bandit', 2, 0)], { boss: true }),
   f('boss_anvil', 'boss', [at('boss_golemking', 1, 0), at('golemshard', 0, 1), at('golemshard', 2, 1)], { boss: true }),
@@ -609,7 +610,7 @@ export const FORMATIONS = [
   f('boss_kharos', 'boss', [at('boss_kharos', 1, 1), at('cinderhound', 0, 0), at('cinderhound', 2, 0)], { boss: true }),
   f('boss_gate', 'boss', [at('boss_gate', 1, 1)], { boss: true }),
   f('boss_nerith', 'boss', [at('boss_nerith', 1, 1), at('drownedknight', 0, 0), at('drownedknight', 2, 0)], { boss: true }),
-  f('boss_worldheart', 'boss', [at('boss_worldheart', 1, 1), at('seraph', 0, 2), at('seraph', 2, 2)], { boss: true }),
+  f('boss_worldheart', 'boss', [at('boss_worldheart', 1, 1), at('seraph', 0, 1), at('seraph', 2, 1)], { boss: true }),
   f('boss_vessia', 'boss', [at('boss_vessia', 1, 1), at('radiantguard', 0, 0), at('radiantguard', 2, 0)], { boss: true }),
   f('boss_thirteenth', 'boss', [at('boss_thirteenth', 1, 1), at('nullweaver', 0, 0), at('nullweaver', 2, 0)], { boss: true }),
   f('boss_seam', 'boss', [at('boss_seam', 1, 1), at('starweaver', 0, 0), at('starweaver', 2, 0)], { boss: true }),

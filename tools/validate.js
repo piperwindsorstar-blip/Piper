@@ -16,6 +16,7 @@ import { JOBS, JOB_IDS, jobBonus, jobRankFromExp, MAX_JOB_RANK } from '../src/da
 import { SKILLS, SKILL_BY_ID, SCHOOLS, SCHOOL_IDS, STATUS } from '../src/data/skills.js';
 import { ITEMS, ITEM_BY_ID, canEquip, WEAPON_TYPES } from '../src/data/items.js';
 import { ENEMIES, ENEMY_BY_ID, FORMATIONS } from '../src/data/enemies.js';
+import { GRID_ROWS, GRID_COLS } from '../src/game/state.js';
 import { MAPS, LEGEND, SHOPS, BOSS_SLOTS, isSolid, mapSize, getMap } from '../src/data/maps.js';
 import { createCharacter, awardExp, promote, refreshPromotion, stats, knownSkills, expForLevel }
   from '../src/game/character.js';
@@ -255,9 +256,9 @@ report('every enemy element is real',
   ENEMIES.every((e) => e.element === 'none' || ELEMENT_BY_ID[e.element]));
 report('every enemy has positive HP and a sprite plan',
   ENEMIES.every((e) => e.hp > 0 && e.sprite?.plan && e.sprite.palette?.length === 3));
-report('every formation places real enemies inside the 3x3 grid',
+report('every formation places real enemies inside the battle grid',
   FORMATIONS.every((f) => f.cells.every((c) =>
-    ENEMY_BY_ID[c.id] && c.row >= 0 && c.row < 3 && c.col >= 0 && c.col < 3)));
+    ENEMY_BY_ID[c.id] && c.row >= 0 && c.row < GRID_ROWS && c.col >= 0 && c.col < GRID_COLS)));
 report('no formation puts two enemies in the same cell',
   FORMATIONS.every((f) => new Set(f.cells.map((c) => `${c.row},${c.col}`)).size === f.cells.length));
 report('every region has at least 4 normal formations',

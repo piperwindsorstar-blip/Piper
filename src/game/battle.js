@@ -222,7 +222,7 @@ export class Battle {
     this.enemies = this.formation.cells.map((c, i) => {
       const def = getEnemy(c.id);
       counts[c.id] = (counts[c.id] ?? 0) + 1;
-      return enemyUnit(def, Math.min(3, c.row ?? 1), Math.min(1, c.col ?? 0), i, scale);
+      return enemyUnit(def, c.row ?? 1, c.col ?? 0, i, scale);
     });
     for (const id of Object.keys(counts)) {
       if (counts[id] < 2) continue;
