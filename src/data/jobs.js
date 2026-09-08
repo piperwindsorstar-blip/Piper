@@ -153,7 +153,7 @@ export const JOBS = [
     blurb: 'Copies everything. Reads most of it.',
     bonus: { int: 3, mp: 6 },
     field: { id: 'transcribe', name: 'Transcribe', text: 'Copy a known skill onto a scroll any party member can use once.' },
-    passive: { id: 'tutor', text: 'The whole party earns +5% EXP per rank. Bestiary fills automatically.' },
+    passive: { id: 'tutor', text: 'The whole party earns +5% EXP per rank.' },
     likes: ['light', 'spirit'],
   }),
   J({

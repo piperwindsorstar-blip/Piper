@@ -731,15 +731,20 @@ export class FieldScene {
   openChest(chest) {
     const locked = chest.locked && !this.g.hasJob('locksmith');
     if (locked) { this.dlg.say('Locked. A Locksmith could open this.'); return; }
-    // A Locksmith disarms a trap on the way in — anyone else springs it,
-    // then still gets the chest underneath. Damage is clamped to leave
-    // everyone at 1 HP rather than turning a chest into a cheap game over.
-    if (chest.trap && !this.g.hasJob('locksmith')) {
-      for (const ch of this.g.party) if (ch.hp > 0) ch.hp = Math.max(1, ch.hp - chest.trap.dmg);
-      sfx.error();
-      this.dlg.say(`A trap! The party takes ${chest.trap.dmg} damage each.`);
-    } else if (chest.trap) {
-      this.dlg.say('A trap, disarmed before it could spring.');
+    // trapsense: "deals 20% less per rank" — a rank-scaled reduction, not
+    // the flat full-disarm-at-any-rank this used to give any Locksmith
+    // regardless of how junior.
+    if (chest.trap) {
+      const smith = this.g.party.find((c) => c.jobId === 'locksmith');
+      const reduction = smith ? Math.min(1, 0.2 * jobRank(smith)) : 0;
+      const dmg = Math.round(chest.trap.dmg * (1 - reduction));
+      if (dmg > 0) {
+        for (const ch of this.g.party) if (ch.hp > 0) ch.hp = Math.max(1, ch.hp - dmg);
+        sfx.error();
+        this.dlg.say(`A trap! The party takes ${dmg} damage each.`);
+      } else {
+        this.dlg.say('A trap, disarmed before it could spring.');
+      }
     }
     this.g.setFlag(`chest.${chest.id}`);
     this.markWorldTextureDirty();

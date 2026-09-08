@@ -321,8 +321,23 @@ export class Battle {
         for (let i = 0; i < n; i++) if (foes.length) out.push(this.rng.pick(foes));
         return out;
       }
-      default: return chosen ? [chosen] : (foes.length ? [foes[0]] : []);
+      default: {
+        const t = chosen ?? (foes.length ? foes[0] : null);
+        return t ? [this.coverRedirect(actor, t)] : [];
+      }
     }
+  }
+
+  /** Cover: an ally wearing `covered` has single-target attacks meant for
+   *  them redirected to whoever cast Cover on them, as long as that unit
+   *  is still standing. Scoped to single-target hits only (row/col/all
+   *  attacks that happen to include a covered ally still land on them) and
+   *  to an ENEMY choosing to hit the party — the party's own manual
+   *  targeting is never second-guessed. */
+  coverRedirect(actor, target) {
+    if (!target || actor.side !== 'enemy' || !target.isPC || !target.statuses.covered) return target;
+    const coverer = this.party.find((u) => u.alive && u.covering === target.uid);
+    return coverer ?? target;
   }
 
   // --- turn order ----------------------------------------------------------
@@ -492,6 +507,10 @@ export class Battle {
     if (target.statuses.sleep || target.statuses.stone || target.statuses.paralyze) evade = 0;
     if (opts.missChance && this.rng.chance(opts.missChance)) return { damage: 0, missed: true, mult: 1, crit: false };
     if (!magical && this.rng.chance(Math.min(0.75, evade))) return { damage: 0, missed: true, mult: 1, crit: false };
+    // Stone: "cannot act; immune to damage." Evade was already forced to 0
+    // above — a stoned target can always be targeted, it just never takes
+    // anything from it, the same way Sleep/Paralyze aren't dodges either.
+    if (target.statuses.stone) return { damage: 0, missed: false, mult: 1, crit: false };
 
     // reach penalty for basic attacks that overreach
     let reachPenalty = 1;
@@ -574,13 +593,33 @@ export class Battle {
     return { damage: dmg, crit, mult, missed: false };
   }
 
-  dealDamage(actor, target, amount, { silent = false, element = 'none', crit = false, isReflect = false } = {}) {
+  dealDamage(actor, target, amount, opts = {}) {
+    const { silent = false, element = 'none', crit = false, isReflect = false, isCounter = false, isLinked = false } = opts;
     if (target.statuses.barrier) {
       delete target.statuses.barrier;
       if (!silent) this.say(`${this.label(target)}'s barrier absorbs the hit.`);
       return 0;
     }
+    // Spirit Link: splits the hit between the linked pair, once per hit —
+    // recurses into two ordinary half-damage hits (each still runs every
+    // normal per-hit effect: IP gain, on-death handling, Riposte, Lattice)
+    // rather than special-casing any of that here. `linkedWith` survives
+    // the `linked` status itself expiring on one side, so both are checked.
+    if (!isLinked && target.statuses.linked && target.linkedWith) {
+      const partner = this.units().find((u) => u.uid === target.linkedWith && u.alive && u.statuses.linked);
+      if (partner && partner.uid !== target.uid) {
+        const half = Math.round(amount / 2);
+        this.dealDamage(actor, target, amount - half, { ...opts, isLinked: true });
+        this.dealDamage(actor, partner, half, { ...opts, isLinked: true });
+        return amount;
+      }
+    }
+    const wasAlive = target.hp > 0;
     target.hp = Math.max(0, target.hp - amount);
+    // Last Stand: "cannot fall below 1 HP for three turns" — a repeatable
+    // floor for the status's whole duration, not the one-shot save
+    // deathless/Phoenix Pendant already do below.
+    if (target.statuses.laststand && wasAlive && target.hp <= 0) target.hp = 1;
     this.fx.push({ type: 'damage', uid: target.uid, amount, element, crit });
     if (target.statuses.sleep) delete target.statuses.sleep;
     if (target.statuses.freeze && element !== 'ice') delete target.statuses.freeze;
@@ -635,6 +674,20 @@ export class Battle {
         if (lane.length) this.say(`Gravebinder feeds the lane for ${amt}.`);
       }
     }
+    // Riposte: answers the one hit that triggers it, then is spent — same
+    // recursion guard Widow's Lattice needs against a pair of counterers
+    // going back and forth forever, plus a survival check so a killing
+    // blow doesn't get answered from beyond it.
+    if (!isReflect && !isCounter && actor && actor.uid !== target.uid && target.hp > 0 && target.statuses.counter) {
+      delete target.statuses.counter;
+      const ta = target.stats();
+      const tel = target.isPC && target.ref.equip.weapon ? (getItem(target.ref.equip.weapon).element ?? 'none') : 'none';
+      const cr = this.computeDamage(target, actor, { power: 1, element: tel, reachCheck: true, reach: ta.reach });
+      if (!cr.missed) {
+        this.say(`${this.label(target)} answers the attack.`);
+        this.dealDamage(target, actor, cr.damage, { element: tel, crit: cr.crit, isCounter: true });
+      }
+    }
     return amount;
   }
 
@@ -674,6 +727,18 @@ export class Battle {
       if (pool.length) {
         const t = this.rng.pick(pool);
         this.say(`${this.label(actor)} is confused and lashes out!`);
+        return this.basicAttack(actor, t);
+      }
+    }
+    // Charm: "fights for the other side" — every turn, not a coin flip like
+    // confuse, and always against their OWN side specifically, rather than
+    // confuse's anyone-on-the-field randomness.
+    if (actor.statuses.charm && !actor.pendingStrike) {
+      const ownSide = (actor.side === 'party' ? this.livingParty() : this.livingEnemies())
+        .filter((u) => u.uid !== actor.uid);
+      if (ownSide.length) {
+        const t = this.rng.pick(ownSide);
+        this.say(`${this.label(actor)} is charmed and turns on their own side!`);
         return this.basicAttack(actor, t);
       }
     }
@@ -746,6 +811,7 @@ export class Battle {
   }
 
   basicAttack(actor, target) {
+    target = this.coverRedirect(actor, target);
     if (!target || !target.alive) {
       const foes = actor.side === 'party' ? this.livingEnemies() : this.livingParty();
       if (!foes.length) return this.say('Nothing to strike.');
@@ -778,8 +844,16 @@ export class Battle {
       this.applyTo(target, 'burn');
       this.say(`${this.label(target)} catches fire.`);
     } else if (el === 'ice' && this.rng.chance(0.12)) {
-      this.applyTo(target, 'slow');
-      this.say(`${this.label(target)} slows in the cold.`);
+      // A quarter of ice's own 12% proc is the full freeze rather than
+      // just a chill — Freeze was defined (canAct blocks it, dealDamage
+      // breaks it on a physical hit) but nothing ever actually inflicted it.
+      if (this.rng.chance(0.25)) {
+        this.applyTo(target, 'freeze');
+        this.say(`${this.label(target)} freezes solid.`);
+      } else {
+        this.applyTo(target, 'slow');
+        this.say(`${this.label(target)} slows in the cold.`);
+      }
     } else if (el === 'lightning') {
       const foes = (actor.side === 'party' ? this.livingEnemies() : this.livingParty())
         .filter((u) => u.uid !== target.uid && Math.abs(u.grid.row - target.grid.row) <= 1);
@@ -922,7 +996,8 @@ export class Battle {
               if (this.applyTo(t, skill.status)) this.say(`  ${this.label(t)}: ${STATUS[skill.status].name}.`);
             }
             if (skill.sunder) t.statuses.sundered = 3;
-            if (skill.knockback && t.grid.col < 2) t.grid.col++;
+            // Dwarven rooted: "immune to knockback and forced repositioning."
+            if (skill.knockback && !trait(t, 'rooted') && t.grid.col < 2) t.grid.col++;
             if (skill.instantChance && this.rng.chance(skill.instantChance) && t.def?.ai !== 'boss') {
               t.hp = 0;
               this.say(`  ${this.label(t)} is struck down instantly.`);
@@ -930,6 +1005,22 @@ export class Battle {
           }
         }
         if (skill.steals) this.doSteal(actor, targets[0]);
+        // Shadow Step: "arrives anywhere on the grid, then stays there" —
+        // finds whatever open cell on the caster's own side reads safest
+        // (furthest-back column available) rather than a fixed destination,
+        // since which cells are actually free changes fight to fight.
+        if (skill.reposition && !trait(actor, 'rooted')) {
+          const roster = actor.side === 'party' ? this.party : this.enemies;
+          const free = (r, c) => !(r === actor.grid.row && c === actor.grid.col)
+            && !roster.some((u) => u.alive && u.grid.row === r && u.grid.col === c);
+          let spot = null;
+          for (let c = 2; !spot && c >= 0; c--) for (let r = 0; !spot && r < 3; r++) if (free(r, c)) spot = { row: r, col: c };
+          if (spot) {
+            actor.grid.row = spot.row;
+            actor.grid.col = spot.col;
+            this.say(`  ${this.label(actor)} slips away and reappears elsewhere.`);
+          }
+        }
         break;
       }
       case 'heal': {
@@ -955,11 +1046,13 @@ export class Battle {
       case 'buff': {
         for (const t of targets) {
           if (!t.alive) continue;
-          for (const st of [skill.status, skill.extraStatus].filter(Boolean)) {
+          for (const st of [skill.status, skill.extraStatus, ...(skill.extraStatuses ?? [])].filter(Boolean)) {
             this.applyTo(t, st);
             this.say(`  ${this.label(t)}: ${STATUS[st].name}.`);
           }
           if (skill.grants) { t.statuses[skill.grants] = 4; this.say(`  ${this.label(t)}: ${skill.grants}.`); }
+          if (skill.providesCover) { actor.covering = t.uid; this.say(`  ${this.label(actor)} moves to cover ${this.label(t)}.`); }
+          if (skill.linksWith) { actor.linkedWith = t.uid; t.linkedWith = actor.uid; this.say(`  ${this.label(actor)} and ${this.label(t)} are linked.`); }
           if (skill.shiftsElement && t.isPC) { t.ref.battleElement = actor.element; }
           this.fx.push({ type: 'buff', uid: t.uid });
         }
@@ -1093,7 +1186,8 @@ export class Battle {
   useItem(actor, itemId, chosen) {
     const it = getItem(itemId);
     this.say(`${this.label(actor)} uses ${it.name}.`);
-    let alch = actor.isPC && actor.ref.jobId === 'alchemist' ? 1.5 : 1;
+    const isAlchemist = actor.isPC && actor.ref.jobId === 'alchemist';
+    let alch = isAlchemist ? 1.5 : 1;
     if (trait(actor, 'tinker')) alch *= 1.3;
     const targets = it.target === 'allies'
       ? (actor.side === 'party' ? this.party : this.enemies)
@@ -1112,7 +1206,7 @@ export class Battle {
       if (it.cures) for (const c of it.cures) { if (t.isPC) delete t.ref.statuses[c]; else delete t.statuses[c]; }
       if (it.damage) {
         const r = this.computeDamage(actor, t, { power: 0, element: it.element });
-        const dmg = Math.round(it.damage * (alch === 1.5 ? 1.25 : 1) * (r.mult ?? 1));
+        const dmg = Math.round(it.damage * (isAlchemist ? 1.25 : 1) * (r.mult ?? 1));
         this.dealDamage(actor, t, dmg, { element: it.element });
         this.say(`  ${this.label(t)} takes ${dmg}.`);
       }

@@ -176,7 +176,11 @@ export class GameState {
     return buying ? 1 - 0.08 * rank : 1 + 0.08 * rank;
   }
 
-  buyPrice(id) { return Math.max(1, Math.round(getItem(id).price * this.priceMod(true))); }
+  buyPrice(id) {
+    // Herbalist's greenhands: "Antidotes are free" — flat, not rank-scaled.
+    if (id === 'antidote' && this.jobRankOf('herbalist')) return 0;
+    return Math.max(1, Math.round(getItem(id).price * this.priceMod(true)));
+  }
   sellPrice(id) { return Math.max(1, Math.round(getItem(id).price * 0.5 * this.priceMod(false))); }
 
   innCost(base) {
@@ -276,7 +280,8 @@ export class GameState {
       const s = stats(ch);
       let regen = 0;
       if (ch.elementId === 'nature' && this.map.outdoor) regen += Math.max(1, Math.floor(s.maxHp * 0.01));
-      if (herb) regen += herb;
+      // greenhands: "1 HP per step outdoors per rank" — was healing indoors too.
+      if (herb && this.map.outdoor) regen += herb;
       if (regen) ch.hp = Math.min(s.maxHp, ch.hp + regen);
     }
   }

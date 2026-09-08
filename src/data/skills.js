@@ -38,6 +38,7 @@ export const STATUS = {
   evade:    { name: 'Evade',    kind: 'good', turns: 4, blurb: '+35% evasion.' },
   reflect:  { name: 'Reflect',  kind: 'good', turns: 4, blurb: 'Bounces single-target magic back.' },
   barrier:  { name: 'Barrier',  kind: 'good', turns: 3, blurb: 'Absorbs the next hit entirely.' },
+  laststand:{ name: 'Last Stand', kind: 'good', turns: 3, blurb: 'Cannot fall below 1 HP.' },
   charm:    { name: 'Charm',    kind: 'bad',  turns: 3, blurb: 'Fights for the other side.' },
 };
 export const STATUS_IDS = Object.keys(STATUS);
@@ -90,11 +91,12 @@ export const SKILLS = [
   s('frenzy', 'Frenzy', 'rage', 9, 0, 'buff', 0, 'self', 0, { status: 'might', hpCost: 0.12, blurb: 'Stops thinking. Starts hitting.' }),
   s('rendarmor', 'Rend Armour', 'rage', 12, 0, 'phys', 1.3, 'one', 2, { sunder: 0.3, hpCost: 0.06, blurb: 'Removes the target\'s reason for confidence.' }),
   s('bloodrush', 'Blood Rush', 'rage', 17, 0, 'phys', 2.2, 'one', 2, { drain: 0.4, hpCost: 0.15, blurb: 'Takes back more than it spends, if it lands.' }),
-  s('laststand', 'Last Stand', 'rage', 23, 0, 'buff', 0, 'self', 0, { ip: 70, blurb: 'Cannot fall below 1 HP for three turns.' }),
+  s('laststand', 'Last Stand', 'rage', 23, 0, 'buff', 0, 'self', 0, { ip: 70, status: 'laststand', blurb: 'Cannot fall below 1 HP for three turns.' }),
 
   // --- Bulwark Arts --------------------------------------------------------
   s('guardstance', 'Guard Stance', 'guard', 1, 0, 'buff', 0, 'self', 0, { status: 'protect', blurb: 'Roots. Waits.' }),
-  s('cover', 'Cover', 'guard', 4, 4, 'buff', 0, 'ally', 9, { grants: 'covered', blurb: 'Takes the hit meant for someone smaller.' }),
+  s('cover', 'Cover', 'guard', 4, 4, 'buff', 0, 'ally', 9,
+    { grants: 'covered', providesCover: true, blurb: 'Takes the hit meant for someone smaller.' }),
   // 'buff'/'self', not 'debuff'/'all': the caster is the one who needs
   // `taunted` (see battle.js's enemyAction, which quadruples an enemy's
   // odds of targeting whichever party member already carries it) — the
@@ -268,7 +270,8 @@ export const SKILLS = [
   s('anathemahex', 'Anathema', 'hex', 25, 32, 'debuff', 0, 'all', 9, { status: 'curse', sunder: 0.4, blurb: 'Names them all. None of it is kind.' }),
 
   // --- Spirit Arts ---------------------------------------------------------
-  s('spiritlink', 'Spirit Link', 'spirit', 1, 6, 'buff', 0, 'ally', 9, { grants: 'linked', blurb: 'Shares damage between two willing people.' }),
+  s('spiritlink', 'Spirit Link', 'spirit', 1, 6, 'buff', 0, 'ally', 9,
+    { grants: 'linked', linksWith: true, blurb: 'Shares damage between two willing people.' }),
   s('elemshift', 'Elemental Shift', 'spirit', 5, 8, 'buff', 0, 'ally', 9, { shiftsElement: true, blurb: 'Changes an ally\'s element for the battle.' }),
   s('ancestor', 'Ancestral Aid', 'spirit', 9, 12, 'heal', 0.25, 'allies', 0, { blurb: 'Help from people who are no longer available.' }),
   s('soulsight', 'Soul Sight', 'spirit', 13, 10, 'debuff', 0, 'all', 9, { reveals: true, sunder: 0.2, blurb: 'Sees exactly what each of them is afraid of.' }),
@@ -276,7 +279,10 @@ export const SKILLS = [
   s('soulbind', 'Soulbind', 'spirit', 25, 36, 'debuff', 0, 'one', 9, { status: 'stone', blurb: 'Holds the thread still.' }),
 
   // --- High Arcana (capstone school) --------------------------------------
-  s('overdrive', 'Overdrive', 'arcane', 20, 0, 'buff', 0, 'self', 0, { ip: 100, blurb: 'Spends the whole IP gauge for one enormous turn.' }),
+  s('overdrive', 'Overdrive', 'arcane', 20, 0, 'buff', 0, 'self', 0, {
+    ip: 100, status: 'might', extraStatus: 'focus', extraStatuses: ['haste'],
+    blurb: 'Spends the whole IP gauge for one enormous turn.',
+  }),
   s('breakpoint', 'Breakpoint', 'arcane', 20, 20, 'phys', 2.4, 'one', 9, { pierce: 0.5, blurb: 'Finds the seam and opens it.' }),
   s('grandsigil', 'Grand Sigil', 'arcane', 22, 30, 'mag', 2.4, 'all', 9, { element: 'attuned', blurb: 'A circle drawn a very long time ago.' }),
   s('apotheosis', 'Apotheosis', 'arcane', 26, 40, 'buff', 0, 'self', 0, { status: 'haste', extraStatus: 'might', blurb: 'Briefly, more than the sum of the sheet.' }),
@@ -338,14 +344,14 @@ const STAT_NAME = { str: 'Strength', agi: 'Agility', vit: 'Vitality', int: 'Inte
 
 // `grants` sets an ad-hoc turn-counter status (see battle.js's buff/debuff
 // cases) rather than one of the named entries in STATUS above — only the
-// ones battle.js actually reads back somewhere get a line here. Cover's
-// 'covered', Riposte's 'counter' and Spirit Link's 'linked' are left out on
-// purpose: they're set, but nothing in battle.js ever checks for them, so
-// describing an effect would be describing one the skill doesn't have.
+// ones battle.js actually reads back somewhere get a line here.
 const GRANT_TEXT = {
   taunted: 'Enemies are far more likely to target the caster.',
   vanished: 'Rarely targeted until the caster next acts.',
   lucky: '+15% critical chance.',
+  covered: "Redirects single-target hits meant for the ally back onto the caster, as long as the caster is still standing.",
+  counter: 'Answers the next hit against the caster with a strike of their own, then fades.',
+  linked: "Splits damage between the caster and the ally for as long as both keep the link.",
 };
 
 /** A short, mechanically-accurate line built straight from a skill's own
@@ -378,6 +384,7 @@ export function skillEffectText(skill) {
       if (skill.instantChance) parts.push(`${Math.round(skill.instantChance * 100)}% chance to defeat a non-boss instantly.`);
       if (skill.steals) parts.push('Also attempts to steal an item.');
       if (skill.delay) parts.push('A delayed two-part strike.');
+      if (skill.reposition) parts.push('Moves the caster to a safer cell afterward.');
       break;
     }
     case 'heal': {
@@ -387,7 +394,9 @@ export function skillEffectText(skill) {
       break;
     }
     case 'buff': {
-      for (const st of [skill.status, skill.extraStatus].filter(Boolean)) parts.push(`Grants ${STATUS[st]?.name}.`);
+      for (const st of [skill.status, skill.extraStatus, ...(skill.extraStatuses ?? [])].filter(Boolean)) {
+        parts.push(`Grants ${STATUS[st]?.name}.`);
+      }
       if (skill.grants && GRANT_TEXT[skill.grants]) parts.push(GRANT_TEXT[skill.grants]);
       if (skill.shiftsElement) parts.push("Target's element becomes the caster's own.");
       break;
