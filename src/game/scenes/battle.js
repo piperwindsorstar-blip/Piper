@@ -9,7 +9,6 @@
 // ============================================================================
 
 import { PAL, W, H, drawFit } from '../../engine/screen.js';
-import { plateImage } from '../../engine/plates.js';
 import { Menu, CommandWheel, hpColor } from '../../engine/ui.js';
 import { actorSprite, monsterSprite } from '../../engine/sprites.js';
 import { actorPortraitSprite } from '../../engine/actor.js';
@@ -24,59 +23,36 @@ import { DIFFICULTY_BY_ID } from '../../data/difficulty.js';
 import { getBattleSpeed } from '../../engine/settings.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
-import { mix, shade } from '../../engine/pixel.js';
-import * as THREE from '../../vendor/three.module.js';
-import { makeDoll, lookFromActor, DOLL_H } from '../../engine/doll.js';
 // HD-2D finish lives in Screen.applyPost (every scene).
 
-// The arena, in world units (roughly metres) rather than pixels: the party
-// stands on +X (right), the enemy on -X (left), each side's own column 0
-// (front rank) facing the other across X=0. A side's four rows stack along
-// Z, which this camera's tilt reads on screen as a vertical line running
-// top to bottom — the Octopath-style line-up the row-based turn economy
-// (battle.js's rowSlots/switchRow) is built around.
-// ACTOR_WORLD_H is the on-screen size that actually makes a stamp-sprite
-// portrait read as a person rather than a coloured smudge; ROW_Z_STEP is
-// tall enough to clear that height with a visible gap between rows, so a
-// full 4-row, 2-column line-up (8 characters) never overlaps itself.
-const PARTY_X = 4.35, ENEMY_X = -4.15, COL_X_STEP = 1.35, ROW_Z_STEP = 2.4;
-// Each back rank stands a literal step higher than the one in front of it —
-// real 3D risers (see setup3D), not just a further/smaller billboard. Under
-// this orthographic camera, depth alone was reading fairly flat; an actual
-// stepped platform with a lit top and a shaded riser face gives the eye
-// something with real volume to confirm the depth with.
-const RISER_STEP_H = 0.32;
-const ACTOR_WORLD_H = 2.1;
-// Orthographic, not perspective, and for the same reason field.js's camera
-// is: fitting every rank of a full 9-a-side battle (front to back, both
-// sides) is a wide enough world-Z range that a perspective camera close
-// enough to feel "angled" either crops the far side or blows up the near
-// one. Orthographic keeps every rank a consistent, fully-visible size —
-// the tilt alone still reads as depth (the back ranks sit higher and
-// tighter on screen), it just doesn't also scale them down.
-const CAM_POS = { x: 0, y: 6, z: 5 };
-const CAM_LOOK = { x: 0, y: 0, z: 0 };
-// Half-height of the orthographic frustum — how much of the arena's Z/Y
-// extent is actually in view. Every other screen-space constant below
-// (ground/horizon plane placement) is solved for this same view size.
-const BATTLE_VIEW_SIZE = 6.6;
+// Flat 2D layout: the party stands on the right, the enemy on the left, each
+// side's own column 0 (front rank) facing the other across the middle of the
+// screen. A side's four rows stack straight down the screen — the Octopath
+// line-up the row-based turn economy (battle.js's rowSlots/switchRow) is
+// built around — with column 0 drawn a little further in (toward the
+// middle) than column 1, so front/back still reads without any depth or
+// perspective trick.
+const PARTY_COL_X = [318, 384];   // [front, back]
+const ENEMY_COL_X = [162, 96];    // [front, back]
+const ROW_Y0 = 3, ROW_STEP = 40;
+// The on-screen height a standard actor sprite is drawn at — big enough to
+// read as a painted portrait rather than a coloured smudge (see actor.js's
+// stamp art). A monster sprite scales off its own native height instead
+// (see drawUnit), since enemy art isn't drawn to one uniform body height.
+const UNIT_DRAW_H = 40;
 
 // CELL_W/CELL_H are the nominal 2D box every overlay (HP bars, popups, the
-// wheel) is still positioned against — see cellPos/unitPos below for how
-// that box now comes from a 3D projection instead of flat pixel math.
-const CELL_W = 48, CELL_H = 40;
+// wheel) is positioned against — see cellPos/unitPos below.
+const CELL_W = 48, CELL_H = 36;
 
-// The message/target strip used to sit pinned to a fixed
-// fraction of screen height ("roughly where the two grids meet"), back
-// when that seam was a fixed 2D line. It isn't anymore — the front-rank
-// gap is real 3D depth now and has moved (and grown) every time the
-// arena's spacing has been tuned since, so a strip anchored to an old
-// guessed seam kept drifting into the enemy formation's own HP bars and
-// status icons. Docked to the bottom of the screen instead: the party's
-// own ground line is always the screen's lowest occupied point (nothing
-// this scene draws sits below it — see unitPos/drawUnit), so a strip
-// anchored to the bottom edge can never overlap either formation,
-// regardless of how the 3D spacing above it changes again later.
+// Backdrop split: a thin sky strip above, a tinted ground band below,
+// dividing the screen well above row 0 so the whole formation stands on
+// "ground" rather than crossing the horizon line.
+const GROUND_Y = 28;
+
+// Docked to the bottom of the screen: the party's own ground line (the
+// lowest row, lowest column) is always the screen's lowest occupied point,
+// so a strip anchored to the bottom edge can never overlap either formation.
 const MSG_H = 40, MSG_Y = H - MSG_H - 8;
 
 const MSG_TIME = 0.85;
@@ -87,7 +63,7 @@ const MSG_TIME = 0.85;
 const ATK_WINDUP = 0.12, ATK_STRIKE = 0.08, ATK_RECOIL = 0.14;
 
 // Which caster-motion archetype an Art's school plays back as — see
-// actionVisual/unit3DPos. Anything not listed defaults to 'lunge', the
+// actionVisual/unit2DPos. Anything not listed defaults to 'lunge', the
 // original melee weapon-swing motion; these are just the schools whose
 // own fiction (drawing a bow, channelling a spell) reads wrong as a lunge.
 const SCHOOL_ANIM = {
@@ -236,7 +212,6 @@ export class BattleScene {
     this.introT = this.introDur;
     this.hitPause = 0;
     this.autoBattle = false;
-    this.setup3D();
     playMusic(this.battle.isBoss ? 'boss' : 'battle', this.battle.isBoss ? BOSS_THEME : BATTLE_THEME);
     // a small impact as the fight opens: a jolt, a white flash, and both
     // sides slide in from off-screen (see unitPos) instead of just appearing
@@ -246,181 +221,18 @@ export class BattleScene {
     this.flushLog();
   }
 
-  /**
-   * Builds the 3D arena once per battle: an offscreen WebGL canvas rendered
-   * at the same native 480x270 as the rest of the game (so billboards stay
-   * pixel-crisp and the arena reads as part of the same chunky-pixel world,
-   * not a smoother layer bolted on top), a region-tinted ground and sky, and
-   * a lazily-populated billboard per unit. The render is blitted into the
-   * normal 2D framebuffer as the backdrop (see render3D/draw); every other
-   * piece of UI in this file — HP bars, popups, the command wheel — is still
-   * plain 2D, positioned by projecting each unit's 3D position back to
-   * screen space (see project/unitPos), so none of that code had to change.
-   */
-  setup3D() {
-    if (!this.canvas3D) this.canvas3D = document.createElement('canvas');
-    this.canvas3D.width = W;
-    this.canvas3D.height = H;
-    this.renderer3D = new THREE.WebGLRenderer({ canvas: this.canvas3D, antialias: false, alpha: false });
-    this.renderer3D.setPixelRatio(1);
-    this.renderer3D.setSize(W, H, false);
-
-    const scene = new THREE.Scene();
-    this.scene3D = scene;
-    const aspect = W / H;
-    this.camera3D = new THREE.OrthographicCamera(
-      -BATTLE_VIEW_SIZE * aspect, BATTLE_VIEW_SIZE * aspect, BATTLE_VIEW_SIZE, -BATTLE_VIEW_SIZE, 0.1, 60,
-    );
-    this.camera3D.position.set(CAM_POS.x, CAM_POS.y, CAM_POS.z);
-    this.camera3D.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
-    // Orthographic view rays are parallel, so every billboard should face
-    // the same fixed direction — back along the camera's look vector — not
-    // the direction to the camera's literal position (that's a perspective-
-    // camera formula). Using per-unit atan2-to-camera-position here was
-    // fine near the centre lane (x ~= CAM_POS.x, angle ~= 0) but blew up
-    // for units far off to a side *and* deep in a back rank, where it
-    // rotated the billboard nearly edge-on to the camera — the "warped
-    // diagonal sliver" units in outer lanes/back ranks were rendering as.
-    this.billboardYaw = Math.atan2(CAM_POS.x - CAM_LOOK.x, CAM_POS.z - CAM_LOOK.z);
-
-    const T = this.regionPalette();
-    const region = this.battle.formation.region;
-    const plateKey = region === 'caverns' || region === 'abyss' ? 'dungeon'
-      : region === 'greenfield' ? 'overworld'
-        : region === 'ruins' ? 'battle'
-          : 'battle';
-    const plate = plateImage(plateKey);
-    if (plate && plate.complete && plate.naturalWidth) {
-      const tex = new THREE.Texture(plate);
-      tex.needsUpdate = true;
-      tex.colorSpace = THREE.SRGBColorSpace;
-      scene.background = tex;
-    } else {
-      scene.background = this.skyTexture(T);
-    }
-    scene.fog = new THREE.Fog(T.far, 6, 15);
-
-    const sun = new THREE.DirectionalLight(0xfff2df, 1.9);
-    sun.position.set(-3, 6, 4);
-    scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x88a8ff, 0.75);
-    rim.position.set(4, 2.4, -3);
-    scene.add(rim);
-    scene.add(new THREE.AmbientLight(T.grade, 0.6));
-    scene.add(new THREE.HemisphereLight(T.sky1, T.gdark, 0.5));
-
-    // This camera looks down at a steep angle, so a ground plane centred on
-    // the origin (the old 30x30, z from -15 to 15) actually covers the
-    // *entire* screen top to bottom — orthographic projection has no
-    // vanishing point to shrink a distant ground into a horizon, so nothing
-    // placed further away was ever visible behind it. Pushed forward here so
-    // its far edge stops a bit past the back rank instead of at the world
-    // origin, opening an actual strip of sky for the horizon plane below to
-    // occupy — still comfortably past the deepest occupied rank (z ~= -5.6,
-    // widened along with WORLD_FRONT_Z above).
-    // A flat material colour here read as an empty void once everything
-    // around it (sky, risers, characters) had real detail — see
-    // groundTexture for the noise-speckled texture that replaces it.
-    const groundTex = this.groundTexture(T);
-    groundTex.repeat.set(30, 30);
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(30, 30),
-      new THREE.MeshLambertMaterial({ map: groundTex }),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, 0, 8.7);
-    scene.add(ground);
-
-    // Real 3D risers under ranks B and C (rank A stays at ground level) —
-    // solid boxes, not another billboard, so the formation reads as
-    // standing on an actual stepped platform instead of just being drawn
-    // smaller/higher for "depth". Same ground texture (a separate instance,
-    // for its own repeat setting — a box's UVs run 0-1 per face regardless
-    // of that face's actual size, so it can't share the plane's repeat and
-    // still look the same grain size), tinted darker per step via the
-    // material's own colour (which multiplies the texture) so the risers
-    // read as the ground itself stepping up rather than a different floor.
-    const lineDepth = ROW_Z_STEP * 5;
-    for (const side of ['enemy', 'party']) {
-      const x = side === 'party' ? PARTY_X + COL_X_STEP * 0.5 : ENEMY_X - COL_X_STEP * 0.5;
-      const riserTex = groundTex.clone();
-      riserTex.needsUpdate = true;
-      riserTex.repeat.set(3.2, lineDepth);
-      const riser = new THREE.Mesh(
-        new THREE.BoxGeometry(3.2, RISER_STEP_H, lineDepth),
-        new THREE.MeshLambertMaterial({ map: riserTex, color: shade('#ffffff', side === 'party' ? -0.06 : -0.14) }),
-      );
-      riser.position.set(x, RISER_STEP_H / 2, 0);
-      scene.add(riser);
-    }
-
-    // A jagged skyline silhouette plus a glowing focal orb, filling the sky
-    // strip the ground pullback above just opened up. Placed by working
-    // backward from where it needs to land on screen (see project()'s
-    // linear map from world (y,z) to screen y under this camera) rather than
-    // by a "natural" world position — fog is disabled here since the plane
-    // sits far enough away that the fog range would otherwise wash the
-    // whole silhouette out to a flat colour, defeating the point of it.
-    const far = new THREE.Mesh(
-      // Width matched to the camera's actual visible span at this depth
-      // (~23.5 world units at this zoom), not left oversized like the
-      // ground plane — an oversized plane here would push most of the
-      // horizon texture's width outside the frame, clipping the orb and
-      // thinning out the skyline to whatever few peaks happened to land
-      // in view.
-      new THREE.PlaneGeometry(26, 3.28),
-      new THREE.MeshLambertMaterial({
-        map: this.horizonTexture(T, this.battle.formation.region ?? 'default'),
-        transparent: true, alphaTest: 0.04, fog: false,
-      }),
-    );
-    far.position.set(0, -2.27, -9.5);
-    scene.add(far);
-
-    this.billboards = new Map();
-    this.dolls = new Map();
-  }
-
-  /** Releases the offscreen WebGL context and every GPU resource this scene
-   *  allocated. Every battle builds its own renderer (see setup3D) rather
-   *  than sharing one, and the scene stack doesn't call this on its own —
-   *  without it, popping back to the field after a fight leaves the old
-   *  context and its textures/geometries permanently allocated, unreachable
-   *  and un-freeable by ordinary JS garbage collection. A few battles in,
-   *  the browser starts forcibly evicting the oldest live WebGL contexts to
-   *  stay under its per-page limit, which is what a corrupted/blank battle
-   *  backdrop and a steadily slowing game after a while of play were: not
-   *  jank, a real resource leak. The app's scene stack calls this whenever
-   *  this scene is popped or replaced — see main.js. */
-  dispose3D() {
-    this.scene3D.traverse((obj) => {
-      obj.geometry?.dispose();
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material].filter(Boolean);
-      for (const m of mats) { m.map?.dispose(); m.dispose(); }
-    });
-    this.scene3D.background?.dispose?.();
-    this.renderer3D.dispose();
-    this.renderer3D.forceContextLoss();
-    this.billboards.clear();
-  }
-
-  /** The same region -> palette table the old 2D backdrop used, kept as one
-   *  source of truth for both the 3D arena's colours and the post-process
-   *  grade/vignette/bloom settings applied on top of it. */
+  /** The region -> palette table the flat 2D backdrop paints from (see
+   *  drawBackdrop), kept as one source of truth for both those colours and
+   *  the post-process grade/vignette/bloom settings applied on top. */
   regionPalette() {
     const region = this.battle.formation.region;
     return {
-      // zenith: the top-of-sky colour the banded gradient fades up into.
-      // horizon: the skyline silhouette's fill (was "far"'s flat colour).
+      // zenith: the top-of-sky colour the gradient fades up into.
+      // horizon: the thin line between sky and ground.
       // mote/moteUp: the ambient drifting particle's colour and whether it
       // rises (fireflies, sparks) or sinks (falling ash) — the one bit of
       // motion that keeps an otherwise-static backdrop from feeling inert.
-      // zenith/horizon are deliberately kept a good distance apart in
-      // lightness (not just hue) for every region — the horizon plane's
-      // visible sliver is dominated by the zenith band (see horizonTexture),
-      // so a moody-but-close pair like a near-black zenith over a near-black
-      // horizon reads as nothing at all instead of a silhouette against a
-      // glow. Darker regions get a *lifted* zenith (a distant glow — magma,
+      // Darker regions get a *lifted* zenith (a distant glow — magma,
       // moonlight, whatever fits) rather than a darkened horizon, since
       // there's little room left to darken an already-near-black horizon.
       greenfield: { sky1: '#86a2c4', far: '#2c4a34', ground: '#4a7a3e', gdark: '#2f5029', grade: '#a8d0ff', zenith: '#dff0ff', horizon: '#233d29', mote: '#fff3b0', moteUp: true },
@@ -431,117 +243,20 @@ export class BattleScene {
     }[region] ?? { sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', grade: '#9ab0e0', zenith: '#33335c', horizon: '#14142a', mote: '#9ab0e0', moteUp: true };
   }
 
-  /** A small tileable, noise-speckled ground texture — a flat material
-   *  colour here read as an empty void once everything around it (sky,
-   *  risers, characters) had real detail. Cheap hash-based value noise,
-   *  not the overworld's tile-aware groundSprite (that expects a tile
-   *  grid with neighbouring materials to blend against; this plane is one
-   *  uniform material throughout, so a simpler self-contained generator is
-   *  the right tool rather than bending that one to fit). Built once per
-   *  battle and shared (via .clone() for a different repeat) between the
-   *  ground plane and every riser. */
-  groundTexture(T) {
-    const size = 64;
-    const cv = document.createElement('canvas');
-    cv.width = size; cv.height = size;
-    const ctx = cv.getContext('2d');
-    const hash = (x, y) => {
-      const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
-      return s - Math.floor(s);
-    };
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        // a coarse blotchy value (patches of lighter/darker ground) plus a
-        // fine per-pixel speckle (individual flecks) layered on top
-        const blotch = hash(Math.floor(x / 4), Math.floor(y / 4));
-        let color = mix(T.gdark, T.ground, 0.35 + blotch * 0.65);
-        const fleck = hash(x + 0.5, y + 0.5);
-        if (fleck > 0.965) color = mix(color, '#ffffff', 0.16);
-        else if (fleck < 0.035) color = shade(color, -0.35);
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, 1, 1);
-      }
-    }
-    const tex = new THREE.CanvasTexture(cv);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.magFilter = THREE.NearestFilter;
-    tex.minFilter = THREE.NearestFilter;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }
-
-  /** A banded (posterized) vertical sky gradient — a handful of flat colour
-   *  steps rather than a smooth 3D-renderer blend, so the sky reads as part
-   *  of the same chunky-pixel style as everything else instead of a smooth
-   *  gradient bolted behind pixel art. Built once per battle; the palette
-   *  never changes mid-fight. */
-  skyTexture(T) {
-    const BANDS = 6;
-    const cv = document.createElement('canvas');
-    cv.width = 1; cv.height = BANDS;
-    const ctx = cv.getContext('2d');
-    for (let i = 0; i < BANDS; i++) {
-      ctx.fillStyle = mix(T.zenith, T.sky1, i / (BANDS - 1));
-      ctx.fillRect(0, i, 1, 1);
-    }
-    const tex = new THREE.CanvasTexture(cv);
-    tex.magFilter = THREE.NearestFilter;
-    tex.minFilter = THREE.NearestFilter;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }
-
-  /** Replaces the old flat-colour "far" plane with a jagged skyline
-   *  silhouette plus one glowing focal orb (sun, moon, or something less
-   *  friendly for the boss/abyss arenas) — the single biggest thing a
-   *  Octopath-style backdrop has that a flat tinted wall doesn't: a place
-   *  for the eye to land. The skyline shape is seeded from the region name
-   *  so every region reads as a distinct silhouette, but stays identical
-   *  across frames within one battle (only rebuilt in setup3D). */
-  horizonTexture(T, region) {
-    // Match the canvas's aspect ratio to the far plane's actual world
-    // width:height (see setup3D) so the orb renders as a circle rather
-    // than getting stretched into an ellipse by a mismatched texture.
-    const w = 142, h = 18;
-    const cv = document.createElement('canvas');
-    cv.width = w; cv.height = h;
-    const ctx = cv.getContext('2d');
-
-    const orbX = w * 0.55, orbY = h * 0.3, orbR = h * 0.34;
-    const glow = ctx.createRadialGradient(orbX, orbY, 0, orbX, orbY, orbR * 2.4);
-    glow.addColorStop(0, T.grade);
-    glow.addColorStop(0.45, mix(T.grade, T.zenith, 0.7));
-    glow.addColorStop(1, `${T.zenith}00`);
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = mix(T.grade, '#ffffff', 0.55);
-    ctx.beginPath(); ctx.arc(orbX, orbY, orbR * 0.5, 0, Math.PI * 2); ctx.fill();
-
-    // tiny deterministic PRNG seeded from the region name, so the skyline
-    // is stable across battles in the same region without a shared seed table
-    let seed = 0;
-    for (let i = 0; i < region.length; i++) seed = (seed * 31 + region.charCodeAt(i)) >>> 0;
-    const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-
-    ctx.fillStyle = T.horizon;
-    ctx.beginPath();
-    ctx.moveTo(0, h);
-    const peaks = 7;
-    for (let i = 0; i <= peaks; i++) {
-      const x = (w * i) / peaks;
-      const y = h * (0.25 + rand() * 0.35);
-      ctx.lineTo(x, y);
-    }
-    ctx.lineTo(w, h);
-    ctx.closePath();
-    ctx.fill();
-
-    const tex = new THREE.CanvasTexture(cv);
-    tex.magFilter = THREE.NearestFilter;
-    tex.minFilter = THREE.NearestFilter;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
+  /** The flat 2D backdrop: a vertical sky gradient over a tinted ground
+   *  band, both straight off regionPalette() — no ground plane, risers or
+   *  camera, just colour, so the actual character art (the painted stamp
+   *  portraits) is what carries the scene instead of competing with a lit
+   *  3D floor for the eye. Painted fresh every frame; cheap enough that it
+   *  never needed to be cached. */
+  drawBackdrop(scr) {
+    const T = this.regionPalette();
+    scr.setGrade(T.grade, this.battle.formation.region === 'greenfield' ? 0.08 : 0.18);
+    scr.vignette = this.battle.formation.region === 'greenfield' ? 0.42 : 0.6;
+    scr.bloom = this.battle.formation.region === 'greenfield' ? 0.28 : 0.5;
+    scr.vgrad(0, 0, W, GROUND_Y, T.zenith, T.sky1);
+    scr.rect(0, GROUND_Y, W, H - GROUND_Y, T.horizon);
+    scr.vgrad(0, GROUND_Y + 1, W, H - GROUND_Y - 1, T.ground, T.gdark);
   }
 
   /** Ambient drifting motes (fireflies, embers, falling ash depending on
@@ -559,34 +274,27 @@ export class BattleScene {
     });
   }
 
-  /** Grid slot -> world position, with no per-unit animation offset — used
-   *  both as the base for unit3DPos and directly by cellPos for the empty-
-   *  cell ground markers. */
+  /** Grid slot -> screen position (the ground point under a unit's feet),
+   *  with no per-unit animation offset — used both as the base for
+   *  unit2DPos and directly by cellPos for the empty-cell markers. */
   worldBase(side, row, col) {
-    // Biased above the geometric centre (2.1, not the (rows-1)/2 = 1.5 that
-    // would centre the 4-row line in the frustum) so the bottom row's feet
-    // clear the command dock (drawDock) instead of landing underneath it —
-    // the dock is tall enough now that a perfectly centred line-up doesn't
-    // leave it room.
-    const z = (row - 2.1) * ROW_Z_STEP;
-    if (side === 'party') {
-      return { x: PARTY_X + col * COL_X_STEP, y: RISER_STEP_H + col * 0.06, z };
-    }
-    return { x: ENEMY_X - col * COL_X_STEP, y: col * 0.05, z };
+    const y = ROW_Y0 + row * ROW_STEP + CELL_H;
+    const x = side === 'party' ? PARTY_COL_X[col] : ENEMY_COL_X[col];
+    return { x, y };
   }
 
-  /** A unit's current 3D position (feet/ground point, not its visual centre)
-   *  — the direct 3D translation of the old 2D unitPos's animation offsets:
-   *  the intro slide is now a depth slide, the attack lunge moves along Z
-   *  toward the opposing side, and death/victory use height instead of a
-   *  vertical pixel nudge. */
-  unit3DPos(u) {
+  /** A unit's current screen position (feet/ground point, not its visual
+   *  centre) — worldBase() plus whatever this frame's animation adds: the
+   *  intro slide, the attack windup/strike/recoil lunge, and the death/
+   *  victory bob. All pure 2D pixel offsets now — no depth axis to fold in. */
+  unit2DPos(u) {
     const base = this.worldBase(u.side, u.grid.row, u.grid.col);
-    let { x, y, z } = base;
+    let { x, y } = base;
     if (this.state === 'intro') {
+      // slides in from its own side's screen edge as the intro timer counts
+      // down — party from the right, enemy from the left.
       const k = (this.introT / this.introDur) ** 2;
-      const dir = u.side === 'enemy' ? -1 : 1;
-      x += dir * 2.8 * k;
+      x += (u.side === 'party' ? 1 : -1) * 90 * k;
     }
     if (this.attackAnim && this.attackAnim.uid === u.uid) {
       const a = this.attackAnim;
@@ -596,7 +304,7 @@ export class BattleScene {
         // just standing inert while the wheel closes
         const k = a.phase === 'windup' ? a.t / ATK_WINDUP
           : a.phase === 'strike' ? 1 : Math.max(0, 1 - a.t / ATK_RECOIL);
-        y += Math.sin(k * Math.PI) * 0.12;
+        y -= Math.sin(k * Math.PI) * 4;
       } else if (a.foe) {
         const dir = u.side === 'party' ? -1 : 1; // toward mid-screen on X
         let k = 0;
@@ -606,44 +314,34 @@ export class BattleScene {
           // that would put a bow or a spell in melee range
           if (a.phase === 'windup') k = -(a.t / ATK_WINDUP);
           else if (a.phase === 'strike') k = -(1 - a.t / ATK_STRIKE);
-          x += dir * 0.3 * k;
+          x += dir * 8 * k;
         } else if (a.anim === 'cast') {
           // shorter and slower than a melee lunge, with a small rise —
           // channelling a spell forward, not swinging a weapon
           if (a.phase === 'windup') k = -0.2 * (a.t / ATK_WINDUP);
           else if (a.phase === 'strike') k = -0.2 + 1.2 * (a.t / ATK_STRIKE);
           else k = 1 - (a.t / ATK_RECOIL);
-          x += dir * 0.22 * k;
-          y += Math.max(0, k) * 0.08;
+          x += dir * 7 * k;
+          y -= Math.max(0, k) * 3;
         } else {
           // 'lunge' — the original melee weapon-swing motion
           if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
           else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);
           else k = 1 - (a.t / ATK_RECOIL);
-          x += dir * 0.5 * k;
+          x += dir * 16 * k;
         }
       }
     }
     const dying = this.deathAnims.get(u.uid);
     if (dying) {
-      y -= (dying.t / dying.dur) * 0.3;
+      y += (dying.t / dying.dur) * 10;
     } else if (this.state === 'victoryPose' && u.isPC && u.alive) {
-      y += Math.abs(Math.sin(this.victoryT * 9 + x * 3)) * 0.18;
+      y -= Math.abs(Math.sin(this.victoryT * 9 + x * 0.1)) * 6;
     }
-    return { x, y, z };
+    return { x, y };
   }
 
-  /** Projects a 3D world point to 2D screen-space pixels in the same
-   *  480x270 buffer the rest of this scene draws into. */
-  project(world) {
-    const v = new THREE.Vector3(world.x, world.y, world.z);
-    v.project(this.camera3D);
-    return { x: (v.x * 0.5 + 0.5) * W, y: (1 - (v.y * 0.5 + 0.5)) * H };
-  }
-
-  /** The sprite canvas a unit should currently show — factored out of the
-   *  old drawUnit so both the 3D billboard and (nowhere else, but kept as
-   *  one place) any future 2D fallback pick the same frame. */
+  /** The sprite canvas a unit should currently show. */
   spriteFor(u, isActor) {
     if (u.isPC) {
       const ch = u.ref;
@@ -658,76 +356,32 @@ export class BattleScene {
     return monsterSprite(u.def.sprite, Math.floor(this.t * 2.5) % 2);
   }
 
-  /** Creates/updates one billboard mesh per living-or-recently-dead unit: a
-   *  camera-facing plane (rotated around Y only, so sprites stay upright —
-   *  the standard "cylindrical billboard" HD-2D games use) textured with
-   *  that unit's current sprite canvas via a CanvasTexture, nearest-filtered
-   *  so the pixel art stays crisp instead of smoothing into a blur. */
-  syncBillboards() {
-    for (const u of this.battle.units()) {
-      const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'character'].includes(this.state))
-        || this.attackAnim?.uid === u.uid;
-      const cv = this.spriteFor(u, isActor);
-      let b = this.billboards.get(u.uid);
-      if (!b) {
-        const tex = new THREE.CanvasTexture(cv);
-        // Nearest magnification keeps pixel edges crisp at native size.
-        // Plain nearest *minification* (no mipmaps) is what made a shrunk
-        // formation look like noisy smudges — one texel per screen pixel,
-        // no averaging, so fine pixel-art detail aliases into shimmer.
-        // Linear-filtered mipmaps fix that but *blur* the art instead —
-        // exactly the "squishy" softness pixel art can't afford. Nearest-
-        // filtered mipmaps keep both: each mip level is still a crisp,
-        // blocky pixel-art image, just a properly pre-downsampled one, so
-        // a shrunk sprite looks like a smaller clean sprite instead of
-        // either shimmering noise or a smear.
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestMipmapNearestFilter;
-        tex.generateMipmaps = true;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        // alphaTest just above zero, not 0.5: these sprite canvases bake in
-        // their own soft contact shadow (a ~30% alpha ellipse at the feet)
-        // and antialiased silhouette edges. A 0.5 cutoff discarded every
-        // pixel that faint, so units rendered as flat, edge-aliased cutouts
-        // with no shadow grounding them — a hard-edge look this pixel art
-        // was never drawn for. A near-zero threshold still discards the
-        // fully transparent padding around the sprite (so the billboard's
-        // rectangular bounds don't occlude things behind it) while letting
-        // every genuinely-drawn pixel blend at its real alpha.
-        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide });
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
-        this.scene3D.add(mesh);
-        b = { mesh, tex, mat, canvas: null };
-        this.billboards.set(u.uid, b);
-      }
-      if (b.canvas !== cv) {
-        b.canvas = cv;
-        b.tex.image = cv;
-        b.tex.needsUpdate = true;
-        const worldH = u.isPC ? ACTOR_WORLD_H : ACTOR_WORLD_H * (cv.height / 48);
-        b.mesh.scale.set(worldH * (cv.width / cv.height), worldH, 1);
-      }
-      const dying = this.deathAnims.get(u.uid);
-      const dim = this.state === 'target' && this.targetSpec && u.side !== this.actor.side
-        && !this.battle.inReach(this.actor, u, this.targetSpec.reach ?? this.targetSpec.range ?? 9);
-      b.mat.opacity = dying ? 1 - dying.t / dying.dur : (!u.alive ? 0.25 : dim ? 0.4 : 1);
-
-      const pos = this.unit3DPos(u);
-      const worldH = b.mesh.scale.y;
-      b.mesh.position.set(pos.x, pos.y + worldH / 2, pos.z);
-      b.mesh.rotation.y = this.billboardYaw;
-    }
-  }
-
-  /** Renders the arena to the offscreen WebGL canvas; draw() blits the
-   *  result into the 2D framebuffer as this frame's backdrop. */
-  render3D() {
-    const T = this.regionPalette();
-    this.app.screen.setGrade(T.grade, this.battle.formation.region === 'greenfield' ? 0.08 : 0.18);
-    this.app.screen.vignette = this.battle.formation.region === 'greenfield' ? 0.48 : 0.68;
-    this.app.screen.bloom = this.battle.formation.region === 'greenfield' ? 0.3 : 0.6;
-    this.syncBillboards();
-    this.renderer3D.render(this.scene3D, this.camera3D);
+  /** Draws a unit's actual sprite art at its current screen position —
+   *  a plain 2D blit at full brightness (no lighting to fade or grey it
+   *  out), scaled to a fixed on-screen height so every party member reads
+   *  as a portrait rather than a coloured smudge; a monster scales off its
+   *  own native height instead, since enemy art isn't drawn to one uniform
+   *  body size. Fade rules carried over unchanged from the old billboard's
+   *  material opacity: a unit currently dying fades out, a fallen one stays
+   *  a faint ghost, and an enemy out of the current action's reach dims to
+   *  show it can't be hit. */
+  drawSprite(scr, u) {
+    const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'character'].includes(this.state))
+      || this.attackAnim?.uid === u.uid;
+    const cv = this.spriteFor(u, isActor);
+    const pos = this.unit2DPos(u);
+    const drawH = u.isPC ? UNIT_DRAW_H : UNIT_DRAW_H * (cv.height / 48);
+    const drawW = drawH * (cv.width / cv.height);
+    const dying = this.deathAnims.get(u.uid);
+    const dim = this.state === 'target' && this.targetSpec && u.side !== this.actor.side
+      && !this.battle.inReach(this.actor, u, this.targetSpec.reach ?? this.targetSpec.range ?? 9);
+    const alpha = dying ? 1 - dying.t / dying.dur : (!u.alive ? 0.25 : dim ? 0.4 : 1);
+    scr.ctx.save();
+    scr.ctx.globalAlpha = alpha;
+    scr.ctx.imageSmoothingEnabled = true;
+    if (scr.ctx.imageSmoothingQuality) scr.ctx.imageSmoothingQuality = 'high';
+    scr.ctx.drawImage(cv, pos.x - drawW / 2, pos.y - drawH, drawW, drawH);
+    scr.ctx.restore();
   }
 
   flushLog() {
@@ -784,19 +438,17 @@ export class BattleScene {
   }
 
   // --- layout ----------------------------------------------------------------
-  // Both of these keep their old signature and return shape — {x, y} for the
-  // top-left of a nominal CELL_W x CELL_H box, ground line at y+CELL_H,
-  // horizontal centre at x+CELL_W/2 — so every 2D overlay call site below
-  // (HP bars, popups, the wheel, targeting) needed no changes at all. What
-  // changed is where that {x, y} comes from: the 3D world position, run
-  // through the same camera the arena itself renders with.
+  // {x, y} for the top-left of a nominal CELL_W x CELL_H box, ground line
+  // at y+CELL_H, horizontal centre at x+CELL_W/2 — every 2D overlay call
+  // site below (HP bars, popups, the wheel, targeting) is positioned
+  // against this box.
   cellPos(side, row, col) {
-    const p = this.project(this.worldBase(side, row, col));
+    const p = this.worldBase(side, row, col);
     return { x: p.x - CELL_W / 2, y: p.y - CELL_H };
   }
 
   unitPos(u) {
-    const p = this.project(this.unit3DPos(u));
+    const p = this.unit2DPos(u);
     return { x: p.x - CELL_W / 2, y: p.y - CELL_H };
   }
 
@@ -1167,7 +819,7 @@ export class BattleScene {
 
   /**
    * What an action should look like: which way the caster's own body moves
-   * (see unit3DPos's attackAnim handling) and, if it reaches at range,
+   * (see unit2DPos's attackAnim handling) and, if it reaches at range,
    * what its bolt looks like in flight (see spawnProjectile/ELEMENT_FX).
    * `reach >= 9` is this game's own shorthand for "hits from anywhere" (see
    * the how-to-play text), which is exactly the set of things that should
@@ -1351,21 +1003,15 @@ export class BattleScene {
   // --- draw ----------------------------------------------------------------
   draw(scr) {
     const b = this.battle;
-    this.render3D();
-    // Tilt-shift the backdrop: sharp across the whole band any character
-    // can stand in (enemy back rank down to party back rank), blurred
-    // above it (the sky/horizon strip) and in the thin foreground margin
-    // below the party's own back rank. Never blurs a character — only the
-    // scenery around them — so nothing gameplay-relevant gets harder to
-    // read; see Screen.tiltShift.
-    scr.tiltShift(this.canvas3D, 35, 218, 2.5);
-
+    this.drawBackdrop(scr);
     this.drawGrid(scr, 'enemy');
     this.drawGrid(scr, 'party');
 
-    // units, back column first so front overlaps
+    // units, back column first so front overlaps; sprite then overlay per
+    // unit so a front-column character's art and HP bar both sit on top of
+    // whoever's standing behind them, not just the art.
     const all = [...b.enemies, ...b.party].sort((a, z) => z.grid.col - a.grid.col);
-    for (const u of all) this.drawUnit(scr, u);
+    for (const u of all) { this.drawSprite(scr, u); this.drawUnit(scr, u); }
 
     this.drawProjectiles(scr);
     this.fxp.draw(scr);
@@ -1437,9 +1083,9 @@ export class BattleScene {
       scr.textCenter('!', p.x + CELL_W / 2 - 4, p.y - 10, PAL.red, { size: 12 });
     }
 
-    // the sprite itself is a 3D billboard now (see syncBillboards) — this
-    // function only draws the 2D overlays (HP, status, popups, glows) at
-    // that same billboard's projected screen position.
+    // the sprite itself is drawn separately (see drawSprite, called just
+    // before this) — this function only draws the 2D overlays (HP, status,
+    // popups, glows) at that same unit's screen position.
 
     if (this.state === 'victoryPose' && u.alive && this.leveledUids.has(u.uid)) {
       const pulse = 0.5 + 0.5 * Math.sin(this.t * 12);
