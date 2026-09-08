@@ -28,7 +28,7 @@ import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
 // Flat 2D layout: the party stands on the right, the enemy on the left, each
 // side's own column 0 (front rank) facing the other across the middle of the
 // screen. A side's four rows stack straight down the screen — the Octopath
-// line-up the row-based turn economy (battle.js's rowSlots/switchRow) is
+// line-up the row-based turn economy (battle.js's rowSlots/swapTurn) is
 // built around — with column 0 drawn a little further in (toward the
 // middle) than column 1, so front/back still reads without any depth or
 // perspective trick.
@@ -633,21 +633,28 @@ export class BattleScene {
     const ch = this.actor.ref;
     const skills = usableSkills(ch);
     // A single row, left to right in the order a player reaches for them
-    // most: Attack first, Character last since it's the one command that
-    // hands the turn to someone else instead of using it.
-    this.cmdWheel.setItems([
+    // most: Attack first, Act As last since it's the one command that
+    // hands the turn to someone else instead of using it. Tame/Build only
+    // ever appear for the specific character whose own job grants them
+    // (and only while there's something to use them on) — Job passives
+    // brought into battle only ever fire off their own owner's turn, so a
+    // greyed-out button on everyone else's turn was never accurate; left
+    // out entirely instead of shown disabled.
+    const items = [
       { id: 'attack', label: 'Attack', icon: 'sword', pos: [0, 0] },
       { id: 'skill', label: 'Arts', icon: 'book', pos: [1, 0], disabled: skills.length === 0 },
       { id: 'defend', label: 'Guard', icon: 'shield', pos: [2, 0] },
       { id: 'item', label: 'Item', icon: 'bag', pos: [3, 0], disabled: this.g.usableInBattle().length === 0 },
       { id: 'flee', label: 'Flee', icon: 'boot', pos: [4, 0], disabled: this.battle.isBoss },
-      { id: 'switch', label: 'Switch', icon: 'party', pos: [5, 0], disabled: !this.battle.readySwapPool(this.actor).length },
-      { id: 'character', label: 'Act As', icon: 'party', pos: [6, 0], disabled: !this.battle.readySwapPool(this.actor).length },
-      { id: 'tame', label: 'Tame', icon: 'paw', pos: [7, 0],
-        disabled: !this.g.hasJob('tamer') || !this.battle.livingEnemies().some((e) => e.def.tame) },
-      { id: 'build', label: 'Build', icon: 'turret', pos: [8, 0],
-        disabled: !this.g.hasJob('artificer') || this.battle.turretBuilt },
-    ], { defaultId: 'attack' });
+      { id: 'character', label: 'Act As', icon: 'party', pos: [5, 0], disabled: !this.battle.readySwapPool(this.actor).length },
+    ];
+    if (ch.jobId === 'tamer' && this.battle.livingEnemies().some((e) => e.def.tame)) {
+      items.push({ id: 'tame', label: 'Tame', icon: 'paw', pos: [items.length, 0] });
+    }
+    if (ch.jobId === 'artificer' && !this.battle.turretBuilt) {
+      items.push({ id: 'build', label: 'Build', icon: 'turret', pos: [items.length, 0] });
+    }
+    this.cmdWheel.setItems(items, { defaultId: 'attack' });
     this.state = 'command';
   }
 
@@ -677,13 +684,6 @@ export class BattleScene {
           label: getItem(s.id).name, id: s.id, note: `x${s.count}`,
         })));
         this.state = 'item';
-      } else if (id === 'switch') {
-        if (this.battle.switchRow(this.actor)) {
-          this.flushLog();
-          this.openCommand();
-        } else {
-          sfx.error();
-        }
       } else if (id === 'character') {
         this.openCharacterPick();
       } else if (id === 'defend') {
@@ -1209,7 +1209,7 @@ export class BattleScene {
       scr.bar(x + 4, y + 11, colW - 8, 3, ratio, u.alive ? hpColor(ratio) : PAL.grey);
     });
 
-    scr.textCenter(picking ? 'Z act as · X back' : 'Switch is free · one action per row', dx + dw / 2, dy + dh - 9, PAL.textFaint);
+    scr.textCenter(picking ? 'Z act as · X back' : 'One action per row', dx + dw / 2, dy + dh - 9, PAL.textFaint);
   }
 
   /**

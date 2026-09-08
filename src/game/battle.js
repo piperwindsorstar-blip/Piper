@@ -3,8 +3,8 @@
 //
 //  ROWS
 //    Four rows down each side, two columns (front / back). Each ROW acts
-//    once per round. The two characters in a row may switch places for
-//    free before that row spends its action.
+//    once per round; Act As lets the row's other character spend that
+//    action instead of whoever's turn it actually is.
 //
 //  GRID & REACH (the Lufia: The Legend Returns idea)
 //    A unit's EFFECTIVE COLUMN is its column minus the frontmost column
@@ -421,18 +421,6 @@ export class Battle {
     if (target.grid.row !== slot.u.grid.row || target.side !== slot.u.side) return null;
     slot.u = target;
     return this.current();
-  }
-
-  /** Free front/back swap inside a row. Does not spend the row's action. */
-  switchRow(unit) {
-    const other = this.readySwapPool(unit)[0];
-    if (!other) return false;
-    const col = unit.grid.col;
-    unit.grid.col = other.grid.col;
-    other.grid.col = col;
-    this.say(`${this.label(unit)} switches with ${this.label(other)}.`);
-    this.fx.push({ type: 'switch', uid: unit.uid, other: other.uid });
-    return true;
   }
 
   /** Advance to the next actor, ticking statuses and rebuilding the order. */
