@@ -9,7 +9,8 @@
 
 export { make, shade, mix, clearCache as clearSpriteCache } from './pixel.js';
 export {
-  actorSprite, actorPortraitSprite, npcSprite, npcPortraitSprite, AW, AH, PW, PH, NW, NH, NPW, NPH,
+  actorSprite, actorPortraitSprite, npcSprite, npcPortraitSprite,
+  AW, AH, PW, PH, NW, NH, NPW, NPH, SPRITE_WORLD_W, SPRITE_WORLD_H,
 } from './actor.js';
 export { monsterSprite, MW, MH } from './monsters.js';
 export { tileSprite, TILE_NAMES, TILE_DRAW, TS } from './tiles.js';

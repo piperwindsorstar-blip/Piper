@@ -5,7 +5,7 @@
 import { PAL, W, H } from '../../engine/screen.js';
 import { plateImage, plateKeyForMap } from '../../engine/plates.js';
 import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
-import { tileSprite, actorSprite, npcSprite, TS } from '../../engine/sprites.js';
+import { tileSprite, actorSprite, npcSprite, TS, SPRITE_WORLD_W, SPRITE_WORLD_H } from '../../engine/sprites.js';
 import { groundSprite, massSprite, hasMass, isOutdoor } from '../../engine/terrain.js';
 import { buildingSprite, hasStructure, isStructure } from '../../engine/building.js';
 import { citySprite, pitstopSprite, CITY_W, CITY_H, PITSTOP_W, PITSTOP_H } from '../../engine/townmarker.js';
@@ -358,16 +358,23 @@ export class FieldScene {
       const { world, w, h } = this.billboardFor(cv, pixelX, pixelY);
       let b = this.fieldBillboards.get(key);
       if (!b) {
-        const tex = new THREE.CanvasTexture(cv);
-        // Nearest magnification keeps the sprite crisp at native size.
-        // Nearest-filtered mipmaps for minification: plain nearest with no
-        // mipmaps aliases into shimmer when a sprite renders smaller than
-        // native size, and linear-filtered mipmaps fix that but blur the
-        // pixel art ("squishy") — nearest mipmaps avoid both, same as the
-        // battle scene's billboards.
+        // actorSprite's canvas is baked at 144x192 (AW/AH — see actor.js,
+        // sized for battle's much bigger portraits) but this billboard only
+        // ever displays at the 36x48 SPRITE_WORLD footprint, a flat 4x
+        // minification the GPU can only cover with mipmaps — which, on
+        // high-contrast pixel art, box-average whole regions toward grey and
+        // read as exactly the "faded" look this was chased for. dsCanvas
+        // below does that resize once in 2D with nearest-neighbour instead,
+        // so the uploaded texture already matches the billboard's screen
+        // size and never gets minified (or, for the smaller NW/NH npc
+        // canvas, magnified) by the GPU at all.
+        const dsCanvas = document.createElement('canvas');
+        dsCanvas.width = SPRITE_WORLD_W;
+        dsCanvas.height = SPRITE_WORLD_H;
+        const tex = new THREE.CanvasTexture(dsCanvas);
         tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestMipmapNearestFilter;
-        tex.generateMipmaps = true;
+        tex.minFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
         tex.colorSpace = THREE.SRGBColorSpace;
         // See battle.js's billboard material for why this is 0.04, not 0.5:
         // sprites bake in a faint contact shadow and antialiased edges that
@@ -382,12 +389,14 @@ export class FieldScene {
         const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide });
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
         this.scene3D.add(mesh);
-        b = { mesh, tex, canvas: null };
+        b = { mesh, tex, dsCanvas, dsCtx: dsCanvas.getContext('2d'), canvas: null };
         this.fieldBillboards.set(key, b);
       }
       if (b.canvas !== cv) {
         b.canvas = cv;
-        b.tex.image = cv;
+        b.dsCtx.imageSmoothingEnabled = false;
+        b.dsCtx.clearRect(0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
+        b.dsCtx.drawImage(cv, 0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
         b.tex.needsUpdate = true;
         b.mesh.scale.set(w, h, 1);
       }
