@@ -727,7 +727,7 @@ export class MenuScene {
   // --- items -----------------------------------------------------------------
   drawItems(scr) {
     scr.text('ITEMS', IX, TOP + 10, PAL.accent);
-    scr.textRight(`${this.g.inventory.length} / ${this.g.carryLimit()} stacks`, IX + IW, TOP + 10, PAL.textDim);
+    scr.textRight(`${this.g.inventory.length} stacks`, IX + IW, TOP + 10, PAL.textDim);
     scr.rect(IX, TOP + 22, IW, 1, PAL.line);
     this.list.x = IX + 12; this.list.y = TOP + 32;
     this.list.cellW = CW + 4; this.list.rows = 12; this.list.cellH = 13;

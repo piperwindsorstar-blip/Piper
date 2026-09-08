@@ -17,7 +17,6 @@ import { saveGame, loadGame } from '../engine/save.js';
 export const STARTING_PARTY = 4;
 export const MAX_PARTY = 9;
 export const MAX_ROSTER = 24;
-export const BASE_CARRY = 30;
 
 export class GameState {
   constructor() {
@@ -126,18 +125,14 @@ export class GameState {
   }
 
   // --- inventory -----------------------------------------------------------
-  carryLimit() {
-    const prov = this.party
-      .filter((c) => c.jobId === 'provisioner')
-      .reduce((m, c) => Math.max(m, jobRank(c)), 0);
-    return BASE_CARRY + prov * 10;
-  }
-
+  // No carry limit — the pack holds as many distinct stacks as the party
+  // ever picks up. addItem() always succeeds; nothing needs to check its
+  // return value for "pack full" anymore, but it still returns true for
+  // callers that pre-date this and haven't been cleaned up.
   addItem(id, count = 1) {
     getItem(id);
     const slot = this.inventory.find((i) => i.id === id);
     if (slot) { slot.count += count; return true; }
-    if (this.inventory.length >= this.carryLimit()) return false;
     this.inventory.push({ id, count });
     return true;
   }
@@ -188,7 +183,11 @@ export class GameState {
     const prov = this.party
       .filter((c) => c.jobId === 'provisioner')
       .reduce((m, c) => Math.max(m, jobRank(c)), 0);
-    const perHead = Math.round(base * (prov ? 0.8 : 1));
+    // Used to be a flat 20% off from rank 1 on — now it climbs with rank
+    // (4% per rank, the same 20% ceiling at max rank 5) so Deep Pack still
+    // has something to grow into now that the carry limit it also used to
+    // scale is gone entirely.
+    const perHead = Math.round(base * (1 - 0.04 * prov));
     return perHead * this.party.length;
   }
 

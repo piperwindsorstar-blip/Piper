@@ -89,7 +89,7 @@ export const JOBS = [
     blurb: 'Packed for this. Packed for the other thing too.',
     bonus: { vit: 2, hp: 8, lck: 1 },
     field: { id: 'restock', name: 'Restock', text: 'Convert spare gold into consumables anywhere, at a small markup.' },
-    passive: { id: 'deeppack', text: 'Party carry limit +10 stacks per rank. Inns cost 20% less.' },
+    passive: { id: 'deeppack', text: 'Inns cost 4% less per rank, up to 20% at max rank.' },
     likes: ['earth', 'nature'],
   }),
   J({
