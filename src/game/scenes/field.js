@@ -372,7 +372,14 @@ export class FieldScene {
         // See battle.js's billboard material for why this is 0.04, not 0.5:
         // sprites bake in a faint contact shadow and antialiased edges that
         // a 0.5 cutoff was discarding outright.
-        const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide });
+        // Unlit (Basic, not Lambert): a billboard's normal always faces the
+        // fixed camera direction, so sun/rim/ambient's N·L never reaches 1
+        // and the sprite reads permanently washed-out regardless of time of
+        // day — the same fading battle.js's old billboards had. Night/dusk
+        // mood is already carried by the 2D grade/vignette pass draw() lays
+        // over the whole blitted frame (see render3D's doc comment), so the
+        // sprite doesn't need its own light to darken by.
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide });
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
         this.scene3D.add(mesh);
         b = { mesh, tex, canvas: null };
@@ -422,8 +429,10 @@ export class FieldScene {
 
   /** Re-bakes the ground texture, syncs billboards and renders the arena to
    *  the offscreen canvas; draw() blits the result in as this frame's
-   *  backdrop. Lighting follows `look` so night/rain/indoor darkening still
-   *  reads on the 3D scene the same way it tinted the flat 2D one. */
+   *  backdrop. Lighting follows `look`, darkening the ground plane at night
+   *  — the player/NPC billboards are unlit (see syncFieldBillboards) and get
+   *  their own night/dusk darkening from draw()'s 2D grade/vignette pass
+   *  over the whole blitted frame instead. */
   render3D() {
     this.renderWorldTexture();
     this.syncFieldBillboards();
