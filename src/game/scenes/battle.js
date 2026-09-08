@@ -15,7 +15,7 @@ import { actorPortraitSprite } from '../../engine/actor.js';
 import { Particles } from '../../engine/particles.js';
 import { Battle, PHASE, autoPartyAction } from '../battle.js';
 import { stats, usableSkills, awardExp, refreshPromotion, skillElement } from '../character.js';
-import { getSkill, STATUS } from '../../data/skills.js';
+import { getSkill, STATUS, skillEffectText } from '../../data/skills.js';
 import { getItem } from '../../data/items.js';
 import { getEnemy } from '../../data/enemies.js';
 import { ELEMENT_BY_ID } from '../../data/elements.js';
@@ -1725,7 +1725,10 @@ export class BattleScene {
           const k = getSkill(this.listMenu.current.id);
           scr.text(k.name, bx, 100, PAL.accent);
           scr.rect(bx, 110, bw, 1, PAL.line);
-          scr.textWrap(k.blurb ?? '', bx, 118, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
+          // Mechanics over flavour here — there's a decision to make right now,
+          // and no room for both in this panel (see menu.js's Arts page for
+          // the flavour blurb alongside the same effect text, out of battle).
+          scr.textWrap(skillEffectText(k) || k.blurb || '', bx, 118, bw, PAL.textDim, { lineHeight: 11, maxLines: 3 });
           const el = k.element === 'attuned' ? this.actor.ref.elementId : k.element;
           scr.text(`reach ${k.range}`, bx, 156, PAL.text);
           scr.text(k.target, bx + 76, 156, PAL.text);

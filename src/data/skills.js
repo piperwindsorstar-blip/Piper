@@ -13,6 +13,8 @@
 //    target — 'one' | 'row' | 'col' | 'all' | 'self' | 'ally' | 'allies' | 'random'
 // ============================================================================
 
+import { ELEMENT_BY_ID } from './elements.js';
+
 export const STATUS = {
   poison:   { name: 'Poison',   kind: 'bad',  turns: 5, blurb: 'Loses 8% max HP each turn.' },
   burn:     { name: 'Burn',     kind: 'bad',  turns: 4, blurb: 'Loses 6% max HP each turn; -15% STR.' },
@@ -93,7 +95,12 @@ export const SKILLS = [
   // --- Bulwark Arts --------------------------------------------------------
   s('guardstance', 'Guard Stance', 'guard', 1, 0, 'buff', 0, 'self', 0, { status: 'protect', blurb: 'Roots. Waits.' }),
   s('cover', 'Cover', 'guard', 4, 4, 'buff', 0, 'ally', 9, { grants: 'covered', blurb: 'Takes the hit meant for someone smaller.' }),
-  s('taunt', 'Taunt', 'guard', 7, 4, 'debuff', 0, 'all', 9, { grants: 'taunted', blurb: 'Makes himself the most attractive option in the room.' }),
+  // 'buff'/'self', not 'debuff'/'all': the caster is the one who needs
+  // `taunted` (see battle.js's enemyAction, which quadruples an enemy's
+  // odds of targeting whichever party member already carries it) — the
+  // debuff shape this shipped with instead set the flag on every enemy,
+  // where nothing ever reads it, so Taunt drew aggro from no one.
+  s('taunt', 'Taunt', 'guard', 7, 4, 'buff', 0, 'self', 0, { grants: 'taunted', blurb: 'Makes himself the most attractive option in the room.' }),
   s('shieldbash', 'Shield Bash', 'guard', 10, 6, 'phys', 1.1, 'one', 2, { status: 'paralyze', blurb: 'Blunt argument, immediate conclusion.' }),
   s('ironwall', 'Iron Wall', 'guard', 15, 12, 'buff', 0, 'allies', 0, { status: 'protect', blurb: 'The whole line hardens at once.' }),
   s('unyielding', 'Unyielding', 'guard', 21, 18, 'buff', 0, 'allies', 0, { status: 'barrier', blurb: 'One free mistake, for everyone.' }),
@@ -131,12 +138,16 @@ export const SKILLS = [
   s('assassinate', 'Assassinate', 'shadow', 22, 24, 'phys', 2.2, 'one', 2, { instantChance: 0.15, blurb: 'Sometimes the fight simply ends.' }),
 
   // --- Larceny -------------------------------------------------------------
-  s('steal', 'Steal', 'steal', 1, 0, 'special', 0, 'one', 2, { blurb: 'Takes an item. Takes it now.' }),
+  s('steal', 'Steal', 'steal', 1, 0, 'special', 0, 'one', 2,
+    { blurb: 'Takes an item. Takes it now.', effect: "Chance to steal an item (better with Luck)." }),
   s('mug', 'Mug', 'steal', 6, 4, 'phys', 1.1, 'one', 2, { steals: true, blurb: 'Both halves of the transaction.' }),
   s('goldtoss', 'Gold Toss', 'steal', 10, 0, 'phys', 1.0, 'all', 9, { goldCost: 60, blurb: 'Damage proportional to money thrown.' }),
-  s('pilfer', 'Pilfer Gold', 'steal', 13, 4, 'special', 0, 'one', 2, { blurb: 'They were not using it.' }),
-  s('escape', 'Escape Artist', 'steal', 17, 6, 'special', 0, 'allies', 0, { blurb: 'Guarantees the next flee attempt.' }),
-  s('grandtheft', 'Grand Theft', 'steal', 23, 18, 'special', 0, 'one', 2, { rare: true, blurb: 'Goes for the thing they were not going to drop.' }),
+  s('pilfer', 'Pilfer Gold', 'steal', 13, 4, 'special', 0, 'one', 2,
+    { blurb: 'They were not using it.', effect: "Steals gold, paid out after the battle." }),
+  s('escape', 'Escape Artist', 'steal', 17, 6, 'special', 0, 'allies', 0,
+    { blurb: 'Guarantees the next flee attempt.', effect: "Guarantees the next escape attempt." }),
+  s('grandtheft', 'Grand Theft', 'steal', 23, 18, 'special', 0, 'one', 2,
+    { rare: true, blurb: 'Goes for the thing they were not going to drop.', effect: "Steals from the target's rarer drops." }),
 
   // --- Marksmanship --------------------------------------------------------
   s('aimshot', 'Aimed Shot', 'bow', 1, 0, 'phys', 1.35, 'one', 9, { ip: 10, blurb: 'Slower. Lands.' }),
@@ -173,10 +184,18 @@ export const SKILLS = [
   // --- Fortune -------------------------------------------------------------
   s('coinflip', 'Coin Flip', 'luck', 1, 0, 'phys', 2.2, 'one', 9, { missChance: 0.5, blurb: 'Doubles up or does nothing at all.' }),
   s('wildswing', 'Wild Swing', 'luck', 5, 0, 'phys', 1.2, 'random', 2, { hits: 3, blurb: 'Hits three things. Possibly friends.' }),
-  s('jackpot', 'Jackpot', 'luck', 9, 10, 'special', 0, 'all', 9, { blurb: 'A random effect from a very long table.' }),
+  s('jackpot', 'Jackpot', 'luck', 9, 10, 'special', 0, 'all', 9, {
+    blurb: 'A random effect from a very long table.',
+    effect: 'Rolls one of five outcomes: damage to every foe, a full party heal, confusing every '
+      + 'foe, hasting the party, or backfiring on the caster.',
+  }),
   s('luckycharm', 'Lucky Charm', 'luck', 13, 8, 'buff', 0, 'allies', 0, { grants: 'lucky', blurb: 'Everyone crits a little more for a while.' }),
   s('allin', 'All In', 'luck', 18, 0, 'phys', 3.4, 'one', 9, { hpCost: 0.4, missChance: 0.3, blurb: 'The correct play, roughly a third of the time.' }),
-  s('fatesdice', 'Fate\'s Dice', 'luck', 24, 30, 'special', 0, 'all', 9, { blurb: 'Rerolls the battle. Nobody is sure how.' }),
+  s('fatesdice', 'Fate\'s Dice', 'luck', 24, 30, 'special', 0, 'all', 9, {
+    blurb: 'Rerolls the battle. Nobody is sure how.',
+    effect: 'Every combatant still standing, ally or enemy, independently rolls a heal, a hit of '
+      + 'damage, or a random buff.',
+  }),
 
   // --- Illusion ------------------------------------------------------------
   s('blindmist', 'Blinding Mist', 'illusion', 1, 6, 'debuff', 0, 'row', 9, { status: 'blind', blurb: 'Removes the argument\'s visual aid.' }),
@@ -198,7 +217,10 @@ export const SKILLS = [
   s('drain', 'Drain', 'dark', 1, 6, 'mag', 1.1, 'one', 9, { element: 'dark', drain: 0.5, blurb: 'Moves health from column to column.' }),
   s('wither', 'Wither', 'dark', 5, 8, 'debuff', 0, 'one', 9, { status: 'curse', element: 'dark', blurb: 'Ages the target three bad years.' }),
   s('bonespear', 'Bone Spear', 'dark', 9, 12, 'mag', 1.8, 'col', 9, { element: 'dark', blurb: 'Comes up through the floor.' }),
-  s('raise', 'Raise Thrall', 'dark', 13, 18, 'special', 0, 'self', 0, { summonsThrall: true, blurb: 'Fills the fifth grid cell with something obedient.' }),
+  s('raise', 'Raise Thrall', 'dark', 13, 18, 'special', 0, 'self', 0, {
+    summonsThrall: true, blurb: 'Fills the fifth grid cell with something obedient.',
+    effect: "Summons a temporary undead ally for the rest of the battle.",
+  }),
   s('darkpact', 'Dark Pact', 'dark', 18, 0, 'buff', 0, 'self', 0, { hpCost: 0.3, status: 'focus', blurb: 'Trades HP for a very large idea.' }),
   s('oblivion', 'Oblivion', 'dark', 25, 36, 'mag', 2.8, 'all', 9, { element: 'dark', status: 'doom', blurb: 'Sets a clock on everyone opposite.' }),
 
@@ -230,7 +252,10 @@ export const SKILLS = [
   s('houndcall', 'Hound Call', 'beast', 1, 6, 'phys', 1.3, 'one', 9, { element: 'nature', blurb: 'Something arrives at a run.' }),
   s('packtactics', 'Pack Tactics', 'beast', 6, 8, 'buff', 0, 'allies', 0, { status: 'might', blurb: 'Fight like there are more of you.' }),
   s('maul', 'Maul', 'beast', 10, 12, 'phys', 1.9, 'one', 3, { status: 'fear', blurb: 'Teeth, and the memory of teeth.' }),
-  s('bondbeast', 'Bond Beast', 'beast', 14, 16, 'special', 0, 'self', 0, { summonsThrall: true, blurb: 'The companion joins the grid properly.' }),
+  s('bondbeast', 'Bond Beast', 'beast', 14, 16, 'special', 0, 'self', 0, {
+    summonsThrall: true, blurb: 'The companion joins the grid properly.',
+    effect: "Summons the Tamer's bonded companion for the rest of the battle.",
+  }),
   s('stampede', 'Stampede', 'beast', 19, 22, 'phys', 1.6, 'all', 9, { element: 'earth', blurb: 'Nothing personal. Simply a lot of hooves.' }),
   s('primalroar', 'Primal Roar', 'beast', 25, 30, 'debuff', 0, 'all', 9, { status: 'fear', sunder: 0.35, blurb: 'Older than language, and clearer.' }),
 
@@ -307,4 +332,74 @@ export function skillsForSchools(schools, level) {
 
 export function skillsInSchool(school) {
   return SKILLS.filter((k) => k.school === school).sort((a, b) => a.lv - b.lv);
+}
+
+const STAT_NAME = { str: 'Strength', agi: 'Agility', vit: 'Vitality', int: 'Intelligence', spr: 'Spirit', lck: 'Luck' };
+
+// `grants` sets an ad-hoc turn-counter status (see battle.js's buff/debuff
+// cases) rather than one of the named entries in STATUS above — only the
+// ones battle.js actually reads back somewhere get a line here. Cover's
+// 'covered', Riposte's 'counter' and Spirit Link's 'linked' are left out on
+// purpose: they're set, but nothing in battle.js ever checks for them, so
+// describing an effect would be describing one the skill doesn't have.
+const GRANT_TEXT = {
+  taunted: 'Enemies are far more likely to target the caster.',
+  vanished: 'Rarely targeted until the caster next acts.',
+  lucky: '+15% critical chance.',
+};
+
+/** A short, mechanically-accurate line built straight from a skill's own
+ *  fields — the same ones Battle.useSkill itself reads — so the Arts page
+ *  and the in-battle skill panel can say what a skill actually DOES
+ *  alongside its flavour blurb, without hand-authoring one description per
+ *  skill (154 of them) and risking it drifting out of sync with the real
+ *  mechanics. `skill.effect` overrides this outright, for the handful of
+ *  `special`-type skills too particular to describe generically. */
+export function skillEffectText(skill) {
+  if (skill.effect) return skill.effect;
+  const parts = [];
+  switch (skill.type) {
+    case 'phys':
+    case 'mag': {
+      if (skill.element === 'attuned') parts.push("Matches the caster's own element.");
+      else if (skill.element && skill.element !== 'none') parts.push(`${ELEMENT_BY_ID[skill.element]?.name} damage.`);
+      if (skill.adaptive) parts.push("Targets the foe's weakest element.");
+      if (skill.hits > 1) parts.push(`Hits ${skill.hits} times.`);
+      if (skill.useStat) parts.push(`Powered by ${STAT_NAME[skill.useStat] ?? skill.useStat}, not the usual stat.`);
+      if (skill.undeadBonus) parts.push(`×${skill.undeadBonus} vs. the undead.`);
+      if (skill.pierce) parts.push(`Ignores ${Math.round(skill.pierce * 100)}% of target defence.`);
+      if (skill.execute) parts.push("Hits harder the lower the target's HP.");
+      if (skill.crit) parts.push(`+${Math.round(skill.crit * 100)}% critical chance.`);
+      if (skill.missChance) parts.push(`${Math.round(skill.missChance * 100)}% chance to simply miss.`);
+      if (skill.drain) parts.push(`Heals the caster ${Math.round(skill.drain * 100)}% of damage dealt.`);
+      if (skill.status) parts.push(`60% chance to inflict ${STATUS[skill.status]?.name}.`);
+      if (skill.sunder) parts.push("Lowers the target's defence.");
+      if (skill.knockback) parts.push('Pushes the target back a rank.');
+      if (skill.instantChance) parts.push(`${Math.round(skill.instantChance * 100)}% chance to defeat a non-boss instantly.`);
+      if (skill.steals) parts.push('Also attempts to steal an item.');
+      if (skill.delay) parts.push('A delayed two-part strike.');
+      break;
+    }
+    case 'heal': {
+      if (skill.revives) parts.push(`Revives a fallen ally${skill.power ? ` at ${Math.round(skill.power * 100)}% HP` : ''}.`);
+      else if (skill.power > 0) parts.push("Restores HP, scaled by the caster's Magic.");
+      if (skill.cleanse) parts.push('Cures every harmful status.');
+      break;
+    }
+    case 'buff': {
+      for (const st of [skill.status, skill.extraStatus].filter(Boolean)) parts.push(`Grants ${STATUS[st]?.name}.`);
+      if (skill.grants && GRANT_TEXT[skill.grants]) parts.push(GRANT_TEXT[skill.grants]);
+      if (skill.shiftsElement) parts.push("Target's element becomes the caster's own.");
+      break;
+    }
+    case 'debuff': {
+      if (skill.dispel) parts.push("Strips the target's buffs.");
+      if (skill.status) parts.push(`Chance to inflict ${STATUS[skill.status]?.name} (less vs. bosses).`);
+      if (skill.sunder) parts.push("Lowers the target's defence.");
+      if (skill.reveals) parts.push("Reveals every enemy's exact HP.");
+      break;
+    }
+  }
+  if (skill.hpCost) parts.push(`Costs the caster ${Math.round(skill.hpCost * 100)}% max HP.`);
+  return parts.join(' ');
 }

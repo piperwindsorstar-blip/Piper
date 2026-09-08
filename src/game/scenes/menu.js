@@ -22,7 +22,7 @@ import { ENEMIES, FAMILIES } from '../../data/enemies.js';
 import { ACHIEVEMENTS } from '../../data/achievements.js';
 import { RECIPES, canCraft, craft } from '../../data/recipes.js';
 import { MAPS, REGIONS } from '../../data/maps.js';
-import { SCHOOLS, STATUS, getSkill } from '../../data/skills.js';
+import { SCHOOLS, STATUS, getSkill, skillEffectText } from '../../data/skills.js';
 import { getItem, SLOTS as EQUIP_SLOTS, canEquip, WEAPON_TYPES, ARMOR_CLASSES } from '../../data/items.js';
 import { MAX_JOB_RANK, RANK_TITLES } from '../../data/jobs.js';
 import { formatTime } from '../state.js';
@@ -692,14 +692,16 @@ export class MenuScene {
     const k = targeting ? this.pendingArt : this.list.current?.skill;
     if (k) {
       const x = this.colX(1) + 8;
-      scr.panel(x - 8, top + 12, CW + 8, 128, { alpha: 0.9 });
+      scr.panel(x - 8, top + 12, CW + 8, 144, { alpha: 0.9 });
       scr.text(k.name, x, top + 22, PAL.accent);
       scr.rect(x, top + 34, CW - 8, 1, PAL.line);
-      scr.textWrap(k.blurb ?? '', x, top + 42, CW - 8, PAL.textDim, { lineHeight: 11, maxLines: 3 });
-      let yy = top + 82;
-      statRow(scr, 'School', SCHOOLS[k.school].name, x, yy, CW - 8); yy += 12;
-      statRow(scr, 'Cost', k.ip ? `${k.ip} IP` : `${k.mp} MP`, x, yy, CW - 8); yy += 12;
-      statRow(scr, 'Reach', k.range, x, yy, CW - 8); yy += 12;
+      let yy = top + 42;
+      yy += scr.textWrap(k.blurb ?? '', x, yy, CW - 8, PAL.textDim, { lineHeight: 11, maxLines: 1 }) * 11 + 3;
+      const effect = skillEffectText(k);
+      if (effect) yy += scr.textWrap(effect, x, yy, CW - 8, PAL.cyan, { lineHeight: 11, maxLines: 2 }) * 11 + 3;
+      statRow(scr, 'School', SCHOOLS[k.school].name, x, yy, CW - 8); yy += 11;
+      statRow(scr, 'Cost', k.ip ? `${k.ip} IP` : `${k.mp} MP`, x, yy, CW - 8); yy += 11;
+      statRow(scr, 'Reach', k.range, x, yy, CW - 8); yy += 11;
       statRow(scr, 'Targets', k.target, x, yy, CW - 8);
     }
 
