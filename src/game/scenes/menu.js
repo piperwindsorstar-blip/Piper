@@ -838,7 +838,7 @@ export class MenuScene {
       statRow(scr, 'Reach', s.reach, x, TOP + 66, CW - 16);
       statRow(scr, 'Position', `row ${occ.grid.row}, col ${occ.grid.col}`, x, TOP + 78, CW - 16);
       scr.textWrap(s.reach >= 9 ? 'Reaches any cell from anywhere. Safe at the back.'
-        : s.reach === 3 ? 'Reaches one column deeper than a sword does.'
+        : s.reach >= 3 ? 'Reaches one column deeper than a sword does.'
           : 'Strikes the enemy front rank only.',
         x, TOP + 96, CW - 16, PAL.textDim, { lineHeight: 11, maxLines: 3 });
     } else {
@@ -853,8 +853,13 @@ export class MenuScene {
     if (!bench.length) {
       scr.text('Nobody waiting.', x, by + 20, PAL.textFaint);
     } else {
-      bench.slice(0, 4).forEach((ch, i) => {
-        const sel = this.formSide === 'bench' && this.benchCursor === i;
+      // Windowed around the cursor rather than always the first 4 — with a
+      // bench bigger than 4 (easy with MAX_ROSTER=24), the cursor could
+      // move past what's drawn, leaving the current pick invisible.
+      const winStart = Math.max(0, Math.min(this.benchCursor - 3, bench.length - 4));
+      bench.slice(winStart, winStart + 4).forEach((ch, i) => {
+        const idx = winStart + i;
+        const sel = this.formSide === 'bench' && this.benchCursor === idx;
         const y = by + 20 + i * 13;
         if (sel) scr.rect(x - 4, y - 2, CW - 8, 12, 'rgba(120,155,235,0.16)');
         const heldByThis = this.formPicked === ch;
@@ -1207,7 +1212,7 @@ export class MenuScene {
     if (input.tap('confirm') && this.list.current?.r) {
       const r = this.list.current.r;
       if (!canCraft(this.g, r)) { sfx.error(); return; }
-      craft(this.g, r);
+      if (!craft(this.g, r)) { sfx.error(); this.say('The pack is full.'); return; }
       sfx.confirm();
       this.say(`Forged ${getItem(r.itemId).name}.`);
       this.refreshCraft();
@@ -1425,7 +1430,14 @@ function previewDelta(ch, slot, item, before) {
   ch.equip[slot] = item.id;
   const after = stats(ch);
   ch.equip[slot] = prev;
-  const key = slot === 'weapon' ? 'power' : 'armor';
-  const d = after[key] - before[key];
+  let d;
+  if (slot === 'weapon') d = after.power - before.power;
+  else if (slot === 'body' || slot === 'head' || slot === 'offhand') d = after.armor - before.armor;
+  else {
+    // Accessories and runes usually grant raw stats (STR/AGI/…) rather than
+    // armour directly — an armour-only comparison read every one of them as
+    // "no change" even when it was a real upgrade (or downgrade).
+    d = STAT_KEYS.reduce((sum, k) => sum + ((after[k] ?? 0) - (before[k] ?? 0)), 0);
+  }
   return d === 0 ? '=' : d > 0 ? `+${d}` : `${d}`;
 }

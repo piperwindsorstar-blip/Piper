@@ -250,11 +250,15 @@ export class Battle {
     this.result = null;
     this.fx = [];         // visual effects queued for the renderer
 
-    // party passives that fire at battle start
-    for (const u of this.party) {
-      if (!u.isPC) continue;
-      const bard = u.ref.jobId === 'bard' ? jobRank(u.ref) : 0;
-      if (bard) u.ip = Math.min(100, u.ip + 8 * bard);
+    // party passives that fire at battle start — Bard's morale is "the
+    // PARTY starts with +8 IP per rank," not just the Bard's own unit, so
+    // the bonus is found once and then applied to every party member.
+    const bardRanks = this.party.filter((u) => u.isPC && u.ref.jobId === 'bard').map((u) => jobRank(u.ref));
+    const bardRank = bardRanks.length ? Math.max(...bardRanks) : 0;
+    if (bardRank) {
+      for (const u of this.party) {
+        if (u.isPC) u.ip = Math.min(100, u.ip + 8 * bardRank);
+      }
     }
     if (this.preemptive) this.say('The party strikes first!');
     else if (this.ambushed) this.say('Ambushed from behind!');
@@ -510,7 +514,13 @@ export class Battle {
     let mult = 1;
     const atkEl = opts.element ?? 'none';
     if (atkEl !== 'none') {
-      const nullify = (actor.isPC && actor.ref.equip.accessory === 'voidring') || atkEl === 'void';
+      // Void Ring nullifies the wheel "for and against its wearer" (see its
+      // item text) — the attacker's own copy was checked here, but an
+      // attack LANDING on a wearer never was, so the ring only ever worked
+      // going out, never coming in.
+      const nullify = (actor.isPC && actor.ref.equip.accessory === 'voidring')
+        || (target.isPC && target.ref.equip.accessory === 'voidring')
+        || atkEl === 'void';
       mult = nullify ? 1 : elementMultiplier(atkEl, target.element);
       // a defender's RACE resists on top of the elemental wheel
       if (!nullify && target.isPC) mult *= elementalResistance(target.ref, atkEl);
@@ -913,7 +923,7 @@ export class Battle {
             }
             if (skill.sunder) t.statuses.sundered = 3;
             if (skill.knockback && t.grid.col < 2) t.grid.col++;
-            if (skill.instantChance && this.rng.chance(skill.instantChance) && !t.def?.boss) {
+            if (skill.instantChance && this.rng.chance(skill.instantChance) && t.def?.ai !== 'boss') {
               t.hp = 0;
               this.say(`  ${this.label(t)} is struck down instantly.`);
             }
@@ -963,7 +973,7 @@ export class Battle {
             this.say(`  ${this.label(t)} is stripped of its blessings.`);
           }
           if (skill.status) {
-            const resist = t.def?.boss ? 0.35 : 0.75;
+            const resist = t.def?.ai === 'boss' ? 0.35 : 0.75;
             if (this.rng.chance(resist)) {
               if (this.applyTo(t, skill.status)) this.say(`  ${this.label(t)}: ${STATUS[skill.status].name}.`);
             } else this.say(`  ${this.label(t)} resists.`);

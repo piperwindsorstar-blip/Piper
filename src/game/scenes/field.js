@@ -996,7 +996,10 @@ export class FieldScene {
     const fallen = this.g.party.filter((c) => c.hp <= 0);
     const rank = this.g.jobRankOf('pilgrim');
     const base = fallen.reduce((s, c) => s + c.level * 22, 0);
-    return Math.max(10, Math.round(base * (1 - 0.3 * rank / 5 * 5 / 5) * (rank ? 1 - 0.3 * rank / 5 : 1)));
+    // Pilgrim's grace: "costs 30% less per rank" — linear to 30% off at
+    // max rank (5). This used to multiply the same discount factor by
+    // itself, squaring it into a ~51% discount at max rank instead.
+    return Math.max(10, Math.round(base * (1 - 0.3 * rank / 5)));
   }
 
   updateChoice(input) {

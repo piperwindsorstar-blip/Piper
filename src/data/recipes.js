@@ -41,7 +41,11 @@ export function canCraft(g, recipe) {
 /** Mutates state only — spends gold and materials, grants the item. Callers
  *  show their own confirmation around this. */
 export function craft(g, recipe) {
+  // Try adding the forged item BEFORE spending anything: addItem fails when
+  // the pack is full and this isn't an existing stack, and gold/materials
+  // used to be spent regardless, silently destroying them for nothing.
+  if (!g.addItem(recipe.itemId)) return false;
   g.spend(recipe.gold);
   for (const m of recipe.materials) g.removeItem(m.id, m.count);
-  g.addItem(recipe.itemId);
+  return true;
 }

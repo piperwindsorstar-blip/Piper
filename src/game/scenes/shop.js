@@ -8,7 +8,7 @@ import { Menu, header, statRow } from '../../engine/ui.js';
 import { SHOPS } from '../../data/maps.js';
 import { getItem, canEquip, isEquippable, ITEM_IDS } from '../../data/items.js';
 import { getSkill } from '../../data/skills.js';
-import { CLASSES } from '../../data/classes.js';
+import { CLASSES, STAT_KEYS } from '../../data/classes.js';
 import { RACE_BY_ID } from '../../data/races.js';
 import { actorSprite } from '../../engine/sprites.js';
 import { stats, jobRank } from '../character.js';
@@ -216,8 +216,14 @@ export class ShopScene {
           ch.equip[slot] = it.id;
           const after = stats(ch);
           ch.equip[slot] = prev;
-          const key = slot === 'weapon' ? 'power' : 'armor';
-          const d = after[key] - before[key];
+          // Accessories/runes usually grant raw stats rather than armour —
+          // an armour-only comparison read every one of those as "no
+          // change" even on a real upgrade (see menu.js's previewDelta,
+          // which this mirrors).
+          let d;
+          if (slot === 'weapon') d = after.power - before.power;
+          else if (slot === 'body' || slot === 'head' || slot === 'offhand') d = after.armor - before.armor;
+          else d = STAT_KEYS.reduce((sum, k) => sum + ((after[k] ?? 0) - (before[k] ?? 0)), 0);
           note = d === 0 ? 'no change' : d > 0 ? `+${d}` : `${d}`;
           col = d > 0 ? PAL.green : d === 0 ? PAL.textDim : PAL.red;
         }
