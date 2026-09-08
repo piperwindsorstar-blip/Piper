@@ -1,5 +1,6 @@
 // ============================================================================
-//  BATTLE SCENE — draws the two facing 3x3 grids and drives Battle.
+//  BATTLE SCENE — draws the two facing 4-row x 2-column lines and drives
+//  Battle.
 //
 //  The party sits on the right with column 0 nearest the enemy; the enemy sits
 //  on the left with its column 0 nearest the party. Cells are drawn as a real
@@ -28,41 +29,24 @@ import * as THREE from '../../vendor/three.module.js';
 import { makeDoll, lookFromActor, DOLL_H } from '../../engine/doll.js';
 // HD-2D finish lives in Screen.applyPost (every scene).
 
-// The arena, in world units (roughly metres) rather than pixels: lanes run
-// along X, rank depth runs along Z, enemies sit at negative Z and the party
-// at positive Z so both front ranks (col 0) face each other across Z=0 —
-// the exact same "front ranks meet at a seam" arrangement the 2D grid used,
-// now with actual depth instead of a screen-space illusion of it.
-// Rank spacing must clear a standing sprite's own height (ACTOR_WORLD_H) or
-// consecutive ranks' billboards overlap on screen — the original 1.05 was
-// smaller than the 1.7-tall sprite standing on it, which is what made a
-// full 9-member party read as one overlapping cluster per lane instead of
-// three distinct ranks. Both numbers grew together later (1.7->2.3, 1.9->2.15)
-// to make individual characters actually readable at this resolution — a
-// full 9-a-side lineup still clears cleanly with room to spare (see the
-// party-stress screenshots from that pass), so there was slack to spend.
-// FRONT_Z started at 0.5 (a 1.0 gap), then 1.1 (2.2) — still read as too
-// close. 1.8 puts a real 3.6-unit no-man's-land between the front ranks,
-// over two sprite-widths, without touching rank spacing within a side.
-// LANE_STEP went 2.0 -> 2.6 -> 4.4 for the same kind of reason on the other
-// axis: each party member's HP/MP/IP card leans sideways out of its own
-// cell (see drawUnit), and the middle lane's card reaching out to the side
-// was landing on top of the *next lane's own sprite*, not just its card —
-// a 2.6 step still put adjacent lanes' actual sprite art (~26px wide)
-// closer together than one card's width plus the gap it leans out from.
-// 4.4 gives every card room to end before the next lane's sprite begins;
-// see drawUnit's cardW for the matching width that was solved alongside it.
-// Octopath line: party on +X (right), enemies on -X (left).
-// Rows stack along Z (a vertical line on screen). Col 0 is toward the
-// center, col 1 is the back rank (further right for the party).
-const PARTY_X = 4.35, ENEMY_X = -4.15, COL_X_STEP = 1.35, ROW_Z_STEP = 1.28;
+// The arena, in world units (roughly metres) rather than pixels: the party
+// stands on +X (right), the enemy on -X (left), each side's own column 0
+// (front rank) facing the other across X=0. A side's four rows stack along
+// Z, which this camera's tilt reads on screen as a vertical line running
+// top to bottom — the Octopath-style line-up the row-based turn economy
+// (battle.js's rowSlots/switchRow) is built around.
+// ACTOR_WORLD_H is the on-screen size that actually makes a stamp-sprite
+// portrait read as a person rather than a coloured smudge; ROW_Z_STEP is
+// tall enough to clear that height with a visible gap between rows, so a
+// full 4-row, 2-column line-up (8 characters) never overlaps itself.
+const PARTY_X = 4.35, ENEMY_X = -4.15, COL_X_STEP = 1.35, ROW_Z_STEP = 2.4;
 // Each back rank stands a literal step higher than the one in front of it —
 // real 3D risers (see setup3D), not just a further/smaller billboard. Under
 // this orthographic camera, depth alone was reading fairly flat; an actual
 // stepped platform with a lit top and a shaded riser face gives the eye
 // something with real volume to confirm the depth with.
 const RISER_STEP_H = 0.32;
-const ACTOR_WORLD_H = 1.15;  // smaller so an 8-person 2×4 line clears
+const ACTOR_WORLD_H = 2.1;
 // Orthographic, not perspective, and for the same reason field.js's camera
 // is: fitting every rank of a full 9-a-side battle (front to back, both
 // sides) is a wide enough world-Z range that a perspective camera close
@@ -72,14 +56,9 @@ const ACTOR_WORLD_H = 1.15;  // smaller so an 8-person 2×4 line clears
 // tighter on screen), it just doesn't also scale them down.
 const CAM_POS = { x: 0, y: 6, z: 5 };
 const CAM_LOOK = { x: 0, y: 0, z: 0 };
-// Widened twice for more room between the two formations (WORLD_FRONT_Z),
-// which also pushed the party's own back rank (C) further toward the
-// camera each time — by 1.8 it was landing at screen y~229 out of 270,
-// leaving less headroom below it than the message strip needs. Zoomed out
-// (5.6 -> 6.6) to buy that room back everywhere at once, rather than
-// shaving the strip down to fit a shrinking gap. Every other screen-space
-// constant below (ground/horizon plane placement) is re-solved for this
-// same view size — see their own comments for the numbers.
+// Half-height of the orthographic frustum — how much of the arena's Z/Y
+// extent is actually in view. Every other screen-space constant below
+// (ground/horizon plane placement) is solved for this same view size.
 const BATTLE_VIEW_SIZE = 6.6;
 
 // CELL_W/CELL_H are the nominal 2D box every overlay (HP bars, popups, the
@@ -584,7 +563,12 @@ export class BattleScene {
    *  both as the base for unit3DPos and directly by cellPos for the empty-
    *  cell ground markers. */
   worldBase(side, row, col) {
-    const z = (row - 1.5) * ROW_Z_STEP;
+    // Biased above the geometric centre (2.1, not the (rows-1)/2 = 1.5 that
+    // would centre the 4-row line in the frustum) so the bottom row's feet
+    // clear the command dock (drawDock) instead of landing underneath it —
+    // the dock is tall enough now that a perfectly centred line-up doesn't
+    // leave it room.
+    const z = (row - 2.1) * ROW_Z_STEP;
     if (side === 'party') {
       return { x: PARTY_X + col * COL_X_STEP, y: RISER_STEP_H + col * 0.06, z };
     }
