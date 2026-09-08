@@ -25,11 +25,10 @@ import { getJob } from '../../data/jobs.js';
 import { rng } from '../../engine/rng.js';
 import { STORY } from '../../data/story.js';
 import { sfx, playMusic } from '../../engine/audio.js';
-import { getPartyHudVisible, togglePartyHudVisible } from '../../engine/settings.js';
 import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 import { QUESTS, questState, questReady, questAvailable, startQuest, completeQuest } from '../../data/quests.js';
+import { getPartyHudVisible, togglePartyHudVisible } from '../../engine/settings.js';
 import * as THREE from '../../vendor/three.module.js';
-import { makeDoll, lookFromActor } from '../../engine/doll.js';
 // HD-2D finish lives in Screen.applyPost (every scene).
 
 const STEP_TIME = 0.15;
@@ -207,7 +206,6 @@ export class FieldScene {
     this.scene3D.add(this.groundMesh);
 
     this.fieldBillboards = new Map();
-    this.fieldDolls = new Map();
   }
 
   /** Releases the offscreen WebGL context and every GPU resource this scene
@@ -399,37 +397,23 @@ export class FieldScene {
       ? (Math.floor(this.animT * 8) % 2 === 0 ? 1 : 4)
       : (Math.floor(this.animT * 1.35) % 2 === 0 ? 0 : 5);
     const pp = this.playerPixel();
+    const face = this.g.facing === 'left' ? 'left' : 'right';
+    const hero = actorSprite({
+      classId: leader.classId,
+      raceId: leader.raceId,
+      elementId: leader.elementId,
+      skin: leader.skin,
+      hair: leader.hair,
+      frame,
+      face,
+      equip: leader.equip,
+    });
     // billboardFor/worldFromScreenPx treat the pixel it's given as the
     // sprite's own centre, but pp.x (like n.x*TS above) is the tile's LEFT
     // edge — every field billboard rendered a half-tile west of the tile it
     // was actually standing on, invisible over open ground but glaring next
     // to a door or chest baked into the ground texture at its true position.
-    const { world } = this.billboardFor(null, pp.x + TS / 2, pp.y + TS);
-    const look = lookFromActor(leader);
-    const dollKey = `${look.raceId}|${look.classId}|${look.skin}|${look.hair}`;
-    let doll = this.fieldDolls.get('player');
-    if (!doll || doll.lookKey !== dollKey) {
-      if (doll) { this.scene3D.remove(doll.root); doll.dispose(); }
-      doll = makeDoll(THREE, look);
-      doll.lookKey = dollKey;
-      // The doll's raw geometry (see doll.js) stands nearly the full 2 world
-      // units its footprint is allotted, but the flat sprite it replaces
-      // only ever drew the actual character across about 63% of its 48px
-      // canvas (animeface.js's own bodyTop/ground constants: (45.5-15)/48)
-      // — the rest was headroom and a shadow margin. Left unscaled, the doll
-      // reads noticeably taller than the sprite ever did and its head pokes
-      // up into door frames and signs that used to clear it. Scaling down
-      // to match keeps its feet at the same tile position.
-      doll.root.scale.setScalar(0.65);
-      this.scene3D.add(doll.root);
-      this.fieldDolls.set('player', doll);
-    }
-    doll.pose(frame, this.g.facing);
-    // Face the camera like Octopath, with a little yaw from walking direction
-    // so the 3D volume reads. Pixel overlay is the 480×270 nearest blit.
-    const side = this.g.facing === 'left' ? 0.35 : this.g.facing === 'right' ? -0.35 : 0;
-    doll.place(world.x, 0, world.z, this.billboardYaw + side);
-    seen.add('player');
+    sync('player', hero, pp.x + TS / 2, pp.y + TS);
 
     for (const [key, b] of this.fieldBillboards) {
       if (!seen.has(key)) { this.scene3D.remove(b.mesh); this.fieldBillboards.delete(key); }

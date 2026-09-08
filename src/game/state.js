@@ -9,13 +9,11 @@ import { STAT_KEYS } from '../data/classes.js';
 import { getJob } from '../data/jobs.js';
 import { saveGame, loadGame } from '../engine/save.js';
 
-// The battle grid is a 3x3 of cells per side, so 9 is a real ceiling, not an
-// arbitrary one — MAX_PARTY is exactly how many can ever be on the field at
-// once. STARTING_PARTY is a separate, smaller number: what creation itself
-// builds, same as Dragon Quest III's starting four. Recruiting past four
-// fills the rest of the grid before anyone needs to bench a teammate.
+// Octopath-style line: 4 rows down the right side, 2 columns (front / back).
+export const GRID_ROWS = 4;
+export const GRID_COLS = 2;
 export const STARTING_PARTY = 4;
-export const MAX_PARTY = 9;
+export const MAX_PARTY = 8;
 export const MAX_ROSTER = 24;
 
 export class GameState {
@@ -95,13 +93,11 @@ export class GameState {
    */
   autoFormation() {
     const taken = new Set();
-    const rowOrder = [1, 0, 2];
+    const rowOrder = [0, 1, 2, 3];
     for (const ch of this.party) {
       const s = stats(ch);
-      const want = s.reach >= 9 ? 2 : s.reach === 3 ? 1 : 0;
-      // try the preferred column first, then drift outward
-      const cols = [want, ...[0, 1, 2].filter((c) => c !== want)
-        .sort((a, b) => Math.abs(a - want) - Math.abs(b - want))];
+      const want = s.reach >= 9 ? 1 : 0;
+      const cols = [want, want === 0 ? 1 : 0];
       let placed = false;
       for (const col of cols) {
         for (const row of rowOrder) {

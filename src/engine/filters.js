@@ -14,7 +14,7 @@
 //  12 races × 12 classes stay cheap because nobody authors the product.
 // ============================================================================
 
-export const FILTER_VER = 2;
+export const FILTER_VER = 8;
 
 export const RACE_FILTER = {
   human:     { wash: '#e8b890', alpha: 0.00, rim: '#fff1c8', scale: 1.00 },

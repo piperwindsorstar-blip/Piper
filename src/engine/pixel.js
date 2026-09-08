@@ -273,7 +273,8 @@ export function upscale(base, sc, key) {
   cv.width = Math.round(base.width * sc);
   cv.height = Math.round(base.height * sc);
   const c = cv.getContext('2d');
-  c.imageSmoothingEnabled = false;
+  c.imageSmoothingEnabled = true;
+  if (c.imageSmoothingQuality) c.imageSmoothingQuality = 'high';
   c.drawImage(base, 0, 0, cv.width, cv.height);
   cache.set(key, cv);
   return cv;

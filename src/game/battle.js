@@ -1,13 +1,15 @@
 // ============================================================================
-//  BATTLE — turn-based, fought on two facing 3x3 grids.
+//  BATTLE — turn-based, two facing 4×2 lines (Octopath-style).
+//
+//  ROWS
+//    Four rows down each side, two columns (front / back). Each ROW acts
+//    once per round. The two characters in a row may switch places for
+//    free before that row spends its action.
 //
 //  GRID & REACH (the Lufia: The Legend Returns idea)
-//    Each side occupies a 3x3 grid. A unit's EFFECTIVE COLUMN is its column
-//    minus the frontmost column its side still occupies — so when the enemy
-//    front rank dies, the back rank becomes reachable. Distance between two
-//    units is effCol(attacker) + effCol(target) + 1, and a weapon or skill
-//    whose reach is lower than that distance either cannot be chosen (skills)
-//    or lands at half power (basic attacks).
+//    A unit's EFFECTIVE COLUMN is its column minus the frontmost column
+//    its side still occupies — so when the front rank dies, the back rank
+//    becomes reachable. Distance is effCol(attacker) + effCol(target) + 1.
 //
 //  IP (also Lufia)
 //    Every unit carries an IP gauge, 0-100, filled by dealing and taking
@@ -195,7 +197,7 @@ export class Battle {
       const def = getEnemy(opts.companion.enemyId);
       const free = (r, c) => !this.party.some((u) => u.grid.row === r && u.grid.col === c);
       let spot = free(1, 1) ? { row: 1, col: 1 } : null;
-      for (let r = 0; !spot && r < 3; r++) for (let c = 0; !spot && c < 3; c++) if (free(r, c)) spot = { row: r, col: c };
+      for (let r = 0; !spot && r < 4; r++) for (let c = 0; !spot && c < 2; c++) if (free(r, c)) spot = { row: r, col: c };
       if (spot) {
         this.companion = companionUnit(def, opts.companion.rank, spot.row, spot.col);
         this.party.push(this.companion);
@@ -220,7 +222,7 @@ export class Battle {
     this.enemies = this.formation.cells.map((c, i) => {
       const def = getEnemy(c.id);
       counts[c.id] = (counts[c.id] ?? 0) + 1;
-      return enemyUnit(def, c.row, c.col, i, scale);
+      return enemyUnit(def, Math.min(3, c.row ?? 1), Math.min(1, c.col ?? 0), i, scale);
     });
     for (const id of Object.keys(counts)) {
       if (counts[id] < 2) continue;
@@ -235,13 +237,9 @@ export class Battle {
     this.turnIndex = 0;
     this.turretBuilt = false;
     this.turretDamage = 0;
-    // Lane discipline: only one unit per formation column (a "1", "2" or "3"
-    // lane running front-to-back through rows A/B/C) may act per round.
-    // Keyed by lane -> the uid that used it, not just a Set, so a boss's own
-    // follow-up turn (see buildOrder's `extra` slot) can still fire — it's
-    // the same unit re-using its own lane, not a second unit crowding in.
-    // Reset each time buildOrder() opens a new round, so the lock never
-    // outlives the round it was earned in.
+    // Row discipline: only one action per formation row per round.
+    // Keyed by row -> the uid that spent it, so a boss follow-up can
+    // re-use its own row. Reset in buildOrder().
     this.actedLane = { party: new Map(), enemy: new Map() };
     this.escapeAttempts = 0;
     this.guaranteedEscape = false;
@@ -341,46 +339,62 @@ export class Battle {
   }
 
   // --- turn order ----------------------------------------------------------
+  /** Living units on `side` that can spend a row's action. */
+  rowMembers(side, row) {
+    const list = side === 'party' ? this.party : this.enemies;
+    return list.filter((u) => u.alive && u.grid.row === row && canAct(u.ref ?? u));
+  }
+
+  /** One order slot per occupied row. Speed is the fastest person in the row. */
+  rowSlots(side) {
+    const list = side === 'party' ? this.livingParty() : this.livingEnemies();
+    const rows = [...new Set(list.map((u) => u.grid.row))].sort((a, b) => a - b);
+    const slots = [];
+    for (const row of rows) {
+      const actors = this.rowMembers(side, row);
+      if (!actors.length) continue;
+      const front = [...actors].sort((a, b) => a.grid.col - b.grid.col)[0];
+      let sp = Math.max(...actors.map((a) => {
+        let s = a.stats().speed;
+        if (a.statuses?.haste) s *= 1.5;
+        if (a.statuses?.slow) s *= 0.6;
+        return s;
+      }));
+      const extraBoss = actors.some((a) => a.def?.ai === 'boss');
+      slots.push({ u: front, extra: false, side, row, sp: sp + this.rng.float(0, sp * 0.15) });
+      if (extraBoss) {
+        const boss = actors.find((a) => a.def?.ai === 'boss') ?? front;
+        slots.push({ u: boss, extra: true, side, row, sp: sp * 0.55 + this.rng.float(0, sp * 0.08) });
+      }
+    }
+    return slots;
+  }
+
   buildOrder() {
-    const all = this.units().filter((u) => u.alive);
-    // A boss is a whole encounter on its own, so it takes two turns a round.
-    // The second is a FOLLOW-UP: single-target only, so a boss cannot open a
-    // round by casting a party-wide nuke twice.
-    const withBosses = all.flatMap((u) => (u.def?.ai === 'boss'
-      ? [{ u, extra: false }, { u, extra: true }]
-      : [{ u, extra: false }]));
-    this.order = withBosses
-      .map(({ u, extra }) => {
-        let sp = u.stats().speed;
-        if (u.statuses.haste) sp *= 1.5;
-        if (u.statuses.slow) sp *= 0.6;
-        return { u, extra, sp: sp + this.rng.float(0, sp * 0.15) };
-      })
+    this.order = [...this.rowSlots('party'), ...this.rowSlots('enemy')]
       .sort((a, b) => b.sp - a.sp);
     if (this.preemptive && this.round === 0) {
-      this.order = [
-        ...this.party.filter((u) => u.alive).map((u) => ({ u, extra: false })),
-        ...this.enemies.filter((u) => u.alive).map((u) => ({ u, extra: false })),
-      ];
+      this.order = [...this.rowSlots('party'), ...this.rowSlots('enemy')];
     }
     if (this.ambushed && this.round === 0) {
-      this.order = [
-        ...this.enemies.filter((u) => u.alive).map((u) => ({ u, extra: false })),
-        ...this.party.filter((u) => u.alive).map((u) => ({ u, extra: false })),
-      ];
+      this.order = [...this.rowSlots('enemy'), ...this.rowSlots('party')];
     }
     this.turnIndex = 0;
     this.round++;
     this.actedLane = { party: new Map(), enemy: new Map() };
   }
 
-  /** The formation column (1/2/3, drawn left-to-right) a unit's lane belongs
-   *  to — labelled rows A/B/C run front-to-back within it. */
+  /** Formation row — the unit of turn economy. */
   lane(unit) { return unit.grid.row; }
 
   current() {
     while (this.turnIndex < this.order.length) {
-      const { u } = this.order[this.turnIndex];
+      const slot = this.order[this.turnIndex];
+      let u = slot.u;
+      if (!u.alive || !canAct(u.ref ?? u)) {
+        const alt = this.rowMembers(u.side, this.lane(u))[0];
+        if (alt) { slot.u = alt; u = alt; }
+      }
       const lockedBy = this.actedLane[u.side].get(this.lane(u));
       if (u.alive && canAct(u.ref ?? u) && (lockedBy === undefined || lockedBy === u.uid)) return u;
       this.turnIndex++;
@@ -393,26 +407,32 @@ export class Battle {
     return !!this.order[this.turnIndex]?.extra;
   }
 
-  /** Other party members who haven't acted yet this round and could act
-   *  right now if it were their turn — the pool the battle scene's
-   *  Character command lets the player hand the current turn to instead. */
+  /** The other living actor in this row — they may take the row's action. */
   readySwapPool(exclude) {
-    return this.order
-      .slice(this.turnIndex + 1)
-      .map((e) => e.u)
-      .filter((u) => u.side === 'party' && u.isPC && u.uid !== exclude.uid && u.alive && canAct(u.ref)
-        && (this.actedLane.party.get(this.lane(u)) ?? u.uid) === u.uid);
+    if (!exclude) return [];
+    return this.rowMembers(exclude.side, exclude.grid.row)
+      .filter((u) => u.uid !== exclude.uid);
   }
 
-  /** Hands the current turn to `target` instead of whoever's up next by
-   *  speed — swaps their slots in the turn order so `target` acts now and
-   *  the unit whose turn this actually was keeps its own turn later this
-   *  round, in `target`'s old spot. */
+  /** Hand this row's action to the partner without spending the row. */
   swapTurn(target) {
-    const j = this.order.findIndex((e) => e.u.uid === target.uid);
-    if (j <= this.turnIndex) return null;
-    [this.order[this.turnIndex], this.order[j]] = [this.order[j], this.order[this.turnIndex]];
+    const slot = this.order[this.turnIndex];
+    if (!slot || !target) return null;
+    if (target.grid.row !== slot.u.grid.row || target.side !== slot.u.side) return null;
+    slot.u = target;
     return this.current();
+  }
+
+  /** Free front/back swap inside a row. Does not spend the row's action. */
+  switchRow(unit) {
+    const other = this.readySwapPool(unit)[0];
+    if (!other) return false;
+    const col = unit.grid.col;
+    unit.grid.col = other.grid.col;
+    other.grid.col = col;
+    this.say(`${this.label(unit)} switches with ${this.label(other)}.`);
+    this.fx.push({ type: 'switch', uid: unit.uid, other: other.uid });
+    return true;
   }
 
   /** Advance to the next actor, ticking statuses and rebuilding the order. */
@@ -507,6 +527,7 @@ export class Battle {
     if (target.statuses.sleep || target.statuses.stone || target.statuses.paralyze) evade = 0;
     if (opts.missChance && this.rng.chance(opts.missChance)) return { damage: 0, missed: true, mult: 1, crit: false };
     if (!magical && this.rng.chance(Math.min(0.75, evade))) return { damage: 0, missed: true, mult: 1, crit: false };
+
     // Stone: "cannot act; immune to damage." Evade was already forced to 0
     // above — a stoned target can always be targeted, it just never takes
     // anything from it, the same way Sleep/Paralyze aren't dodges either.
@@ -923,14 +944,14 @@ export class Battle {
         this.goldSpent += skill.goldCost;
       }
     }
+    // The return swing doesn't award exp a second time for what is, start
+    // to finish, a single use of the Art — but still gets the power benefit
+    // of whatever the rune's level actually is by the time it lands.
     // A rune's granted Art grows sharper with use, the same "rank rises with
     // use, not level" idea a Job's own field ability already runs on:
     // casting it awards the rune experience, and its current level scales
     // the Art's own power for this cast. `power` replaces every `skill.power`
     // read below rather than mutating the shared skill definition itself.
-    // The return swing doesn't award exp a second time for what is, start
-    // to finish, a single use of the Art — but still gets the power benefit
-    // of whatever the rune's level actually is by the time it lands.
     const runeId = actor.isPC ? actor.ref.equip.rune : null;
     const grantsThis = !!runeId && getItem(runeId).grantSkill === skill.id;
     if (grantsThis && !isReturnSwing) awardRuneExp(actor.ref, runeId, 10);
@@ -946,6 +967,7 @@ export class Battle {
     if (!isReturnSwing) this.say(`${this.label(actor)} uses ${skill.name}!`);
     const element = actor.isPC ? skillElement(actor.ref, skill)
       : (skill.element === 'attuned' ? actor.element : skill.element);
+    const targets = this.expandTargets(actor, skill, chosen);
 
     // The wind-up half of Jump / Dragon Dive: lock in a target now and
     // leave without resolving anything — see the isReturnSwing branch above
@@ -962,8 +984,6 @@ export class Battle {
       this.say(`${this.label(actor)} leaps out of reach.`);
       return;
     }
-
-    const targets = this.expandTargets(actor, skill, chosen);
 
     switch (skill.type) {
       case 'phys':
@@ -997,7 +1017,7 @@ export class Battle {
             }
             if (skill.sunder) t.statuses.sundered = 3;
             // Dwarven rooted: "immune to knockback and forced repositioning."
-            if (skill.knockback && !trait(t, 'rooted') && t.grid.col < 2) t.grid.col++;
+            if (skill.knockback && !trait(t, 'rooted') && t.grid.col < 1) t.grid.col++;
             if (skill.instantChance && this.rng.chance(skill.instantChance) && t.def?.ai !== 'boss') {
               t.hp = 0;
               this.say(`  ${this.label(t)} is struck down instantly.`);
@@ -1014,7 +1034,7 @@ export class Battle {
           const free = (r, c) => !(r === actor.grid.row && c === actor.grid.col)
             && !roster.some((u) => u.alive && u.grid.row === r && u.grid.col === c);
           let spot = null;
-          for (let c = 2; !spot && c >= 0; c--) for (let r = 0; !spot && r < 3; r++) if (free(r, c)) spot = { row: r, col: c };
+          for (let c = 1; !spot && c >= 0; c--) for (let r = 0; !spot && r < 4; r++) if (free(r, c)) spot = { row: r, col: c };
           if (spot) {
             actor.grid.row = spot.row;
             actor.grid.col = spot.col;
@@ -1051,9 +1071,9 @@ export class Battle {
             this.say(`  ${this.label(t)}: ${STATUS[st].name}.`);
           }
           if (skill.grants) { t.statuses[skill.grants] = 4; this.say(`  ${this.label(t)}: ${skill.grants}.`); }
+          if (skill.shiftsElement && t.isPC) { t.ref.battleElement = actor.element; }
           if (skill.providesCover) { actor.covering = t.uid; this.say(`  ${this.label(actor)} moves to cover ${this.label(t)}.`); }
           if (skill.linksWith) { actor.linkedWith = t.uid; t.linkedWith = actor.uid; this.say(`  ${this.label(actor)} and ${this.label(t)} are linked.`); }
-          if (skill.shiftsElement && t.isPC) { t.ref.battleElement = actor.element; }
           this.fx.push({ type: 'buff', uid: t.uid });
         }
         break;

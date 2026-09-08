@@ -25,7 +25,7 @@ import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
 import { mix, shade } from '../../engine/pixel.js';
 import * as THREE from '../../vendor/three.module.js';
-import { makeDoll, lookFromActor } from '../../engine/doll.js';
+import { makeDoll, lookFromActor, DOLL_H } from '../../engine/doll.js';
 // HD-2D finish lives in Screen.applyPost (every scene).
 
 // The arena, in world units (roughly metres) rather than pixels: lanes run
@@ -52,14 +52,17 @@ import { makeDoll, lookFromActor } from '../../engine/doll.js';
 // closer together than one card's width plus the gap it leans out from.
 // 4.4 gives every card room to end before the next lane's sprite begins;
 // see drawUnit's cardW for the matching width that was solved alongside it.
-const WORLD_LANE_STEP = 4.4, WORLD_RANK_STEP = 2.15, WORLD_FRONT_Z = 1.8;
+// Octopath line: party on +X (right), enemies on -X (left).
+// Rows stack along Z (a vertical line on screen). Col 0 is toward the
+// center, col 1 is the back rank (further right for the party).
+const PARTY_X = 4.35, ENEMY_X = -4.15, COL_X_STEP = 1.35, ROW_Z_STEP = 1.28;
 // Each back rank stands a literal step higher than the one in front of it —
 // real 3D risers (see setup3D), not just a further/smaller billboard. Under
 // this orthographic camera, depth alone was reading fairly flat; an actual
 // stepped platform with a lit top and a shaded riser face gives the eye
 // something with real volume to confirm the depth with.
 const RISER_STEP_H = 0.32;
-const ACTOR_WORLD_H = 2.3;   // world height of a standard 48px-tall actor sprite
+const ACTOR_WORLD_H = 1.15;  // smaller so an 8-person 2×4 line clears
 // Orthographic, not perspective, and for the same reason field.js's camera
 // is: fitting every rank of a full 9-a-side battle (front to back, both
 // sides) is a wide enough world-Z range that a perspective camera close
@@ -358,22 +361,18 @@ export class BattleScene {
     // still look the same grain size), tinted darker per step via the
     // material's own colour (which multiplies the texture) so the risers
     // read as the ground itself stepping up rather than a different floor.
-    const riserWidth = WORLD_LANE_STEP * 3 + 1.2;
+    const lineDepth = ROW_Z_STEP * 5;
     for (const side of ['enemy', 'party']) {
-      const sign = side === 'enemy' ? -1 : 1;
-      for (let col = 1; col <= 2; col++) {
-        const topY = col * RISER_STEP_H;
-        const z = sign * (WORLD_FRONT_Z + col * WORLD_RANK_STEP);
-        const riserTex = groundTex.clone();
-        riserTex.needsUpdate = true;
-        riserTex.repeat.set(riserWidth, riserWidth);
-        const riser = new THREE.Mesh(
-          new THREE.BoxGeometry(riserWidth, topY, WORLD_RANK_STEP * 1.05),
-          new THREE.MeshLambertMaterial({ map: riserTex, color: shade('#ffffff', -0.12 * col) }),
-        );
-        riser.position.set(0, topY / 2, z);
-        scene.add(riser);
-      }
+      const x = side === 'party' ? PARTY_X + COL_X_STEP * 0.5 : ENEMY_X - COL_X_STEP * 0.5;
+      const riserTex = groundTex.clone();
+      riserTex.needsUpdate = true;
+      riserTex.repeat.set(3.2, lineDepth);
+      const riser = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, RISER_STEP_H, lineDepth),
+        new THREE.MeshLambertMaterial({ map: riserTex, color: shade('#ffffff', side === 'party' ? -0.06 : -0.14) }),
+      );
+      riser.position.set(x, RISER_STEP_H / 2, 0);
+      scene.add(riser);
     }
 
     // A jagged skyline silhouette plus a glowing focal orb, filling the sky
@@ -585,10 +584,11 @@ export class BattleScene {
    *  both as the base for unit3DPos and directly by cellPos for the empty-
    *  cell ground markers. */
   worldBase(side, row, col) {
-    const x = (row - 1) * WORLD_LANE_STEP;
-    const sign = side === 'enemy' ? -1 : 1;
-    const z = sign * (WORLD_FRONT_Z + col * WORLD_RANK_STEP);
-    return { x, y: col * RISER_STEP_H, z };
+    const z = (row - 1.5) * ROW_Z_STEP;
+    if (side === 'party') {
+      return { x: PARTY_X + col * COL_X_STEP, y: RISER_STEP_H + col * 0.06, z };
+    }
+    return { x: ENEMY_X - col * COL_X_STEP, y: col * 0.05, z };
   }
 
   /** A unit's current 3D position (feet/ground point, not its visual centre)
@@ -602,7 +602,7 @@ export class BattleScene {
     if (this.state === 'intro') {
       const k = (this.introT / this.introDur) ** 2;
       const dir = u.side === 'enemy' ? -1 : 1;
-      z += dir * 3.4 * k;
+      x += dir * 2.8 * k;
     }
     if (this.attackAnim && this.attackAnim.uid === u.uid) {
       const a = this.attackAnim;
@@ -614,7 +614,7 @@ export class BattleScene {
           : a.phase === 'strike' ? 1 : Math.max(0, 1 - a.t / ATK_RECOIL);
         y += Math.sin(k * Math.PI) * 0.12;
       } else if (a.foe) {
-        const dir = u.side === 'party' ? -1 : 1;
+        const dir = u.side === 'party' ? -1 : 1; // toward mid-screen on X
         let k = 0;
         if (a.anim === 'draw') {
           // pull back to draw/aim, then ease off again — the shot itself
@@ -622,21 +622,21 @@ export class BattleScene {
           // that would put a bow or a spell in melee range
           if (a.phase === 'windup') k = -(a.t / ATK_WINDUP);
           else if (a.phase === 'strike') k = -(1 - a.t / ATK_STRIKE);
-          z += dir * 0.3 * k;
+          x += dir * 0.3 * k;
         } else if (a.anim === 'cast') {
           // shorter and slower than a melee lunge, with a small rise —
           // channelling a spell forward, not swinging a weapon
           if (a.phase === 'windup') k = -0.2 * (a.t / ATK_WINDUP);
           else if (a.phase === 'strike') k = -0.2 + 1.2 * (a.t / ATK_STRIKE);
           else k = 1 - (a.t / ATK_RECOIL);
-          z += dir * 0.22 * k;
+          x += dir * 0.22 * k;
           y += Math.max(0, k) * 0.08;
         } else {
           // 'lunge' — the original melee weapon-swing motion
           if (a.phase === 'windup') k = -0.35 * (a.t / ATK_WINDUP);
           else if (a.phase === 'strike') k = -0.35 + 1.35 * (a.t / ATK_STRIKE);
           else k = 1 - (a.t / ATK_RECOIL);
-          z += dir * 0.5 * k;
+          x += dir * 0.5 * k;
         }
       }
     }
@@ -683,21 +683,6 @@ export class BattleScene {
     for (const u of this.battle.units()) {
       const isActor = (this.actor?.uid === u.uid && ['command', 'skill', 'item', 'target', 'character'].includes(this.state))
         || this.attackAnim?.uid === u.uid;
-      if (u.isPC) {
-        const look = lookFromActor(u.ref);
-        let d = this.dolls.get(u.uid);
-        if (!d) {
-          d = makeDoll(THREE, look);
-          this.scene3D.add(d.root);
-          this.dolls.set(u.uid, d);
-        }
-        const frame = this.attackAnim?.uid === u.uid ? 3 : (u.alive ? 0 : 2);
-        d.pose(frame);
-        const pos = this.unit3DPos(u);
-        d.place(pos.x, pos.y, pos.z, this.billboardYaw + (u.side === 'party' ? -0.2 : 0.2));
-        d.root.visible = true;
-        continue;
-      }
       const cv = this.spriteFor(u, isActor);
       let b = this.billboards.get(u.uid);
       if (!b) {
@@ -1020,10 +1005,11 @@ export class BattleScene {
       { id: 'defend', label: 'Guard', icon: 'shield', pos: [2, 0] },
       { id: 'item', label: 'Item', icon: 'bag', pos: [3, 0], disabled: this.g.usableInBattle().length === 0 },
       { id: 'flee', label: 'Flee', icon: 'boot', pos: [4, 0], disabled: this.battle.isBoss },
-      { id: 'character', label: 'Character', icon: 'party', pos: [5, 0], disabled: !this.battle.readySwapPool(this.actor).length },
-      { id: 'tame', label: 'Tame', icon: 'paw', pos: [6, 0],
+      { id: 'switch', label: 'Switch', icon: 'party', pos: [5, 0], disabled: !this.battle.readySwapPool(this.actor).length },
+      { id: 'character', label: 'Act As', icon: 'party', pos: [6, 0], disabled: !this.battle.readySwapPool(this.actor).length },
+      { id: 'tame', label: 'Tame', icon: 'paw', pos: [7, 0],
         disabled: !this.g.hasJob('tamer') || !this.battle.livingEnemies().some((e) => e.def.tame) },
-      { id: 'build', label: 'Build', icon: 'turret', pos: [7, 0],
+      { id: 'build', label: 'Build', icon: 'turret', pos: [8, 0],
         disabled: !this.g.hasJob('artificer') || this.battle.turretBuilt },
     ], { defaultId: 'attack' });
     this.state = 'command';
@@ -1055,6 +1041,13 @@ export class BattleScene {
           label: getItem(s.id).name, id: s.id, note: `x${s.count}`,
         })));
         this.state = 'item';
+      } else if (id === 'switch') {
+        if (this.battle.switchRow(this.actor)) {
+          this.flushLog();
+          this.openCommand();
+        } else {
+          sfx.error();
+        }
       } else if (id === 'character') {
         this.openCharacterPick();
       } else if (id === 'defend') {
@@ -1422,8 +1415,8 @@ export class BattleScene {
   }
 
   drawGrid(scr, side) {
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 2; col++) {
         const { x, y } = this.cellPos(side, row, col);
         const front = col === this.battle.frontColumn(side);
         // an oval of shadow marking the cell, brighter on the reachable
@@ -1586,7 +1579,7 @@ export class BattleScene {
       scr.bar(x + 4, y + 11, colW - 8, 3, ratio, u.alive ? hpColor(ratio) : PAL.grey);
     });
 
-    scr.textCenter(picking ? 'Z swap · X back' : 'Z select · X back', dx + dw / 2, dy + dh - 9, PAL.textFaint);
+    scr.textCenter(picking ? 'Z act as · X back' : 'Switch is free · one action per row', dx + dw / 2, dy + dh - 9, PAL.textFaint);
   }
 
   /**

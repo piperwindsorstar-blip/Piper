@@ -17,8 +17,9 @@ import { getRace } from '../data/races.js';
 import { getItem } from '../data/items.js';
 import { paintAnimeBust, paintAnimeBody, pickHairstyle } from './animeface.js';
 import { FILTER_VER, applyRaceFilter, getArmorFilter, getWeaponFilter, getRaceFilter } from './filters.js';
+import { STAMP_GEN, stampsReady } from './bakedStamps.js';
 
-export const AW = 72, AH = 96;      // actor canvas (2× the 36×48 design grid)
+export const AW = 144, AH = 192;    // high-def stamp canvas
 export const PW = 112, PH = 128;    // portrait bust canvas
 export const SPRITE_WORLD_W = 36, SPRITE_WORLD_H = 48; // field billboard footprint
 
@@ -95,7 +96,7 @@ export function actorSprite(o) {
   const skin = L.skins[(o.skin ?? 0) % L.skins.length];
   const hair = L.hairs[(o.hair ?? 0) % L.hairs.length];
   const face = ['left', 'right', 'up', 'down'].includes(o.face) ? o.face : 'right';
-  const key = `act|${FILTER_VER}|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}|${frame}` +
+  const key = `act|${FILTER_VER}|${STAMP_GEN}|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}|${frame}` +
     `|${weaponType}|${weaponElement ?? ''}|${hasShield ? 1 : 0}|${face}`;
 
   return make(key, AW, AH, (P) => {
@@ -115,7 +116,7 @@ export function actorSprite(o) {
       raceId: race.id,
     });
     P.ctx.restore();
-    applyRaceFilter(P.ctx, AW, AH, race.id);
+    if (!stampsReady()) applyRaceFilter(P.ctx, AW, AH, race.id);
 
     if (tier >= 5) {
       P.ctx.save();
@@ -128,7 +129,9 @@ export function actorSprite(o) {
       P.ctx.fillRect(0, 0, AW, AH);
       P.ctx.restore();
     }
-  }, { outline: '#1a1418', ao: 0.22, rim: '#fff1c8', rimAlpha: 0.32 });
+  }, stampsReady()
+    ? { rim: '#fff6dc', rimAlpha: 0.10 }
+    : { outline: '#1a1418', ao: 0.22, rim: '#fff1c8', rimAlpha: 0.32 });
 }
 
 /**
@@ -153,7 +156,7 @@ export function actorPortraitSprite(o) {
 
   const skin = L.skins[(o.skin ?? 0) % L.skins.length];
   const hair = L.hairs[(o.hair ?? 0) % L.hairs.length];
-  const key = `bust|${FILTER_VER}|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}`;
+  const key = `bust|${FILTER_VER}|${STAMP_GEN}|${cls.root}|${tier}|${race.id}|${o.elementId}|${o.skin ?? 0}|${o.hair ?? 0}`;
 
   return make(key, PW, PH, (P) => {
     const build = L.build ?? 1;

@@ -146,9 +146,11 @@ export class Screen {
     this.buf.width = W;
     this.buf.height = H;
     this.ctx = this.buf.getContext('2d');
-    this.ctx.imageSmoothingEnabled = false;
+    this.ctx.imageSmoothingEnabled = true;
+    if (this.ctx.imageSmoothingQuality) this.ctx.imageSmoothingQuality = 'high';
     this.out = canvas.getContext('2d');
-    this.out.imageSmoothingEnabled = false;
+    this.out.imageSmoothingEnabled = true;
+    if (this.out.imageSmoothingQuality) this.out.imageSmoothingQuality = 'high';
 
     // half- and quarter-size buffers for the bloom pass
     this.bloomA = document.createElement('canvas');
@@ -196,7 +198,8 @@ export class Screen {
     this.canvas.height = Math.round(H * this.scale);
     this.canvas.style.width = `${Math.round(W * this.scale)}px`;
     this.canvas.style.height = `${Math.round(H * this.scale)}px`;
-    this.out.imageSmoothingEnabled = false;
+    this.out.imageSmoothingEnabled = true;
+    if (this.out.imageSmoothingQuality) this.out.imageSmoothingQuality = 'high';
   }
 
   // --- post-processing -------------------------------------------------------
@@ -319,7 +322,8 @@ export class Screen {
       oy = Math.round((Math.random() - 0.5) * this.shake);
       this.shake = Math.max(0, this.shake - 0.7);
     }
-    this.out.imageSmoothingEnabled = false;
+    this.out.imageSmoothingEnabled = true;
+    if (this.out.imageSmoothingQuality) this.out.imageSmoothingQuality = 'high';
     this.out.fillStyle = '#000';
     this.out.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.out.drawImage(this.buf,

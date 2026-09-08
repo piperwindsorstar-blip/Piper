@@ -82,20 +82,20 @@ const ATLAS_LIST_Y = TOP + 34, ATLAS_LIST_ROWS = 10;
 // have/need, gold) fills the right, mirroring Equip's own two-column split.
 const CRAFT_LIST_Y = TOP + 34, CRAFT_LIST_ROWS = 10;
 
-/** MP a character pays to cast `skill` outside battle — mirrors
- *  Battle.mpCost's own arcaneblood discount (every heal-type Art is
- *  magical) without needing a Battle instance to ask. */
-function artsMpCost(ch, skill) {
-  if (!skill.mp) return 0;
-  return characterHasTrait(ch, 'arcaneblood') ? Math.max(1, Math.round(skill.mp * 0.85)) : skill.mp;
-}
-
 /** The procedural bust portrait, scaled to fit a box. */
 function drawBust(scr, x, y, w, h, ch, alpha = 1) {
   scr.ctx.save();
   if (alpha !== 1) scr.ctx.globalAlpha = alpha;
   drawFit(scr, x, y, w, h, actorPortraitSprite(ch));
   scr.ctx.restore();
+}
+
+/** MP a character pays to cast `skill` outside battle — mirrors
+ *  Battle.mpCost's own arcaneblood discount (every heal-type Art is
+ *  magical) without needing a Battle instance to ask. */
+function artsMpCost(ch, skill) {
+  if (!skill.mp) return 0;
+  return characterHasTrait(ch, 'arcaneblood') ? Math.max(1, Math.round(skill.mp * 0.85)) : skill.mp;
 }
 
 export class MenuScene {
@@ -152,9 +152,9 @@ export class MenuScene {
       sfx.cancel();
       if (this.mode === 'equipList') { this.mode = 'equip'; return; }
       if (this.mode === 'itemTarget') { this.mode = 'items'; return; }
-      if (this.mode === 'artsTarget') { this.mode = 'arts'; this.who = this.artsCasterIdx; return; }
       if (this.mode === 'transcribeTarget') { this.openTranscribeSkillPick(); return; }
       if (this.mode === 'transcribeSkill') { this.mode = 'jobs'; return; }
+      if (this.mode === 'artsTarget') { this.mode = 'arts'; this.who = this.artsCasterIdx; return; }
       this.mode = 'root';
       return;
     }
@@ -423,8 +423,8 @@ export class MenuScene {
       return;
     }
     const d = input.dir();
-    if (d.y) this.formCursor.row = Math.max(0, Math.min(2, this.formCursor.row + d.y));
-    if (d.x) this.formCursor.col = Math.max(0, Math.min(2, this.formCursor.col + d.x));
+    if (d.y) this.formCursor.row = Math.max(0, Math.min(3, this.formCursor.row + d.y));
+    if (d.x) this.formCursor.col = Math.max(0, Math.min(1, this.formCursor.col + d.x));
     if (input.tap('confirm')) {
       const here = this.g.party.find((c) => c.grid.row === this.formCursor.row && c.grid.col === this.formCursor.col);
       if (this.formPicked) {
@@ -809,12 +809,12 @@ export class MenuScene {
     scr.rect(IX, TOP + 22, IW, 1, PAL.line);
 
     const gridActive = this.formSide !== 'bench';
-    const ox = IX + 30, oy = TOP + 46, cw = 56, chh = 50;
-    for (let c = 0; c < 3; c++) {
-      scr.textCenter(`col ${c}`, ox + c * cw + 24, oy - 12, c === 0 ? PAL.accent : PAL.textFaint);
+    const ox = IX + 30, oy = TOP + 40, cw = 72, chh = 38;
+    for (let c = 0; c < 2; c++) {
+      scr.textCenter(c === 0 ? 'front' : 'back', ox + c * cw + 30, oy - 12, c === 0 ? PAL.accent : PAL.textFaint);
     }
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 3; c++) {
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 2; c++) {
         const x = ox + c * cw, y = oy + r * chh;
         const sel = gridActive && this.formCursor.row === r && this.formCursor.col === c;
         scr.rect(x, y, cw - 6, chh - 6, c === 0 ? 'rgba(40,58,110,0.55)'
