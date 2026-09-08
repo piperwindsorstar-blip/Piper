@@ -335,7 +335,15 @@ export class GameState {
       // total rather than starting back over at zero.
       ch.lp = c.lp ?? d.lp ?? 0;
       ch.equip = { weapon: null, offhand: null, body: null, head: null, accessory: null, rune: null, ...(c.equip ?? {}) };
-      ch.grid = c.grid ?? { row: 1, col: 0 };
+      // A save from before the grid went from 3x3 to 4 rows x 2 cols can
+      // still carry a col of 2 (or, in principle, a row past the new
+      // GRID_ROWS) — off the current grid entirely, which downstream
+      // pixel-position math indexes with no bounds check of its own.
+      const grid = c.grid ?? { row: 1, col: 0 };
+      ch.grid = {
+        row: Number.isFinite(grid.row) ? Math.min(grid.row, GRID_ROWS - 1) : 1,
+        col: Number.isFinite(grid.col) ? Math.min(grid.col, GRID_COLS - 1) : 0,
+      };
       ch.ip = c.ip ?? 0;
       ch.statuses = c.statuses ?? {};
       ch.classHistory = c.classHistory ?? [c.classId];
@@ -352,7 +360,12 @@ export class GameState {
     g.flags = d.flags ?? {};
     g.mapId = d.mapId ?? 'wren';
     g.lastTownId = d.lastTownId ?? (getMap(g.mapId)?.town ? g.mapId : 'wren');
-    g.x = d.x ?? 12; g.y = d.y ?? 18;
+    // Number.isFinite (not just ?? ) because a corrupted or hand-edited save
+    // can carry NaN/Infinity here, which used to silently propagate into the
+    // camera/lighting math and crash createRadialGradient with a non-finite
+    // double partway through a frame.
+    g.x = Number.isFinite(d.x) ? d.x : 12;
+    g.y = Number.isFinite(d.y) ? d.y : 18;
     g.facing = d.facing ?? 'down';
     g.playtime = d.playtime ?? 0;
     g.steps = d.steps ?? 0;

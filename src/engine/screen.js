@@ -521,6 +521,12 @@ export class Screen {
 
   /** An additive radial light. Used for torches, magic and rim lighting. */
   light(x, y, radius, color, intensity = 0.5) {
+    // A caller feeding this a NaN/Infinity position (a corrupted save's
+    // player coordinates, a warp that landed nowhere) used to crash the
+    // whole frame on createRadialGradient rejecting a non-finite double —
+    // for a purely decorative glow, skipping it silently is far better
+    // than taking the game down.
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius)) return;
     const c = this.ctx;
     c.save();
     c.globalCompositeOperation = 'lighter';
@@ -535,6 +541,8 @@ export class Screen {
 
   /** A multiplicative shadow pool — the inverse of light(). */
   shade(x, y, radius, alpha = 0.4) {
+    // Same non-finite guard as light() above, for the same reason.
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius)) return;
     const c = this.ctx;
     c.save();
     const g = c.createRadialGradient(x, y, 0, x, y, radius);

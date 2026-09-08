@@ -1327,7 +1327,11 @@ export class FieldScene {
     const pp = this.playerPixel();
     const lp = this.pixelScreenPos(pp.x + TS / 2, pp.y + TS / 2);
     const lx = Math.round(lp.x), ly = Math.round(lp.y);
-    if (look.dark) {
+    // A non-finite player position (this.g.x/y gone bad — a malformed warp
+    // target is the one way that's happened) used to crash createRadialGradient
+    // outright and take the whole frame down with it; skip the vignette
+    // for that one frame instead; scr.light() below already guards itself.
+    if (look.dark && Number.isFinite(lx) && Number.isFinite(ly)) {
       scr.ctx.save();
       scr.ctx.globalCompositeOperation = 'multiply';
       const g = scr.ctx.createRadialGradient(lx, ly, 20, lx, ly, 150);
