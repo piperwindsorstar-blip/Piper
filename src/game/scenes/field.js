@@ -394,7 +394,19 @@ export class FieldScene {
       }
       if (b.canvas !== cv) {
         b.canvas = cv;
-        b.dsCtx.imageSmoothingEnabled = false;
+        // Nearest-neighbour was tried here first, on the reasoning that any
+        // smoothing at all was what caused the original mipmap fading — but
+        // nearest is a *point* sample: at a 4x reduction it just picks one
+        // texel in 16 and skips the rest, so it under-represents whatever
+        // narrow dark shading and outline pixels don't happen to land on a
+        // sample point, reading as too pale/flat ("could still be darker").
+        // A quality resize properly averages all 16 source texels into each
+        // output pixel, keeping the source art's actual light/dark balance;
+        // it's done here once per sprite-frame change rather than by the
+        // GPU on every draw, so it doesn't compound across mip levels or
+        // combine with directional lighting the way the original bug did.
+        b.dsCtx.imageSmoothingEnabled = true;
+        b.dsCtx.imageSmoothingQuality = 'high';
         b.dsCtx.clearRect(0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
         b.dsCtx.drawImage(cv, 0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
         b.tex.needsUpdate = true;
