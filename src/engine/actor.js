@@ -17,7 +17,7 @@ import { getRace } from '../data/races.js';
 import { getItem } from '../data/items.js';
 import { paintAnimeBust, paintAnimeBody, pickHairstyle } from './animeface.js';
 import { FILTER_VER, applyRaceFilter, getArmorFilter, getWeaponFilter, getRaceFilter } from './filters.js';
-import { STAMP_GEN, stampsReady } from './bakedStamps.js';
+import { STAMP_GEN, stampsReady, drawBakedBody, drawBakedBust } from './bakedStamps.js';
 
 export const AW = 144, AH = 192;    // high-def stamp canvas
 export const PW = 112, PH = 128;    // portrait bust canvas
@@ -108,15 +108,24 @@ export function actorSprite(o) {
 
     P.ctx.save();
     if (face === 'left') { P.ctx.translate(AW, 0); P.ctx.scale(-1, 1); }
-    paintAnimeBody(P.ctx, {
-      w: AW, h: AH, frame, face, skin, hair, eye, cloth, trim, look: L, hairStyle, seed,
-      weaponType, weaponElement, hasShield, kitRoot: cls.root,
-      armor: getArmorFilter(cls.root),
-      raceScale: getRaceFilter(race.id).scale,
-      raceId: race.id,
-    });
+    // Prefer the real painted stamp art once the sheets have finished
+    // loading (bakedStamps.js) — the procedural anime-bezier body was the
+    // only thing ever actually drawn here otherwise, even after the stamp
+    // sheets landed, since nothing called through to drawBakedBody. Falls
+    // back to the procedural paint during the brief load window and for
+    // any class/race combo the baked sheets don't cover.
+    const baked = stampsReady() && drawBakedBody(P.ctx, { w: AW, h: AH, frame, kitRoot: cls.root, raceId: race.id });
+    if (!baked) {
+      paintAnimeBody(P.ctx, {
+        w: AW, h: AH, frame, face, skin, hair, eye, cloth, trim, look: L, hairStyle, seed,
+        weaponType, weaponElement, hasShield, kitRoot: cls.root,
+        armor: getArmorFilter(cls.root),
+        raceScale: getRaceFilter(race.id).scale,
+        raceId: race.id,
+      });
+    }
     P.ctx.restore();
-    if (!stampsReady()) applyRaceFilter(P.ctx, AW, AH, race.id);
+    if (!baked) applyRaceFilter(P.ctx, AW, AH, race.id);
 
     if (tier >= 5) {
       P.ctx.save();
@@ -169,12 +178,17 @@ export function actorPortraitSprite(o) {
     const S = PW / 56;
     const cx = PW / 2, cy = PH * 0.467;
     const hw = 12.5 * Math.sqrt(build) * S, hh = 13.6 * Math.sqrt(build) * S;
-    paintAnimeBust(P.ctx, cx, cy, hw, hh, {
-      skin, hair, eye, cloth, trim, look: L, hairStyle, seed, kitRoot: cls.root,
-      armor: getArmorFilter(cls.root),
-      raceId: race.id,
-    });
-    applyRaceFilter(P.ctx, PW, PH, race.id);
+    // Same preference as actorSprite: the real painted stamp art once it's
+    // ready, the procedural bust otherwise.
+    const baked = stampsReady() && drawBakedBust(P.ctx, { kitRoot: cls.root, raceId: race.id }, PW, PH);
+    if (!baked) {
+      paintAnimeBust(P.ctx, cx, cy, hw, hh, {
+        skin, hair, eye, cloth, trim, look: L, hairStyle, seed, kitRoot: cls.root,
+        armor: getArmorFilter(cls.root),
+        raceId: race.id,
+      });
+      applyRaceFilter(P.ctx, PW, PH, race.id);
+    }
 
     // --- promotion wash, tier 5+ — the same treatment the body sprite gets
     if (tier >= 5) {
@@ -188,7 +202,9 @@ export function actorPortraitSprite(o) {
       P.ctx.fillRect(0, 0, PW, PH);
       P.ctx.restore();
     }
-  }, { outline: '#1a1418', ao: 0.18, rim: '#fff1c8', rimAlpha: 0.28 });
+  }, stampsReady()
+    ? { rim: '#fff6dc', rimAlpha: 0.10 }
+    : { outline: '#1a1418', ao: 0.18, rim: '#fff1c8', rimAlpha: 0.28 });
 }
 
 // ---------------------------------------------------------------------------

@@ -129,7 +129,7 @@ function punch(img) {
 
 function srcRect(img, col, row, labelFrac) {
   const g = grids.get(img) ?? { cols: 4, rows: 3 };
-  if (labelFrac == null) labelFrac = img.height >= img.width ? 0.20 : 0.17;
+  if (labelFrac == null) labelFrac = img.height >= img.width ? 0.24 : 0.17;
   const cw = img.width / g.cols;
   const ch = img.height / g.rows;
   const padX = cw * 0.04;
