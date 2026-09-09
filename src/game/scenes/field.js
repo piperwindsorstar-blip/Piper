@@ -28,7 +28,7 @@ import { sfx, playMusic } from '../../engine/audio.js';
 import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 import { QUESTS, questState, questReady, questAvailable, startQuest, completeQuest } from '../../data/quests.js';
 import { getPartyHudVisible, togglePartyHudVisible } from '../../engine/settings.js';
-import * as THREE from '../../vendor/three.module.js';
+import * as PIXI from '../../vendor/pixi.module.js';
 // HD-2D finish lives in Screen.applyPost (every scene).
 
 const STEP_TIME = 0.15;
@@ -69,6 +69,30 @@ const MARGIN_PX = 7 * TS;
 const FIELD_CAM_POS = { x: 0, y: 9, z: 7 };
 const FIELD_CAM_LOOK = { x: 0, y: 0, z: 0 };
 const FIELD_VIEW_SIZE = 6.3;
+
+// This "camera" never moves and never rotates (see the comment above), and
+// an orthographic projection has no perspective divide — so the whole thing
+// is a fixed linear map from world space to screen space, not something
+// that needs an actual 3D camera/renderer to evaluate every frame. right/up
+// are that camera's basis vectors in world space (derived the same way
+// THREE's own Camera.lookAt does it, and checked against THREE's actual
+// output for this exact setup to within 1e-13px before THREE.js was
+// dropped from this file); project() below is the closed form.
+function normalize3(v) { const l = Math.hypot(v.x, v.y, v.z) || 1; return { x: v.x / l, y: v.y / l, z: v.z / l }; }
+function cross3(a, b) { return { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x }; }
+const CAM_BACK = normalize3(FIELD_CAM_POS); // looks at the origin, so "back" is just its own direction from there
+const CAM_RIGHT = normalize3(cross3({ x: 0, y: 1, z: 0 }, CAM_BACK));
+const CAM_UP = normalize3(cross3(CAM_BACK, CAM_RIGHT));
+const PX_PER_WORLD = H / (2 * FIELD_VIEW_SIZE);
+// Ground and billboards both convert world units to screen pixels through
+// this same fixed camera, but a ground point only ever moves in world X/Z
+// (it's flat, y=0) while a billboard's height runs along world Y — so the
+// ground's vertical scale (depth foreshortening) and a billboard's vertical
+// scale (height foreshortening) are two different projections of the same
+// tilt and need their own constants.
+const GROUND_SCALE_X = PX_PER_WORLD / TS;
+const GROUND_SCALE_Z = PX_PER_WORLD * Math.abs(CAM_UP.z) / TS;
+const BILLBOARD_SCALE_Y = PX_PER_WORLD * CAM_UP.y / TS;
 
 // A full day/night cycle, in real seconds of played time — long enough that
 // it reads as weather rather than a strobing gimmick, short enough to see
@@ -137,93 +161,74 @@ export class FieldScene {
   get map() { return this.g.map; }
 
   /**
-   * Builds the 3D field once per scene push: an offscreen WebGL canvas
-   * rendered at the native 480x270, a single ground plane, a fixed camera,
-   * and a lazily-populated billboard per NPC/player. The ground plane's
-   * texture is *baked from the existing 2D tile renderer* — renderWorldTexture
-   * below is the old draw()'s ground/mass/building/chest passes, verbatim,
-   * just retargeted at a dedicated canvas instead of the screen buffer —
-   * so terrain.js/building.js/tileSprite never had to change at all. Because
-   * the camera never moves (all scrolling already happens by re-baking the
-   * texture at a new camera() offset each frame, exactly as the flat 2D
-   * version scrolled it), a tile's position on that texture and a billboard's
-   * projected position always agree without any extra bookkeeping.
+   * Builds the field's backdrop renderer once per scene push: a Pixi
+   * application driving an offscreen canvas at the native 480x270, a ground
+   * sprite, and a lazily-populated billboard per NPC/player. The ground
+   * sprite's texture is *baked from the existing 2D tile renderer* —
+   * renderWorldTexture below is the old draw()'s ground/mass/building/chest
+   * passes, verbatim, just retargeted at a dedicated canvas instead of the
+   * screen buffer — so terrain.js/building.js/tileSprite never had to change
+   * at all. The angled "camera" this scene is built around never moves (all
+   * scrolling already happens by re-baking the texture at a new camera()
+   * offset each frame, exactly as the flat 2D version scrolled it) and is
+   * orthographic, so — see the CAM_RIGHT/CAM_UP/PX_PER_WORLD comment above —
+   * its entire projection is the fixed scale project() applies; there's no
+   * real 3D scene to build here, just a couple of correctly-scaled sprites.
+   *
+   * PIXI.Application.init() is async, but scene.enter() (which calls this)
+   * isn't awaited by the scene stack — so this kicks it off and every other
+   * method here checks pixiReady rather than assuming it's done. In
+   * practice it resolves well within the entry fade, so there's nothing to
+   * see during that window regardless.
    */
   setup3D() {
     if (!this.canvas3D) this.canvas3D = document.createElement('canvas');
     this.canvas3D.width = W;
     this.canvas3D.height = H;
-    this.renderer3D = new THREE.WebGLRenderer({ canvas: this.canvas3D, antialias: false, alpha: false });
-    this.renderer3D.setPixelRatio(1);
-    this.renderer3D.setSize(W, H, false);
-
-    this.scene3D = new THREE.Scene();
-    const aspect = W / H;
-    this.camera3D = new THREE.OrthographicCamera(
-      -FIELD_VIEW_SIZE * aspect, FIELD_VIEW_SIZE * aspect, FIELD_VIEW_SIZE, -FIELD_VIEW_SIZE, 0.1, 60,
-    );
-    this.camera3D.position.set(FIELD_CAM_POS.x, FIELD_CAM_POS.y, FIELD_CAM_POS.z);
-    this.camera3D.lookAt(FIELD_CAM_LOOK.x, FIELD_CAM_LOOK.y, FIELD_CAM_LOOK.z);
-    // Orthographic view rays are parallel, so every billboard should face
-    // one fixed direction — back along the camera's look vector — not the
-    // direction to the camera's literal position (a perspective-camera
-    // formula). See battle.js's setup3D for the full explanation and the
-    // warped-sprite bug this fixes for anyone off-centre and deep in Z.
-    this.billboardYaw = Math.atan2(FIELD_CAM_POS.x - FIELD_CAM_LOOK.x, FIELD_CAM_POS.z - FIELD_CAM_LOOK.z);
-
-    this.sun = new THREE.DirectionalLight(0xffe2b8, 1.55);
-    this.sun.position.set(-3, 6, 4);
-    this.scene3D.add(this.sun);
-    this.rim = new THREE.DirectionalLight(0x88a8ff, 0.7);
-    this.rim.position.set(4, 2.2, -3);
-    this.scene3D.add(this.rim);
-    this.ambient = new THREE.AmbientLight(0xc8d4f0, 0.55);
-    this.scene3D.add(this.ambient);
+    this.fieldBillboards = new Map();
+    this.pixiReady = false;
 
     if (!this.worldCanvas) this.worldCanvas = document.createElement('canvas');
     this.worldCanvas.width = W + MARGIN_PX * 2;
     this.worldCanvas.height = H + MARGIN_PX * 2;
-    this.worldTex = new THREE.CanvasTexture(this.worldCanvas);
-    this.worldTex.magFilter = THREE.NearestFilter;
-    // Plain nearest minification, no mipmaps: this texture is re-uploaded
-    // every frame (renderWorldTexture scrolls it), so mipmap regeneration
-    // here is real GPU cost billboard textures (which only change texture
-    // when their owner's sprite frame does) don't pay. Linear minification
-    // was tried first to fight shimmer on distant tiles, but it softened
-    // the whole ground plane every frame ("squishy") for a texel-aliasing
-    // risk that's minor here — the ground stays close to native scale
-    // across most of the view, unlike the billboards, which really did
-    // need mipmaps. Crisp now; revisit with mipmaps only if ground shimmer
-    // turns out to be a real problem.
-    this.worldTex.minFilter = THREE.NearestFilter;
-    this.worldTex.colorSpace = THREE.SRGBColorSpace;
-    const planeW = this.worldCanvas.width / TS, planeH = this.worldCanvas.height / TS;
-    this.groundMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(planeW, planeH),
-      new THREE.MeshLambertMaterial({ map: this.worldTex }),
-    );
-    this.groundMesh.rotation.x = -Math.PI / 2;
-    this.scene3D.add(this.groundMesh);
 
-    this.fieldBillboards = new Map();
+    this.pixiApp = new PIXI.Application();
+    this.pixiApp.init({
+      canvas: this.canvas3D, width: W, height: H,
+      antialias: false, resolution: 1, autoDensity: false,
+      backgroundAlpha: 1, background: '#0b0e18', powerPreference: 'low-power',
+    }).then(() => {
+      this.groundTex = PIXI.Texture.from(this.worldCanvas);
+      this.groundTex.source.scaleMode = 'nearest';
+      this.groundTex.source.autoGenerateMipmaps = false;
+      this.groundSprite = new PIXI.Sprite(this.groundTex);
+      this.groundSprite.anchor.set(0.5);
+      this.groundSprite.position.set(W / 2, H / 2);
+      this.groundSprite.scale.set(GROUND_SCALE_X, GROUND_SCALE_Z);
+
+      this.bgSprite = new PIXI.Sprite(PIXI.Texture.WHITE);
+      this.bgSprite.width = W;
+      this.bgSprite.height = H;
+
+      this.billboardLayer = new PIXI.Container();
+      this.billboardLayer.sortableChildren = true;
+
+      this.pixiApp.stage.addChild(this.bgSprite, this.groundSprite, this.billboardLayer);
+      this.pixiReady = true;
+    });
   }
 
   /** Releases the offscreen WebGL context and every GPU resource this scene
-   *  allocated — see battle.js's dispose3D for why this matters. This field
-   *  scene is usually reused across map warps (setup3D only runs once per
-   *  push), so it leaks far less often in practice than a battle does, but
-   *  it still needs disposing on the rarer full exits (e.g. game over). The
-   *  app's scene stack calls this whenever this scene is popped or replaced
-   *  — see main.js. */
+   *  allocated. This field scene is usually reused across map warps (setup3D
+   *  only runs once per push), so it leaks far less often in practice than a
+   *  battle does, but it still needs disposing on the rarer full exits (e.g.
+   *  game over). The app's scene stack calls this whenever this scene is
+   *  popped or replaced — see main.js. Guarded on pixiApp existing: a warp
+   *  away before PIXI.Application.init() resolves would otherwise throw here
+   *  on a stage/renderer that was never actually built. */
   dispose3D() {
-    this.scene3D.traverse((obj) => {
-      obj.geometry?.dispose();
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material].filter(Boolean);
-      for (const m of mats) { m.map?.dispose(); m.dispose(); }
-    });
-    this.scene3D.background?.dispose?.();
-    this.renderer3D.dispose();
-    this.renderer3D.forceContextLoss();
+    if (!this.pixiApp) return;
+    this.pixiApp.destroy(true, { children: true, texture: true });
     this.fieldBillboards.clear();
   }
 
@@ -240,11 +245,14 @@ export class FieldScene {
 
   /** Projects a 3D world point to 2D screen-space pixels in the 480x270
    *  buffer, for the 2D overlays (boss glow, NPC glyphs, player light) that
-   *  still draw on top of the 3D-rendered backdrop. */
+   *  still draw on top of the backdrop, and for placing the billboards that
+   *  make up part of that backdrop in the first place. Closed-form, not an
+   *  actual camera — see the CAM_RIGHT/CAM_UP/PX_PER_WORLD comment up top. */
   project(world) {
-    const v = new THREE.Vector3(world.x, world.y, world.z);
-    v.project(this.camera3D);
-    return { x: (v.x * 0.5 + 0.5) * W, y: (1 - (v.y * 0.5 + 0.5)) * H };
+    const dx = world.x - FIELD_CAM_POS.x, dy = world.y - FIELD_CAM_POS.y, dz = world.z - FIELD_CAM_POS.z;
+    const right = dx * CAM_RIGHT.x + dy * CAM_RIGHT.y + dz * CAM_RIGHT.z;
+    const up = dx * CAM_UP.x + dy * CAM_UP.y + dz * CAM_UP.z;
+    return { x: W / 2 + PX_PER_WORLD * right, y: H / 2 - PX_PER_WORLD * up };
   }
 
   /** A raw pixel position (pre-camera-offset, same coordinate space
@@ -334,91 +342,69 @@ export class FieldScene {
       if (this.g.flag(`chest.${c.id}`)) continue;
       ctx.drawImage(tileSprite('chest'), c.x * TS - ox, c.y * TS - oy);
     }
-    this.worldTex.needsUpdate = true;
+    if (this.groundTex) this.groundTex.source.update();
   }
 
-  /** The sprite canvas + billboard world size for one field actor (the
+  /** The sprite canvas + billboard feet position for one field actor (the
    *  player or an NPC) — factored out so syncFieldBillboards treats both
    *  the same way. */
   billboardFor(cv, pixelX, pixelY) {
     const cam = this.camera();
     const world = this.worldFromScreenPx(pixelX - cam.x, pixelY - cam.y);
-    // Sprites paint at 2× pixels now; world size stays the original 36×48
-    // footprint so the party does not become giants on the tile grid.
-    return { world, w: 36 / TS, h: 48 / TS };
+    return { feet: this.project(world) };
   }
 
-  /** Creates/updates one camera-facing billboard per NPC plus the player,
-   *  keyed by a stable id — same CanvasTexture + cylindrical-billboard
-   *  technique as the battle scene's units. */
+  /** Creates/updates one flat sprite per NPC plus the player, keyed by a
+   *  stable id, anchored at its feet so it sits on the ground exactly where
+   *  billboardFor's projection says that tile is. */
   syncFieldBillboards() {
     const seen = new Set();
-    const sync = (key, cv, pixelX, pixelY, footYOffset = 0) => {
+    const sync = (key, cv, pixelX, pixelY, zIndex) => {
       seen.add(key);
-      const { world, w, h } = this.billboardFor(cv, pixelX, pixelY);
+      const { feet } = this.billboardFor(cv, pixelX, pixelY);
       let b = this.fieldBillboards.get(key);
       if (!b) {
         // actorSprite's canvas is baked at 144x192 (AW/AH — see actor.js,
-        // sized for battle's much bigger portraits) but this billboard only
-        // ever displays at the 36x48 SPRITE_WORLD footprint, a flat 4x
-        // minification the GPU can only cover with mipmaps — which, on
-        // high-contrast pixel art, box-average whole regions toward grey and
-        // read as exactly the "faded" look this was chased for. dsCanvas
-        // below does that resize once in 2D with nearest-neighbour instead,
-        // so the uploaded texture already matches the billboard's screen
-        // size and never gets minified (or, for the smaller NW/NH npc
-        // canvas, magnified) by the GPU at all.
+        // sized for battle's much bigger portraits) but this only ever
+        // displays at the 36x48 SPRITE_WORLD footprint, a flat 4x
+        // minification a GPU can only cover with mipmaps — which, on
+        // high-contrast pixel art, box-average whole regions toward grey
+        // and read as "faded". dsCanvas below does that resize once in 2D
+        // with a quality (not nearest-neighbour — that under-represents
+        // dark shading pixels at this ratio, reading as too pale instead)
+        // resize, so the uploaded texture already matches the sprite's
+        // screen size and the GPU never has to minify or magnify it.
         const dsCanvas = document.createElement('canvas');
         dsCanvas.width = SPRITE_WORLD_W;
         dsCanvas.height = SPRITE_WORLD_H;
-        const tex = new THREE.CanvasTexture(dsCanvas);
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
-        tex.generateMipmaps = false;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        // See battle.js's billboard material for why this is 0.04, not 0.5:
-        // sprites bake in a faint contact shadow and antialiased edges that
-        // a 0.5 cutoff was discarding outright.
-        // Unlit (Basic, not Lambert): a billboard's normal always faces the
-        // fixed camera direction, so sun/rim/ambient's N·L never reaches 1
-        // and the sprite reads permanently washed-out regardless of time of
-        // day — the same fading battle.js's old billboards had. Night/dusk
-        // mood is already carried by the 2D grade/vignette pass draw() lays
-        // over the whole blitted frame (see render3D's doc comment), so the
-        // sprite doesn't need its own light to darken by.
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide });
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
-        this.scene3D.add(mesh);
-        b = { mesh, tex, dsCanvas, dsCtx: dsCanvas.getContext('2d'), canvas: null };
+        const tex = PIXI.Texture.from(dsCanvas);
+        tex.source.scaleMode = 'nearest';
+        tex.source.autoGenerateMipmaps = false;
+        const sprite = new PIXI.Sprite(tex);
+        sprite.anchor.set(0.5, 1);
+        sprite.scale.set(GROUND_SCALE_X, BILLBOARD_SCALE_Y);
+        this.billboardLayer.addChild(sprite);
+        b = { sprite, tex, dsCanvas, dsCtx: dsCanvas.getContext('2d'), canvas: null };
         this.fieldBillboards.set(key, b);
       }
       if (b.canvas !== cv) {
         b.canvas = cv;
-        // Nearest-neighbour was tried here first, on the reasoning that any
-        // smoothing at all was what caused the original mipmap fading — but
-        // nearest is a *point* sample: at a 4x reduction it just picks one
-        // texel in 16 and skips the rest, so it under-represents whatever
-        // narrow dark shading and outline pixels don't happen to land on a
-        // sample point, reading as too pale/flat ("could still be darker").
-        // A quality resize properly averages all 16 source texels into each
-        // output pixel, keeping the source art's actual light/dark balance;
-        // it's done here once per sprite-frame change rather than by the
-        // GPU on every draw, so it doesn't compound across mip levels or
-        // combine with directional lighting the way the original bug did.
         b.dsCtx.imageSmoothingEnabled = true;
         b.dsCtx.imageSmoothingQuality = 'high';
         b.dsCtx.clearRect(0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
         b.dsCtx.drawImage(cv, 0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
-        b.tex.needsUpdate = true;
-        b.mesh.scale.set(w, h, 1);
+        b.tex.source.update();
       }
-      b.mesh.position.set(world.x, world.y + h / 2 + footYOffset, world.z);
-      b.mesh.rotation.y = this.billboardYaw;
+      b.sprite.position.set(feet.x, feet.y);
+      // Farther-north (smaller world Z, smaller feet.y) sprites sit behind
+      // closer ones — ordinary painter's-algorithm depth sort, same idea as
+      // battle.js's own unit sort.
+      b.sprite.zIndex = zIndex;
     };
 
     for (const n of this.map.npcs ?? []) {
       const cv = npcSprite(n.kind, (n.x + n.y) % 4, Math.floor(this.animT * 1.6 + n.x * 0.7 + n.y * 0.3) % 2);
-      sync(`npc:${n.x},${n.y}`, cv, n.x * TS + TS / 2, n.y * TS + TS);
+      sync(`npc:${n.x},${n.y}`, cv, n.x * TS + TS / 2, n.y * TS + TS, n.y);
     }
     const leader = this.g.leader;
     const frame = this.moving
@@ -441,46 +427,39 @@ export class FieldScene {
     // edge — every field billboard rendered a half-tile west of the tile it
     // was actually standing on, invisible over open ground but glaring next
     // to a door or chest baked into the ground texture at its true position.
-    sync('player', hero, pp.x + TS / 2, pp.y + TS);
+    sync('player', hero, pp.x + TS / 2, pp.y + TS, this.g.y);
 
     for (const [key, b] of this.fieldBillboards) {
-      if (!seen.has(key)) { this.scene3D.remove(b.mesh); this.fieldBillboards.delete(key); }
+      if (!seen.has(key)) { this.billboardLayer.removeChild(b.sprite); b.tex.destroy(true); this.fieldBillboards.delete(key); }
     }
   }
 
-  /** Re-bakes the ground texture, syncs billboards and renders the arena to
-   *  the offscreen canvas; draw() blits the result in as this frame's
-   *  backdrop. Lighting follows `look`, darkening the ground plane at night
-   *  — the player/NPC billboards are unlit (see syncFieldBillboards) and get
-   *  their own night/dusk darkening from draw()'s 2D grade/vignette pass
-   *  over the whole blitted frame instead. */
+  /** Re-bakes the ground texture, syncs billboards and renders the backdrop
+   *  to the offscreen canvas; draw() blits the result in as this frame's
+   *  backdrop. The player/NPC sprites are unlit and get their night/dusk
+   *  darkening from draw()'s 2D grade/vignette pass over the whole blitted
+   *  frame instead of their own light — see syncFieldBillboards. */
   render3D() {
     this.renderWorldTexture();
+    if (!this.pixiReady) return;
     this.syncFieldBillboards();
-    const look = this.look;
-    this.sun.intensity = look.dark ? 0.85 : 1.6;
-    this.ambient.intensity = look.dark ? 0.75 : 0.85;
-    this.ambient.color.set(look.dark ? 0x8890c0 : 0xffffff);
-    // fills anywhere past the (deliberately oversized) ground plane's edge —
-    // matches the map's own background colour instead of showing through
+    // fills anywhere past the (deliberately oversized) ground sprite's edge
+    // — matches the map's own background colour instead of showing through
     // as flat black
     const plateKey = plateKeyForMap(this.map);
     const plate = plateImage(plateKey);
     if (plate && plate.complete && plate.naturalWidth) {
       if (this._plateKey !== plateKey) {
-        this._plateTex?.dispose?.();
-        this._plateTex = new THREE.Texture(plate);
-        this._plateTex.needsUpdate = true;
-        this._plateTex.colorSpace = THREE.SRGBColorSpace;
+        this.bgSprite.texture = PIXI.Texture.from(plate);
         this._plateKey = plateKey;
       }
-      this.scene3D.background = this._plateTex;
+      this.bgSprite.tint = 0xffffff;
     } else {
-      if (!this.scene3DBg) this.scene3DBg = new THREE.Color();
-      this.scene3DBg.set(this.map.bg ?? '#0b0e18');
-      this.scene3D.background = this.scene3DBg;
+      this.bgSprite.texture = PIXI.Texture.WHITE;
+      this.bgSprite.tint = this.map.bg ?? '#0b0e18';
+      this._plateKey = null;
     }
-    this.renderer3D.render(this.scene3D, this.camera3D);
+    this.pixiApp.renderer.render(this.pixiApp.stage);
   }
 
   /** Called every frame; playMusic() is a no-op once the named track is
@@ -1201,9 +1180,9 @@ export class FieldScene {
     // extra glow. Back to what this scene was tuned at.
     scr.bloom = look.dark ? 0.62 : 0.22;
 
-    // the 3D arena (ground, buildings, mass, closed chests, the player and
-    // every NPC as camera-facing billboards) renders to its own offscreen
-    // canvas and gets blitted in as this frame's whole backdrop — see
+    // the backdrop (ground, buildings, mass, closed chests, the player and
+    // every NPC as flat sprites) renders to its own offscreen canvas and
+    // gets blitted in as this frame's whole backdrop — see
     // setup3D/render3D/renderWorldTexture for how that's built.
     this.render3D();
     // Tilt-shift the backdrop the same way battle.js does: sharp in a band
@@ -1522,8 +1501,8 @@ const groundUnder = (m, x, y) => (dx, dy) => {
 };
 
 /** A small marker over service NPCs, or a still-recruitable ally — the NPC's
- *  own sprite is a 3D billboard now (see syncFieldBillboards); this just
- *  draws the 2D glyph over wherever that billboard projects to. */
+ *  own sprite is drawn by the backdrop renderer (see syncFieldBillboards);
+ *  this just draws the 2D glyph over wherever that sprite projects to. */
 function drawNpcGlyph(scr, x, y, npc, t, g) {
   if (npc.kind === 'recruit') {
     if (!g.flag(`story.recruited.${npc.id}`)) {
