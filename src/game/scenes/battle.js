@@ -23,7 +23,7 @@ import { DIFFICULTY_BY_ID } from '../../data/difficulty.js';
 import { getBattleSpeed } from '../../engine/settings.js';
 import { sfx, playMusic } from '../../engine/audio.js';
 import { BATTLE_THEME, BOSS_THEME, VICTORY_THEME } from '../../data/music.js';
-// HD-2D finish lives in Screen.applyPost (every scene).
+// HD-2D finish lives in Screen.present() (every scene) — see screenPost.js.
 
 // Flat 2D layout: the party stands on the right, the enemy on the left, each
 // side's own column 0 (front rank) facing the other across the middle of the

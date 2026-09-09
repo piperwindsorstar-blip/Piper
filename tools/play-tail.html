@@ -94,7 +94,8 @@
       canvas.height = Math.round(H * this.scale);
       canvas.style.width  = Math.round(W * this.scale) + 'px';
       canvas.style.height = Math.round(H * this.scale) + 'px';
-      this.out.imageSmoothingEnabled = false;
+      this.post.resizeOutput(canvas.width, canvas.height);
+      this.post.setFinalScaleMode('nearest');
     };
     scr.resize();
     addEventListener('resize', () => scr.resize());

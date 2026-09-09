@@ -29,7 +29,7 @@ import { FIELD_THEME, TOWN_THEME } from '../../data/music.js';
 import { QUESTS, questState, questReady, questAvailable, startQuest, completeQuest } from '../../data/quests.js';
 import { getPartyHudVisible, togglePartyHudVisible } from '../../engine/settings.js';
 import * as PIXI from '../../vendor/pixi.module.js';
-// HD-2D finish lives in Screen.applyPost (every scene).
+// HD-2D finish lives in Screen.present() (every scene) — see screenPost.js.
 
 const STEP_TIME = 0.15;
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };

@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { drawText, measure, wrap, GLYPH_H } from './font.js';
-import { applyHd2d } from './hd2d.js';
+import { ScreenPost } from './screenPost.js';
 
 export const W = 480;
 export const H = 270;
@@ -148,15 +148,12 @@ export class Screen {
     this.ctx = this.buf.getContext('2d');
     this.ctx.imageSmoothingEnabled = true;
     if (this.ctx.imageSmoothingQuality) this.ctx.imageSmoothingQuality = 'high';
-    this.out = canvas.getContext('2d');
-    this.out.imageSmoothingEnabled = true;
-    if (this.out.imageSmoothingQuality) this.out.imageSmoothingQuality = 'high';
-
-    // half- and quarter-size buffers for the bloom pass
-    this.bloomA = document.createElement('canvas');
-    this.bloomA.width = W >> 1; this.bloomA.height = H >> 1;
-    this.bloomB = document.createElement('canvas');
-    this.bloomB.width = W >> 2; this.bloomB.height = H >> 2;
+    // Everything above draws the actual game onto this.buf exactly as
+    // before; present() below hands that finished 480x270 frame to a small
+    // Pixi/WebGL pipeline (screenPost.js) for the dither/bloom/grade/
+    // vignette pass and the final scaled blit, in place of the CPU
+    // getImageData loop and canvas-to-canvas bounces that used to do it.
+    this.post = new ScreenPost(canvas, W, H);
 
     this.scale = 1;
     this.shake = 0;
@@ -198,74 +195,19 @@ export class Screen {
     this.canvas.height = Math.round(H * this.scale);
     this.canvas.style.width = `${Math.round(W * this.scale)}px`;
     this.canvas.style.height = `${Math.round(H * this.scale)}px`;
-    this.out.imageSmoothingEnabled = true;
-    if (this.out.imageSmoothingQuality) this.out.imageSmoothingQuality = 'high';
+    // A no-op until ScreenPost's own async init resolves — see its own
+    // resize()-before-ready comment for why that's fine.
+    this.post.resizeOutput(this.canvas.width, this.canvas.height);
   }
 
   // --- post-processing -------------------------------------------------------
   /** Set the colour grade for the current scene. */
   setGrade(color, amount = 0.16) { this.grade = color ? { color, amount } : null; }
 
-  applyPost() {
-    const c = this.ctx;
-
-    // HD-2D: snap the whole frame (world + UI) onto a coarse ramp with
-    // Bayer dither. Runs on every scene so title, creation, menus, shops
-    // and game-over share the same pixel language as field and battle.
-    applyHd2d(c, W, H);
-
-    // BLOOM: threshold the frame, blur it by bouncing through two smaller
-    // buffers, then add it back. Cheap, and it is what makes lit pixels read
-    // as emitting rather than merely being bright.
-    if (this.bloom > 0) {
-      const a = this.bloomA.getContext('2d');
-      const b = this.bloomB.getContext('2d');
-      const aw = this.bloomA.width, ah = this.bloomA.height;
-      a.globalCompositeOperation = 'source-over';
-      a.clearRect(0, 0, aw, ah);
-      a.imageSmoothingEnabled = true;
-      a.drawImage(this.buf, 0, 0, aw, ah);
-      // THRESHOLD: multiplying the frame by itself squares every channel, which
-      // collapses the midtones and leaves only what was already near-white.
-      // Doing it twice (a cube) keeps the highlights and almost nothing else —
-      // a single flat multiply glows the entire image instead.
-      a.globalCompositeOperation = 'multiply';
-      a.drawImage(this.bloomA, 0, 0);
-      a.drawImage(this.bloomA, 0, 0);
-      a.globalCompositeOperation = 'source-over';
-
-      b.clearRect(0, 0, this.bloomB.width, this.bloomB.height);
-      b.imageSmoothingEnabled = true;
-      b.drawImage(this.bloomA, 0, 0, this.bloomB.width, this.bloomB.height);
-
-      c.save();
-      c.globalCompositeOperation = 'lighter';
-      c.globalAlpha = this.bloom;
-      c.imageSmoothingEnabled = true;
-      c.drawImage(this.bloomB, 0, 0, W, H);
-      c.imageSmoothingEnabled = false;
-      c.restore();
-    }
-
-    // COLOUR GRADE: a soft wash that ties the whole frame to one temperature
-    if (this.grade) {
-      c.save();
-      c.globalCompositeOperation = 'overlay';
-      c.globalAlpha = this.grade.amount;
-      c.fillStyle = this.grade.color;
-      c.fillRect(0, 0, W, H);
-      c.restore();
-    }
-
-    // VIGNETTE: darkens the corners so the eye stays in the middle third
-    if (this.vignette > 0) {
-      const g = c.createRadialGradient(W / 2, H / 2, H * 0.34, W / 2, H / 2, H * 0.95);
-      g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, `rgba(0,0,0,${this.vignette})`);
-      c.fillStyle = g;
-      c.fillRect(0, 0, W, H);
-    }
-  }
+  // The dither/bloom/grade/vignette pass itself now lives in screenPost.js,
+  // as real WebGL filters run over this.buf — see present() below. HD-2D
+  // dither still runs on every scene (title through game-over) so they all
+  // share the same pixel language as field and battle.
 
   /**
    * Draws a 3D scene's offscreen render as this frame's backdrop with a
@@ -315,20 +257,20 @@ export class Screen {
   }
 
   present() {
-    this.applyPost();
     let ox = 0, oy = 0;
     if (this.shake > 0) {
       ox = Math.round((Math.random() - 0.5) * this.shake);
       oy = Math.round((Math.random() - 0.5) * this.shake);
       this.shake = Math.max(0, this.shake - 0.7);
     }
-    this.out.imageSmoothingEnabled = true;
-    if (this.out.imageSmoothingQuality) this.out.imageSmoothingQuality = 'high';
-    this.out.fillStyle = '#000';
-    this.out.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    this.out.drawImage(this.buf,
-      Math.round(ox * this.scale), Math.round(oy * this.scale),
-      Math.round(W * this.scale), Math.round(H * this.scale));
+    // A no-op for the handful of frames before ScreenPost's async Pixi init
+    // resolves (see its own constructor comment) — the canvas just stays
+    // however the browser paints an untouched <canvas>, which in practice
+    // never survives long enough to be visible.
+    this.post.render(this.buf, {
+      grade: this.grade, bloom: this.bloom, vignette: this.vignette,
+      shakeX: ox, shakeY: oy, scale: this.scale,
+    });
   }
 
   // --- primitives ------------------------------------------------------------
