@@ -556,20 +556,23 @@ function drawMountain(P, f, wx0, wy0, theme = 'green') {
       else if (face) {
         // the southern cliff, striated so it reads as a vertical wall
         col = ((wx * 5 + ((hash2(wx, 0) * 3) | 0)) % 7 < 2) ? ROCK[4] : ROCK[3];
-      } else col = g > 0.68 ? ROCK[1] : g < 0.32 ? ROCK[3] : ROCK[2];
+      } else col = g > 0.74 ? ROCK[0] : g > 0.58 ? ROCK[1] : g < 0.16 ? ROCK[4] : g < 0.34 ? ROCK[3] : ROCK[2];
       P.px(px, py, col);
     }
   }
 
   // the peaks
-  const G = 14;
+  const G = 16;
   for (let gy = Math.floor((wy0 - G * 2) / G); gy <= Math.floor((wy0 + TS + G) / G); gy++) {
     for (let gx = Math.floor((wx0 - G * 2) / G); gx <= Math.floor((wx0 + TS + G) / G); gx++) {
       const bx = Math.round(gx * G + hash2(gx, gy) * G * 0.8) - wx0;
       const by = Math.round(gy * G + hash2(gx + 3, gy + 9) * G * 0.8) - wy0;
-      // a wide spread of sizes, so a range has summits rather than cobbles
-      const r = 7.5 + hash2(gx + 23, gy + 11) * 6.5;
-      const tall = hash2(gx + 5, gy + 31) > 0.55;     // only some carry a crest
+      // squared, not linear: mostly foothills with a few real summits towering
+      // over them, rather than the near-uniform cobblestones a flat 7.5-14
+      // spread produced regardless of how wide that spread looked on paper.
+      const rr = hash2(gx + 23, gy + 11);
+      const r = 6 + rr * rr * 15;
+      const tall = hash2(gx + 5, gy + 31) > 0.84;     // rare, so a snowcap means something
       if (fieldAt(f, bx, by) > -2) continue;          // only inside the rock
       const R = Math.ceil(r) + 2;
       for (let y = -R; y <= R; y++) {
@@ -577,15 +580,22 @@ function drawMountain(P, f, wx0, wy0, theme = 'green') {
           const cx = bx + x, cy = by + y;
           if (cx < 0 || cy < 0 || cx >= TS || cy >= TS) continue;
           if (fieldAt(f, cx, cy) >= -1) continue;
-          // taller than wide, apex above the centre: a peak rather than a dome
-          const ay = y + r * 0.28;
-          const dd = Math.sqrt(x * x * 1.5 + ay * ay * 0.85);
-          if (dd > r) continue;
+          // A cone, not an ellipse: width tapers straight from the base to a
+          // point at the apex — the silhouette that actually reads as a
+          // mountain, where the old squared distance field only ever
+          // produced a smooth dome (a boulder, not a peak) however the
+          // shading inside it was tuned. jag roughens the taper into broken
+          // scree instead of a drafting-compass triangle.
           const up = -(y + r * 0.3) / r;              // 1 at the apex, 0 at the foot
-          const side = x / r;                         // <0 lit, >0 in shadow
+          if (up < -0.18 || up > 1.15) continue;
+          const jag = (noise((wx0 + cx) * 0.6, (wy0 + cy) * 0.6, 3.2) - 0.5) * r * 0.45;
+          const halfW = r * Math.max(0.02, 1 - up * 0.88) + jag;
+          if (Math.abs(x) > halfW) continue;
+          const side = x / Math.max(1, halfW);        // <0 lit, >0 in shadow
+          const edge = halfW - Math.abs(x);
           let col;
-          if (dd > r - 1.2) col = ROCK[4];            // the peak's own edge
-          else if (tall && up > 0.52) col = side < 0.1 ? SNOW[0] : SNOW[1];
+          if (edge < 1.2 || up > 1.02) col = ROCK[4]; // the peak's own edge
+          else if (tall && up > 0.62) col = side < 0.1 ? SNOW[0] : SNOW[1];
           else if (Math.abs(side) < 0.13 && up > 0.1) col = ROCK[0];   // the crest
           else if (side < 0) col = up > 0.35 ? ROCK[0] : ROCK[1];
           else col = up > 0.35 ? ROCK[2] : ROCK[3];
