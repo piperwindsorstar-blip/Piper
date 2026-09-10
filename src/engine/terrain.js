@@ -35,9 +35,15 @@ export const TS = 24;
 // --- world-space noise -------------------------------------------------------
 
 function hash2(x, y) {
+  // Both shifts must be unsigned (>>>): x ^ (x >> k) with a *signed* shift
+  // always replicates x's own sign bit into the shifted copy, so the XOR
+  // cancels bit 31 to 0 no matter what x is — this hash could never
+  // produce a value >= 0.5, silently making every "n > 0.6"-ish threshold
+  // downstream (bright grass, sand and road flecks, water crests, the top
+  // rock/canopy tiers) unreachable across every biome theme.
   let n = (x | 0) * 374761393 + (y | 0) * 668265263;
-  n = (n ^ (n >> 13)) * 1274126177;
-  return ((n ^ (n >> 16)) >>> 0) / 4294967296;
+  n = (n ^ (n >>> 13)) * 1274126177;
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
 }
 
 /** Bilinear value noise on a `scale`-pixel grid. Continuous across tile seams. */
@@ -284,10 +290,13 @@ const MAT_THEMES = {
 
 // Per-theme detail colours: a bright and a dark fleck for grass and road,
 // one bright glint each for sand and water. `grassTall` draws the bright
-// grass fleck as a two-pixel blade (a lawn) rather than one dry mote (scrub,
-// cinder, scale, muck) — the same distinction the old desert-only branch drew.
+// grass fleck as a small leaning blade tuft (a lawn) rather than one dry mote
+// (scrub, cinder, scale, muck) — the same distinction the old desert-only
+// branch drew. `flowers`, where present, sprinkles rare single-pixel petals
+// into grassTall meadows on top of the blades — wildflowers, not scrub or
+// ash, so only the countryside theme earns them.
 const SPECK = {
-  green:   { grass: ['#7cbb63', '#2c4e26'], grassTall: true,  road: ['#d8c8a8', '#6e5c40'], sand: '#f2e4bd', water: '#b8dcff' },
+  green:   { grass: ['#7cbb63', '#2c4e26'], grassTall: true,  flowers: ['#fdf6d8', '#f0b44c', '#f2a0bc'], road: ['#d8c8a8', '#6e5c40'], sand: '#f2e4bd', water: '#b8dcff' },
   desert:  { grass: ['#c8b878', '#6a5230'], grassTall: false, road: ['#ecd8a4', '#7a5f38'], sand: '#fbeec0', water: '#c8e8ec' },
   ash:     { grass: ['#e8783c', '#120e0c'], grassTall: false, road: ['#847666', '#1c1815'], sand: '#b0a696', water: '#c86a34' },
   autumn:  { grass: ['#e8c05c', '#4a3016'], grassTall: true,  road: ['#c8a878', '#4a3620'], sand: '#f0dcac', water: '#c8a860' },
@@ -301,8 +310,27 @@ function speckle(P, mat, px, py, wx, wy, theme) {
   const s = SPECK[theme] ?? SPECK.green;
   if (mat === 'grass') {
     const [hi, lo] = s.grass;
-    if (h > 0.972) { P.px(px, py, hi); if (s.grassTall) P.px(px, py - 1, hi); }
-    else if (h < 0.022) P.px(px, py, lo);
+    if (h > 0.972) {
+      P.px(px, py, hi);
+      if (s.grassTall) {
+        // A small leaning tuft — the main blade plus a shorter companion
+        // that leans left or right, picked from the same hash so a given
+        // world pixel always leans the same way — reads as a clump of
+        // grass rather than the dead-straight single blade this used to be.
+        P.px(px, py - 1, hi);
+        const lean = hash2(wx * 7 + 3, wy * 11 + 5) > 0.5 ? 1 : -1;
+        P.px(px + lean, py - 1, hi);
+      }
+    } else if (h < 0.022) {
+      P.px(px, py, lo);
+    }
+    if (s.flowers) {
+      // An independent hash stream so petals don't cluster with the blade
+      // flecks above — rare enough to read as a handful of wildflowers
+      // scattered through the field, not a pattern.
+      const hf = hash2(wx * 13 + 29, wy * 17 + 41);
+      if (hf > 0.9935) P.px(px, py, s.flowers[Math.floor(hf * 997) % s.flowers.length]);
+    }
   } else if (mat === 'road') {
     const [hi, lo] = s.road;
     if (h > 0.982) P.px(px, py, hi);
