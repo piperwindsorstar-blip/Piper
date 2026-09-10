@@ -625,20 +625,28 @@ function drawTrees(P, f, wx0, wy0, theme = 'green') {
       const n = noise(wx, wy, 5);
       let col;
       if (depth < 1.4) col = LEAF[4];
-      else col = n > 0.66 ? LEAF[1] : n < 0.32 ? LEAF[3] : LEAF[2];
+      else col = n > 0.72 ? LEAF[0] : n > 0.58 ? LEAF[1] : n < 0.14 ? LEAF[4] : n < 0.3 ? LEAF[3] : LEAF[2];
       P.px(px, py, col);
     }
   }
 
-  // treetop bumps: a jittered grid in world space, so nothing lines up with cells
-  // They overlap generously — spaced 7px but 3.4-5.6 across — so the result is
-  // one canopy with crowns in it, not a tray of separate balls.
+  // treetop bumps: a jittered grid in world space, so nothing lines up with cells.
+  // They overlap generously — spaced 7px but wider than that across — so the
+  // result is one canopy with crowns in it, not a tray of separate balls.
   const G = 7;
   for (let gy = Math.floor((wy0 - G * 2) / G); gy <= Math.floor((wy0 + TS + G) / G); gy++) {
     for (let gx = Math.floor((wx0 - G * 2) / G); gx <= Math.floor((wx0 + TS + G) / G); gx++) {
       const bx = Math.round(gx * G + hash2(gx, gy) * G * 0.9) - wx0;
       const by = Math.round(gy * G + hash2(gx + 7, gy + 3) * G * 0.9) - wy0;
-      const r = 3.4 + hash2(gx + 19, gy + 5) * 2.2;
+      // squared, not linear: mostly modest crowns with occasional big canopy
+      // trees standing over them — an even 3.4-5.6 spread read as one size
+      // of tree repeated, however much the shading inside it varied.
+      const rr = hash2(gx + 19, gy + 5);
+      const r = 2.6 + rr * rr * 5.5;
+      // A conifer among the broadleaves: a narrow cone jutting up rather than
+      // another round crown, so a forest reads as mixed woodland instead of
+      // one tree's silhouette stamped at different sizes.
+      const conifer = hash2(gx + 41, gy + 13) > 0.8;
       if (fieldAt(f, bx, by) > -1.5) continue;        // only inside the canopy
       const R = Math.ceil(r) + 1;
       for (let y = -R; y <= R; y++) {
@@ -646,11 +654,23 @@ function drawTrees(P, f, wx0, wy0, theme = 'green') {
           const cx = bx + x, cy = by + y;
           if (cx < 0 || cy < 0 || cx >= TS || cy >= TS) continue;
           if (fieldAt(f, cx, cy) >= -0.8) continue;
-          const dd = Math.sqrt(x * x + y * y * 1.15);
-          if (dd > r) continue;
+          let up = 0;
+          if (conifer) {
+            // Taller and narrower than a broadleaf crown ever gets, so it
+            // pokes above the treeline instead of reading as one more round
+            // bump — the actual point of drawing a different silhouette.
+            up = -(y + r * 0.55) / r;
+            if (up < -0.05 || up > 1.3) continue;
+            if (Math.abs(x) > r * 0.5 * Math.max(0.04, 1 - up * 0.85)) continue;
+          } else {
+            const dd = Math.sqrt(x * x + y * y * 1.15);
+            if (dd > r) continue;
+          }
           // lit on the upper left, with the underside left dark to separate crowns
           const t = (x + y * 1.25) / (r * 2) + 0.5;
-          P.px(cx, cy, t < 0.28 ? LEAF[0] : t < 0.62 ? LEAF[1] : t < 0.88 ? LEAF[2] : LEAF[3]);
+          const col = conifer && up > 1.08 ? LEAF[0]  // a bright needle-tip catching the light
+            : t < 0.28 ? LEAF[0] : t < 0.62 ? LEAF[1] : t < 0.88 ? LEAF[2] : LEAF[3];
+          P.px(cx, cy, col);
         }
       }
     }
