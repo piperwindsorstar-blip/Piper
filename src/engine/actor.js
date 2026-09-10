@@ -114,7 +114,16 @@ export function actorSprite(o) {
     // sheets landed, since nothing called through to drawBakedBody. Falls
     // back to the procedural paint during the brief load window and for
     // any class/race combo the baked sheets don't cover.
-    const baked = stampsReady() && drawBakedBody(P.ctx, { w: AW, h: AH, frame, kitRoot: cls.root, raceId: race.id });
+    // Only ask for a recolor when the player actually moved off a default —
+    // skin and hair independently, so leaving one at default never risks it
+    // (a face anchor that happens to graze a wing or a cape only matters when
+    // it's actually asked to repaint something). The untouched default stays
+    // pixel-identical to the art as painted either way.
+    const baked = stampsReady() && drawBakedBody(P.ctx, {
+      w: AW, h: AH, frame, kitRoot: cls.root, raceId: race.id,
+      skinHex: (o.skin ?? 0) > 0 ? skin : null,
+      hairHex: (o.hair ?? 0) > 0 ? hair : null,
+    });
     if (!baked) {
       paintAnimeBody(P.ctx, {
         w: AW, h: AH, frame, face, skin, hair, eye, cloth, trim, look: L, hairStyle, seed,
@@ -139,7 +148,7 @@ export function actorSprite(o) {
       P.ctx.restore();
     }
   }, stampsReady()
-    ? { rim: '#fff6dc', rimAlpha: 0.10 }
+    ? { rim: '#fff6dc', rimAlpha: 0.18 }
     : { outline: '#1a1418', ao: 0.22, rim: '#fff1c8', rimAlpha: 0.32 });
 }
 
@@ -180,7 +189,11 @@ export function actorPortraitSprite(o) {
     const hw = 12.5 * Math.sqrt(build) * S, hh = 13.6 * Math.sqrt(build) * S;
     // Same preference as actorSprite: the real painted stamp art once it's
     // ready, the procedural bust otherwise.
-    const baked = stampsReady() && drawBakedBust(P.ctx, { kitRoot: cls.root, raceId: race.id }, PW, PH);
+    const baked = stampsReady() && drawBakedBust(P.ctx, {
+      kitRoot: cls.root, raceId: race.id,
+      skinHex: (o.skin ?? 0) > 0 ? skin : null,
+      hairHex: (o.hair ?? 0) > 0 ? hair : null,
+    }, PW, PH);
     if (!baked) {
       paintAnimeBust(P.ctx, cx, cy, hw, hh, {
         skin, hair, eye, cloth, trim, look: L, hairStyle, seed, kitRoot: cls.root,
@@ -203,7 +216,7 @@ export function actorPortraitSprite(o) {
       P.ctx.restore();
     }
   }, stampsReady()
-    ? { rim: '#fff6dc', rimAlpha: 0.10 }
+    ? { rim: '#fff6dc', rimAlpha: 0.18 }
     : { outline: '#1a1418', ao: 0.18, rim: '#fff1c8', rimAlpha: 0.28 });
 }
 
