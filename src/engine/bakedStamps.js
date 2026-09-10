@@ -86,24 +86,35 @@ const SKIN_ANCHOR = {
   fairy: [0.50, 0.37], saurian: [0.59, 0.17], lupine: [0.50, 0.24],
   ogrekin: [0.48, 0.23], gnome: [0.52, 0.36], merfolk: [0.48, 0.27],
   draconian: [0.35, 0.20], revenant: [0.53, 0.15],
-  // automaton has no organic skin — its "skin" swatches are a chassis
-  // paint job, a different feature; deliberately left untinted for now.
+  // Automaton has no organic skin — its "skin" swatches are a chassis paint
+  // job instead, repainting the whole (mostly gray) suit rather than a
+  // localized patch, so it gets the achromatic-bypass and wider size cap in
+  // getTintedCell's skin call rather than the defaults every other race uses.
+  automaton: [0.48, 0.31],
 };
+// Each race maps to a LIST of seeds — [x, y, tolOverride?] — since a
+// flood fill can't jump a gap to a disconnected lock of hair (a side braid,
+// a strand cascading past the shoulder) even when it's the same material;
+// most races only need the one seed that lands on their hair in the
+// armoured warrior pose every other class was rendered from the same
+// illustration set as. A full-helm class (most of them, for most races)
+// will simply flood-fill nothing at any of these spots and no-op, same as
+// picking the default color does — races without a real hair/fur/beard
+// concept (saurian, ogrekin, draconian, automaton, revenant) are left out
+// entirely rather than guessed at. The optional 3rd number per seed
+// overrides the default 0.24 match tolerance — elf's hair sits close
+// enough to its own skin tone in hue that the default let a flood fill
+// cross the neckline onto skin; tightened just for elf so a dwarf's beard
+// (a very different material from its own face) keeps the looser
+// tolerance it actually needs to cover its own shading range.
 const HAIR_ANCHOR = {
-  // Only where hair/fur/beard is actually visible on the armoured warrior
-  // pose every other class was rendered from the same illustration set as.
-  // A full-helm class (most of them, for most races) will simply flood-fill
-  // nothing at this spot and no-op, same as picking the default color does —
-  // races without a real hair/fur/beard concept (saurian, ogrekin, draconian,
-  // automaton, revenant) are left out entirely rather than guessed at. A
-  // third, optional entry overrides the default 0.24 match tolerance — elf's
-  // hair sits close enough to its own skin tone in hue that the default let
-  // a flood fill cross the neckline onto skin; tightened just for elf so a
-  // dwarf's beard (a very different material from its own face) keeps the
-  // looser tolerance it actually needs to cover its own shading range.
-  human: [0.41, 0.11], elf: [0.39, 0.15, 0.16], dwarf: [0.50, 0.42],
-  fairy: [0.50, 0.28], gnome: [0.50, 0.45],
-  lupine: [0.519, 0.217], merfolk: [0.476, 0.220],
+  human: [[0.41, 0.11]],
+  elf: [[0.39, 0.15, 0.16], [0.630, 0.320, 0.16]],
+  dwarf: [[0.50, 0.42]],
+  fairy: [[0.50, 0.28]],
+  gnome: [[0.50, 0.45]],
+  lupine: [[0.519, 0.217]],
+  merfolk: [[0.476, 0.220]],
 };
 
 function hexToHsl(hex) {
@@ -162,7 +173,7 @@ function materialDist(h1, s1, l1, h2, s2, l2) {
  *  anchor lands on nothing opaque, the matched region is too small to be
  *  the intended material, or too large to be it either — the two guards
  *  that keep a miscalibrated anchor from silently painting half the sprite. */
-function recolorRegion(imgData, w, h, seedXFrac, seedYFrac, targetHex, tol) {
+function recolorRegion(imgData, w, h, seedXFrac, seedYFrac, targetHex, tol, opts = {}) {
   const a = imgData.data;
   const sx0 = Math.round(seedXFrac * w), sy0 = Math.round(seedYFrac * h);
   let rs = 0, gs = 0, bs = 0, cnt = 0;
@@ -184,13 +195,15 @@ function recolorRegion(imgData, w, h, seedXFrac, seedYFrac, targetHex, tol) {
   // the material itself — the seed's own low saturation would otherwise let
   // materialDist's achromatic branch flood-fill straight into actual armor.
   // Bailing out here is the same safe no-op as missing the anchor entirely.
+  // Automaton is the deliberate exception: its "skin" IS a gray chassis, so
+  // repainting gray metal toward a colorful paint job is the whole point.
   const [, targetSat] = hexToHsl(targetHex);
-  if (ss < 0.15 && targetSat >= 0.15) return false;
+  if (!opts.allowAchromatic && ss < 0.15 && targetSat >= 0.15) return false;
 
   const visited = new Uint8Array(w * h);
   const stack = [sx0, sy0];
   const pixels = [];
-  const maxPixels = Math.floor(w * h * 0.35);
+  const maxPixels = Math.floor(w * h * (opts.maxFrac ?? 0.35));
   while (stack.length) {
     const y = stack.pop(), x = stack.pop();
     if (x < 0 || y < 0 || x >= w || y >= h) continue;
@@ -238,8 +251,15 @@ function getTintedCell(sheet, col, row, raceId, skinHex, hairHex) {
   ctx.drawImage(src, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
   const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
   let changed = false;
-  if (skinAnchor && skinHex) changed = recolorRegion(imgData, cv.width, cv.height, skinAnchor[0], skinAnchor[1], skinHex, 0.30) || changed;
-  if (hairAnchor && hairHex) changed = recolorRegion(imgData, cv.width, cv.height, hairAnchor[0], hairAnchor[1], hairHex, hairAnchor[2] ?? 0.24) || changed;
+  if (skinAnchor && skinHex) {
+    const skinOpts = raceId === 'automaton' ? { allowAchromatic: true, maxFrac: 0.6 } : undefined;
+    changed = recolorRegion(imgData, cv.width, cv.height, skinAnchor[0], skinAnchor[1], skinHex, 0.30, skinOpts) || changed;
+  }
+  if (hairAnchor && hairHex) {
+    for (const [sx0, sy0, tol] of hairAnchor) {
+      changed = recolorRegion(imgData, cv.width, cv.height, sx0, sy0, hairHex, tol ?? 0.24) || changed;
+    }
+  }
   if (changed) ctx.putImageData(imgData, 0, 0);
   byCell.set(key, cv);
   return cv;
@@ -346,10 +366,29 @@ export function drawStampCell(ctx, sheet, col, row, dx, dy, dw, dh) {
   return true;
 }
 
+// A handful of race+class illustrations cover the face anchor with cloth or
+// metal instead (a hood, a full breastplate) — found by rendering every
+// class with an off-default skin and diffing against the default, which
+// turned up a handful of classes where the "matched" region was an entire
+// robe or armor plate rather than a face. The near-gray safety guard in
+// recolorRegion catches an anchor landing on flat metal outright, but a
+// cream or off-white robe/plate can be just saturated enough to slip past
+// it and still isn't skin, so these are named outright rather than guessed
+// at with a tighter global tolerance that would cost other races their own
+// legitimate matches.
+const SKIN_SKIP = new Set(['elf:cleric', 'fairy:jester', 'ogrekin:cleric', 'merfolk:cleric', 'revenant:guardian']);
+// Same idea, for hair — found the same way, by diffing every class against
+// its own default with an off-default hair pick. Gnome's beard sits right
+// against its monk gi, close enough in tone that the fill crossed onto the
+// (white) fabric.
+const HAIR_SKIP = new Set(['gnome:monk']);
+
 /** Draws one stamp cell, recolored toward `skinHex`/`hairHex` if this race
  *  has anchors for them and the caller actually asked for tinting (a player
  *  who kept the default look never touches this path — see actor.js). */
-function drawCellTinted(ctx, sheet, col, row, raceId, skinHex, hairHex, dx, dy, dw, dh) {
+function drawCellTinted(ctx, sheet, col, row, raceId, root, skinHex, hairHex, dx, dy, dw, dh) {
+  if (SKIN_SKIP.has(`${raceId}:${root}`)) skinHex = null;
+  if (HAIR_SKIP.has(`${raceId}:${root}`)) hairHex = null;
   if (skinHex || hairHex) {
     const tinted = getTintedCell(sheet, col, row, raceId, skinHex, hairHex);
     if (tinted) {
@@ -371,11 +410,11 @@ export function drawBakedBody(ctx, o) {
   const dedicated = RACE_CLASS_SHEET[o.raceId];
   if (dedicated && punched.get(dedicated)) {
     const cell = classCellFor(o.raceId, root);
-    return drawCellTinted(ctx, dedicated, cell[0], cell[1], o.raceId, o.skinHex, o.hairHex, dx, dy, dw, dh);
+    return drawCellTinted(ctx, dedicated, cell[0], cell[1], o.raceId, root, o.skinHex, o.hairHex, dx, dy, dw, dh);
   }
   const classCell = CLASS_CELL[root];
   if (!classCell || !punched.get(classImg)) return false;
-  drawCellTinted(ctx, classImg, classCell[0], classCell[1], o.raceId ?? 'human', o.skinHex, o.hairHex, dx, dy, dw, dh);
+  drawCellTinted(ctx, classImg, classCell[0], classCell[1], o.raceId ?? 'human', root, o.skinHex, o.hairHex, dx, dy, dw, dh);
   const raceCell = RACE_CELL[o.raceId ?? 'human'];
   if (o.raceId && o.raceId !== 'human' && raceCell && punched.get(raceImg)) {
     ctx.save();
@@ -398,8 +437,10 @@ export function drawBakedBust(ctx, o, w, h) {
   const raceId = sheet === classImg ? 'human' : o.raceId;
   const cell = classCellFor(raceId, root);
   ctx.imageSmoothingEnabled = true;
-  if (o.skinHex || o.hairHex) {
-    const tinted = getTintedCell(sheet, cell[0], cell[1], raceId, o.skinHex, o.hairHex);
+  const skinHex = SKIN_SKIP.has(`${raceId}:${root}`) ? null : o.skinHex;
+  const hairHex = HAIR_SKIP.has(`${raceId}:${root}`) ? null : o.hairHex;
+  if (skinHex || hairHex) {
+    const tinted = getTintedCell(sheet, cell[0], cell[1], raceId, skinHex, hairHex);
     if (tinted) {
       ctx.drawImage(tinted, 0, 0, tinted.width, tinted.height * 0.48, w * 0.08, h * 0.04, w * 0.84, h * 0.92);
       return true;
