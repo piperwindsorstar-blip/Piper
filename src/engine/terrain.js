@@ -57,6 +57,27 @@ function noise(x, y, scale) {
   return top + (bot - top) * sy;
 }
 
+/** A fine, high-frequency brightness wobble layered under every material's
+ *  own colour bands — the bands give a tile its broad shape (clumps, waves,
+ *  embers), this gives every pixel inside them a little grain, the
+ *  difference between a flat colour fill and something that reads as a
+ *  material. Independent of the coordinates any material's own noise()
+ *  calls use, so it never lines up with — and double-thickens — a band edge.
+ */
+function grain(wx, wy) {
+  return (noise(wx * 3.1 + 4000, wy * 3.1 - 4000, 2.3) - 0.5) * 2;
+}
+
+/** A slow, broad brightness swell spanning many tiles — sun and cloud-shadow
+ *  moving across a whole field, not a per-pixel material property. grain()
+ *  above only reads up close; this is what keeps a field from looking like
+ *  one uniform tone from normal play distance, the way a real meadow has
+ *  lit and shaded stretches long before you can see individual blades.
+ */
+function patch(wx, wy) {
+  return (noise(wx - 7000, wy + 7000, 110) - 0.5) * 2;
+}
+
 // --- ground materials --------------------------------------------------------
 
 /** Which ground a tile stands on. Anything absent here is not auto-tiled. */
@@ -389,7 +410,8 @@ function groundSpriteRaw(mapId, x, y, sample, theme) {
           if (beach && d < depth + 3.6) mat = 'sand';
           if (d < depth) mat = m;
         }
-        P.px(px, py, MAT[mat](wx, wy));
+        const light = grain(wx, wy) * 0.07 + patch(wx, wy) * 0.16;
+        P.px(px, py, shade(MAT[mat](wx, wy), light));
         speckle(P, mat, px, py, wx, wy, theme);
       }
     }
