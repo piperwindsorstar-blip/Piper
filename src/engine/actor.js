@@ -248,7 +248,7 @@ export function npcSprite(kind, variant = 0, frame = 0) {
     });
     P.ctx.imageSmoothingEnabled = true;
     P.ctx.drawImage(src, 0, 0, NW, NH);
-  });
+  }, { outline: '#1a1418', ao: 0.18, rim: '#fff1c8', rimAlpha: 0.26 });
 }
 
 /** A head-and-shoulders bust for dialogue — the same kit/skin an NPC's field
@@ -271,5 +271,5 @@ export function npcPortraitSprite(kind, variant = 0) {
     });
     P.ctx.imageSmoothingEnabled = true;
     P.ctx.drawImage(src, 0, 0, NPW, NPH);
-  });
+  }, { outline: '#1a1418', ao: 0.18, rim: '#fff1c8', rimAlpha: 0.26 });
 }

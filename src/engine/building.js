@@ -151,6 +151,21 @@ const SHADOW = 'rgba(24,18,14,0.28)';
 const SOFT = 'rgba(24,18,14,0.14)';
 const CONTACT = 'rgba(20,14,10,0.35)';
 
+// A fine per-pixel weathering jitter for wall plaster and roof tile — the
+// same idea as terrain.js's grain(), reimplemented locally since it takes
+// world-pixel coordinates and these callers only have position within the
+// building block. Deterministic in (bx, by) so a building never re-jitters
+// between frames or redraws. Kept small enough to read as worn stucco and
+// sun-baked tile rather than as noise fighting the material's own bands.
+function wallHash(bx, by) {
+  let n = (bx * 374761393 + by * 668265263) | 0;
+  n = (n ^ (n >>> 13)) * 1274126177;
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+function weather(col, bx, by, amt = 0.05) {
+  return shade(col, (wallHash(bx, by) - 0.5) * amt);
+}
+
 /** How many cells the building runs in one direction, up to a sane limit. */
 function run(sample, pred, dx, dy) {
   let n = 0;
@@ -279,7 +294,7 @@ function drawRoof(P, sample, T, kind) {
         // a scalloped valance along the eave, the edge of the canvas itself
         if (bx % 6 < 3) col = shade(trim, -0.2);
       }
-      if (col) P.px(px, py, col);
+      if (col) P.px(px, py, weather(col, bx, by, 0.07));
     }
   }
 }
@@ -352,7 +367,7 @@ function drawDome(P, sample, T, kind) {
       } else if (Math.abs(dx) <= r + 1) {
         col = by >= blockH - 1 ? D[3] : D[2];   // the base lip
       }
-      if (col) P.px(px, py, col);
+      if (col) P.px(px, py, weather(col, bx, by, 0.07));
     }
   }
 }
@@ -477,7 +492,7 @@ function drawWall(P, sample, isDoor, T, self, kind) {
         // corner posts
         if (bx < 3 || bx >= blockW - 3) col = by < 4 ? BEAM[1] : BEAM[0];
       }
-      P.px(px, py, col);
+      P.px(px, py, weather(col, bx, by, 0.06));
     }
   }
 

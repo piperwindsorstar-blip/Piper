@@ -443,7 +443,7 @@ const OUTDOOR_PROPS = new Set(['town', 'flower', 'well', 'stall', 'lamp', 'bridg
 
 export function tileSprite(name) {
   const draw = T[name] ?? T.grass;
-  if (!OUTDOOR_PROPS.has(name)) return make(`tile|${name}`, TS, TS, draw);
+  if (!OUTDOOR_PROPS.has(name)) return make(`tile|${name}`, TS, TS, draw, { grain: 0.05 });
   return make(`tile|${name}`, TS, TS, (P) => {
     draw(P);
     const original = document.createElement('canvas');
@@ -453,5 +453,5 @@ export function tileSprite(name) {
     P.ctx.filter = 'blur(0.5px)';
     P.ctx.drawImage(original, 0, 0);
     P.ctx.filter = 'none';
-  }, { outline: 'rgba(20,16,12,0.5)' });
+  }, { outline: 'rgba(20,16,12,0.5)', grain: 0.05 });
 }

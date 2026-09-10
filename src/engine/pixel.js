@@ -47,6 +47,7 @@ export function make(key, w, h, draw, opts = {}) {
   c.imageSmoothingEnabled = false;
   draw(painter(c), c);
   if (opts.round) roundCorners(c, cv.width, cv.height);
+  if (opts.grain) grainTexture(c, cv.width, cv.height, opts.grain);
   if (opts.ao) ambientOcclusion(c, cv.width, cv.height, opts.ao);
   if (opts.rim) rimLight(c, cv.width, cv.height, opts.rim, opts.rimAlpha ?? 0.5);
   if (opts.outline) addOutline(c, cv.width, cv.height, opts.outline);
@@ -243,6 +244,32 @@ export function ambientOcclusion(c, w, h, strength = 0.28) {
     }
   }
   c.putImageData(new ImageData(out, w, h), 0, 0);
+}
+
+function grainHash(x, y) {
+  let n = (x * 374761393 + y * 668265263) | 0;
+  n = (n ^ (n >>> 13)) * 1274126177;
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+
+/** A fine per-pixel brightness jitter over every opaque pixel — breaks up a
+ *  flat fill into a worn, textured surface (stucco, cut stone, packed dirt)
+ *  without touching the palette or any shape drawn into it. Deterministic in
+ *  (x, y), so a tile never re-jitters between redraws. */
+export function grainTexture(c, w, h, amt = 0.05) {
+  const img = c.getImageData(0, 0, w, h);
+  const a = img.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (a[i + 3] < 8) continue;
+      const k = 1 + (grainHash(x, y) - 0.5) * amt;
+      a[i] = Math.max(0, Math.min(255, a[i] * k));
+      a[i + 1] = Math.max(0, Math.min(255, a[i + 1] * k));
+      a[i + 2] = Math.max(0, Math.min(255, a[i + 2] * k));
+    }
+  }
+  c.putImageData(img, 0, 0);
 }
 
 /** Brighten the edge facing the light — the highlight HD-2D sprites live on. */
