@@ -95,8 +95,14 @@ const HAIR_ANCHOR = {
   // A full-helm class (most of them, for most races) will simply flood-fill
   // nothing at this spot and no-op, same as picking the default color does —
   // races without a real hair/fur/beard concept (saurian, ogrekin, draconian,
-  // automaton, revenant) are left out entirely rather than guessed at.
-  dwarf: [0.50, 0.42], fairy: [0.50, 0.28], gnome: [0.50, 0.45],
+  // automaton, revenant) are left out entirely rather than guessed at. A
+  // third, optional entry overrides the default 0.24 match tolerance — elf's
+  // hair sits close enough to its own skin tone in hue that the default let
+  // a flood fill cross the neckline onto skin; tightened just for elf so a
+  // dwarf's beard (a very different material from its own face) keeps the
+  // looser tolerance it actually needs to cover its own shading range.
+  human: [0.41, 0.11], elf: [0.39, 0.15, 0.16], dwarf: [0.50, 0.42],
+  fairy: [0.50, 0.28], gnome: [0.50, 0.45],
   lupine: [0.519, 0.217], merfolk: [0.476, 0.220],
 };
 
@@ -233,7 +239,7 @@ function getTintedCell(sheet, col, row, raceId, skinHex, hairHex) {
   const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
   let changed = false;
   if (skinAnchor && skinHex) changed = recolorRegion(imgData, cv.width, cv.height, skinAnchor[0], skinAnchor[1], skinHex, 0.30) || changed;
-  if (hairAnchor && hairHex) changed = recolorRegion(imgData, cv.width, cv.height, hairAnchor[0], hairAnchor[1], hairHex, 0.24) || changed;
+  if (hairAnchor && hairHex) changed = recolorRegion(imgData, cv.width, cv.height, hairAnchor[0], hairAnchor[1], hairHex, hairAnchor[2] ?? 0.24) || changed;
   if (changed) ctx.putImageData(imgData, 0, 0);
   byCell.set(key, cv);
   return cv;
