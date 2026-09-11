@@ -177,6 +177,12 @@ function recolorRegion(imgData, w, h, seedXFrac, seedYFrac, targetHex, tol, opts
   const a = imgData.data;
   const sx0 = Math.round(seedXFrac * w), sy0 = Math.round(seedYFrac * h);
   let rs = 0, gs = 0, bs = 0, cnt = 0;
+  // The anchor coordinate itself can land right on an antialiased edge pixel
+  // even when it's plainly inside the intended material — track the nearest
+  // fully-opaque pixel in the same neighbourhood to actually start the flood
+  // fill from, since seeding from a half-transparent pixel kills the fill
+  // (alpha < 200) before it explores a single real pixel.
+  let startX = sx0, startY = sy0, bestD = Infinity;
   const R = 3;
   for (let dy = -R; dy <= R; dy++) {
     for (let dx = -R; dx <= R; dx++) {
@@ -185,6 +191,8 @@ function recolorRegion(imgData, w, h, seedXFrac, seedYFrac, targetHex, tol, opts
       const i = (y * w + x) * 4;
       if (a[i + 3] < 200) continue;
       rs += a[i]; gs += a[i + 1]; bs += a[i + 2]; cnt++;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; startX = x; startY = y; }
     }
   }
   if (cnt === 0) return false;
@@ -201,7 +209,7 @@ function recolorRegion(imgData, w, h, seedXFrac, seedYFrac, targetHex, tol, opts
   if (!opts.allowAchromatic && ss < 0.15 && targetSat >= 0.15) return false;
 
   const visited = new Uint8Array(w * h);
-  const stack = [sx0, sy0];
+  const stack = [startX, startY];
   const pixels = [];
   const maxPixels = Math.floor(w * h * (opts.maxFrac ?? 0.35));
   while (stack.length) {
@@ -256,8 +264,13 @@ function getTintedCell(sheet, col, row, raceId, skinHex, hairHex) {
     changed = recolorRegion(imgData, cv.width, cv.height, skinAnchor[0], skinAnchor[1], skinHex, 0.30, skinOpts) || changed;
   }
   if (hairAnchor && hairHex) {
+    // Unlike skin, black/near-black is a completely ordinary hair colour —
+    // the achromatic-seed guard exists to catch a skin anchor that landed on
+    // a shadow seam or armor edge instead of skin, but applied to hair it
+    // instead blocks every dark-haired character from ever being recolored
+    // at all, silently no-oping regardless of target colour.
     for (const [sx0, sy0, tol] of hairAnchor) {
-      changed = recolorRegion(imgData, cv.width, cv.height, sx0, sy0, hairHex, tol ?? 0.24) || changed;
+      changed = recolorRegion(imgData, cv.width, cv.height, sx0, sy0, hairHex, tol ?? 0.24, { allowAchromatic: true }) || changed;
     }
   }
   if (changed) ctx.putImageData(imgData, 0, 0);
@@ -376,7 +389,15 @@ export function drawStampCell(ctx, sheet, col, row, dx, dy, dw, dh) {
 // it and still isn't skin, so these are named outright rather than guessed
 // at with a tighter global tolerance that would cost other races their own
 // legitimate matches.
-const SKIN_SKIP = new Set(['elf:cleric', 'fairy:jester', 'ogrekin:cleric', 'merfolk:cleric', 'revenant:guardian']);
+const SKIN_SKIP = new Set([
+  'elf:cleric', 'fairy:jester', 'ogrekin:cleric', 'merfolk:cleric', 'revenant:guardian',
+  // fairy:monk's face anchor sits on an antialiased edge pixel; the flood
+  // fill's nearest-opaque-pixel start (added so a hair anchor in the same
+  // spot on other races still finds real hair) lands just inside the robe
+  // there instead of the face, and its white cloth passes the achromatic
+  // guard easily enough to repaint the whole thing.
+  'fairy:monk',
+]);
 // Same idea, for hair — found the same way, by diffing every class against
 // its own default with an off-default hair pick. Gnome's beard sits right
 // against its monk gi, close enough in tone that the fill crossed onto the

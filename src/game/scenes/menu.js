@@ -159,7 +159,8 @@ export class MenuScene {
       return;
     }
     switch (this.mode) {
-      case 'status': case 'ladder': return this.cycleChar(input);
+      case 'status': return this.updateStatus(input);
+      case 'ladder': return this.cycleChar(input);
       case 'jobs': return this.updateJobs(input);
       case 'transcribeSkill': return this.updateTranscribeSkill(input);
       case 'transcribeTarget': return this.updateTranscribeTarget(input);
@@ -215,6 +216,27 @@ export class MenuScene {
     const n = this.g.party.length;
     if (input.tap('left') || input.tap('up')) this.who = (this.who + n - 1) % n;
     if (input.tap('right') || input.tap('down')) this.who = (this.who + 1) % n;
+  }
+
+  // --- status ------------------------------------------------------------
+  // Character creation only ever rolls skin/hair at random; this is the one
+  // place a player can actually pick, cycling through the same per-race
+  // swatch lists actorSprite() already draws from (index 0 keeps the art's
+  // painted default rather than tinting it, matching creation.js's own
+  // range) — so every combination shown here is one the baked art already
+  // supports, nothing new to validate.
+  updateStatus(input) {
+    this.cycleChar(input);
+    const ch = this.ch;
+    const look = raceInfo(ch).look;
+    if (input.tap('confirm')) {
+      ch.skin = (ch.skin + 1) % look.skins.length;
+      sfx.confirm();
+    }
+    if (input.tap('shift')) {
+      ch.hair = (ch.hair + 1) % look.hairs.length;
+      sfx.confirm();
+    }
   }
 
   // --- arts ------------------------------------------------------------------
@@ -587,7 +609,7 @@ export class MenuScene {
   }
 
   /** Portrait + identity strip every per-character page shares. */
-  charHeader(scr, ch = this.ch, showSwitchHint = true) {
+  charHeader(scr, ch = this.ch, showSwitchHint = true, showAppearanceHint = false) {
     const cls = CLASSES[ch.classId];
     const el = ELEMENT_BY_ID[ch.elementId];
     const race = raceInfo(ch);
@@ -598,6 +620,7 @@ export class MenuScene {
     scr.rect(IX + 44, TOP + 36, 4, 6, el.color);
     scr.text(el.name, IX + 52, TOP + 35, el.color);
     scr.textRight(`${TIER_NAME[cls.tier]} · tier ${cls.tier}/7`, IX + IW, TOP + 8, PAL.magenta);
+    if (showAppearanceHint) scr.textRight('CONFIRM skin · SHIFT hair', IX + IW, TOP + 22, PAL.textFaint);
     if (showSwitchHint) scr.textRight('← → switch member', IX + IW, TOP + 34, PAL.textFaint);
     scr.rect(IX, TOP + 44, IW, 1, PAL.line);
     return TOP + 50;
@@ -606,7 +629,7 @@ export class MenuScene {
   // --- status ----------------------------------------------------------------
   drawStatus(scr) {
     const ch = this.ch;
-    const top = this.charHeader(scr);
+    const top = this.charHeader(scr, ch, true, true);
     const s = stats(ch);
     const race = raceInfo(ch);
     const el = ELEMENT_BY_ID[ch.elementId];
