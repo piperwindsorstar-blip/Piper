@@ -292,6 +292,54 @@ export function rimLight(c, w, h, color, alpha = 0.5) {
   c.restore();
 }
 
+/** Undoes what a box-average downscale does to dense linework: shrinking
+ *  ink-outlined art blends the dark linework straight into the surrounding
+ *  fill, which desaturates even fully-opaque interior pixels (measured on
+ *  real bakes: over half their saturation, regardless of how the box-average
+ *  is performed — CPU or GPU, one big jump or several halvings) and, because
+ *  an anti-aliased edge keeps roughly the same on-screen width the art
+ *  shrinks around, leaves a much larger fraction of a small sprite's pixels
+ *  semi-transparent than at full size — reading as the sprite fading into
+ *  whatever's behind it. A radius-1 unsharp mask restores local contrast
+ *  (and with it saturation) in proportion to how much detail was actually
+ *  lost there, which — unlike a flat saturate() filter — self-limits on a
+ *  subject that didn't need much correction instead of overshooting it; the
+ *  alpha gamma pulls those edge pixels back toward opaque. Both were tuned
+ *  against real bakes across a low-saturation and a high-saturation subject
+ *  to land close to each one's own source art, not picked by eye. Call this
+ *  on the context you just downscaled into, before uploading it as a
+ *  texture. */
+export function sharpenDownscale(c, w, h, amount = 0.65, alphaGamma = 0.5) {
+  const img = c.getImageData(0, 0, w, h);
+  const src = img.data;
+  const blurred = new Float32Array(src.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0, g = 0, b = 0, cnt = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= w) continue;
+          const i = (ny * w + nx) * 4;
+          r += src[i]; g += src[i + 1]; b += src[i + 2]; cnt++;
+        }
+      }
+      const o = (y * w + x) * 4;
+      blurred[o] = r / cnt; blurred[o + 1] = g / cnt; blurred[o + 2] = b / cnt;
+    }
+  }
+  const out = img.data;
+  for (let i = 0; i < out.length; i += 4) {
+    out[i] = Math.max(0, Math.min(255, src[i] + (src[i] - blurred[i]) * amount));
+    out[i + 1] = Math.max(0, Math.min(255, src[i + 1] + (src[i + 1] - blurred[i + 1]) * amount));
+    out[i + 2] = Math.max(0, Math.min(255, src[i + 2] + (src[i + 2] - blurred[i + 2]) * amount));
+    out[i + 3] = Math.round(Math.pow(src[i + 3] / 255, alphaGamma) * 255);
+  }
+  c.putImageData(img, 0, 0);
+}
+
 /** Scale a finished sprite with nearest-neighbour, keeping the cache keyed. */
 export function upscale(base, sc, key) {
   if (sc === 1) return base;

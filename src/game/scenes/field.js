@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { PAL, W, H } from '../../engine/screen.js';
+import { sharpenDownscale } from '../../engine/pixel.js';
 import { plateImage, plateKeyForMap } from '../../engine/plates.js';
 import { Dialogue, Menu, hpColor } from '../../engine/ui.js';
 import { tileSprite, actorSprite, npcSprite, TS, SPRITE_WORLD_W, SPRITE_WORLD_H } from '../../engine/sprites.js';
@@ -379,10 +380,18 @@ export class FieldScene {
         // the ink linework this art is built from gets blended straight
         // into the surrounding skin/cloth fill — measured on real sprites,
         // fully-opaque interior pixels lose over half their saturation
-        // (0.068 -> 0.032 avg) even with the mipmap step removed. The
-        // saturate/contrast filter below is fit to put that back: it was
-        // tuned against the same measurement to land close to the source
-        // art's own saturation and lightness, not picked by eye.
+        // even with the mipmap step removed, and a much larger share of
+        // the sprite's total area ends up semi-transparent than at full
+        // size (an anti-aliased edge keeps roughly its on-screen width as
+        // the art shrinks around it), reading as the sprite fading into
+        // whatever's behind it. sharpenDownscale() below (see pixel.js)
+        // undoes both: a radius-1 unsharp mask puts local contrast and
+        // saturation back in proportion to what that pixel actually lost,
+        // and an alpha gamma pulls edge pixels back toward opaque. A flat
+        // saturate() filter was tried first and had to be scrapped — it
+        // was tuned against one low-saturation costume and overshot a
+        // high-saturation one by 60%+, since it corrects by a fixed
+        // multiplier instead of by how much detail a pixel actually lost.
         const dsCanvas = document.createElement('canvas');
         dsCanvas.width = SPRITE_WORLD_W;
         dsCanvas.height = SPRITE_WORLD_H;
@@ -401,9 +410,8 @@ export class FieldScene {
         b.dsCtx.imageSmoothingEnabled = true;
         b.dsCtx.imageSmoothingQuality = 'high';
         b.dsCtx.clearRect(0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
-        b.dsCtx.filter = 'saturate(1.6) contrast(1.15)';
         b.dsCtx.drawImage(cv, 0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
-        b.dsCtx.filter = 'none';
+        sharpenDownscale(b.dsCtx, SPRITE_WORLD_W, SPRITE_WORLD_H);
         b.tex.source.update();
       }
       b.sprite.position.set(feet.x, feet.y);
