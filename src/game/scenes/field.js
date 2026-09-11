@@ -129,6 +129,7 @@ export class FieldScene {
     this.stepT = 0;
     this.animT = 0;
     this.banner = 2.2;
+    this.bannerText = this.map.name;
     this.pendingWarp = null;
     this.fade = opts.fadeIn ? 1 : 0;
     this.fadeDir = opts.fadeIn ? -1 : 0;
@@ -628,6 +629,7 @@ export class FieldScene {
 
     if (input.tap('menu')) { this.app.push('menu'); return; }
     if (input.tap('list')) { sfx.confirm(); togglePartyHudVisible(); return; }
+    if (input.tap('shift')) { this.swapLeader(); return; }
 
     if (this.moving) {
       this.stepT += dt;
@@ -711,6 +713,20 @@ export class FieldScene {
     // would on the surface.
     const enemyScaleBonus = m.dungeonDepth ? 1 + 0.05 * m.dungeonDepth : 1;
     this.app.push('battle', { formationId: f.id, preemptive, ambushed, enemyScaleBonus, ...this.battleWeather() });
+  }
+
+  /** Rotates the party so the next member leads — the field only ever shows
+   *  one avatar (see syncFieldBillboards), so this is how a player controls
+   *  someone other than whoever they started the game with. Reuses the
+   *  map-name banner's timer/box for the "now controlling" callout since the
+   *  two never need the screen at once. */
+  swapLeader() {
+    const party = this.g.party;
+    if (party.length < 2) return;
+    party.push(party.shift());
+    sfx.confirm();
+    this.banner = 1.4;
+    this.bannerText = `Now controlling: ${this.g.leader.name}`;
   }
 
   // --- interaction ---------------------------------------------------------
@@ -1063,6 +1079,7 @@ export class FieldScene {
     this.g.stepsSinceBattle = 0;
     this.encounterCooldown = 3;
     this.banner = 2.2;
+    this.bannerText = this.map.name;
     this.fade = 1;
     this.fadeDir = -1;
     this.rollWeather();
@@ -1474,7 +1491,7 @@ export class FieldScene {
 
   drawBanner(scr) {
     const a = Math.min(1, this.banner / 0.5);
-    const name = this.map.name;
+    const name = this.bannerText ?? this.map.name;
     const w = Math.max(140, scr.textWidth(name) + 56);
     scr.ctx.save();
     scr.ctx.globalAlpha = a;
