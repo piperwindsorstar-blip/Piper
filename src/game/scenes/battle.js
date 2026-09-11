@@ -1084,6 +1084,13 @@ export class BattleScene {
   drawGrid(scr, side) {
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 2; col++) {
+        // Formations rarely fill every cell (see data/enemies.js), and a
+        // party under MAX_PARTY leaves its own grid gaps — an empty slot
+        // never gets a unit drawn on it, so a shadow there just reads as a
+        // ghost. A slot a unit died in keeps its shadow, same as the faded
+        // corpse battle.js still draws there, since a formation gap and a
+        // dead formation member should read differently.
+        if (!this.battle.units().some((u) => u.side === side && u.grid.row === row && u.grid.col === col)) continue;
         const { x, y } = this.cellPos(side, row, col);
         const front = col === this.battle.frontColumn(side);
         // an oval of shadow marking the cell, brighter on the reachable
