@@ -58,17 +58,19 @@ export function make(key, w, h, draw, opts = {}) {
 export function clearCache() { cache.clear(); }
 
 /**
- * Softens a tile's hard per-pixel edges into the smoother, painted look the
- * anime-style character art already has, for any tile-based drawing built
- * from a `sample(dx, dy)` neighbour closure (terrain, buildings).
+ * Optionally softens a tile's hard per-pixel edges via `opts.blur` (off by
+ * default — see the no-blur early-out below for why), for any tile-based
+ * drawing built from a `sample(dx, dy)` neighbour closure (terrain,
+ * buildings).
  *
- * Blurring a tile in isolation would sample transparent "nothing" past its
- * own edge, fading every tile boundary into a false seam even where the
- * content is meant to run on unbroken into the next cell (a canopy, a wall)
- * — exactly the blockiness these callers' own world-space math exists to
- * avoid. So this stitches the tile and its eight neighbours into one padded
- * scratch canvas before blurring, so the blur has real neighbouring colour
- * to sample across every seam, then crops the centre tile back out onto `P`.
+ * When a caller does ask for it: blurring a tile in isolation would sample
+ * transparent "nothing" past its own edge, fading every tile boundary into
+ * a false seam even where the content is meant to run on unbroken into the
+ * next cell (a canopy, a wall) — exactly the blockiness these callers' own
+ * world-space math exists to avoid. So this stitches the tile and its eight
+ * neighbours into one padded scratch canvas before blurring, so the blur
+ * has real neighbouring colour to sample across every seam, then crops the
+ * centre tile back out onto `P`.
  *
  * `rawTile(dx, dy, nSample)` must return each neighbour's OWN unblurred
  * tile — cached under that neighbour's own absolute key via `make()`, same
@@ -93,8 +95,20 @@ function getScratch(size) {
 }
 
 export function paintSoftened(TS, P, sample, rawTile, opts = {}) {
+  const blur = opts.blur ?? 0;
+  if (blur <= 0) {
+    // With no blur to bleed across seams, the padded neighbour stitch below
+    // buys nothing — it exists purely to give the blur real colour to
+    // sample past this tile's own edge. Draw the tile's own raw content
+    // straight through instead of compositing nine tiles to blur zero of
+    // them; this used to default to a real blur, which softened more than
+    // just seams — it took the crispness off every tile's own surface
+    // detail (brick coursing, roof shingles, grain) too, reading as an
+    // overworld that's simply out of focus rather than painted.
+    P.ctx.drawImage(rawTile(0, 0, sample), 0, 0);
+    return;
+  }
   const margin = opts.margin ?? 5;
-  const blur = opts.blur ?? 1.1;
   const size = TS + margin * 2;
   const bctx = getScratch(size);
   bctx.clearRect(0, 0, size, size);
