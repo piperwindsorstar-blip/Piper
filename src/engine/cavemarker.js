@@ -32,5 +32,5 @@ export function caveSprite() {
     // scree at the base
     P.rect(0, CAVE_H - 3, CAVE_W, 3, ROCK_D);
     P.speck([[4, CAVE_H - 2], [9, CAVE_H - 1], [CAVE_W - 6, CAVE_H - 2], [CAVE_W - 11, CAVE_H - 1]], ROCK_HI);
-  }, { outline: INK });
+  }, { outline: INK, ao: 0.16, rim: '#fff6dc', rimAlpha: 0.22, grain: 0.06 });
 }

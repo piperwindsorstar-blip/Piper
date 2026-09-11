@@ -243,6 +243,42 @@ export class BattleScene {
     }[region] ?? { sky1: '#28284a', far: '#1c1c34', ground: '#4a4458', gdark: '#2c2838', grade: '#9ab0e0', zenith: '#33335c', horizon: '#14142a', mote: '#9ab0e0', moteUp: true };
   }
 
+  /** A jagged ridge of `T.far` sitting right at the horizon — rolling hills
+   *  for the open-air regions, broken spires/stalagmites for the enclosed
+   *  ones. `far` has been part of every region's palette since it was
+   *  written but nothing ever actually drew with it; this is that layer.
+   *  Computed once per region and cached on the instance, since the shape
+   *  itself never changes mid-battle — drawBackdrop still repaints the
+   *  filled path every frame, but never regenerates the points. */
+  farRidge(region) {
+    if (this._farRegion === region && this._farPts) return this._farPts;
+    this._farRegion = region;
+    const spiky = region !== 'greenfield';
+    const seed = [...region].reduce((s, c) => s + c.charCodeAt(0), 0);
+    const hash = (n) => { const x = Math.sin(n * 12.9898 + seed) * 43758.5453; return x - Math.floor(x); };
+    const N = 16;
+    const baseH = spiky ? 15 : 9;
+    const pts = [];
+    for (let i = 0; i <= N; i++) {
+      const h = baseH * (0.25 + hash(i) * (spiky ? 1.4 : 0.75));
+      pts.push([(i / N) * W, GROUND_Y - h]);
+    }
+    this._farPts = pts;
+    return pts;
+  }
+
+  drawFarRidge(scr, T) {
+    const pts = this.farRidge(this.battle.formation.region);
+    const c = scr.ctx;
+    c.fillStyle = T.far;
+    c.beginPath();
+    c.moveTo(0, GROUND_Y);
+    for (const [x, y] of pts) c.lineTo(x, y);
+    c.lineTo(W, GROUND_Y);
+    c.closePath();
+    c.fill();
+  }
+
   /** The flat 2D backdrop: a vertical sky gradient over a tinted ground
    *  band, both straight off regionPalette() — no ground plane, risers or
    *  camera, just colour, so the actual character art (the painted stamp
@@ -255,6 +291,7 @@ export class BattleScene {
     scr.vignette = this.battle.formation.region === 'greenfield' ? 0.42 : 0.6;
     scr.bloom = this.battle.formation.region === 'greenfield' ? 0.28 : 0.5;
     scr.vgrad(0, 0, W, GROUND_Y, T.zenith, T.sky1);
+    this.drawFarRidge(scr, T);
     scr.rect(0, GROUND_Y, W, H - GROUND_Y, T.horizon);
     scr.vgrad(0, GROUND_Y + 1, W, H - GROUND_Y - 1, T.ground, T.gdark);
   }

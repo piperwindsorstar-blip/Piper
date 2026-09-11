@@ -40,7 +40,7 @@ export function citySprite() {
     P.px(CITY_W / 2, 5, GOLD);
     // ground shadow
     P.ellipse(CITY_W / 2, baseY + 5, 15, 3, 'rgba(10,8,6,0.35)');
-  }, { outline: INK });
+  }, { outline: INK, ao: 0.16, rim: '#fff6dc', rimAlpha: 0.24, grain: 0.05 });
 }
 
 /** A plain roadside signpost — a waypoint, not a destination in itself. */
@@ -53,5 +53,5 @@ export function pitstopSprite() {
     P.rect(PITSTOP_W / 2 - 4, 5, 8, 5, '#d8c8a0');
     P.px(PITSTOP_W / 2 - 4, 5, GOLD_D);
     P.ellipse(PITSTOP_W / 2, baseY + 3, 8, 2, 'rgba(10,8,6,0.3)');
-  }, { outline: INK });
+  }, { outline: INK, ao: 0.16, rim: '#fff6dc', rimAlpha: 0.24, grain: 0.05 });
 }

@@ -43,5 +43,5 @@ export function towerSprite() {
     P.rect(cx - 9, baseY, 18, 6, STONE_D);
     P.rect(cx - 3, baseY + 1, 6, 5, INK);
     P.ellipse(cx, baseY + 8, 13, 3, 'rgba(10,8,6,0.35)');
-  }, { outline: INK });
+  }, { outline: INK, ao: 0.18, rim: GLOW, rimAlpha: 0.20, grain: 0.05 });
 }

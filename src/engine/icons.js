@@ -93,5 +93,5 @@ const ICONS = {
 
 export function iconSprite(name) {
   return make(`icon|${name}`, IS, IS, ICONS[name] ?? ICONS.sword,
-    { outline: INK, rim: 'tl', rimAlpha: 0.22 });
+    { outline: INK, rim: '#fff6dc', rimAlpha: 0.28, grain: 0.05 });
 }
