@@ -105,70 +105,76 @@ export const isOutdoor = (name) => name !== null && Object.hasOwn(GROUND_OF, nam
  */
 const MAT_THEMES = {
   green: {
+    // Muted ~32% off these materials' original saturation (see git history
+    // for the brighter version) — real grass, clay and dirt read as duller,
+    // greyer versions of their hue than a game palette defaults to; the hue
+    // and lightness bands (what actually gives the ground its shape) are
+    // untouched, only how vivid each band is.
     grass: (wx, wy) => {
       const n = noise(wx, wy, 6.5);
       const clump = noise(wx + 91, wy + 37, 17);
-      if (clump > 0.70 && n > 0.45) return '#67a557';
-      if (n > 0.63) return '#57904a';
-      if (n < 0.30) return '#365f2f';
-      if (n < 0.44) return '#3f6b37';
-      return '#4a7c40';
+      if (clump > 0.70 && n > 0.45) return '#6e9963';
+      if (n > 0.63) return '#5e8555';
+      if (n < 0.30) return '#3b5737';
+      if (n < 0.44) return '#45633f';
+      return '#50724a';
     },
     sand: (wx, wy) => {
       const n = noise(wx, wy, 7);
-      if (n > 0.68) return '#e8d5a4';
-      if (n < 0.33) return '#c4a970';
-      return '#d8bf88';
+      if (n > 0.68) return '#ddd0af';
+      if (n < 0.33) return '#b7a47d';
+      return '#cbba95';
     },
     road: (wx, wy) => {
       const n = noise(wx, wy, 5.5);
-      if (n > 0.72) return '#c6ae86';
-      if (n < 0.28) return '#8a7452';
-      if (n < 0.42) return '#98815d';
-      return '#a89066';
+      if (n > 0.72) return '#bcab90';
+      if (n < 0.28) return '#81725b';
+      if (n < 0.42) return '#8f7f66';
+      return '#9d8d71';
     },
     water: (wx, wy) => {
       // a slow swell, with crests where two waves ride up together
       const swell = noise(wx * 0.7, wy * 1.6, 9);
       const fine = noise(wx + 200, wy * 2.2 + 60, 4);
-      if (swell + fine * 0.5 > 1.10) return '#6fa2d8';
-      if (swell > 0.66) return '#2f5f9c';
-      if (swell < 0.32) return '#16315c';
-      return '#20477e';
+      if (swell + fine * 0.5 > 1.10) return '#80a2c7';
+      if (swell > 0.66) return '#40618b';
+      if (swell < 0.32) return '#213451';
+      return '#2f4a6f';
     },
   },
   desert: {
+    // Muted the same ~32% as 'green' above, for the same reason.
     grass: (wx, wy) => {
       // sparse sage scrub over sun-baked earth, not a lawn
       const n = noise(wx, wy, 6.5);
       const clump = noise(wx + 91, wy + 37, 17);
-      if (clump > 0.70 && n > 0.45) return '#8c9a5c';
-      if (n > 0.63) return '#7c8a4e';
-      if (n < 0.30) return '#8a6f42';
-      if (n < 0.44) return '#96794a';
-      return '#a2854f';
+      if (clump > 0.70 && n > 0.45) return '#879066';
+      if (n > 0.63) return '#778058';
+      if (n < 0.30) return '#7e6c4e';
+      if (n < 0.44) return '#8a7656';
+      return '#95815c';
     },
     sand: (wx, wy) => {
       const n = noise(wx, wy, 7);
-      if (n > 0.68) return '#f2dfa8';
-      if (n < 0.33) return '#d0aa68';
-      return '#e2c384';
+      if (n > 0.68) return '#e6d9b4';
+      if (n < 0.33) return '#bfa679';
+      return '#d3be93';
     },
     road: (wx, wy) => {
       const n = noise(wx, wy, 5.5);
-      if (n > 0.72) return '#d8b888';
-      if (n < 0.28) return '#96794a';
-      if (n < 0.42) return '#a8875a';
-      return '#bc9c68';
+      if (n > 0.72) return '#cbb595';
+      if (n < 0.28) return '#8a7656';
+      if (n < 0.42) return '#9c8566';
+      return '#af9975';
     },
     water: (wx, wy) => {
       // the same oasis blue, just less of the map wants to be it
       const swell = noise(wx * 0.7, wy * 1.6, 9);
       const fine = noise(wx + 200, wy * 2.2 + 60, 4);
-      if (swell + fine * 0.5 > 1.10) return '#7cb4c4';
-      if (swell > 0.66) return '#337c88';
-      if (swell < 0.32) return '#1a4550';
-      return '#265f6a';
+      if (swell + fine * 0.5 > 1.10) return '#88aeb8';
+      if (swell > 0.66) return '#41727a';
+      if (swell < 0.32) return '#234047';
+      return '#31585f';
     },
   },
   // Ashfall / Ashquarry / Cinderreach — a scorched reach that never quite
@@ -317,8 +323,8 @@ const MAT_THEMES = {
 // into grassTall meadows on top of the blades — wildflowers, not scrub or
 // ash, so only the countryside theme earns them.
 const SPECK = {
-  green:   { grass: ['#7cbb63', '#2c4e26'], grassTall: true,  flowers: ['#fdf6d8', '#f0b44c', '#f2a0bc'], road: ['#d8c8a8', '#6e5c40'], sand: '#f2e4bd', water: '#b8dcff' },
-  desert:  { grass: ['#c8b878', '#6a5230'], grassTall: false, road: ['#ecd8a4', '#7a5f38'], sand: '#fbeec0', water: '#c8e8ec' },
+  green:   { grass: ['#82ad71', '#30482c'], grassTall: true,  flowers: ['#fdf6d8', '#f0b44c', '#f2a0bc'], road: ['#d0c5b0', '#675a47'], sand: '#eae0c5', water: '#c3dcf4' },
+  desert:  { grass: ['#bbb085', '#615039'], grassTall: false, road: ['#e0d3b0', '#6f5d43'], sand: '#f2e9c9', water: '#cee4e6' },
   ash:     { grass: ['#e8783c', '#120e0c'], grassTall: false, road: ['#847666', '#1c1815'], sand: '#b0a696', water: '#c86a34' },
   autumn:  { grass: ['#e8c05c', '#4a3016'], grassTall: true,  road: ['#c8a878', '#4a3620'], sand: '#f0dcac', water: '#c8a860' },
   crystal: { grass: ['#f8f4ff', '#6c6488'], grassTall: false, road: ['#f0ecff', '#8078a0'], sand: '#ffffff', water: '#ffffff' },
@@ -331,7 +337,7 @@ function speckle(P, mat, px, py, wx, wy, theme) {
   const s = SPECK[theme] ?? SPECK.green;
   if (mat === 'grass') {
     const [hi, lo] = s.grass;
-    if (h > 0.972) {
+    if (h > 0.960) {
       P.px(px, py, hi);
       if (s.grassTall) {
         // A small leaning tuft — the main blade plus a shorter companion
@@ -342,7 +348,7 @@ function speckle(P, mat, px, py, wx, wy, theme) {
         const lean = hash2(wx * 7 + 3, wy * 11 + 5) > 0.5 ? 1 : -1;
         P.px(px + lean, py - 1, hi);
       }
-    } else if (h < 0.022) {
+    } else if (h < 0.032) {
       P.px(px, py, lo);
     }
     if (s.flowers) {
@@ -354,12 +360,12 @@ function speckle(P, mat, px, py, wx, wy, theme) {
     }
   } else if (mat === 'road') {
     const [hi, lo] = s.road;
-    if (h > 0.982) P.px(px, py, hi);
-    else if (h < 0.014) P.px(px, py, lo);
+    if (h > 0.972) P.px(px, py, hi);
+    else if (h < 0.020) P.px(px, py, lo);
   } else if (mat === 'sand') {
-    if (h > 0.984) P.px(px, py, s.sand);
+    if (h > 0.978) P.px(px, py, s.sand);
   } else if (mat === 'water') {
-    if (h > 0.9958) P.px(px, py, s.water);
+    if (h > 0.994) P.px(px, py, s.water);
   }
 }
 
@@ -410,7 +416,7 @@ function groundSpriteRaw(mapId, x, y, sample, theme) {
           if (beach && d < depth + 3.6) mat = 'sand';
           if (d < depth) mat = m;
         }
-        const light = grain(wx, wy) * 0.07 + patch(wx, wy) * 0.16;
+        const light = grain(wx, wy) * 0.10 + patch(wx, wy) * 0.16;
         P.px(px, py, shade(MAT[mat](wx, wy), light));
         speckle(P, mat, px, py, wx, wy, theme);
       }

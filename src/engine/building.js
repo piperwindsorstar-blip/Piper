@@ -42,37 +42,42 @@ export const isStructure = (name) => isBuilding(name);
 // had, unchanged. Each entry falls back to the regional THEME wherever it
 // doesn't override — an inn's warm terracotta already reads "inn," so it
 // isn't listed at all.
+// Muted ~32% off these trades' original saturation, same treatment and same
+// reason as THEMES below — a smithy's slate and a castle's ashlar were
+// already close to neutral so barely move, but the guild's blue-violet,
+// the treasury's gold and the temple's pale stone all read as duller,
+// more mineral versions of themselves now rather than a paint swatch.
 const KIND_TILE = {
-  sign_smithy: ['#9296a0', '#767a84', '#585c66', '#3e4148', '#232529'],   // slate
-  sign_pedlar: ['#5cab58', '#458c42', '#316b2e', '#234e21', '#132c12'],   // market green
-  sign_store: ['#5cab58', '#458c42', '#316b2e', '#234e21', '#132c12'],
-  sign_temple: ['#f2ecda', '#ddd1af', '#b9a878', '#8d7b51', '#5a4c31'],   // pale stone
-  sign_guild: ['#6c74c2', '#545ca2', '#3e447a', '#2b2f58', '#191b36'],    // deep blue-violet
-  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c', '#24272b'],  // fortress ashlar
-  sign_treasury: ['#c8a848', '#a88838', '#846a28', '#5c4a1a', '#362c10'], // gold ashlar, a vault built of coin-colored stone
-  sign_garrison: ['#7a828c', '#626870', '#4a5058', '#363a40', '#202226'], // steel-grey ashlar
-  sign_inn: ['#d9c17a', '#c2a85c', '#a68a42', '#8a6f2e', '#5c4a1e'],    // bundled straw thatch
+  sign_smithy: ['#94979e', '#787b82', '#5a5d64', '#404246', '#242528'],   // slate
+  sign_pedlar: ['#689e65', '#50804e', '#3a6138', '#2a4728', '#172816'],   // market green
+  sign_store: ['#689e65', '#50804e', '#3a6138', '#2a4728', '#172816'],
+  sign_temple: ['#eeeade', '#d6cdb6', '#afa382', '#83775b', '#534a38'],   // pale stone
+  sign_guild: ['#7a7fb4', '#606696', '#484c70', '#323551', '#1e1f31'],    // deep blue-violet
+  sign_castle: ['#93989f', '#797e85', '#5f6369', '#42464a', '#25272a'],  // fortress ashlar
+  sign_treasury: ['#b49e5c', '#96804a', '#756437', '#514525', '#302916'], // gold ashlar, a vault built of coin-colored stone
+  sign_garrison: ['#7d8289', '#64686e', '#4c5056', '#383a3e', '#212225'], // steel-grey ashlar
+  sign_inn: ['#cab989', '#b2a06c', '#968352', '#7b693d', '#524628'],    // bundled straw thatch
 };
 const KIND_WALL = {
-  sign_smithy: ['#9a5a44', '#7a4434', '#5c3226', '#3e2018'],    // soot-stained brick, not plaster
-  sign_temple: ['#faf6ec', '#eee6d2', '#d2c6a2', '#aa9a7a'],    // marble, fluted into a colonnade
-  sign_guild: ['#5a5ea0', '#484c86', '#383c6c', '#282a50'],     // dark indigo brick
-  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c'],    // the same stone as the rampart above
-  sign_treasury: ['#ecdeb2', '#d6c28a', '#b29e62', '#8c7a46'],  // pale gold ashlar — the same stone as its roof
-  sign_garrison: ['#c2c6ca', '#a6aaae', '#8a8e92', '#6a6e72'],  // grey ashlar
+  sign_smithy: ['#8c6152', '#6f4a3f', '#53372f', '#38241e'],    // soot-stained brick, not plaster
+  sign_temple: ['#f8f5ee', '#eae4d6', '#cac2aa', '#a29782'],    // marble, fluted into a colonnade
+  sign_guild: ['#656895', '#52557c', '#404364', '#2e304a'],     // dark indigo brick
+  sign_castle: ['#93989f', '#797e85', '#5f6369', '#42464a'],    // the same stone as the rampart above
+  sign_treasury: ['#e3d9bb', '#cabc96', '#a5986f', '#817551'],  // pale gold ashlar — the same stone as its roof
+  sign_garrison: ['#c3c6c9', '#a7aaad', '#8b8e91', '#6b6e71'],  // grey ashlar
 };
 const KIND_TRIM = {
-  sign_smithy: '#3a3a42',
-  sign_temple: '#e8c860',
-  sign_guild: '#4a52a0',
-  sign_castle: '#b02828',   // banners and the gate's ironwork — the only warm color on a grey keep
-  sign_treasury: '#e0b030',
-  sign_garrison: '#5a6068',
+  sign_smithy: '#3b3b41',
+  sign_temple: '#d2bc76',
+  sign_guild: '#585d92',
+  sign_castle: '#9a3e3e',   // banners and the gate's ironwork — the only warm color on a grey keep
+  sign_treasury: '#c4a34c',
+  sign_garrison: '#5c6066',
 };
 // A castle's corner towers are built of the same stone as everything else —
 // a fortress, not a gilded folly.
 const KIND_DOME = {
-  sign_castle: ['#9098a2', '#767e88', '#5c636c', '#40464c'],
+  sign_castle: ['#93989f', '#797e85', '#5f6369', '#42464a'],
 };
 
 /** How far a building's own footprint runs, in every direction from `sample`'s
@@ -126,24 +131,29 @@ function findKind(sample) {
  * an otherwise ordinary wall without looking like it wandered in from another
  * building style.
  */
+// Muted ~32% off these materials' original saturation — the same treatment
+// and the same reason as terrain.js's MAT_THEMES: real clay tile and
+// plaster read as duller versions of their hue than a bright game palette
+// defaults to. GLASS is left alone; window glass tinted by sky reflection
+// is already a fairly natural blue.
 const THEMES = {
   green: {
     // terracotta, light to dark; the last is the keyline
-    TILE: ['#e08a62', '#c4603f', '#a4442c', '#82301f', '#511b12'],
-    WALL: ['#e8d3ad', '#d4bb90', '#b89b70', '#8d7452'],
-    BEAM: ['#7a5a38', '#5d4227'],
+    TILE: ['#cc9176', '#af6b54', '#91503f', '#723a2f', '#47221c'],
+    WALL: ['#dfd0b6', '#c9b89b', '#ac997c', '#84735b'],
+    BEAM: ['#6f5a43', '#544230'],
     GLASS: ['#3f5a86', '#6f96c8'],
-    DOME: ['#e0c468', '#c49a3e', '#96712a', '#5f4518'],
-    TRIM: '#8a5a2c',
+    DOME: ['#cdba7b', '#af9253', '#856c3b', '#544223'],
+    TRIM: '#7b5a3b',
   },
   desert: {
     // sun-baked clay, light to dark
-    TILE: ['#d69a5c', '#c07f42', '#a3652e', '#7c4b1e', '#4a2c10'],
-    WALL: ['#e6c99a', '#d4b17e', '#b8905e', '#8f6a42'],
-    BEAM: ['#6b4a28', '#4a3018'],
+    TILE: ['#c29a70', '#ac8056', '#906641', '#6d4c2d', '#412c19'],
+    WALL: ['#dac6a6', '#c6ae8c', '#aa8e6c', '#836a4e'],
+    BEAM: ['#604a33', '#423020'],
     GLASS: ['#2f7a82', '#5cb0b8'],
-    DOME: ['#e8b45c', '#c88f38', '#9c6a22', '#623f10'],
-    TRIM: '#2f7a82',                          // turquoise paint, the regional accent
+    DOME: ['#d2ae72', '#b18a4f', '#886636', '#553d1d'],
+    TRIM: '#3c6f75',                          // turquoise paint, the regional accent
   },
 };
 
@@ -294,7 +304,7 @@ function drawRoof(P, sample, T, kind) {
         // a scalloped valance along the eave, the edge of the canvas itself
         if (bx % 6 < 3) col = shade(trim, -0.2);
       }
-      if (col) P.px(px, py, weather(col, bx, by, 0.07));
+      if (col) P.px(px, py, weather(col, bx, by, 0.10));
     }
   }
 }
@@ -367,7 +377,7 @@ function drawDome(P, sample, T, kind) {
       } else if (Math.abs(dx) <= r + 1) {
         col = by >= blockH - 1 ? D[3] : D[2];   // the base lip
       }
-      if (col) P.px(px, py, weather(col, bx, by, 0.07));
+      if (col) P.px(px, py, weather(col, bx, by, 0.10));
     }
   }
 }
@@ -492,7 +502,7 @@ function drawWall(P, sample, isDoor, T, self, kind) {
         // corner posts
         if (bx < 3 || bx >= blockW - 3) col = by < 4 ? BEAM[1] : BEAM[0];
       }
-      P.px(px, py, weather(col, bx, by, 0.06));
+      P.px(px, py, weather(col, bx, by, 0.09));
     }
   }
 
