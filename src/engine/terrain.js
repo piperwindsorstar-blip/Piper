@@ -83,7 +83,7 @@ function patch(wx, wy) {
 /** Which ground a tile stands on. Anything absent here is not auto-tiled. */
 const GROUND_OF = {
   grass: 'grass', tree: 'grass', mountain: 'grass', town: 'grass',
-  cave: 'grass', flower: 'grass', well: 'grass',
+  cave: 'grass', flower: 'grass', well: 'grass', bench: 'grass', signpost: 'grass',
   road: 'road', stall: 'road', lamp: 'road',
   sand: 'sand', water: 'water', bridge: 'water',
 };

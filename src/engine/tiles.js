@@ -417,6 +417,34 @@ T.stall = (P) => {
   P.rect(1, 5, 1, 9, '#4a3018'); P.rect(22, 5, 1, 9, '#4a3018');
 };
 
+T.bench = (P) => {
+  // a plain wayside bench — two posts, a backrest, a seat
+  P.rect(4, 3, 2, 18, '#3a2f22'); P.rect(18, 3, 2, 18, '#3a2f22');    // back posts
+  P.rect(4, 3, 2, 6, '#4a3a2a'); P.rect(18, 3, 2, 6, '#4a3a2a');
+  P.rect(3, 6, 18, 5, '#6b4622');                                     // backrest slat
+  P.rect(3, 6, 18, 1, '#7d5429');
+  P.rect(2, 14, 20, 5, '#6b4622');                                    // seat slat
+  P.rect(2, 14, 20, 1, '#966333');
+  P.speck([[6, 16], [11, 15], [16, 16], [9, 8], [15, 8]], '#4a3018'); // wood grain
+  P.rect(4, 19, 2, 4, '#221a14'); P.rect(18, 19, 2, 4, '#221a14');    // front legs
+};
+
+T.signpost = (P) => {
+  // a post with two destination boards, angled opposite ways — read the
+  // shape, not any actual text, from the distance this renders at
+  P.rect(11, 8, 2, 15, '#5a4630');
+  P.rect(11, 8, 1, 15, '#6b5438');
+  P.rect(8, 21, 8, 2, '#3a2f22');                                    // base
+  P.rect(11, 3, 12, 4, '#7d5429');                                   // upper board, points right
+  P.rect(11, 3, 12, 1, '#966333');
+  P.px(22, 4, '#5a4022'); P.px(22, 5, '#5a4022');                    // tapered tip
+  P.rect(1, 9, 11, 4, '#6b4622');                                    // lower board, points left
+  P.rect(1, 9, 11, 1, '#7d5429');
+  P.px(1, 10, '#4a3018'); P.px(1, 11, '#4a3018');
+  P.rect(9, 6, 4, 2, '#3a2f22');                                     // the two boards' mounting nails
+  P.rect(9, 11, 4, 2, '#3a2f22');
+};
+
 T.lamp = (P) => {
   // post
   P.rect(11, 8, 2, 15, '#2c2a30');
@@ -436,22 +464,13 @@ export const TILE_NAMES = Object.keys(T);
 // These are the only tileSprite() entries that actually sit out on the
 // overworld, each a standalone decoration on its own tile rather than part
 // of a seamless field (see the comment above T.town) — no neighbouring tile
-// needs to agree with these at an edge, so a direct blur-and-outline is safe
-// where it isn't for terrain/building's world-spanning art (see pixel.js's
+// needs to agree with these at an edge, so an outline is safe here where it
+// isn't for terrain/building's world-spanning art (see pixel.js's
 // paintSoftened for why those need real neighbour context instead).
-const OUTDOOR_PROPS = new Set(['town', 'flower', 'well', 'stall', 'lamp', 'bridge']);
+const OUTDOOR_PROPS = new Set(['town', 'flower', 'well', 'stall', 'lamp', 'bridge', 'bench', 'signpost']);
 
 export function tileSprite(name) {
   const draw = T[name] ?? T.grass;
   if (!OUTDOOR_PROPS.has(name)) return make(`tile|${name}`, TS, TS, draw, { grain: 0.05 });
-  return make(`tile|${name}`, TS, TS, (P) => {
-    draw(P);
-    const original = document.createElement('canvas');
-    original.width = TS; original.height = TS;
-    original.getContext('2d').drawImage(P.ctx.canvas, 0, 0);
-    P.ctx.clearRect(0, 0, TS, TS);
-    P.ctx.filter = 'blur(0.5px)';
-    P.ctx.drawImage(original, 0, 0);
-    P.ctx.filter = 'none';
-  }, { outline: 'rgba(20,16,12,0.5)', grain: 0.05 });
+  return make(`tile|${name}`, TS, TS, draw, { outline: 'rgba(20,16,12,0.5)', grain: 0.05 });
 }

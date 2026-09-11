@@ -1550,7 +1550,7 @@ export class FieldScene {
 // CITY_TOWNS and the cave-marker loop below) own those tiles' whole
 // visual, bigger and labelled instead of a 24px prop that'd otherwise
 // double up underneath it.
-const FEATURE = new Set(['bridge', 'flower', 'well', 'stall', 'lamp']);
+const FEATURE = new Set(['bridge', 'flower', 'well', 'stall', 'lamp', 'bench', 'signpost']);
 
 /**
  * A neighbourhood reader for the terrain layer: `sample(dx, dy)` gives the tile
