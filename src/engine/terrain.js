@@ -87,12 +87,31 @@ const GROUND_OF = {
   boulder: 'grass', stump: 'grass', haybale: 'grass',
   road: 'road', stall: 'road', lamp: 'road',
   sand: 'sand', water: 'water', bridge: 'water',
+  stonepath: 'stone',
 };
 
-const PRIORITY = { water: 0, sand: 1, grass: 2, road: 3 };
+// Stone paths outrank dirt roads, so a stone path bleeds a worn, paved
+// edge into a road it joins rather than the other way round — a junction
+// reads as "the paved path takes over here," matching how it's actually
+// laid (a deliberate route out to an outpost, over a foot-worn road).
+const PRIORITY = { water: 0, sand: 1, grass: 2, road: 3, stone: 4 };
 
 /** Outdoor tiles get the terrain treatment; interiors keep their own stamps. */
 export const isOutdoor = (name) => name !== null && Object.hasOwn(GROUND_OF, name);
+
+/** Laid stone, shared across themes with only the three colours changing: a
+ *  small grid of cobbles on world-space seams (so it doesn't repeat per
+ *  tile) rather than another noise-blended field — a deliberately laid path
+ *  reads as built, block by block, not grown or eroded like the materials
+ *  around it. */
+function stoneCobble(wx, wy, joint, dark, mid, light) {
+  if ((Math.floor(wx) % 4 === 0) || (Math.floor(wy) % 4 === 0)) return joint;
+  const bx = Math.floor(wx / 4), by = Math.floor(wy / 4);
+  const n = hash2(bx * 13 + 5, by * 17 + 9);
+  if (n > 0.66) return light;
+  if (n < 0.33) return dark;
+  return mid;
+}
 
 /**
  * Each material is a colour as a function of world position. Sampling noise
@@ -149,6 +168,7 @@ const MAT_THEMES = {
       if (swell < 0.32) return '#213451';
       return '#2f4a6f';
     },
+    stone: (wx, wy) => stoneCobble(wx, wy, '#585245', '#726b5c', '#8c8474', '#a29a88'),
   },
   desert: {
     // Muted the same ~32% as 'green' above, for the same reason.
@@ -187,6 +207,7 @@ const MAT_THEMES = {
       if (swell < 0.32) return '#234047';
       return '#31585f';
     },
+    stone: (wx, wy) => stoneCobble(wx, wy, '#6e6048', '#8a7c5e', '#a8996f', '#c0af82'),
   },
   // Ashfall / Ashquarry / Cinderreach — a scorched reach that never quite
   // cooled: cinder and clinker instead of soil, embers instead of dew.
@@ -222,6 +243,7 @@ const MAT_THEMES = {
       if (swell < 0.32) return '#160a08';
       return '#2c1610';
     },
+    stone: (wx, wy) => stoneCobble(wx, wy, '#100c0a', '#241f1c', '#302a26', '#443c34'),
   },
   // Harrow's Rest / Duskwell — the harvest country past its season, gold
   // gone to rust.
@@ -256,6 +278,7 @@ const MAT_THEMES = {
       if (swell < 0.32) return '#241c10';
       return '#362a18';
     },
+    stone: (wx, wy) => stoneCobble(wx, wy, '#463a2c', '#5c5044', '#726858', '#8c8070'),
   },
   // Glasshaven / Glassfields — sand and water both gone to fused, pale glass.
   crystal: {
@@ -290,6 +313,7 @@ const MAT_THEMES = {
       if (swell < 0.32) return '#5088b0';
       return '#78b0d4';
     },
+    stone: (wx, wy) => stoneCobble(wx, wy, '#a8a0c0', '#c4bcd8', '#d4ccdc', '#e4dcec'),
   },
   // Tidewatch / the Drowned Vale — brackish, half-drowned lowland.
   swamp: {
@@ -323,6 +347,7 @@ const MAT_THEMES = {
       if (swell < 0.32) return '#0e140c';
       return '#182410';
     },
+    stone: (wx, wy) => stoneCobble(wx, wy, '#141810', '#242c1c', '#363c2c', '#4c5440'),
   },
 };
 
@@ -334,12 +359,12 @@ const MAT_THEMES = {
 // into grassTall meadows on top of the blades — wildflowers, not scrub or
 // ash, so only the countryside theme earns them.
 const SPECK = {
-  green:   { grass: ['#82ad71', '#30482c'], grassTall: true,  flowers: ['#fdf6d8', '#f0b44c', '#f2a0bc'], road: ['#d0c5b0', '#675a47'], sand: '#eae0c5', water: '#c3dcf4' },
-  desert:  { grass: ['#bbb085', '#615039'], grassTall: false, road: ['#e0d3b0', '#6f5d43'], sand: '#f2e9c9', water: '#cee4e6' },
-  ash:     { grass: ['#e8783c', '#120e0c'], grassTall: false, road: ['#847666', '#1c1815'], sand: '#b0a696', water: '#c86a34' },
-  autumn:  { grass: ['#e8c05c', '#4a3016'], grassTall: true,  road: ['#c8a878', '#4a3620'], sand: '#f0dcac', water: '#c8a860' },
-  crystal: { grass: ['#f8f4ff', '#6c6488'], grassTall: false, road: ['#f0ecff', '#8078a0'], sand: '#ffffff', water: '#ffffff' },
-  swamp:   { grass: ['#7a8c4a', '#0c0e08'], grassTall: false, road: ['#6a6048', '#1a1610'], sand: '#8a7c54', water: '#5a6c3e' },
+  green:   { grass: ['#82ad71', '#30482c'], grassTall: true,  flowers: ['#fdf6d8', '#f0b44c', '#f2a0bc'], road: ['#d0c5b0', '#675a47'], sand: '#eae0c5', water: '#c3dcf4', stone: ['#c2bcae', '#403c34'] },
+  desert:  { grass: ['#bbb085', '#615039'], grassTall: false, road: ['#e0d3b0', '#6f5d43'], sand: '#f2e9c9', water: '#cee4e6', stone: ['#d8c9a0', '#5a4e38'] },
+  ash:     { grass: ['#e8783c', '#120e0c'], grassTall: false, road: ['#847666', '#1c1815'], sand: '#b0a696', water: '#c86a34', stone: ['#5c544a', '#0a0808'] },
+  autumn:  { grass: ['#e8c05c', '#4a3016'], grassTall: true,  road: ['#c8a878', '#4a3620'], sand: '#f0dcac', water: '#c8a860', stone: ['#a89880', '#302820'] },
+  crystal: { grass: ['#f8f4ff', '#6c6488'], grassTall: false, road: ['#f0ecff', '#8078a0'], sand: '#ffffff', water: '#ffffff', stone: ['#f4f0fc', '#948cac'] },
+  swamp:   { grass: ['#7a8c4a', '#0c0e08'], grassTall: false, road: ['#6a6048', '#1a1610'], sand: '#8a7c54', water: '#5a6c3e', stone: ['#5c6650', '#0a0c08'] },
 };
 
 /** Sparse detail scattered over a filled material: blades, pebbles, glints. */
@@ -396,6 +421,13 @@ function speckle(P, mat, px, py, wx, wy, theme) {
     if (h > 0.978) P.px(px, py, s.sand);
   } else if (mat === 'water') {
     if (h > 0.994) P.px(px, py, s.water);
+  } else if (mat === 'stone') {
+    // Wear on top of the manufactured cobble grid — a polished high spot,
+    // an occasional crack — so a well-travelled path doesn't look freshly
+    // laid the whole way out to an outpost.
+    const [hi, lo] = s.stone;
+    if (h > 0.975) P.px(px, py, hi);
+    else if (h < 0.025) P.px(px, py, lo);
   }
 }
 
