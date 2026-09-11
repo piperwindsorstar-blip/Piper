@@ -445,6 +445,41 @@ T.signpost = (P) => {
   P.rect(9, 11, 4, 2, '#3a2f22');
 };
 
+T.boulder = (P) => {
+  // a small rock cluster — two stones of different sizes, weathered grey
+  P.ellipse(9, 19, 7, 3, '#4a453e');                                 // ground shadow
+  P.ellipse(15, 18, 6, 4, '#6b645a');
+  P.ellipse(15, 16, 5, 4, '#8c8478');
+  P.ellipse(13, 14, 3, 3, '#a8a094');                                // lit facet
+  P.ellipse(8, 15, 5, 4, '#787166');
+  P.ellipse(7, 12, 3, 3, '#9c9488');
+  P.speck([[6, 12], [11, 13], [14, 14], [17, 17], [9, 18], [18, 20]], '#3e3a34'); // cracks
+  P.speck([[7, 11], [13, 12], [16, 15]], '#c8c0b4');                 // sun-bleached highlights
+};
+
+T.stump = (P) => {
+  // a felled tree's stump — someone's been through here with an axe
+  P.ellipse(12, 17, 8, 4, '#3e2a16');                                // ground shadow / bark ring
+  P.ellipse(12, 16, 7, 4, '#5a3d20');
+  P.ellipse(12, 15, 6, 3, '#7d5a34');                                // cut face
+  P.ellipse(12, 15, 4, 2, '#96714a');                                // growth rings
+  P.ellipse(12, 15, 2, 1, '#7d5a34');
+  P.px(12, 15, '#5a3d20');
+  P.speck([[8, 14], [16, 16], [12, 12], [9, 17], [15, 13]], '#4a3018'); // bark texture
+  P.rect(10, 19, 1, 3, '#3a2510'); P.rect(15, 20, 1, 2, '#3a2510');  // exposed roots
+};
+
+T.haybale = (P) => {
+  // a round bale of straw, left out by a roadside field
+  P.ellipse(12, 21, 8, 2, '#5a4620');                                // ground shadow
+  P.ellipse(12, 13, 9, 8, '#8a6f2e');                                // bale, shaded base
+  P.ellipse(12, 12, 8, 7, '#c9a84a');                                // lit face
+  P.ellipse(10, 10, 6, 5, '#d9bc60');                                // highlight
+  P.rect(3, 11, 18, 2, '#6b5220');                                   // twine band
+  P.rect(3, 16, 18, 2, '#6b5220');
+  P.speck([[6, 9], [9, 7], [15, 8], [18, 10], [7, 15], [16, 14], [11, 18]], '#a68a3e'); // straw wisps
+};
+
 T.lamp = (P) => {
   // post
   P.rect(11, 8, 2, 15, '#2c2a30');
@@ -467,7 +502,10 @@ export const TILE_NAMES = Object.keys(T);
 // needs to agree with these at an edge, so an outline is safe here where it
 // isn't for terrain/building's world-spanning art (see pixel.js's
 // paintSoftened for why those need real neighbour context instead).
-const OUTDOOR_PROPS = new Set(['town', 'flower', 'well', 'stall', 'lamp', 'bridge', 'bench', 'signpost']);
+const OUTDOOR_PROPS = new Set([
+  'town', 'flower', 'well', 'stall', 'lamp', 'bridge', 'bench', 'signpost',
+  'boulder', 'stump', 'haybale',
+]);
 
 export function tileSprite(name) {
   const draw = T[name] ?? T.grass;

@@ -1250,13 +1250,11 @@ export class FieldScene {
     // gets blitted in as this frame's whole backdrop — see
     // setup3D/render3D/renderWorldTexture for how that's built.
     this.render3D();
-    // Tilt-shift the backdrop the same way battle.js does: sharp in a band
-    // centred on the player (who this camera always keeps at screen centre,
-    // W/2,H/2 — see setup3D), softening toward the top and bottom edges for
-    // the same "miniature diorama" look. Kept gentler and the band wider
-    // than battle's — chests, signs and NPCs the player hasn't reached yet
-    // still need to read clearly near the edges of the visible window.
-    scr.tiltShift(this.canvas3D, 70, 200, 2);
+    // Backdrop drawn sharp across the whole screen — chests, signs and NPCs
+    // the player hasn't reached yet need to read clearly at every edge of
+    // the visible window, so no tilt-shift softening here (see battle.js
+    // for the diorama-blur look used in combat, where that tradeoff differs).
+    scr.tiltShift(this.canvas3D, 70, 200, 0);
 
     // dusk / dawn wash over the outdoor sky so night is not a binary flip
     if (m.outdoor || m.town) {
@@ -1550,7 +1548,7 @@ export class FieldScene {
 // CITY_TOWNS and the cave-marker loop below) own those tiles' whole
 // visual, bigger and labelled instead of a 24px prop that'd otherwise
 // double up underneath it.
-const FEATURE = new Set(['bridge', 'flower', 'well', 'stall', 'lamp', 'bench', 'signpost']);
+const FEATURE = new Set(['bridge', 'flower', 'well', 'stall', 'lamp', 'bench', 'signpost', 'boulder', 'stump', 'haybale']);
 
 /**
  * A neighbourhood reader for the terrain layer: `sample(dx, dy)` gives the tile
