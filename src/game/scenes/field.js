@@ -372,8 +372,15 @@ export class FieldScene {
         ctx.drawImage(tileSprite('chest'), c.x * TS - ox, c.y * TS - oy);
       }
       this._worldTexBakeKey = bakeKey;
+      // Only push the freshly-baked canvas to the GPU once it's actually
+      // whole. Uploading on every call (even a budget-timeout bailout)
+      // was flashing the still-void background fill onto screen for a
+      // frame each time a burst of fresh tiles missed cache while moving —
+      // the GPU texture now just keeps showing the last complete bake
+      // until a pass finishes, which the next frame's cache-warmed retry
+      // does almost immediately.
+      if (this.groundTex) this.groundTex.source.update();
     }
-    if (this.groundTex) this.groundTex.source.update();
   }
 
   /** The sprite canvas + billboard feet position for one field actor (the

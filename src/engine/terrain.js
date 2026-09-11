@@ -112,8 +112,15 @@ const MAT_THEMES = {
     // and lightness bands (what actually gives the ground its shape) are
     // untouched, only how vivid each band is.
     grass: (wx, wy) => {
-      const n = noise(wx, wy, 6.5);
-      const clump = noise(wx + 91, wy + 37, 17);
+      // Wider than the other materials' bands (9.5 vs ~6.5-7) — grass is
+      // the one material covering most of the screen at once, so the same
+      // band scale that reads as fine gravel/wave texture on sand or water
+      // reads as a staticky, camouflage-like mottle here. Broader bands
+      // mean each patch of light or shade spans several pixels, the way an
+      // actual meadow's sun/shade sweeps do, rather than flickering pixel
+      // to pixel.
+      const n = noise(wx, wy, 15);
+      const clump = noise(wx + 91, wy + 37, 22);
       if (clump > 0.70 && n > 0.45) return '#6e9963';
       if (n > 0.63) return '#5e8555';
       if (n < 0.30) return '#3b5737';
@@ -146,9 +153,12 @@ const MAT_THEMES = {
   desert: {
     // Muted the same ~32% as 'green' above, for the same reason.
     grass: (wx, wy) => {
-      // sparse sage scrub over sun-baked earth, not a lawn
-      const n = noise(wx, wy, 6.5);
-      const clump = noise(wx + 91, wy + 37, 17);
+      // sparse sage scrub over sun-baked earth, not a lawn — wider bands
+      // than the 6.5-ish scale sand/road/water use, same reason as 'green'
+      // (see its comment): fine bands across a screen-filling material read
+      // as static rather than texture.
+      const n = noise(wx, wy, 15);
+      const clump = noise(wx + 91, wy + 37, 22);
       if (clump > 0.70 && n > 0.45) return '#879066';
       if (n > 0.63) return '#778058';
       if (n < 0.30) return '#7e6c4e';
@@ -182,8 +192,8 @@ const MAT_THEMES = {
   // cooled: cinder and clinker instead of soil, embers instead of dew.
   ash: {
     grass: (wx, wy) => {
-      const n = noise(wx, wy, 6.5);
-      const clump = noise(wx + 91, wy + 37, 17);
+      const n = noise(wx, wy, 15);
+      const clump = noise(wx + 91, wy + 37, 22);
       if (clump > 0.72 && n > 0.5) return '#a8482a';         // a bank still glowing underneath
       if (n > 0.63) return '#4a423c';
       if (n < 0.30) return '#221e1b';
@@ -217,8 +227,8 @@ const MAT_THEMES = {
   // gone to rust.
   autumn: {
     grass: (wx, wy) => {
-      const n = noise(wx, wy, 6.5);
-      const clump = noise(wx + 91, wy + 37, 17);
+      const n = noise(wx, wy, 15);
+      const clump = noise(wx + 91, wy + 37, 22);
       if (clump > 0.70 && n > 0.45) return '#c8963c';
       if (n > 0.63) return '#a87830';
       if (n < 0.30) return '#6e4a24';
@@ -250,8 +260,8 @@ const MAT_THEMES = {
   // Glasshaven / Glassfields — sand and water both gone to fused, pale glass.
   crystal: {
     grass: (wx, wy) => {
-      const n = noise(wx, wy, 6.5);
-      const clump = noise(wx + 91, wy + 37, 17);
+      const n = noise(wx, wy, 15);
+      const clump = noise(wx + 91, wy + 37, 22);
       if (clump > 0.70 && n > 0.45) return '#d8d0ec';
       if (n > 0.63) return '#b8b0d4';
       if (n < 0.30) return '#7c7498';
@@ -284,8 +294,8 @@ const MAT_THEMES = {
   // Tidewatch / the Drowned Vale — brackish, half-drowned lowland.
   swamp: {
     grass: (wx, wy) => {
-      const n = noise(wx, wy, 6.5);
-      const clump = noise(wx + 91, wy + 37, 17);
+      const n = noise(wx, wy, 15);
+      const clump = noise(wx + 91, wy + 37, 22);
       if (clump > 0.70 && n > 0.45) return '#5c6e3c';
       if (n > 0.63) return '#4a5c30';
       if (n < 0.30) return '#241e14';
@@ -338,26 +348,45 @@ function speckle(P, mat, px, py, wx, wy, theme) {
   const s = SPECK[theme] ?? SPECK.green;
   if (mat === 'grass') {
     const [hi, lo] = s.grass;
-    if (h > 0.960) {
-      P.px(px, py, hi);
-      if (s.grassTall) {
+    if (s.grassTall) {
+      // Tufts cluster into little tussocks via a coarse noise field rather
+      // than firing at one flat per-pixel rate — a real lawn is lusher in
+      // some stretches and closer-cropped in the gaps between. That uneven
+      // clumping (not just the blade shape itself) is what reads as an
+      // actual meadow instead of an even fleck-speckled fill.
+      const tuft = noise(wx * 0.45 + 300, wy * 0.45 - 300, 7.5);
+      const hiT = 0.975 - Math.max(0, tuft - 0.55) * 0.30;
+      if (h > hiT) {
         // A small leaning tuft — the main blade plus a shorter companion
         // that leans left or right, picked from the same hash so a given
         // world pixel always leans the same way — reads as a clump of
         // grass rather than the dead-straight single blade this used to be.
+        P.px(px, py, hi);
         P.px(px, py - 1, hi);
         const lean = hash2(wx * 7 + 3, wy * 11 + 5) > 0.5 ? 1 : -1;
         P.px(px + lean, py - 1, hi);
+        // In the lushest tussocks a third blade breaks the tuft's silhouette
+        // so a dense patch reads as several overlapping blades instead of
+        // one shape stamped wall-to-wall.
+        if (tuft > 0.72 && hash2(wx * 17 + 2, wy * 23 + 9) > 0.6) P.px(px - lean, py - 2, hi);
+      } else if (h < 0.032) {
+        P.px(px, py, lo);
       }
+    } else if (h > 0.960) {
+      P.px(px, py, hi);
     } else if (h < 0.032) {
       P.px(px, py, lo);
     }
     if (s.flowers) {
-      // An independent hash stream so petals don't cluster with the blade
-      // flecks above — rare enough to read as a handful of wildflowers
-      // scattered through the field, not a pattern.
-      const hf = hash2(wx * 13 + 29, wy * 17 + 41);
-      if (hf > 0.9935) P.px(px, py, s.flowers[Math.floor(hf * 997) % s.flowers.length]);
+      // Flowers cluster the same way: gated by an even broader noise field
+      // so a whole little patch of meadow gets wildflowers together,
+      // instead of single petals haze-scattered evenly across the entire
+      // field, which read as digital noise rather than rare blooms.
+      const meadow = noise(wx * 0.12 + 900, wy * 0.12 - 900, 9);
+      if (meadow > 0.62) {
+        const hf = hash2(wx * 13 + 29, wy * 17 + 41);
+        if (hf > 0.985) P.px(px, py, s.flowers[Math.floor(hf * 997) % s.flowers.length]);
+      }
     }
   } else if (mat === 'road') {
     const [hi, lo] = s.road;
@@ -417,7 +446,14 @@ function groundSpriteRaw(mapId, x, y, sample, theme) {
           if (beach && d < depth + 3.6) mat = 'sand';
           if (d < depth) mat = m;
         }
-        const light = grain(wx, wy) * 0.10 + patch(wx, wy) * 0.16;
+        // Grass skips the fine per-pixel grain entirely: the same
+        // near-pixel-scale jitter that reads as coarse gravel or a wave
+        // ripple on sand/road/water just compounds with grass's own colour
+        // bands and blade speckle into a staticky mottle that reads as
+        // camouflage rather than a lawn. The broad patch() swell (many
+        // pixels wide) still gives it sun/shade variation at a scale that
+        // doesn't fight the band and blade shapes.
+        const light = (mat === 'grass' ? 0 : grain(wx, wy) * 0.10) + patch(wx, wy) * 0.16;
         P.px(px, py, shade(MAT[mat](wx, wy), light));
         speckle(P, mat, px, py, wx, wy, theme);
       }
