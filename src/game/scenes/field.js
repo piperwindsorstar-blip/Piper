@@ -288,7 +288,6 @@ export class FieldScene {
     // repaint-and-reupload into a no-op for most frames.
     const bakeKey = `${m.id}|${cam.x}|${cam.y}`;
     if (bakeKey === this._worldTexBakeKey) return;
-    this._worldTexBakeKey = bakeKey;
 
     const ctx = this.worldCanvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
@@ -307,8 +306,31 @@ export class FieldScene {
     const x1 = Math.min(w - 1, Math.ceil((ox + this.worldCanvas.width) / TS));
     const y1 = Math.min(h - 1, Math.ceil((oy + this.worldCanvas.height) / TS));
 
+    // Every tile position here is cached by absolute (map, x, y) — see
+    // groundSprite/massSprite/buildingSprite — so a position already drawn
+    // once anywhere is a cheap cache hit forever after. But the FIRST time
+    // through a freshly-warped-into area, this margin-padded window (well
+    // past 800 tiles) is entirely cache misses, and each one paints a whole
+    // material-blended, blurred tile from scratch: measured well over 4
+    // real seconds of unbroken main-thread work for a single warp into
+    // unexplored ground, reading as the game hanging rather than loading.
+    // A wall-clock budget below bails out of both loops once a frame has
+    // done enough fresh painting, leaving whatever's left as the map's own
+    // background fill (already there from the clear above) rather than
+    // finishing the burst in one shot. Crucially the bake key is only
+    // recorded once a pass actually reaches the end uninterrupted, so a
+    // bailed-out frame doesn't get mistaken for a finished one — the very
+    // next frame retries the same window, and since every tile this frame
+    // did manage is now a cache hit, it gets further before its own budget
+    // runs out, converging over a handful of frames instead of one freeze.
+    const BUDGET_MS = 8;
+    const deadline = performance.now() + BUDGET_MS;
+    let complete = true;
+
+    outer1:
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
+        if ((x & 7) === 0 && performance.now() > deadline) { complete = false; break outer1; }
         const t = tileAt(m, x, y);
         if (!t) continue;
         const theme = themeAt(m, x, y);
@@ -322,27 +344,34 @@ export class FieldScene {
         }
       }
     }
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const t = tileAt(m, x, y);
-        if (!t) continue;
-        const theme = themeAt(m, x, y);
-        const px2 = x * TS - ox, py2 = y * TS - oy;
-        const smp = sampler(m, x, y);
-        if (hasStructure(smp)) {
-          ctx.drawImage(buildingSprite(`${m.id}|${x}|${y}`, smp, theme), px2, py2);
+    if (complete) {
+      outer2:
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if ((x & 7) === 0 && performance.now() > deadline) { complete = false; break outer2; }
+          const t = tileAt(m, x, y);
+          if (!t) continue;
+          const theme = themeAt(m, x, y);
+          const px2 = x * TS - ox, py2 = y * TS - oy;
+          const smp = sampler(m, x, y);
+          if (hasStructure(smp)) {
+            ctx.drawImage(buildingSprite(`${m.id}|${x}|${y}`, smp, theme), px2, py2);
+          }
+          if (!isOutdoor(t.tile)) continue;
+          const px = x * TS - ox, py = y * TS - oy;
+          if (hasMass(smp)) {
+            ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, smp, theme), px, py);
+          }
+          if (FEATURE.has(t.tile)) ctx.drawImage(tileSprite(t.tile), px, py);
         }
-        if (!isOutdoor(t.tile)) continue;
-        const px = x * TS - ox, py = y * TS - oy;
-        if (hasMass(smp)) {
-          ctx.drawImage(massSprite(`${m.id}|${x}|${y}`, smp, theme), px, py);
-        }
-        if (FEATURE.has(t.tile)) ctx.drawImage(tileSprite(t.tile), px, py);
       }
     }
-    for (const c of m.chests ?? []) {
-      if (this.g.flag(`chest.${c.id}`)) continue;
-      ctx.drawImage(tileSprite('chest'), c.x * TS - ox, c.y * TS - oy);
+    if (complete) {
+      for (const c of m.chests ?? []) {
+        if (this.g.flag(`chest.${c.id}`)) continue;
+        ctx.drawImage(tileSprite('chest'), c.x * TS - ox, c.y * TS - oy);
+      }
+      this._worldTexBakeKey = bakeKey;
     }
     if (this.groundTex) this.groundTex.source.update();
   }
