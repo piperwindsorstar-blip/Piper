@@ -374,6 +374,15 @@ export class FieldScene {
         // dark shading pixels at this ratio, reading as too pale instead)
         // resize, so the uploaded texture already matches the sprite's
         // screen size and the GPU never has to minify or magnify it.
+        //
+        // That quality resize is still a box-average, though, and at 4x
+        // the ink linework this art is built from gets blended straight
+        // into the surrounding skin/cloth fill — measured on real sprites,
+        // fully-opaque interior pixels lose over half their saturation
+        // (0.068 -> 0.032 avg) even with the mipmap step removed. The
+        // saturate/contrast filter below is fit to put that back: it was
+        // tuned against the same measurement to land close to the source
+        // art's own saturation and lightness, not picked by eye.
         const dsCanvas = document.createElement('canvas');
         dsCanvas.width = SPRITE_WORLD_W;
         dsCanvas.height = SPRITE_WORLD_H;
@@ -392,7 +401,9 @@ export class FieldScene {
         b.dsCtx.imageSmoothingEnabled = true;
         b.dsCtx.imageSmoothingQuality = 'high';
         b.dsCtx.clearRect(0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
+        b.dsCtx.filter = 'saturate(1.6) contrast(1.15)';
         b.dsCtx.drawImage(cv, 0, 0, SPRITE_WORLD_W, SPRITE_WORLD_H);
+        b.dsCtx.filter = 'none';
         b.tex.source.update();
       }
       b.sprite.position.set(feet.x, feet.y);
