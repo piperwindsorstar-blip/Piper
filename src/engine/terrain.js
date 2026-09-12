@@ -85,7 +85,9 @@ const GROUND_OF = {
   grass: 'grass', tree: 'grass', mountain: 'grass', town: 'grass',
   cave: 'grass', flower: 'grass', well: 'grass', bench: 'grass', signpost: 'grass',
   boulder: 'grass', stump: 'grass', haybale: 'grass',
+  mushroom: 'grass', berrybush: 'grass', cairn: 'grass', fencepost: 'grass',
   road: 'road', stall: 'road', lamp: 'road',
+  barrel: 'road', cart: 'road', planter: 'road', fountain: 'road',
   sand: 'sand', water: 'water', bridge: 'water',
   stonepath: 'stone',
 };

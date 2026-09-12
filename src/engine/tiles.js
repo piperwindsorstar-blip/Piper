@@ -480,6 +480,104 @@ T.haybale = (P) => {
   P.speck([[6, 9], [9, 7], [15, 8], [18, 10], [7, 15], [16, 14], [11, 18]], '#a68a3e'); // straw wisps
 };
 
+T.mushroom = (P) => {
+  // a cluster of toadstools at the base of a stump or tree line
+  P.ellipse(12, 21, 6, 2, '#2e3824');                                // ground shadow
+  P.ellipse(14, 15, 5, 3, '#a83838');                                // big cap
+  P.ellipse(14, 14, 5, 2, '#c85040');
+  P.speck([[11, 14], [16, 13], [14, 13]], '#f0e0d0');                // spots
+  P.rect(13, 16, 2, 4, '#e8ddc8');                                   // stem
+  P.ellipse(7, 18, 3, 2, '#c85040');                                 // small cap
+  P.rect(6, 19, 2, 2, '#e8ddc8');
+  P.ellipse(18, 20, 2, 1, '#a83838');                                // tiny cap
+  P.rect(17, 20, 1, 2, '#e8ddc8');
+};
+
+T.berrybush = (P) => {
+  // a wild bush heavy with berries, the sort a scout learns to spot
+  P.ellipse(12, 21, 8, 2, '#2e3824');                                // ground shadow
+  P.ellipse(12, 15, 9, 7, '#2e4a26');                                // bush, shaded base
+  P.ellipse(11, 13, 8, 6, '#3e6534');
+  P.ellipse(9, 11, 5, 4, '#4f7a42');                                 // lit crown
+  P.speck([[6, 14], [9, 10], [13, 9], [17, 12], [15, 16], [8, 17], [12, 18]], '#c83048');
+  P.speck([[7, 12], [11, 15], [15, 10], [18, 15]], '#e85068');       // sun-catching berries
+};
+
+T.cairn = (P) => {
+  // stacked trail stones — someone's been this way and marked it
+  P.ellipse(12, 21, 6, 2, '#4a453e');                                // ground shadow
+  P.ellipse(12, 19, 6, 3, '#787166');                                // base stone
+  P.ellipse(11, 15, 5, 3, '#8c8478');                                // mid stone
+  P.ellipse(12, 11, 4, 2, '#9c9488');                                // top stone
+  P.speck([[9, 20], [15, 18], [8, 15], [14, 14], [10, 11]], '#4a453e');
+  P.speck([[10, 19], [12, 15], [11, 11]], '#c8c0b4');
+};
+
+T.fencepost = (P) => {
+  // a short run of split-rail fence, the kind that marks a field edge
+  // rather than actually keeping anything out
+  P.ellipse(12, 21, 9, 2, '#2e3824');                                // ground shadow
+  P.rect(3, 8, 2, 14, '#5a4630'); P.rect(19, 8, 2, 14, '#5a4630');   // end posts
+  P.rect(3, 8, 1, 14, '#6b5438'); P.rect(19, 8, 1, 14, '#6b5438');
+  P.rect(11, 6, 2, 16, '#5a4630');                                   // centre post, a bit taller
+  P.rect(11, 6, 1, 16, '#6b5438');
+  P.rect(2, 11, 20, 2, '#6b4622');                                   // top rail
+  P.rect(2, 11, 20, 1, '#7d5429');
+  P.rect(2, 17, 20, 2, '#6b4622');                                   // bottom rail
+  P.rect(2, 17, 20, 1, '#7d5429');
+};
+
+T.barrel = (P) => {
+  P.ellipse(12, 21, 7, 2, '#241f18');                                // ground shadow
+  P.ellipse(12, 12, 7, 9, '#6b4622');                                // barrel body, shaded
+  P.ellipse(12, 12, 6, 9, '#7d5429');
+  P.ellipse(10, 9, 4, 5, '#966333');                                 // lit face
+  P.ellipse(12, 6, 6, 2, '#5a3d20');                                 // top rim
+  P.rect(5, 8, 14, 2, '#3a2f22'); P.rect(5, 16, 14, 2, '#3a2f22');   // metal bands
+  P.rect(5, 8, 14, 1, '#544f48'); P.rect(5, 16, 14, 1, '#544f48');
+  P.speck([[8, 11], [15, 13], [9, 17], [14, 6]], '#4a3018');         // plank seams
+};
+
+T.cart = (P) => {
+  // a merchant's handcart, parked and half-unloaded — wheels peeking out
+  // past either side of the bed is what actually reads as a cart rather
+  // than a crate; a dark rim on a dark ground shadow just disappears
+  P.ellipse(12, 22, 10, 2, '#1a1610');                               // ground shadow
+  P.ellipse(6, 18, 4, 4, '#2a2520'); P.ellipse(18, 18, 4, 4, '#2a2520'); // wheel rims
+  P.ellipse(6, 18, 3, 3, '#6b5438'); P.ellipse(18, 18, 3, 3, '#6b5438'); // wheel wood
+  P.px(6, 18, '#241f18'); P.px(18, 18, '#241f18');                   // hubs
+  P.rect(4, 9, 16, 8, '#7d5429');                                    // cart bed
+  P.rect(4, 9, 16, 1, '#966333');
+  P.rect(4, 9, 1, 8, '#5a3d20'); P.rect(19, 9, 1, 8, '#5a3d20');     // side boards
+  P.speck([[7, 11], [11, 10], [15, 12], [17, 10]], '#c85040');       // goods
+  P.speck([[9, 12], [13, 11]], '#e8c860');
+  P.rect(1, 12, 4, 1, '#5a4630');                                    // handle bar
+  P.rect(0, 11, 1, 3, '#5a4630');
+};
+
+T.planter = (P) => {
+  P.ellipse(12, 21, 8, 2, '#241f18');                                // ground shadow
+  P.rect(3, 14, 18, 7, '#6b4622');                                   // box
+  P.rect(3, 14, 18, 1, '#7d5429');
+  P.speck([[5, 17], [10, 18], [15, 17], [19, 18]], '#4a3018');       // wood grain
+  P.ellipse(12, 12, 9, 4, '#3e6837');                                // foliage
+  for (const [x, c] of [[5, '#e87890'], [9, '#f0e070'], [13, '#c890f0'], [17, '#7ad0f0']]) {
+    P.px(x, 9, '#fff8d0'); P.rect(x - 1, 10, 3, 2, c);
+  }
+};
+
+T.fountain = (P) => {
+  P.ellipse(12, 20, 9, 3, '#5a544c');                                // basin rim shadow
+  P.ellipse(12, 18, 9, 4, '#78706a');                                // basin
+  P.ellipse(12, 17, 8, 3, '#8c8478');
+  P.ellipse(12, 16, 6, 2, '#40618b');                                // water
+  P.ellipse(12, 15, 5, 2, '#80a2c7');
+  P.rect(11, 8, 2, 8, '#8c8478');                                    // centre column
+  P.ellipse(12, 8, 3, 2, '#a8a094');                                 // top basin
+  P.ellipse(12, 7, 2, 1, '#c3dcf4');                                 // spilling water
+  P.speck([[9, 9], [15, 10], [12, 12]], '#c3dcf4');                  // droplets
+};
+
 T.lamp = (P) => {
   // post
   P.rect(11, 8, 2, 15, '#2c2a30');
@@ -504,7 +602,8 @@ export const TILE_NAMES = Object.keys(T);
 // paintSoftened for why those need real neighbour context instead).
 const OUTDOOR_PROPS = new Set([
   'town', 'flower', 'well', 'stall', 'lamp', 'bridge', 'bench', 'signpost',
-  'boulder', 'stump', 'haybale',
+  'boulder', 'stump', 'haybale', 'mushroom', 'berrybush', 'cairn', 'fencepost',
+  'barrel', 'cart', 'planter', 'fountain',
 ]);
 
 export function tileSprite(name) {
