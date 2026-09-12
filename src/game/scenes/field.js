@@ -141,6 +141,13 @@ export class FieldScene {
     this.thunderFlash = 0;
     this.rollWeather();
     this.setup3D();
+    // Every fresh arrival (a warp, or the very first map of a new game)
+    // gets one pass of showing the ground texture progressively as it
+    // bakes in, even if incomplete — see renderWorldTexture's own comment.
+    // Once this arrival's own first full bake finishes, later incremental
+    // re-bakes from just walking around go back to hiding an incomplete
+    // one so a cache-miss burst at the edge of view doesn't flash.
+    this._worldTexEverComplete = false;
     if (opts.message) this.dlg.say(opts.message);
     // returning from a battle we won on a boss tile
     if (opts.afterBossFlag) this.g.setFlag(opts.afterBossFlag);
@@ -372,15 +379,23 @@ export class FieldScene {
         ctx.drawImage(tileSprite('chest'), c.x * TS - ox, c.y * TS - oy);
       }
       this._worldTexBakeKey = bakeKey;
-      // Only push the freshly-baked canvas to the GPU once it's actually
-      // whole. Uploading on every call (even a budget-timeout bailout)
-      // was flashing the still-void background fill onto screen for a
-      // frame each time a burst of fresh tiles missed cache while moving —
-      // the GPU texture now just keeps showing the last complete bake
-      // until a pass finishes, which the next frame's cache-warmed retry
-      // does almost immediately.
+    }
+    // Push the canvas to the GPU on every completed bake — but also on an
+    // incomplete one, as long as this scene has never shown a finished
+    // frame yet. Once something real has been on screen, holding back an
+    // incomplete re-bake is what stops the still-void background fill from
+    // flashing onto screen for a frame each time a burst of fresh tiles
+    // misses cache while moving (the next frame's cache-warmed retry
+    // finishes almost immediately). But that same rule applied to the very
+    // FIRST bake of a brand new game or a warp into wholly unexplored
+    // territory would hold back every frame until the whole margin-padded
+    // window finishes painting from nothing — several seconds of cache
+    // misses — leaving the screen blank the entire time instead of filling
+    // in progressively the way this budget was built to look.
+    if (complete || !this._worldTexEverComplete) {
       if (this.groundTex) this.groundTex.source.update();
     }
+    if (complete) this._worldTexEverComplete = true;
   }
 
   /** The sprite canvas + billboard feet position for one field actor (the
