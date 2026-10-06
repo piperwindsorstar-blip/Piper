@@ -310,7 +310,8 @@ function BookingCard({
         className="mt-4 flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
           event.preventDefault()
-          const form = new FormData(event.currentTarget)
+          const submitter = event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null
+          const form = new FormData(event.currentTarget, submitter)
           const refund = form.get('kind') === 'refund'
           try {
             const cents = dollarsToCents(String(form.get('amount') ?? ''))
@@ -322,7 +323,13 @@ function BookingCard({
                 return
               }
               setError(null)
-              setNotice(result.newlyBooked ? 'The deposit cleared. The date is booked.' : 'The payment is on the invoice.')
+              setNotice(
+                result.newlyBooked
+                  ? 'The deposit cleared. The date is booked.'
+                  : refund
+                    ? 'The refund is on the invoice. The date stays booked.'
+                    : 'The payment is on the invoice.',
+              )
               await router.invalidate()
             })
           } catch (caught) {

@@ -1,5 +1,5 @@
 import { redirect } from '@tanstack/react-router'
-import { createMiddleware, createStart } from '@tanstack/react-start'
+import { createCsrfMiddleware, createMiddleware, createStart } from '@tanstack/react-start'
 import { legacyLocation } from './lib/legacy-host.ts'
 
 const legacyHost = createMiddleware().server(async ({ next, request }) => {
@@ -9,6 +9,10 @@ const legacyHost = createMiddleware().server(async ({ next, request }) => {
   return next()
 })
 
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [legacyHost],
+  requestMiddleware: [legacyHost, csrfMiddleware],
 }))

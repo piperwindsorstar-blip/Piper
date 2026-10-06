@@ -25,10 +25,11 @@ function PaymentsPage() {
         className="grid gap-3 rounded-card border border-line bg-ivory px-5 py-5 sm:grid-cols-2"
         onSubmit={(event) => {
           event.preventDefault()
-          const form = new FormData(event.currentTarget)
+          const submitter = event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null
+          const form = new FormData(event.currentTarget, submitter)
+          const refund = form.get('kind') === 'refund'
           try {
             const cents = dollarsToCents(String(form.get('amount') ?? ''))
-            const refund = form.get('kind') === 'refund'
             void pay({
               data: {
                 id: Number(form.get('bookingId')),

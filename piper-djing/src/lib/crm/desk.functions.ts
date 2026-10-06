@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { requireDesk } from '../auth/server.ts'
+import { requireDesk } from '../auth/session.server.ts'
 import { DESK_OWNER_EMAIL } from './desk-owner.ts'
 import { HOME_BASE } from './home-base.ts'
 import { PACKAGE_CENTS } from '../piper/rules.ts'
