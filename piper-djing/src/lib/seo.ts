@@ -1,6 +1,6 @@
 import { PACKAGE_BUTTON_COPY, PUBLIC_EMAIL, INSTAGRAM_URL } from './crm/defaults.ts'
 import { publicUrl } from './crm/safe-origin.ts'
-import site from './og/site.json'
+import site from './og/site.json' with { type: 'json' }
 
 function lockedUrl(path: string): string {
   const base = site.url.replace(/\/$/, '')

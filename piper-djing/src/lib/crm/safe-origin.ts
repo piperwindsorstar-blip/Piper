@@ -1,4 +1,4 @@
-import site from '../og/site.json'
+import site from '../og/site.json' with { type: 'json' }
 
 /**
  * The public site origin. Canonical links, robots, and the sitemap all read
