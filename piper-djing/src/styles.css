@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --color-paper: #f4f1ec;
+  --color-paper-deep: #e7e1d8;
+  --color-ivory: #fffcf8;
+  --color-ink: #1a1816;
+  --color-ink-soft: #2e2926;
+  --color-muted: #6f6a64;
+  --color-line: #e3ddd4;
+  --color-danger: #8d3b34;
+  --radius-card: 2rem;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+dialog {
+  width: min(28rem, calc(100% - 2rem));
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-ivory);
+  padding: 1.75rem;
+  color: var(--color-ink);
+}
+
+dialog::backdrop {
+  background: rgb(26 24 22 / 0.45);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  background: var(--color-ivory);
+  padding: 0.75rem 1rem;
+  color: var(--color-ink);
+}
