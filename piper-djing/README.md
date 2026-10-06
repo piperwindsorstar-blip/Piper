@@ -11,4 +11,4 @@ The site runs at http://localhost:8080.
 
 `/` and `/book` are the public pages. The desk is at `/login`. On this empty local book the password is `piper-local`. When `DATABASE_URL` is set, sign-in uses `DESK_PASSWORD` and this app does not create or reset that database.
 
-Booking and invoice emails go out when `PIPER_SMTP_HOST`, `PIPER_SMTP_USER`, and `PIPER_SMTP_PASS` are set. `PIPER_SMTP_PORT` defaults to 587. `PIPER_MAIL_FROM` overrides the From line, which otherwise is Piper DJing at the public address. Without those settings the message is saved on the local book and is not sent. The published database is not given an email table.
+Booking and invoice emails are sent from the PiperPWeddingDJ@gmail.com Gmail inbox. Set `PIPER_SMTP_PASS` to that inbox’s Gmail app password. The host defaults to `smtp.gmail.com` and the From line is Piper DJing at that address. Without the app password the message is saved on the local book and is not sent. The published database is not given an email table.

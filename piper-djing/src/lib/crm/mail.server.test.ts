@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { handleBot } from '../bots/handle.server.ts'
 import { createBooking, inviteBot, updateBooking } from './store.server.ts'
-import { listEmails } from './mail.server.ts'
+import { listEmails, mailStatus } from './mail.server.ts'
 
 const liveBook = Boolean(process.env.DATABASE_URL)
 
@@ -24,6 +24,14 @@ async function post(
 
 describe('bot emails', { skip: liveBook }, () => {
   it('lets a writer save a letter and keeps a reader from sending', async () => {
+    process.env.PIPER_SMTP_PASS = 'app-password'
+    delete process.env.PIPER_SMTP_HOST
+    delete process.env.PIPER_SMTP_USER
+    const status = mailStatus()
+    delete process.env.PIPER_SMTP_PASS
+    assert.equal(status.ready, true)
+    assert.equal(status.from, 'Piper DJing <PiperPWeddingDJ@gmail.com>')
+
     const reader = await inviteBot('Reader', 'reader')
     const writer = await inviteBot('Writer', 'writer')
     const booking = await createBooking({

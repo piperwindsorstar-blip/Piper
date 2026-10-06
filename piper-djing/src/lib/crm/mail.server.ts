@@ -156,11 +156,12 @@ async function deliverAndRemember(
 async function deliver(to: string, letter: Letter): Promise<MailResult> {
   const smtp = smtpConfig()
   if (!smtp) {
+    const saved = process.env.DATABASE_URL
+      ? 'The message was not sent.'
+      : 'The message is saved on the local book and was not sent.'
     return {
       delivered: false,
-      detail: process.env.DATABASE_URL
-        ? 'Mail is not set up on this server. The message was not sent.'
-        : 'Mail is not set up on this server. The message is saved on the local book and was not sent.',
+      detail: `The ${PUBLIC_EMAIL} inbox needs its Gmail app password before it can send. ${saved}`,
     }
   }
   try {
@@ -212,10 +213,10 @@ function ensureLocalTable(): Promise<void> {
 }
 
 function smtpConfig(): Smtp | null {
-  const host = process.env.PIPER_SMTP_HOST?.trim()
-  const user = process.env.PIPER_SMTP_USER?.trim()
   const pass = process.env.PIPER_SMTP_PASS
-  if (!host || !user || !pass) return null
+  if (!pass) return null
+  const host = process.env.PIPER_SMTP_HOST?.trim() || 'smtp.gmail.com'
+  const user = process.env.PIPER_SMTP_USER?.trim() || PUBLIC_EMAIL
   const port = Number(process.env.PIPER_SMTP_PORT ?? 587)
   return {
     host,

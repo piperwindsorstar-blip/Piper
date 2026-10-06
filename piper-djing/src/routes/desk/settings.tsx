@@ -21,8 +21,8 @@ function SettingsPage() {
       </p>
       <p>
         {settings.mailReady
-          ? `Outgoing mail is ready. Messages go out as ${settings.mailFrom}.`
-          : `Outgoing mail is not set up. Messages are written as ${settings.mailFrom} and are not sent.`}
+          ? `Email uses the PiperPWeddingDJ@gmail.com inbox. Messages go out as ${settings.mailFrom}.`
+          : `Email uses the PiperPWeddingDJ@gmail.com inbox. Messages are written as ${settings.mailFrom}. They are not sent until that inbox has its Gmail app password.`}
       </p>
       {settings.localBook ? (
         <p className="text-sm text-muted">
