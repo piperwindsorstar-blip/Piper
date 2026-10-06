@@ -11,6 +11,8 @@ import {
   markVoid,
   recordPayment,
   saveBooking,
+  sendBookingMail,
+  sendInvoiceMail,
 } from '../../lib/crm/desk.functions.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
 import { privateHead } from '../../lib/seo.ts'
@@ -136,6 +138,8 @@ function BookingCard({
   const sent = useServerFn(markSent)
   const voided = useServerFn(markVoid)
   const pay = useServerFn(recordPayment)
+  const mailBooking = useServerFn(sendBookingMail)
+  const mailInvoice = useServerFn(sendInvoiceMail)
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -273,6 +277,42 @@ function BookingCard({
         >
           Void the invoice
         </button>
+        <button
+          type="button"
+          className="min-h-11 rounded-full border border-ink px-4 text-sm"
+          onClick={() => {
+            void mailBooking({ data: { id: booking.id } }).then(async (result) => {
+              if (!result.ok) {
+                setError(result.error)
+                return
+              }
+              setError(null)
+              setNotice(result.delivered ? `The booking email is on its way to ${booking.email}.` : result.detail)
+              await router.invalidate()
+            })
+          }}
+        >
+          Email the booking
+        </button>
+        {booking.invoice ? (
+          <button
+            type="button"
+            className="min-h-11 rounded-full border border-ink px-4 text-sm"
+            onClick={() => {
+              void mailInvoice({ data: { id: booking.id } }).then(async (result) => {
+                if (!result.ok) {
+                  setError(result.error)
+                  return
+                }
+                setError(null)
+                setNotice(result.delivered ? `The invoice email is on its way to ${booking.email}.` : result.detail)
+                await router.invalidate()
+              })
+            }}
+          >
+            Email the invoice
+          </button>
+        ) : null}
       </div>
       <form
         className="mt-4 flex flex-wrap items-end gap-3"

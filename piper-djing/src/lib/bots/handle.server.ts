@@ -1,4 +1,5 @@
 import { PACKAGE_BUTTON_COPY } from '../crm/defaults.ts'
+import { emailBooking, emailInvoice, listEmails } from '../crm/mail.server.ts'
 import { PACKAGE_CENTS } from '../piper/rules.ts'
 import {
   addMedia,
@@ -110,6 +111,8 @@ async function readResource(resource: string): Promise<Response> {
       return Response.json({ media: await listMedia() })
     case 'bots':
       return Response.json({ bots: await listBots() })
+    case 'emails':
+      return Response.json({ emails: await listEmails() })
     default:
       return Response.json({ error: 'That resource is not on the desk.' }, { status: 404 })
   }
@@ -222,6 +225,10 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
     case 'add_media':
       await addMedia(str(body, 'title'), str(body, 'url'))
       return Response.json({ media: await listMedia() })
+    case 'email_booking':
+      return Response.json(await emailBooking(idOf(body)))
+    case 'email_invoice':
+      return Response.json(await emailInvoice(idOf(body)))
     default:
       return Response.json({ error: 'That action is not on the desk.' }, { status: 400 })
   }

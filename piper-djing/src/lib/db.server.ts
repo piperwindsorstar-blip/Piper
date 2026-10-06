@@ -85,6 +85,17 @@ CREATE TABLE bots (
   token text NOT NULL UNIQUE,
   role text NOT NULL CHECK (role IN ('reader', 'writer', 'ceo'))
 );
+CREATE TABLE emails (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  booking_id integer REFERENCES bookings (id),
+  kind text NOT NULL CHECK (kind IN ('booking', 'invoice')),
+  to_address text NOT NULL,
+  subject text NOT NULL,
+  body text NOT NULL,
+  delivered boolean NOT NULL,
+  detail text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 `
 
 /**

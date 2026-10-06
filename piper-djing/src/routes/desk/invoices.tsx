@@ -2,7 +2,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { longDate } from '../../lib/crm/dates.ts'
-import { getInvoices, markSent, markVoid } from '../../lib/crm/desk.functions.ts'
+import { getInvoices, markSent, markVoid, sendInvoiceMail } from '../../lib/crm/desk.functions.ts'
 import { cad } from '../../lib/crm/money.ts'
 import { privateHead } from '../../lib/seo.ts'
 
@@ -16,6 +16,7 @@ function InvoicesPage() {
   const bookings = Route.useLoaderData()
   const sent = useServerFn(markSent)
   const voided = useServerFn(markVoid)
+  const mailInvoice = useServerFn(sendInvoiceMail)
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -64,6 +65,26 @@ function InvoicesPage() {
             >
               Void
             </button>
+            {booking.invoice ? (
+              <button
+                type="button"
+                className="min-h-11 rounded-full border border-ink px-4 text-sm"
+                onClick={() => {
+                  void mailInvoice({ data: { id: booking.id } }).then(async (result) => {
+                    setNotice(
+                      result.ok
+                        ? result.delivered
+                          ? `The invoice email is on its way to ${booking.email}.`
+                          : result.detail
+                        : result.error,
+                    )
+                    if (result.ok) await router.invalidate()
+                  })
+                }}
+              >
+                Email the invoice
+              </button>
+            ) : null}
           </div>
         </article>
       ))}

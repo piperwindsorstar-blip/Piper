@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { requireDesk } from '../auth/session.server.ts'
 import { DESK_OWNER_EMAIL } from './desk-owner.ts'
 import { HOME_BASE } from './home-base.ts'
+import { emailBooking, emailInvoice, listEmails, mailStatus } from './mail.server.ts'
 import { PACKAGE_CENTS } from '../piper/rules.ts'
 import { PACKAGE_BUTTON_COPY } from './defaults.ts'
 import {
@@ -98,10 +99,14 @@ export const getBots = createServerFn({ method: 'GET' }).handler(async () => {
 
 export const getSettings = createServerFn({ method: 'GET' }).handler(async () => {
   await requireDesk()
+  const mail = mailStatus()
   return {
     email: DESK_OWNER_EMAIL,
     homeBase: HOME_BASE,
     localBook: !process.env.DATABASE_URL,
+    mailReady: mail.ready,
+    mailFrom: mail.from,
+    emails: await listEmails(),
   }
 })
 
@@ -212,6 +217,28 @@ export const saveMedia = createServerFn({ method: 'POST' })
     try {
       await addMedia(data.title, data.url)
       return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const sendBookingMail = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, ...(await emailBooking(data.id)) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const sendInvoiceMail = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, ...(await emailInvoice(data.id)) }
     } catch (error) {
       return fail(error)
     }
