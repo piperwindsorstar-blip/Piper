@@ -8,7 +8,7 @@ import { SiteFooter, SiteHeader, bigButton } from './site-frame.tsx'
 
 export function Landing() {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const openDate = () => dialog.current?.showModal()
 
   return (
@@ -17,54 +17,75 @@ export function Landing() {
       <SiteHeader onDate={openDate} />
       <main>
         <section className="mx-auto w-full max-w-6xl px-5 pt-16 md:px-8 md:pt-28">
-          <img src="/photos/logo-inverted.png" alt="Piper DJing" className="h-auto w-full max-w-2xl" />
-          <h1 className="mt-8 max-w-3xl font-display text-4xl leading-tight tracking-tight sm:text-5xl">
+          <h1 className="max-w-3xl font-display text-4xl leading-tight tracking-tight sm:text-5xl">
             Wedding DJ in Brantford, Ontario
           </h1>
-          <p className="mt-6 max-w-2xl font-display text-2xl leading-tight tracking-tight text-ink-soft sm:text-4xl">
-            The night they will still be talking about.
-          </p>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft">
             Piper DJing is a Brantford wedding DJ for ceremonies, receptions and full wedding days across
             Brantford, Hamilton, Cambridge, Paris and Brant County and surrounding areas in Ontario. Dancefloor
             lighting, at least one planning meeting and light MC duties come with every reception.
           </p>
+          <p className="mt-6 max-w-2xl font-display text-2xl leading-tight tracking-tight text-ink-soft sm:text-4xl">
+            The night they will still be talking about.
+          </p>
+          <img src="/photos/logo-inverted.png" alt="Piper DJing" className="mt-10 h-auto w-full max-w-2xl" />
         </section>
-        <figure className="pt-12 md:pt-16">
-          <img
-            src="/photos/spotlight.jpg"
-            alt="A couple dancing alone in a single shaft of gold light, guests standing in a dark ring around them."
-            className="aspect-3/2 w-full object-cover"
-          />
-          <figcaption className="mx-auto mt-4 w-full max-w-6xl px-5 text-sm text-muted md:px-8">
-            Lights down. One song. The whole room watching.
-          </figcaption>
-        </figure>
+        <section className="pt-12 md:pt-16">
+          <div className="mx-auto w-full max-w-6xl px-5 md:px-8">
+            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The first dance</h2>
+            <p className="mt-4 max-w-md text-lg text-ink-soft">
+              One song for the couple. Guests stand in a ring around the first dance.
+            </p>
+          </div>
+          <figure className="pt-8">
+            <img
+              src="/photos/spotlight.jpg"
+              alt="First dance at a wedding reception: a couple under one spotlight, guests watching from a dark ring."
+              className="aspect-3/2 w-full object-cover"
+            />
+            <figcaption className="mx-auto mt-4 w-full max-w-6xl px-5 text-sm text-muted md:px-8">
+              Lights down. One song. The whole room watching.
+            </figcaption>
+          </figure>
+        </section>
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 py-16 md:grid-cols-12 md:px-8 md:py-24">
           <div className="md:col-span-4">
-            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">On their feet</h2>
-            <p className="mt-4 max-w-xs text-lg text-ink-soft">Dinner ends. Chairs empty. This is the part they came for.</p>
+            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The reception</h2>
+            <p className="mt-4 max-w-xs text-lg text-ink-soft">
+              Dinner ends. The dance floor fills. Dancefloor lighting stays on until the last song.
+            </p>
           </div>
           <figure className="md:col-span-8">
             <img
               src="/photos/dance.jpg"
-              alt="A crowded wedding dance floor in warm light, gowns and black tie in motion, faces turned away."
+              alt="Wedding reception dance floor in warm light, guests dancing in gowns and black tie."
               className="aspect-3/2 w-full rounded-card object-cover"
             />
           </figure>
         </section>
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-16 md:grid-cols-12 md:px-8 md:pb-24">
-          <figure className="md:col-span-6 md:col-start-7 md:order-2">
+          <div className="md:col-span-4">
+            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The last song</h2>
+            <p className="mt-4 max-w-xs text-lg text-ink-soft">
+              The last song of the wedding. Nobody reaches for a coat. Play it that way.
+            </p>
+          </div>
+          <figure className="md:col-span-6 md:col-start-7">
             <img
               src="/photos/spin.jpg"
-              alt="The hem of a wedding dress mid-spin above a dark floor, a gold streak of light, a chandelier behind."
+              alt="Last song at a wedding: a wedding dress mid-spin above a lit dance floor, a chandelier behind."
               className="aspect-2/3 w-full rounded-card object-cover"
             />
           </figure>
-          <div className="md:order-1 md:col-span-4">
-            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The last song</h2>
-            <p className="mt-4 max-w-xs text-lg text-ink-soft">Nobody reaches for a coat. Play it that way.</p>
-          </div>
+        </section>
+        <section className="mx-auto w-full max-w-6xl px-5 pb-4 md:px-8">
+          <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
+            Wedding DJ in Brantford and nearby
+          </h2>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">
+            Ceremonies and receptions in Hamilton, Cambridge, Paris and Brant County, and the surrounding area in
+            Ontario.
+          </p>
         </section>
         <section className="border-t border-line" aria-label="Packages and inquiry">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-14 md:px-8 md:py-20">

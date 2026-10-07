@@ -30,8 +30,6 @@ export function publicHead(opts: { path: '/' | '/book'; title: string }) {
         ? [
             { rel: 'preload', as: 'image', href: '/photos/logo-inverted.png' },
             { rel: 'preload', as: 'image', href: '/photos/spotlight.jpg' },
-            { rel: 'preload', as: 'image', href: '/photos/dance.jpg' },
-            { rel: 'preload', as: 'image', href: '/photos/spin.jpg' },
           ]
         : []),
     ],
@@ -53,7 +51,11 @@ export function professionalServiceJsonLd(): string {
     '@type': 'ProfessionalService',
     name: 'Piper DJing',
     url: lockedUrl('/'),
-    image: 'https://piperpweddingdj.services/photos/spotlight.jpg',
+    image: [
+      `${site.url}/photos/spotlight.jpg`,
+      `${site.url}/photos/dance.jpg`,
+      `${site.url}/photos/spin.jpg`,
+    ],
     description: site.description,
     email: PUBLIC_EMAIL,
     address: {
