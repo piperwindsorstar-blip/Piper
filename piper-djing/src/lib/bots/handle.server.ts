@@ -28,12 +28,18 @@ type Bot = { id: number; name: string; role: BotRole }
 
 function tokenFrom(request: Request): string {
   const header = request.headers.get('authorization') ?? ''
-  return header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : ''
+  return header.startsWith('Bearer ')
+    ? header.slice('Bearer '.length).trim()
+    : ''
 }
 
 async function actor(request: Request): Promise<Bot | Response> {
   const bot = await botFromToken(tokenFrom(request))
-  if (!bot) return Response.json({ error: 'That invite is not on the desk.' }, { status: 401 })
+  if (!bot)
+    return Response.json(
+      { error: 'That invite is not on the desk.' },
+      { status: 401 },
+    )
   return bot
 }
 
@@ -55,7 +61,8 @@ export async function handleBot(request: Request): Promise<Response> {
   if (!isBot(auth)) return auth
 
   if (request.method === 'GET') {
-    const resource = new URL(request.url).searchParams.get('resource') ?? 'bookings'
+    const resource =
+      new URL(request.url).searchParams.get('resource') ?? 'bookings'
     return readResource(resource)
   }
 
@@ -63,15 +70,15 @@ export async function handleBot(request: Request): Promise<Response> {
     return Response.json({ error: 'Use GET or POST.' }, { status: 405 })
   }
 
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+  const body = (await request.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null
   if (!body || typeof body.action !== 'string') {
     return Response.json({ error: 'Send an action.' }, { status: 400 })
   }
   if (!canWrite(auth.role)) {
     return Response.json({ error: 'This bot can read.' }, { status: 403 })
-  }
-  if (body.action === 'update_terms' && auth.role !== 'ceo') {
-    return Response.json({ error: 'Only the Ceo bot edits the terms.' }, { status: 403 })
   }
   try {
     return await writeAction(body)
@@ -87,7 +94,14 @@ async function readResource(resource: string): Promise<Response> {
     case 'invoices':
       return Response.json({
         invoices: (await listBookings())
-          .map((booking) => booking.invoice && { bookingId: booking.id, names: names(booking), ...booking.invoice })
+          .map(
+            (booking) =>
+              booking.invoice && {
+                bookingId: booking.id,
+                names: names(booking),
+                ...booking.invoice,
+              },
+          )
           .filter(Boolean),
       })
     case 'payments':
@@ -114,7 +128,10 @@ async function readResource(resource: string): Promise<Response> {
     case 'emails':
       return Response.json({ emails: await listEmails() })
     default:
-      return Response.json({ error: 'That resource is not on the desk.' }, { status: 404 })
+      return Response.json(
+        { error: 'That resource is not on the desk.' },
+        { status: 404 },
+      )
   }
 }
 
@@ -156,7 +173,8 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
         stagDate: str(body, 'stagDate') || null,
         message: str(body, 'message'),
       })
-      if (!result.ok) return Response.json({ error: result.error }, { status: 400 })
+      if (!result.ok)
+        return Response.json({ error: result.error }, { status: 400 })
       return Response.json(result)
     }
     case 'create_booking':
@@ -170,8 +188,12 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
           stagDate: str(body, 'stagDate') || null,
           packageId: str(body, 'packageId'),
           withStag: bool(body, 'withStag'),
-          uplights: Number.isInteger(body.uplights) ? (body.uplights as number) : 0,
-          venueKm: Array.isArray(body.venueKm) ? (body.venueKm as number[]) : [],
+          uplights: Number.isInteger(body.uplights)
+            ? (body.uplights as number)
+            : 0,
+          venueKm: Array.isArray(body.venueKm)
+            ? (body.venueKm as number[])
+            : [],
           venueName: str(body, 'venueName'),
           venueStreet: str(body, 'venueStreet'),
           venueTwoName: str(body, 'venueTwoName'),
@@ -181,7 +203,9 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
         }),
       })
     case 'update_booking': {
-      const current = (await listBookings()).find((booking) => booking.id === idOf(body))
+      const current = (await listBookings()).find(
+        (booking) => booking.id === idOf(body),
+      )
       if (!current) throw new Error('That booking is not on the book.')
       return Response.json({
         booking: await updateBooking({
@@ -191,16 +215,40 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
           email: body.email === undefined ? current.email : str(body, 'email'),
           phone: body.phone === undefined ? current.phone : str(body, 'phone'),
           eventDate: str(body, 'eventDate') || current.eventDate,
-          stagDate: body.stagDate === undefined ? current.stagDate : str(body, 'stagDate') || null,
+          stagDate:
+            body.stagDate === undefined
+              ? current.stagDate
+              : str(body, 'stagDate') || null,
           packageId: str(body, 'packageId') || current.packageId,
-          withStag: body.withStag === undefined ? current.withStag : bool(body, 'withStag'),
-          uplights: body.uplights === undefined ? current.uplights : num(body, 'uplights'),
-          venueKm: Array.isArray(body.venueKm) ? (body.venueKm as number[]) : current.venueKm,
-          venueName: body.venueName === undefined ? current.venueName : str(body, 'venueName'),
-          venueStreet: body.venueStreet === undefined ? current.venueStreet : str(body, 'venueStreet'),
-          venueTwoName: body.venueTwoName === undefined ? current.venueTwoName : str(body, 'venueTwoName'),
-          venueTwoStreet: body.venueTwoStreet === undefined ? current.venueTwoStreet : str(body, 'venueTwoStreet'),
-          sample: body.sample === undefined ? current.sample : bool(body, 'sample'),
+          withStag:
+            body.withStag === undefined
+              ? current.withStag
+              : bool(body, 'withStag'),
+          uplights:
+            body.uplights === undefined
+              ? current.uplights
+              : num(body, 'uplights'),
+          venueKm: Array.isArray(body.venueKm)
+            ? (body.venueKm as number[])
+            : current.venueKm,
+          venueName:
+            body.venueName === undefined
+              ? current.venueName
+              : str(body, 'venueName'),
+          venueStreet:
+            body.venueStreet === undefined
+              ? current.venueStreet
+              : str(body, 'venueStreet'),
+          venueTwoName:
+            body.venueTwoName === undefined
+              ? current.venueTwoName
+              : str(body, 'venueTwoName'),
+          venueTwoStreet:
+            body.venueTwoStreet === undefined
+              ? current.venueTwoStreet
+              : str(body, 'venueTwoStreet'),
+          sample:
+            body.sample === undefined ? current.sample : bool(body, 'sample'),
           notes: body.notes === undefined ? current.notes : str(body, 'notes'),
         }),
       })
@@ -210,13 +258,21 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
     case 'void_invoice':
       return Response.json({ booking: await voidBookingInvoice(idOf(body)) })
     case 'record_payment':
-      return Response.json(await addPayment(idOf(body), num(body, 'cents'), str(body, 'note')))
+      return Response.json(
+        await addPayment(idOf(body), num(body, 'cents'), str(body, 'note')),
+      )
     case 'release':
-      return Response.json({ booking: await setBookingStatus(idOf(body), 'release') })
+      return Response.json({
+        booking: await setBookingStatus(idOf(body), 'release'),
+      })
     case 'cancel':
-      return Response.json({ booking: await setBookingStatus(idOf(body), 'cancel') })
+      return Response.json({
+        booking: await setBookingStatus(idOf(body), 'cancel'),
+      })
     case 'release_stag':
-      return Response.json({ booking: await setBookingStatus(idOf(body), 'release-stag') })
+      return Response.json({
+        booking: await setBookingStatus(idOf(body), 'release-stag'),
+      })
     case 'update_terms':
       return Response.json({ terms: await updateTerms(str(body, 'body')) })
     case 'add_question':
@@ -230,6 +286,9 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
     case 'email_invoice':
       return Response.json(await emailInvoice(idOf(body)))
     default:
-      return Response.json({ error: 'That action is not on the desk.' }, { status: 400 })
+      return Response.json(
+        { error: 'That action is not on the desk.' },
+        { status: 400 },
+      )
   }
 }

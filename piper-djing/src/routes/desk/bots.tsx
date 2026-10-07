@@ -21,8 +21,8 @@ function BotsPage() {
     <div className="grid gap-6">
       <h1 className="font-display text-4xl tracking-tight">Bots</h1>
       <p className="max-w-prose text-sm text-muted">
-        Every bot can read. A writer can change the book. Only the Ceo bot can edit the terms. The token is shown
-        once.
+        Every bot can read. A writer or the Ceo bot can change the book, send
+        mail, and edit the one terms document. The token is shown once.
       </p>
       <form
         className="grid gap-3 sm:grid-cols-2"
@@ -30,7 +30,10 @@ function BotsPage() {
           event.preventDefault()
           const form = new FormData(event.currentTarget)
           void save({
-            data: { name: String(form.get('name') ?? ''), role: String(form.get('role') ?? '') },
+            data: {
+              name: String(form.get('name') ?? ''),
+              role: String(form.get('role') ?? ''),
+            },
           }).then(async (result) => {
             if (!result.ok) {
               setError(result.error)
@@ -56,14 +59,18 @@ function BotsPage() {
             <option value="ceo">Ceo</option>
           </select>
         </label>
-        <button type="submit" className="min-h-11 w-fit rounded-full bg-ink px-5 text-sm text-ivory">
+        <button
+          type="submit"
+          className="min-h-11 w-fit rounded-full bg-ink px-5 text-sm text-ivory"
+        >
           Invite
         </button>
       </form>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       {token ? (
         <p className="rounded-2xl border border-line bg-ivory px-4 py-3 text-sm">
-          Token, copy it now: <span className="break-all font-medium">{token}</span>
+          Token, copy it now:{' '}
+          <span className="break-all font-medium">{token}</span>
         </p>
       ) : null}
       <ul className="grid gap-2">

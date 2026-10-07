@@ -131,4 +131,25 @@ describe('bot emails', { skip: liveBook }, () => {
     }
     assert.equal((await listEmails()).length, 2)
   })
+
+  it('lets a writer edit the terms and keeps a reader from editing', async () => {
+    const reader = await inviteBot('Reader Terms', 'reader')
+    const writer = await inviteBot('Writer Terms', 'writer')
+    const denied = await post(reader.token, {
+      action: 'update_terms',
+      body: 'Reader terms',
+    })
+    assert.equal(denied.status, 403)
+    assert.match((await denied.json()).error, /can read/)
+
+    const saved = await post(writer.token, {
+      action: 'update_terms',
+      body: 'Writer terms for the one document.',
+    })
+    assert.equal(saved.status, 200)
+    assert.equal(
+      ((await saved.json()) as { terms: string }).terms,
+      'Writer terms for the one document.',
+    )
+  })
 })
