@@ -146,17 +146,6 @@ async function open(): Promise<Client> {
     }
   }
 
-  const book = edgeBook()
-  if (book) {
-    const stub = book.get(book.idFromName('piper'))
-    return {
-      query: async (text, params = []) => {
-        const statement = positional(text, params)
-        return stub.query(statement.sql, statement.params)
-      },
-    }
-  }
-
   const { PGlite } = await import('@electric-sql/pglite')
   const db = new PGlite()
   await db.exec(SCHEMA)
@@ -176,6 +165,12 @@ export async function query<T extends Row>(
   text: string,
   params: unknown[] = [],
 ): Promise<T[]> {
+  const book = edgeBook()
+  if (book) {
+    const stub = book.get(book.idFromName('piper'))
+    const statement = positional(text, params)
+    return (await stub.query(statement.sql, statement.params)) as T[]
+  }
   if (!opening) opening = open()
   const client = await opening
   return (await client.query(text, params)) as T[]

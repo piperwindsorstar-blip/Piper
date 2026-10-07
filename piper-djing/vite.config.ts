@@ -45,6 +45,14 @@ const config = defineConfig({
   server: {
     allowedHosts: ['.trycloudflare.com'],
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Keep circular client chunks from calling an export before it exists.
+        strictExecutionOrder: true,
+      },
+    },
+  },
   plugins: [
     devtools(),
     grokPwaPlugin(),

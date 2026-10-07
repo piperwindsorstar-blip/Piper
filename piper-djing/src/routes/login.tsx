@@ -28,6 +28,7 @@ function LoginPage() {
       <p className="mt-3 text-sm text-muted">The desk is for Piper only.</p>
       <form
         className="mt-8 grid gap-4"
+        method="post"
         onSubmit={(event) => {
           event.preventDefault()
           const password = String(new FormData(event.currentTarget).get('password') ?? '')
