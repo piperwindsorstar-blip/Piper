@@ -795,11 +795,15 @@ export async function coupleBySlug(slugValue: string) {
     status: view.status,
     sample: view.sample,
     venueName: view.venueName,
+    venueTwoName: view.venueTwoName,
+    holdStartedOn: view.holdStartedOn,
+    holdLastDay: view.holdLastDay,
     totalCents: view.invoice?.totalCents ?? view.totalCents,
     depositCents: view.invoice?.depositCents ?? view.depositCents,
     receivedCents: view.invoice?.receivedCents ?? 0,
     balanceCents: view.invoice?.balanceCents ?? view.totalCents,
-    invoiceStatus: view.invoice?.status ?? 'draft',
+    invoiceStatus: view.invoice?.status ?? null,
+    invoiceSlug: view.invoice?.slug ?? null,
   }
 }
 
@@ -813,6 +817,7 @@ export async function invoiceBySlug(slugValue: string) {
     partnerOne: view.partnerOne,
     partnerTwo: view.partnerTwo,
     eventDate: view.eventDate,
+    bookingSlug: view.slug,
     sample: view.sample,
     status: view.invoice?.status ?? 'draft',
     totalCents: view.invoice?.totalCents ?? 0,

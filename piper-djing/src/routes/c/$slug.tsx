@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { SiteFooter, SiteHeader } from '../../components/site-frame.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
 import { getCouple } from '../../lib/crm/desk.functions.ts'
@@ -28,23 +28,41 @@ function CouplePage() {
           {booking.partnerOne} and {booking.partnerTwo}
         </h1>
         <p className="mt-6 text-lg">{longDate(booking.eventDate)}</p>
-        {booking.stagDate ? (
-          <p className="mt-2 text-ink-soft">
-            Stag and doe {longDate(booking.stagDate)}
-            {booking.stagReleased ? ', released' : ''}
-          </p>
-        ) : null}
+        {booking.withStag ? <p className="mt-2 text-ink-soft">{stagLine(booking)}</p> : null}
         <p className="mt-2 text-ink-soft">
           {booking.packageName}
           {booking.withStag ? ', with a stag and doe' : ''}
         </p>
-        {booking.venueName ? <p className="mt-2 text-ink-soft">{booking.venueName}</p> : null}
+        {booking.venueName ? <p className="mt-2 text-ink-soft">Venue: {booking.venueName}</p> : null}
+        {booking.venueTwoName ? (
+          <p className="mt-2 text-ink-soft">Second venue: {booking.venueTwoName}</p>
+        ) : null}
+        {booking.status === 'hold' && booking.holdStartedOn && booking.holdLastDay ? (
+          <p className="mt-2 text-ink-soft">
+            Hold: {longDate(booking.holdStartedOn)} through {longDate(booking.holdLastDay)}
+          </p>
+        ) : null}
+        {booking.invoiceStatus === 'void' ? (
+          <p className="mt-6 text-sm">This invoice is void. The balance is zero.</p>
+        ) : null}
         <dl className="mt-8 grid gap-2 text-sm">
           <Row label="Total" value={cad(booking.totalCents)} />
           <Row label="Deposit" value={cad(booking.depositCents)} />
           <Row label="Received" value={cad(booking.receivedCents)} />
           <Row label="Balance" value={cad(booking.balanceCents)} />
         </dl>
+        {booking.invoiceSlug ? (
+          <p className="mt-8 text-sm">
+            Your invoice is {invoiceLine(booking.invoiceStatus)}.{' '}
+            <Link
+              to="/p/$slug"
+              params={{ slug: booking.invoiceSlug }}
+              className="inline-flex min-h-11 items-center text-ink"
+            >
+              Invoice
+            </Link>
+          </p>
+        ) : null}
       </main>
       <SiteFooter />
     </div>
@@ -53,10 +71,25 @@ function CouplePage() {
 
 function statusLine(status: string): string {
   if (status === 'booked') return 'Booked'
-  if (status === 'hold') return 'Held'
+  if (status === 'hold') return 'On hold'
   if (status === 'cancelled') return 'Cancelled'
   if (status === 'released') return 'Released'
   return 'Open'
+}
+
+function invoiceLine(status: string | null): string {
+  if (status === 'sent') return 'sent'
+  if (status === 'void') return 'void'
+  return 'a draft'
+}
+
+function stagLine(booking: {
+  stagDate: string | null
+  stagReleased: boolean
+}): string {
+  if (booking.stagReleased) return 'The stag date is released.'
+  if (!booking.stagDate) return 'Stag and doe: date still to set.'
+  return `Stag and doe: ${longDate(booking.stagDate)}`
 }
 
 function Row({ label, value }: { label: string; value: string }) {
