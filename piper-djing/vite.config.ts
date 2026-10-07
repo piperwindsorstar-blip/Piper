@@ -28,6 +28,9 @@ function grokPwaPlugin(): Plugin {
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  server: {
+    allowedHosts: ['.trycloudflare.com'],
+  },
   plugins: [
     devtools(),
     grokPwaPlugin(),
