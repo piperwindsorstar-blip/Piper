@@ -24,15 +24,7 @@ export function publicHead(opts: { path: '/' | '/book'; title: string }) {
       { property: 'og:image:height', content: '630' },
       { property: 'og:url', content: ogUrl },
     ],
-    links: [
-      { rel: 'canonical', href: canonical },
-      ...(opts.path === '/'
-        ? [
-            { rel: 'preload', as: 'image', href: '/photos/logo-inverted.png' },
-            { rel: 'preload', as: 'image', href: '/photos/spotlight.jpg' },
-          ]
-        : []),
-    ],
+    links: [{ rel: 'canonical', href: canonical }],
   }
 }
 

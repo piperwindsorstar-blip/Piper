@@ -28,7 +28,12 @@ export function Landing() {
           <p className="mt-6 max-w-2xl font-display text-2xl leading-tight tracking-tight text-ink-soft sm:text-4xl">
             The night they will still be talking about.
           </p>
-          <img src="/photos/logo-inverted.png" alt="Piper DJing" className="mt-10 h-auto w-full max-w-2xl" />
+          <img
+            src="/photos/logo-inverted.png"
+            alt="Piper DJing"
+            fetchPriority="high"
+            className="mt-10 h-auto w-full max-w-2xl"
+          />
         </section>
         <section className="pt-12 md:pt-16">
           <div className="mx-auto w-full max-w-6xl px-5 md:px-8">
@@ -59,6 +64,7 @@ export function Landing() {
             <img
               src="/photos/dance.jpg"
               alt="Wedding reception dance floor in warm light, guests dancing in gowns and black tie."
+              loading="lazy"
               className="aspect-3/2 w-full rounded-card object-cover"
             />
           </figure>
@@ -74,6 +80,7 @@ export function Landing() {
             <img
               src="/photos/spin.jpg"
               alt="Last song at a wedding: a wedding dress mid-spin above a lit dance floor, a chandelier behind."
+              loading="lazy"
               className="aspect-2/3 w-full rounded-card object-cover"
             />
           </figure>
