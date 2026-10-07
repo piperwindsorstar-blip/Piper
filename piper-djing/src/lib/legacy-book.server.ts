@@ -95,10 +95,13 @@ export function rewriteLegacyCookie(cookie: string): string {
   return cookie.replace(/;\s*Domain=[^;]*/gi, '')
 }
 
-export async function unknownServerFn(response: Response): Promise<boolean> {
-  if (response.status !== 500) return false
-  const text = await response.clone().text()
-  return text.includes('"unhandled":true')
+/**
+ * A missing server function becomes a plain 500. One of ours that fails
+ * is marked as serialized, and that answer stays here.
+ */
+export function unknownServerFn(response: Response): boolean {
+  if (response.status < 500) return false
+  return response.headers.get('x-tss-serialized') !== 'true'
 }
 
 export async function pageIsLocal(action: {

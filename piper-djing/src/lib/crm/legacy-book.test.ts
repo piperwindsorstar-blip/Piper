@@ -78,11 +78,19 @@ describe('old pages on the new address', () => {
     )
   })
 
-  it('recognises an unknown server function', async () => {
-    const unknown = new Response('{"status":500,"unhandled":true,"message":"HTTPError"}', { status: 500 })
+  it('recognises an unknown server function', () => {
+    const unknown = new Response('{"status":500,"unhandled":true,"message":"HTTPError"}', {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    })
     const known = new Response('{"open":true}', { status: 200 })
-    assert.equal(await unknownServerFn(unknown), true)
-    assert.equal(await unknownServerFn(known), false)
+    const ours = new Response('{"message":"Choose a date."}', {
+      status: 500,
+      headers: { 'x-tss-serialized': 'true' },
+    })
+    assert.equal(unknownServerFn(unknown), true)
+    assert.equal(unknownServerFn(known), false)
+    assert.equal(unknownServerFn(ours), false)
   })
 
   it('fetches an old script only when this site does not have it', () => {

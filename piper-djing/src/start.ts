@@ -25,9 +25,13 @@ const legacyHost = createMiddleware().server(async ({ next, request }) => {
   }
   if (action.kind === 'server-fn') {
     const copy = request.clone()
-    const result = await next()
-    if (await unknownServerFn(result.response)) return proxyLegacyBook(copy)
-    return result
+    try {
+      const result = await next()
+      if (unknownServerFn(result.response)) return proxyLegacyBook(copy)
+      return result
+    } catch {
+      return proxyLegacyBook(copy)
+    }
   }
   if ((action.kind === 'couple' || action.kind === 'invoice') && (await pageIsLocal(action))) {
     return next()
