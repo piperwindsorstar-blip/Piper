@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer'
-import { query } from '../db.server.ts'
+import { query, usesEdgeBook } from '../db.server.ts'
 import { PUBLIC_EMAIL } from './defaults.ts'
 import {
   bookingLetter,
@@ -78,22 +78,39 @@ export async function listEmails(): Promise<SentMail[]> {
     to: row.to_address,
     subject: row.subject,
     body: row.body,
-    delivered: row.delivered === true || row.delivered === 't' || row.delivered === 'true',
+    delivered:
+      row.delivered === true ||
+      row.delivered === 't' ||
+      row.delivered === 'true' ||
+      row.delivered === 1,
     detail: row.detail,
-    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at ?? ''),
+    createdAt:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : String(row.created_at ?? ''),
   }))
 }
 
 export async function emailBooking(bookingId: number): Promise<MailResult> {
   const booking = await requireBooking(bookingId)
   const to = coupleAddress(booking.email)
-  return deliverAndRemember(booking.id, 'booking', to, bookingLetter(toLetter(booking), publicUrl))
+  return deliverAndRemember(
+    booking.id,
+    'booking',
+    to,
+    bookingLetter(toLetter(booking), publicUrl),
+  )
 }
 
 export async function emailInvoice(bookingId: number): Promise<MailResult> {
   const booking = await requireBooking(bookingId)
   const to = coupleAddress(booking.email)
-  return deliverAndRemember(booking.id, 'invoice', to, invoiceLetter(toLetter(booking), publicUrl))
+  return deliverAndRemember(
+    booking.id,
+    'invoice',
+    to,
+    invoiceLetter(toLetter(booking), publicUrl),
+  )
 }
 
 async function requireBooking(bookingId: number): Promise<BookingView> {
@@ -181,7 +198,10 @@ async function deliver(to: string, letter: Letter): Promise<MailResult> {
     })
     return { delivered: true, detail: 'Sent.' }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'The mail server refused the message.'
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'The mail server refused the message.'
     return { delivered: false, detail: message.slice(0, 500) }
   }
 }
@@ -198,14 +218,22 @@ async function remember(
   await query(
     `INSERT INTO emails (booking_id, kind, to_address, subject, body, delivered, detail)
      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [bookingId, kind, to, letter.subject, letter.text, result.delivered, result.detail.slice(0, 500)],
+    [
+      bookingId,
+      kind,
+      to,
+      letter.subject,
+      letter.text,
+      result.delivered,
+      result.detail.slice(0, 500),
+    ],
   )
 }
 
 let tableReady: Promise<void> | null = null
 
 function ensureLocalTable(): Promise<void> {
-  if (process.env.DATABASE_URL) return Promise.resolve()
+  if (process.env.DATABASE_URL || usesEdgeBook()) return Promise.resolve()
   if (!tableReady) {
     tableReady = query(EMAILS_TABLE).then(() => undefined)
   }
@@ -221,7 +249,9 @@ function smtpConfig(): Smtp | null {
   return {
     host,
     port,
-    secure: process.env.PIPER_SMTP_SECURE ? process.env.PIPER_SMTP_SECURE === 'true' : port === 465,
+    secure: process.env.PIPER_SMTP_SECURE
+      ? process.env.PIPER_SMTP_SECURE === 'true'
+      : port === 465,
     user,
     pass,
     from: fromAddress(),

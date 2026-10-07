@@ -1,22 +1,10 @@
-import { HeadContent, Scripts, createRootRoute, redirect } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { legacyLocation } from '../lib/legacy-host.ts'
 import appCss from '../styles.css?url'
 
 const GROK_PROJECT_ID = '01a108f2-ed78-7520-b3dd-a811205b73ee'
 
 export const Route = createRootRoute({
-  beforeLoad: async () => {
-    if (typeof document !== 'undefined') return
-    try {
-      const { getRequest } = await import('@tanstack/react-start/server')
-      const url = new URL(getRequest().url)
-      const target = legacyLocation(url.hostname, url.pathname, url.search)
-      if (target) throw redirect({ href: target, statusCode: 301 })
-    } catch (error) {
-      if (error instanceof Response) throw error
-    }
-  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

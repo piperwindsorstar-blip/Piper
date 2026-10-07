@@ -98,9 +98,40 @@ CREATE TABLE emails (
 );
 `
 
+type EdgeBook = {
+  idFromName: (name: string) => unknown
+  get: (id: unknown) => {
+    query: (sql: string, params?: unknown[]) => Promise<Row[]>
+  }
+}
+
+function edgeBook(): EdgeBook | null {
+  const env = (globalThis as { __env__?: { BOOK?: EdgeBook } }).__env__
+  return env?.BOOK ?? null
+}
+
+export function usesEdgeBook(): boolean {
+  return edgeBook() !== null
+}
+
+function positional(
+  sql: string,
+  params: unknown[],
+): { sql: string; params: unknown[] } {
+  if (!sql.includes('$')) return { sql, params }
+  const ordered: unknown[] = []
+  const next = sql.replace(/\$(\d+)/g, (_match, index: string) => {
+    const value = params[Number(index) - 1]
+    ordered.push(typeof value === 'boolean' ? (value ? 1 : 0) : value)
+    return '?'
+  })
+  return { sql: next, params: ordered }
+}
+
 /**
  * Postgres when DATABASE_URL is set. Otherwise an empty in-memory database.
  * The published book is never created, seeded, or migrated from here.
+ * Cloudflare keeps its own empty book and does not touch the published database.
  */
 async function open(): Promise<Client> {
   const databaseUrl = process.env.DATABASE_URL
@@ -111,6 +142,17 @@ async function open(): Promise<Client> {
       query: async (text, params = []) => {
         const result = await pool.query(text, params as never[])
         return result.rows as Row[]
+      },
+    }
+  }
+
+  const book = edgeBook()
+  if (book) {
+    const stub = book.get(book.idFromName('piper'))
+    return {
+      query: async (text, params = []) => {
+        const statement = positional(text, params)
+        return stub.query(statement.sql, statement.params)
       },
     }
   }
@@ -130,7 +172,10 @@ async function open(): Promise<Client> {
   }
 }
 
-export async function query<T extends Row>(text: string, params: unknown[] = []): Promise<T[]> {
+export async function query<T extends Row>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
   if (!opening) opening = open()
   const client = await opening
   return (await client.query(text, params)) as T[]
