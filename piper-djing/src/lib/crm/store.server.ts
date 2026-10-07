@@ -9,6 +9,7 @@ import {
   figuresFor,
   invoiceBalance,
   markInvoiceSent,
+  CUSTOM_WEDDINGS,
   matchCustom,
   recordMoney,
   releaseBooking,
@@ -17,6 +18,7 @@ import {
   type InvoiceState,
 } from './booking-rules.ts'
 import { isPackageId, packageName, type PackageId } from './defaults.ts'
+import { askLegacyDate } from '../legacy-book.server.ts'
 import { holdLastDay, isBlockedDate } from '../piper/rules.ts'
 
 export type BotRole = 'reader' | 'writer' | 'ceo'
@@ -481,7 +483,10 @@ export async function createInquiry(
 export async function dateOpen(day: string): Promise<boolean> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Choose a date.')
   if (isBlockedDate(day, null)) return false
-  return !(await dateTakenByOthers(day, null))
+  if (CUSTOM_WEDDINGS.some((wedding) => wedding.date === day)) return false
+  if (await dateTakenByOthers(day, null)) return false
+  const legacy = await askLegacyDate(day)
+  return legacy !== 'taken'
 }
 
 export type BookingPatch = {
