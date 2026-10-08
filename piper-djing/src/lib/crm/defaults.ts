@@ -5,26 +5,70 @@ export const PACKAGE_BUTTON_COPY = [
     name: 'Full wedding day',
     detail:
       'From the ceremony through the reception, up to 1:00 a.m. Wireless microphones for the ceremony and the reception, two speakers, dancefloor lighting, and backup. Pre-planning and at least one meeting. Light MC for introducing speeches, if you ask.',
+    includes: [
+      'Ceremony audio through the reception, up to 1:00 a.m.',
+      'Wireless microphones for the ceremony and the speeches',
+      'Two speakers and dancefloor lighting',
+      'Backup equipment',
+      'Pre-planning and at least one meeting',
+      'Light MC for introducing speeches, if you ask',
+    ],
   },
   {
     id: 'reception',
     name: 'Reception only',
     detail:
       'The reception only, without ceremony audio, up to 1:00 a.m. Wireless microphones, two speakers, dancefloor lighting, backup, pre-planning, at least one meeting, and light MC if you ask.',
+    includes: [
+      'The reception, up to 1:00 a.m.',
+      'Wireless microphones and two speakers',
+      'Dancefloor lighting',
+      'Backup equipment',
+      'Pre-planning and at least one meeting',
+      'Light MC, if you ask',
+    ],
   },
   {
     id: 'stag',
     name: 'A stag and doe',
     detail:
       'Up to 1:00 a.m. The DJ, two speakers, one wireless microphone, dancefloor lighting, backup, and MC duties.',
+    includes: [
+      'Up to 1:00 a.m.',
+      'Two speakers and one wireless microphone',
+      'Dancefloor lighting',
+      'Backup equipment',
+      'DJ and MC duties',
+    ],
   },
   {
     id: 'ceremony',
     name: 'Ceremony only',
     detail:
       'Ceremony audio only. One speaker, one wireless microphone, backup, and at least one planning meeting. No reception, no dancefloor lighting, and no MC. The officiant conducts the ceremony.',
+    includes: [
+      'Ceremony audio only',
+      'One speaker and one wireless microphone for the officiant',
+      'Backup equipment',
+      'At least one planning meeting',
+      'No reception audio, dancefloor lighting, or MC',
+    ],
   },
 ] as const
+
+/**
+ * Kind words from past couples. Each slot is one card on the homepage.
+ * Fill in quote, names, and when; an empty quote shows as an open slot.
+ */
+export const KIND_WORDS: ReadonlyArray<{
+  quote: string
+  names: string
+  when: string
+}> = [
+  { quote: '', names: '', when: '' },
+  { quote: '', names: '', when: '' },
+  { quote: '', names: '', when: '' },
+]
 
 export type PackageId = (typeof PACKAGE_BUTTON_COPY)[number]['id']
 

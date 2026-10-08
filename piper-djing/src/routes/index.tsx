@@ -6,7 +6,8 @@ export const Route = createFileRoute('/')({
   head: () =>
     publicHead({
       path: '/',
-      title: 'Brantford Wedding DJ & Reception Entertainment | Piper DJing',
+      title:
+        'Brantford Wedding DJ & The Ultimate Dance Floor Experience | Piper DJing',
     }),
   component: Landing,
 })
