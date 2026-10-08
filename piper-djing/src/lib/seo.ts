@@ -44,7 +44,7 @@ export function professionalServiceJsonLd(): string {
     name: 'Piper DJing',
     url: lockedUrl('/'),
     image: [
-      `${site.url}/photos/wedding-dj-booth.jpg`,
+      `${site.url}/photos/dj-piper-at-the-booth.jpg`,
       `${site.url}/photos/wedding-reception-dance.jpg`,
       `${site.url}/photos/wedding-dancefloor-lights.jpg`,
     ],

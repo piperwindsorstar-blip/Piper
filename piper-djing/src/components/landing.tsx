@@ -37,14 +37,14 @@ export function Landing() {
         </section>
         <section className="mx-auto w-full max-w-6xl px-5 pt-12 md:px-8 md:pt-16">
           <h2 className="font-display text-5xl tracking-tight sm:text-6xl">At the booth</h2>
-          <p className="mt-4 max-w-md text-lg text-ink-soft">Headphones on, at the booth.</p>
+          <p className="mt-4 max-w-md text-lg text-ink-soft">DJ Piper. Headphones on.</p>
           <figure className="pt-8">
             <img
-              src="/photos/wedding-dj-booth.jpg"
-              alt="A wedding DJ at the booth, headphones on, laptop open."
-              width={1024}
-              height={1024}
-              className="mx-auto aspect-square w-full max-w-3xl rounded-card object-cover"
+              src="/photos/dj-piper-at-the-booth.jpg"
+              alt="DJ Piper at the booth, headphones on, with the DJ Piper P laptop."
+              width={923}
+              height={1232}
+              className="mx-auto h-auto w-full max-w-md rounded-card"
             />
             <figcaption className="mt-4 max-w-3xl text-sm text-muted">
               The booth, ready for the wedding.
