@@ -54,8 +54,8 @@ export function Landing() {
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 py-16 md:grid-cols-12 md:px-8 md:py-24">
           <div className="md:col-span-4">
             <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The reception</h2>
-            <p className="mt-4 max-w-xs text-lg text-ink-soft">
-              Dinner ends. The dance floor fills. Dancefloor lighting stays on until the last song.
+            <p className="mt-4 max-w-sm text-lg text-ink-soft">
+              This is the wedding they came for. The bride out with her people, and a song the whole room knows.
             </p>
           </div>
           <figure className="md:col-span-8">
@@ -71,15 +71,15 @@ export function Landing() {
         </section>
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-16 md:grid-cols-12 md:px-8 md:pb-24">
           <div className="md:col-span-4">
-            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">Dancefloor lighting</h2>
-            <p className="mt-4 max-w-xs text-lg text-ink-soft">
-              Magenta and green across the dance floor. It stays on until the last song.
+            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The first dance</h2>
+            <p className="mt-4 max-w-sm text-lg text-ink-soft">
+              Just the two of them, and everyone they love standing close enough to see it.
             </p>
           </div>
           <figure className="md:col-span-6 md:col-start-7">
             <img
-              src="/photos/wedding-dancefloor-beams.jpg"
-              alt="Magenta and green dancefloor lighting over guests on a wedding dance floor, a bride's dress in motion."
+              src="/photos/wedding-first-dance.jpg"
+              alt="A bride and groom sharing their first dance, with wedding guests standing around them."
               width={1024}
               height={1024}
               loading="lazy"
