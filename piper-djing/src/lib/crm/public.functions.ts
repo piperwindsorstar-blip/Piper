@@ -1,5 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
-import { createInquiry, dateOpen } from './store.server.ts'
+import { createInquiry, dateOpen, kindWordsOn } from './store.server.ts'
+
+export const getPublicSite = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    return { kindWords: await kindWordsOn() }
+  },
+)
 
 export const checkDate = createServerFn({ method: 'POST' })
   .validator((data: { date: string }) => data)

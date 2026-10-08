@@ -2,7 +2,12 @@ import { createServerFn } from '@tanstack/react-start'
 import { requireDesk } from '../auth/session.server.ts'
 import { DESK_OWNER_EMAIL } from './desk-owner.ts'
 import { HOME_BASE } from './home-base.ts'
-import { emailBooking, emailInvoice, listEmails, mailStatus } from './mail.server.ts'
+import {
+  emailBooking,
+  emailInvoice,
+  listEmails,
+  mailStatus,
+} from './mail.server.ts'
 import { PACKAGE_CENTS } from '../piper/rules.ts'
 import { PACKAGE_BUTTON_COPY } from './defaults.ts'
 import {
@@ -24,68 +29,92 @@ import {
   sendInvoice,
   setBookingStatus,
   updateBooking,
+  kindWordsOn,
+  setKindWords,
   updateTerms,
   voidBookingInvoice,
   type BookingPatch,
 } from './store.server.ts'
 
 function fail(error: unknown) {
-  return { ok: false as const, error: error instanceof Error ? error.message : 'That did not save.' }
+  return {
+    ok: false as const,
+    error: error instanceof Error ? error.message : 'That did not save.',
+  }
 }
 
-export const getOverview = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  const bookings = await listBookings()
-  return {
-    bookings: bookings.length,
-    leads: (await listLeads()).length,
-    totalCents: await countedTotal(),
-    upcoming: bookings.filter(
-      (booking) => !booking.sample && (booking.status === 'hold' || booking.status === 'booked'),
-    ),
-  }
-})
+export const getOverview = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    const bookings = await listBookings()
+    return {
+      bookings: bookings.length,
+      leads: (await listLeads()).length,
+      totalCents: await countedTotal(),
+      upcoming: bookings.filter(
+        (booking) =>
+          !booking.sample &&
+          (booking.status === 'hold' || booking.status === 'booked'),
+      ),
+    }
+  },
+)
 
-export const getBookings = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  return listBookings()
-})
+export const getBookings = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return listBookings()
+  },
+)
 
-export const getInvoices = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  return listBookings()
-})
+export const getInvoices = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return listBookings()
+  },
+)
 
-export const getPayments = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  const [bookings, payments] = await Promise.all([listBookings(), listPayments()])
-  return { bookings, payments }
-})
+export const getPayments = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    const [bookings, payments] = await Promise.all([
+      listBookings(),
+      listPayments(),
+    ])
+    return { bookings, payments }
+  },
+)
 
 export const getLeads = createServerFn({ method: 'GET' }).handler(async () => {
   await requireDesk()
   return listLeads()
 })
 
-export const getPackages = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  return PACKAGE_BUTTON_COPY.map((item) => ({
-    id: item.id,
-    name: item.name,
-    detail: item.detail,
-    cents: PACKAGE_CENTS[item.id],
-  }))
-})
+export const getPackages = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return PACKAGE_BUTTON_COPY.map((item) => ({
+      id: item.id,
+      name: item.name,
+      detail: item.detail,
+      cents: PACKAGE_CENTS[item.id],
+    }))
+  },
+)
 
-export const getTermsPage = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  return { body: await getTerms() }
-})
+export const getTermsPage = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return { body: await getTerms() }
+  },
+)
 
-export const getQuestions = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  return listQuestions()
-})
+export const getQuestions = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return listQuestions()
+  },
+)
 
 export const getMedia = createServerFn({ method: 'GET' }).handler(async () => {
   await requireDesk()
@@ -97,18 +126,32 @@ export const getBots = createServerFn({ method: 'GET' }).handler(async () => {
   return listBots()
 })
 
-export const getSettings = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireDesk()
-  const mail = mailStatus()
-  return {
-    email: DESK_OWNER_EMAIL,
-    homeBase: HOME_BASE,
-    localBook: !process.env.DATABASE_URL,
-    mailReady: mail.ready,
-    mailFrom: mail.from,
-    emails: await listEmails(),
-  }
-})
+export const getSettings = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    const mail = mailStatus()
+    return {
+      email: DESK_OWNER_EMAIL,
+      homeBase: HOME_BASE,
+      localBook: !process.env.DATABASE_URL,
+      mailReady: mail.ready,
+      mailFrom: mail.from,
+      kindWords: await kindWordsOn(),
+      emails: await listEmails(),
+    }
+  },
+)
+
+export const saveKindWords = createServerFn({ method: 'POST' })
+  .validator((data: { on: boolean }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, on: await setKindWords(data.on) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const getCouple = createServerFn({ method: 'POST' })
   .validator((data: { slug: string }) => data)
@@ -141,11 +184,17 @@ export const addBooking = createServerFn({ method: 'POST' })
   })
 
 export const changeStatus = createServerFn({ method: 'POST' })
-  .validator((data: { id: number; action: 'release' | 'cancel' | 'release-stag' }) => data)
+  .validator(
+    (data: { id: number; action: 'release' | 'cancel' | 'release-stag' }) =>
+      data,
+  )
   .handler(async ({ data }) => {
     await requireDesk()
     try {
-      return { ok: true as const, booking: await setBookingStatus(data.id, data.action) }
+      return {
+        ok: true as const,
+        booking: await setBookingStatus(data.id, data.action),
+      }
     } catch (error) {
       return fail(error)
     }

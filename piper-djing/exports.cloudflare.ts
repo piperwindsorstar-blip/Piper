@@ -62,6 +62,10 @@ const EDGE_SCHEMA = [
     id integer PRIMARY KEY CHECK (id = 1),
     body text NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS site (
+    id integer PRIMARY KEY CHECK (id = 1),
+    kind_words integer NOT NULL DEFAULT 0
+  )`,
   `CREATE TABLE IF NOT EXISTS questions (
     id integer PRIMARY KEY AUTOINCREMENT,
     prompt text NOT NULL,
@@ -119,6 +123,12 @@ export class Book extends DurableObject {
       this.ctx.storage.sql.exec(
         'INSERT INTO terms (id, body) VALUES (1, ?)',
         TERMS_BODY,
+      )
+    }
+    const site = this.ctx.storage.sql.exec('SELECT id FROM site').toArray()
+    if (site.length === 0) {
+      this.ctx.storage.sql.exec(
+        'INSERT INTO site (id, kind_words) VALUES (1, 0)',
       )
     }
   }

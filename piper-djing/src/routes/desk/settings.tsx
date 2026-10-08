@@ -1,5 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { getSettings } from '../../lib/crm/desk.functions.ts'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+import { getSettings, saveKindWords } from '../../lib/crm/desk.functions.ts'
 import { privateHead } from '../../lib/seo.ts'
 
 export const Route = createFileRoute('/desk/settings')({
@@ -10,14 +12,47 @@ export const Route = createFileRoute('/desk/settings')({
 
 function SettingsPage() {
   const settings = Route.useLoaderData()
+  const save = useServerFn(saveKindWords)
+  const router = useRouter()
+  const [kindWords, setKindWords] = useState(settings.kindWords)
+  const [notice, setNotice] = useState<string | null>(null)
+
   return (
     <div className="grid max-w-prose gap-4">
       <h1 className="font-display text-4xl tracking-tight">Settings</h1>
+      <label className="flex items-center gap-3 rounded-card border border-line bg-ivory px-4 py-4 text-sm">
+        <input
+          type="checkbox"
+          className="size-5"
+          checked={kindWords}
+          onChange={(event) => {
+            const on = event.target.checked
+            setKindWords(on)
+            void save({ data: { on } }).then(async (result) => {
+              if (!result.ok) {
+                setKindWords(!on)
+                setNotice(result.error)
+                return
+              }
+              setKindWords(result.on)
+              setNotice(
+                result.on
+                  ? 'Kind words are on the homepage.'
+                  : 'Kind words are off the homepage.',
+              )
+              await router.invalidate()
+            })
+          }}
+        />
+        Show Kind Words on the homepage
+      </label>
+      {notice ? <p className="text-sm">{notice}</p> : null}
       <p>Desk owner: {settings.email}</p>
       <p>Home base for travel: {settings.homeBase}</p>
       <p className="text-sm text-ink-soft">
-        Travel is calculated from kilometres. The first 20 kilometres are included, then each further kilometre is
-        added. Two venues is the maximum. There is no flat travel fee to type in.
+        Travel is calculated from kilometres. The first 20 kilometres are
+        included, then each further kilometre is added. Two venues is the
+        maximum. There is no flat travel fee to type in.
       </p>
       <p>
         {settings.mailReady
@@ -26,7 +61,8 @@ function SettingsPage() {
       </p>
       {settings.localBook ? (
         <p className="text-sm text-muted">
-          This is the empty local book. It clears when the server reloads. The published book is left alone.
+          This is the empty local book. It clears when the server reloads. The
+          published book is left alone.
         </p>
       ) : null}
       <h2 className="mt-4 font-display text-2xl">Emails</h2>
@@ -35,7 +71,10 @@ function SettingsPage() {
       ) : (
         <ul className="grid gap-3 text-sm">
           {settings.emails.map((email) => (
-            <li key={email.id} className="rounded-card border border-line bg-ivory px-4 py-3">
+            <li
+              key={email.id}
+              className="rounded-card border border-line bg-ivory px-4 py-3"
+            >
               <p>
                 {email.kind === 'invoice' ? 'Invoice' : 'Booking'} · {email.to}
               </p>

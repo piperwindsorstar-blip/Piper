@@ -69,6 +69,10 @@ CREATE TABLE terms (
   id integer PRIMARY KEY CHECK (id = 1),
   body text NOT NULL
 );
+CREATE TABLE site (
+  id integer PRIMARY KEY CHECK (id = 1),
+  kind_words integer NOT NULL DEFAULT 0
+);
 CREATE TABLE questions (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   prompt text NOT NULL,
@@ -152,6 +156,10 @@ async function open(): Promise<Client> {
   const existing = await db.query<{ id: number }>('SELECT id FROM terms')
   if (existing.rows.length === 0) {
     await db.query('INSERT INTO terms (id, body) VALUES (1, $1)', [TERMS_BODY])
+  }
+  const site = await db.query<{ id: number }>('SELECT id FROM site')
+  if (site.rows.length === 0) {
+    await db.query('INSERT INTO site (id, kind_words) VALUES (1, 0)')
   }
   return {
     query: async (text, params = []) => {

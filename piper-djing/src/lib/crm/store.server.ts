@@ -153,17 +153,20 @@ function asStatus(value: string): BookingState['status'] {
 }
 
 function asInvoiceStatus(value: string): InvoiceState['status'] {
-  if (!INVOICE_STATUSES.has(value)) throw new Error('That invoice status is not on the book.')
+  if (!INVOICE_STATUSES.has(value))
+    throw new Error('That invoice status is not on the book.')
   return value as InvoiceState['status']
 }
 
 export function parseKm(value: unknown): number[] {
-  const parsed = typeof value === 'string' ? (JSON.parse(value) as unknown) : value
+  const parsed =
+    typeof value === 'string' ? (JSON.parse(value) as unknown) : value
   if (!Array.isArray(parsed)) throw new Error('Travel is a list of kilometres.')
   if (parsed.length > 2) throw new Error('Two venues maximum.')
   return parsed.map((item) => {
     const km = typeof item === 'number' ? item : Number(item)
-    if (!Number.isFinite(km) || km < 0) throw new Error('Distance is a number of kilometres.')
+    if (!Number.isFinite(km) || km < 0)
+      throw new Error('Distance is a number of kilometres.')
     return km
   })
 }
@@ -252,12 +255,17 @@ async function bookingRows(): Promise<BookingRow[]> {
 }
 
 async function invoiceFor(bookingId: number): Promise<InvoiceRow | null> {
-  const rows = await query<InvoiceRow>('SELECT * FROM invoices WHERE booking_id = $1', [bookingId])
+  const rows = await query<InvoiceRow>(
+    'SELECT * FROM invoices WHERE booking_id = $1',
+    [bookingId],
+  )
   return rows[0] ?? null
 }
 
 async function bookingRow(id: number): Promise<BookingRow> {
-  const rows = await query<BookingRow>('SELECT * FROM bookings WHERE id = $1', [id])
+  const rows = await query<BookingRow>('SELECT * FROM bookings WHERE id = $1', [
+    id,
+  ])
   const row = rows[0]
   if (!row) throw new Error('That booking is not on the book.')
   return row
@@ -268,13 +276,21 @@ async function states(): Promise<BookingState[]> {
   return rows.map(toState)
 }
 
-async function dateTakenByOthers(day: string, exceptId: number | null): Promise<boolean> {
+async function dateTakenByOthers(
+  day: string,
+  exceptId: number | null,
+): Promise<boolean> {
   const rows = await bookingRows()
   const others = rows.filter((row) => row.id !== exceptId).map(toState)
   return dateIsTaken(others, day)
 }
 
-function guardIdentity(partnerOne: string, partnerTwo: string, eventDate: string, stagDate: string | null) {
+function guardIdentity(
+  partnerOne: string,
+  partnerTwo: string,
+  eventDate: string,
+  stagDate: string | null,
+) {
   assertBookableNames(partnerOne, partnerTwo)
   assertBookableDate(eventDate, stagDate)
   if (matchCustom(partnerOne, partnerTwo, eventDate)) {
@@ -312,11 +328,14 @@ function normalize(input: BookingInput) {
   const stagDate = withStag && input.stagDate ? input.stagDate : null
   if (withStag && !stagDate) throw new Error('A stag needs its own date.')
   const eventDate = input.eventDate
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) throw new Error('Choose a wedding date.')
-  if (stagDate && !/^\d{4}-\d{2}-\d{2}$/.test(stagDate)) throw new Error('Choose a stag date.')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate))
+    throw new Error('Choose a wedding date.')
+  if (stagDate && !/^\d{4}-\d{2}-\d{2}$/.test(stagDate))
+    throw new Error('Choose a stag date.')
   const venueKm = parseKm(input.venueKm)
   const uplights = input.uplights
-  if (!Number.isInteger(uplights) || uplights < 0) throw new Error('Uplight count is a whole number.')
+  if (!Number.isInteger(uplights) || uplights < 0)
+    throw new Error('Uplight count is a whole number.')
   return {
     partnerOne,
     partnerTwo,
@@ -337,24 +356,51 @@ function normalize(input: BookingInput) {
   }
 }
 
-async function saveBooking(id: number, state: BookingState, invoice: InvoiceState | null) {
+async function saveBooking(
+  id: number,
+  state: BookingState,
+  invoice: InvoiceState | null,
+) {
   await query(
     `UPDATE bookings SET
       status = $1, total_cents = $2, deposit_cents = $3, hold_started_on = $4, stag_released = $5
      WHERE id = $6`,
-    [state.status, state.totalCents, state.depositCents, state.holdStartedOn, state.stagReleased, id],
+    [
+      state.status,
+      state.totalCents,
+      state.depositCents,
+      state.holdStartedOn,
+      state.stagReleased,
+      id,
+    ],
   )
   if (!invoice) return
   await query(
     `UPDATE invoices SET status = $1, total_cents = $2, deposit_cents = $3, received_cents = $4
      WHERE booking_id = $5`,
-    [invoice.status, invoice.totalCents, invoice.depositCents, invoice.receivedCents, id],
+    [
+      invoice.status,
+      invoice.totalCents,
+      invoice.depositCents,
+      invoice.receivedCents,
+      id,
+    ],
   )
 }
 
-async function ensureDateFree(eventDate: string, stagDate: string | null, stagReleased: boolean, exceptId: number | null) {
-  if (await dateTakenByOthers(eventDate, exceptId)) throw new Error('That wedding date is already held.')
-  if (stagDate && !stagReleased && (await dateTakenByOthers(stagDate, exceptId))) {
+async function ensureDateFree(
+  eventDate: string,
+  stagDate: string | null,
+  stagReleased: boolean,
+  exceptId: number | null,
+) {
+  if (await dateTakenByOthers(eventDate, exceptId))
+    throw new Error('That wedding date is already held.')
+  if (
+    stagDate &&
+    !stagReleased &&
+    (await dateTakenByOthers(stagDate, exceptId))
+  ) {
     throw new Error('That stag date is already held.')
   }
 }
@@ -438,12 +484,18 @@ export async function createInquiry(
     if (!email.includes('@')) throw new Error('Enter an email address.')
     const partnerOne = text(input.partnerOne, 80, 'The first name')
     const partnerTwo = text(input.partnerTwo, 80, 'The second name')
-    guardIdentity(partnerOne, partnerTwo, input.eventDate, input.withStag ? input.stagDate : null)
+    guardIdentity(
+      partnerOne,
+      partnerTwo,
+      input.eventDate,
+      input.withStag ? input.stagDate : null,
+    )
     const packageId = asPackage(input.packageId)
     if (input.withStag && packageId !== 'full') {
       throw new Error('A stag is added to the full wedding day.')
     }
-    if (input.withStag && !input.stagDate) throw new Error('A stag needs its own date.')
+    if (input.withStag && !input.stagDate)
+      throw new Error('A stag needs its own date.')
     const message = optional(input.message, 2000)
     const stagDate = input.withStag ? input.stagDate : null
     const unavailable =
@@ -472,11 +524,23 @@ export async function createInquiry(
     await query(
       `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, message)
        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [partnerOne, partnerTwo, email, optional(input.phone, 40), input.eventDate, packageId, message],
+      [
+        partnerOne,
+        partnerTwo,
+        email,
+        optional(input.phone, 40),
+        input.eventDate,
+        packageId,
+        message,
+      ],
     )
     return { ok: true, unavailable }
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : 'That inquiry was not saved.' }
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : 'That inquiry was not saved.',
+    }
   }
 }
 
@@ -513,14 +577,28 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   const current = await bookingRow(patch.id)
   const state = toState(current)
   const next = normalize(patch)
-  const locked = matchCustom(state.partnerOne, state.partnerTwo, state.eventDate)
+  const locked = matchCustom(
+    state.partnerOne,
+    state.partnerTwo,
+    state.eventDate,
+  )
   if (locked) {
     assertBookableNames(next.partnerOne, next.partnerTwo)
     assertBookableDate(next.eventDate, next.stagDate)
   } else {
-    guardIdentity(next.partnerOne, next.partnerTwo, next.eventDate, next.stagDate)
+    guardIdentity(
+      next.partnerOne,
+      next.partnerTwo,
+      next.eventDate,
+      next.stagDate,
+    )
   }
-  await ensureDateFree(next.eventDate, next.stagDate, state.stagReleased, current.id)
+  await ensureDateFree(
+    next.eventDate,
+    next.stagDate,
+    state.stagReleased,
+    current.id,
+  )
   const figures = locked
     ? { totalCents: state.totalCents, depositCents: state.depositCents }
     : figuresFor({
@@ -591,8 +669,15 @@ export async function setBookingStatus(
   if (action === 'release-stag') {
     await query('UPDATE bookings SET stag_released = true WHERE id = $1', [id])
   } else {
-    const transition = action === 'release' ? releaseBooking(state, invoice) : cancelBooking(state, invoice)
-    await saveBooking(id, transition.booking, invoiceRow ? transition.invoice : null)
+    const transition =
+      action === 'release'
+        ? releaseBooking(state, invoice)
+        : cancelBooking(state, invoice)
+    await saveBooking(
+      id,
+      transition.booking,
+      invoiceRow ? transition.invoice : null,
+    )
   }
   return toView(await bookingRow(id), await invoiceFor(id))
 }
@@ -606,17 +691,26 @@ function emptyInvoice(state: BookingState): InvoiceState {
   }
 }
 
-export async function sendInvoice(bookingId: number): Promise<{ view: BookingView; newlyBooked: boolean }> {
+export async function sendInvoice(
+  bookingId: number,
+): Promise<{ view: BookingView; newlyBooked: boolean }> {
   const row = await bookingRow(bookingId)
   const invoiceRow = await invoiceFor(bookingId)
   if (!invoiceRow) throw new Error('That booking has no invoice.')
-  if (invoiceRow.status === 'void') throw new Error('A void invoice stays void.')
+  if (invoiceRow.status === 'void')
+    throw new Error('A void invoice stays void.')
   const state = toState(row)
   const transition = markInvoiceSent(state, toInvoice(invoiceRow))
-  const enteringHold = state.status === 'open' && transition.booking.status !== 'open'
+  const enteringHold =
+    state.status === 'open' && transition.booking.status !== 'open'
   const enteringBooked = transition.newlyBooked
   if (enteringHold || enteringBooked) {
-    await ensureDateFree(state.eventDate, state.stagDate, state.stagReleased, row.id)
+    await ensureDateFree(
+      state.eventDate,
+      state.stagDate,
+      state.stagReleased,
+      row.id,
+    )
   }
   await saveBooking(bookingId, transition.booking, transition.invoice)
   return {
@@ -625,7 +719,9 @@ export async function sendInvoice(bookingId: number): Promise<{ view: BookingVie
   }
 }
 
-export async function voidBookingInvoice(bookingId: number): Promise<BookingView> {
+export async function voidBookingInvoice(
+  bookingId: number,
+): Promise<BookingView> {
   const row = await bookingRow(bookingId)
   const invoiceRow = await invoiceFor(bookingId)
   if (!invoiceRow) throw new Error('That booking has no invoice.')
@@ -639,24 +735,30 @@ export async function addPayment(
   cents: number,
   note: string,
 ): Promise<{ view: BookingView; newlyBooked: boolean }> {
-  if (!Number.isInteger(cents) || cents === 0) throw new Error('Enter an amount.')
+  if (!Number.isInteger(cents) || cents === 0)
+    throw new Error('Enter an amount.')
   const row = await bookingRow(bookingId)
   const invoiceRow = await invoiceFor(bookingId)
   if (!invoiceRow) throw new Error('That booking has no invoice.')
-  if (invoiceRow.status === 'void') throw new Error('A void invoice does not take a payment.')
+  if (invoiceRow.status === 'void')
+    throw new Error('A void invoice does not take a payment.')
   const before = toInvoice(invoiceRow)
   const transition = recordMoney(toState(row), before, cents)
   if (transition.newlyBooked) {
     const state = toState(row)
-    await ensureDateFree(state.eventDate, state.stagDate, state.stagReleased, row.id)
+    await ensureDateFree(
+      state.eventDate,
+      state.stagDate,
+      state.stagReleased,
+      row.id,
+    )
   }
   const applied = transition.invoice.receivedCents - before.receivedCents
   if (applied !== 0) {
-    await query('INSERT INTO payments (invoice_id, cents, note) VALUES ($1, $2, $3)', [
-      invoiceRow.id,
-      applied,
-      optional(note, 200),
-    ])
+    await query(
+      'INSERT INTO payments (invoice_id, cents, note) VALUES ($1, $2, $3)',
+      [invoiceRow.id, applied, optional(note, 200)],
+    )
   }
   await saveBooking(bookingId, transition.booking, transition.invoice)
   return {
@@ -684,7 +786,9 @@ export async function listLeads(): Promise<LeadView[]> {
     phone: row.phone,
     eventDate: row.event_date,
     packageId: row.package_id,
-    packageName: isPackageId(row.package_id) ? packageName(row.package_id) : row.package_id,
+    packageName: isPackageId(row.package_id)
+      ? packageName(row.package_id)
+      : row.package_id,
     message: row.message,
   }))
 }
@@ -716,8 +820,37 @@ export async function listPayments(): Promise<PaymentView[]> {
   }))
 }
 
+async function ensureSite(): Promise<void> {
+  await query(
+    `CREATE TABLE IF NOT EXISTS site (
+      id integer PRIMARY KEY CHECK (id = 1),
+      kind_words integer NOT NULL DEFAULT 0
+    )`,
+  )
+  await query(
+    'INSERT INTO site (id, kind_words) VALUES (1, 0) ON CONFLICT (id) DO NOTHING',
+  )
+}
+
+/** The homepage Kind Words section. Missing or unset means off. */
+export async function kindWordsOn(): Promise<boolean> {
+  await ensureSite()
+  const rows = await query<{ kind_words: unknown }>(
+    'SELECT kind_words FROM site WHERE id = 1',
+  )
+  return flag(rows[0]?.kind_words)
+}
+
+export async function setKindWords(on: boolean): Promise<boolean> {
+  await ensureSite()
+  await query('UPDATE site SET kind_words = $1 WHERE id = 1', [on ? 1 : 0])
+  return kindWordsOn()
+}
+
 export async function getTerms(): Promise<string> {
-  const rows = await query<{ body: string }>('SELECT body FROM terms WHERE id = 1')
+  const rows = await query<{ body: string }>(
+    'SELECT body FROM terms WHERE id = 1',
+  )
   const body = rows[0]?.body
   if (!body) throw new Error('The terms document is missing.')
   return body
@@ -734,30 +867,50 @@ export async function updateTerms(body: string): Promise<string> {
   return saved
 }
 
-export async function listQuestions(): Promise<{ id: number; prompt: string }[]> {
-  return query<{ id: number; prompt: string }>('SELECT id, prompt FROM questions ORDER BY sort, id')
+export async function listQuestions(): Promise<
+  { id: number; prompt: string }[]
+> {
+  return query<{ id: number; prompt: string }>(
+    'SELECT id, prompt FROM questions ORDER BY sort, id',
+  )
 }
 
 export async function addQuestion(prompt: string): Promise<void> {
   const next = text(prompt, 500, 'The question')
-  await query('INSERT INTO questions (prompt, sort) VALUES ($1, $2)', [next, Date.now()])
+  await query('INSERT INTO questions (prompt, sort) VALUES ($1, $2)', [
+    next,
+    Date.now(),
+  ])
 }
 
-export async function listMedia(): Promise<{ id: number; title: string; url: string }[]> {
-  return query<{ id: number; title: string; url: string }>('SELECT id, title, url FROM media ORDER BY id DESC')
+export async function listMedia(): Promise<
+  { id: number; title: string; url: string }[]
+> {
+  return query<{ id: number; title: string; url: string }>(
+    'SELECT id, title, url FROM media ORDER BY id DESC',
+  )
 }
 
 export async function addMedia(title: string, url: string): Promise<void> {
   const nextTitle = text(title, 120, 'A title')
   const nextUrl = text(url, 500, 'A link')
-  await query('INSERT INTO media (title, url) VALUES ($1, $2)', [nextTitle, nextUrl])
+  await query('INSERT INTO media (title, url) VALUES ($1, $2)', [
+    nextTitle,
+    nextUrl,
+  ])
 }
 
-export async function listBots(): Promise<{ id: number; name: string; role: BotRole }[]> {
+export async function listBots(): Promise<
+  { id: number; name: string; role: BotRole }[]
+> {
   const rows = await query<{ id: number; name: string; role: string }>(
     'SELECT id, name, role FROM bots ORDER BY id',
   )
-  return rows.map((row) => ({ id: row.id, name: row.name, role: asRole(row.role) }))
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    role: asRole(row.role),
+  }))
 }
 
 function asRole(value: string): BotRole {
@@ -765,15 +918,24 @@ function asRole(value: string): BotRole {
   throw new Error('That role is not on an invite.')
 }
 
-export async function inviteBot(name: string, role: string): Promise<{ token: string }> {
+export async function inviteBot(
+  name: string,
+  role: string,
+): Promise<{ token: string }> {
   const nextName = text(name, 80, 'A name')
   const nextRole = asRole(role)
   const token = randomBytes(24).toString('hex')
-  await query('INSERT INTO bots (name, token, role) VALUES ($1, $2, $3)', [nextName, token, nextRole])
+  await query('INSERT INTO bots (name, token, role) VALUES ($1, $2, $3)', [
+    nextName,
+    token,
+    nextRole,
+  ])
   return { token }
 }
 
-export async function botFromToken(token: string): Promise<{ id: number; name: string; role: BotRole } | null> {
+export async function botFromToken(
+  token: string,
+): Promise<{ id: number; name: string; role: BotRole } | null> {
   if (!token) return null
   const rows = await query<{ id: number; name: string; role: string }>(
     'SELECT id, name, role FROM bots WHERE token = $1',
@@ -785,7 +947,10 @@ export async function botFromToken(token: string): Promise<{ id: number; name: s
 }
 
 export async function coupleBySlug(slugValue: string) {
-  const rows = await query<BookingRow>('SELECT * FROM bookings WHERE slug = $1', [slugValue])
+  const rows = await query<BookingRow>(
+    'SELECT * FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
   const row = rows[0]
   if (!row) return null
   const view = toView(row, await invoiceFor(row.id))
@@ -813,7 +978,10 @@ export async function coupleBySlug(slugValue: string) {
 }
 
 export async function invoiceBySlug(slugValue: string) {
-  const invoices = await query<InvoiceRow>('SELECT * FROM invoices WHERE slug = $1', [slugValue])
+  const invoices = await query<InvoiceRow>(
+    'SELECT * FROM invoices WHERE slug = $1',
+    [slugValue],
+  )
   const invoice = invoices[0]
   if (!invoice) return null
   const row = await bookingRow(invoice.booking_id)

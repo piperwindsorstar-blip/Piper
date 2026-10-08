@@ -6,11 +6,13 @@ import {
   PACKAGE_BUTTON_COPY,
   PUBLIC_EMAIL,
 } from '../lib/crm/defaults.ts'
+import { cad } from '../lib/crm/money.ts'
 import { checkDate } from '../lib/crm/public.functions.ts'
+import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
 import { professionalServiceJsonLd } from '../lib/seo.ts'
 import { SiteFooter, SiteHeader, bigButton } from './site-frame.tsx'
 
-export function Landing() {
+export function Landing({ kindWords = false }: { kindWords?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(true)
   const openDate = () => dialog.current?.showModal()
@@ -192,9 +194,14 @@ export function Landing() {
                     key={item.id}
                     className="border-t border-line py-6 first:border-t-0 first:pt-0"
                   >
-                    <h3 className="font-display text-2xl tracking-tight">
-                      {item.name}
-                    </h3>
+                    <div className="flex items-baseline justify-between gap-4">
+                      <h3 className="font-display text-2xl tracking-tight">
+                        {item.name}
+                      </h3>
+                      <p className="font-display text-2xl tabular-nums">
+                        {cad(PACKAGE_CENTS[item.id])}
+                      </p>
+                    </div>
                     <ul className="mt-3 grid gap-2 text-sm leading-relaxed text-ink-soft sm:grid-cols-2">
                       {item.includes.map((line) => (
                         <li key={line} className="flex gap-2">
@@ -235,65 +242,67 @@ export function Landing() {
             </Link>
           </div>
         </section>
-        <section
-          className="bg-ink text-ivory"
-          aria-labelledby="kind-words-title"
-        >
-          <div className="mx-auto w-full max-w-6xl px-5 py-16 md:px-8 md:py-20">
-            <h2
-              id="kind-words-title"
-              className="font-display text-4xl tracking-tight sm:text-5xl"
-            >
-              Kind Words
-            </h2>
-            <p className="mt-4 max-w-2xl text-lg leading-relaxed text-paper-deep">
-              From the couples who danced the night away.
-            </p>
-            <ul className="mt-10 grid gap-5 md:grid-cols-3">
-              {KIND_WORDS.map((word, index) => (
-                <li
-                  key={index}
-                  className="flex flex-col justify-between rounded-card border border-ivory/20 bg-ink-soft px-6 py-8"
-                >
-                  {word.quote ? (
-                    <>
-                      <blockquote className="font-display text-xl leading-snug tracking-tight">
-                        “{word.quote}”
-                      </blockquote>
-                      <footer className="mt-6 text-sm text-paper-deep">
-                        {word.names}
-                        {word.when ? (
-                          <span className="block text-ivory/60">
-                            {word.when}
-                          </span>
-                        ) : null}
-                      </footer>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-display text-xl leading-snug tracking-tight text-ivory/70">
-                        This space is saved for a couple's kind words.
-                      </p>
-                      <p className="mt-6 text-sm text-ivory/60">
-                        Brantford wedding, coming soon
-                      </p>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-8 text-sm text-paper-deep">
-              Danced at a wedding with Piper? Send a few words to{' '}
-              <a
-                href={`mailto:${PUBLIC_EMAIL}`}
-                className="underline underline-offset-4"
+        {kindWords ? (
+          <section
+            className="bg-ink text-ivory"
+            aria-labelledby="kind-words-title"
+          >
+            <div className="mx-auto w-full max-w-6xl px-5 py-16 md:px-8 md:py-20">
+              <h2
+                id="kind-words-title"
+                className="font-display text-4xl tracking-tight sm:text-5xl"
               >
-                {PUBLIC_EMAIL}
-              </a>
-              .
-            </p>
-          </div>
-        </section>
+                Kind Words
+              </h2>
+              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-paper-deep">
+                From the couples who danced the night away.
+              </p>
+              <ul className="mt-10 grid gap-5 md:grid-cols-3">
+                {KIND_WORDS.map((word, index) => (
+                  <li
+                    key={index}
+                    className="flex flex-col justify-between rounded-card border border-ivory/20 bg-ink-soft px-6 py-8"
+                  >
+                    {word.quote ? (
+                      <>
+                        <blockquote className="font-display text-xl leading-snug tracking-tight">
+                          “{word.quote}”
+                        </blockquote>
+                        <footer className="mt-6 text-sm text-paper-deep">
+                          {word.names}
+                          {word.when ? (
+                            <span className="block text-ivory/60">
+                              {word.when}
+                            </span>
+                          ) : null}
+                        </footer>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-display text-xl leading-snug tracking-tight text-ivory/70">
+                          This space is saved for a couple's kind words.
+                        </p>
+                        <p className="mt-6 text-sm text-ivory/60">
+                          Brantford wedding, coming soon
+                        </p>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-8 text-sm text-paper-deep">
+                Danced at a wedding with Piper? Send a few words to{' '}
+                <a
+                  href={`mailto:${PUBLIC_EMAIL}`}
+                  className="underline underline-offset-4"
+                >
+                  {PUBLIC_EMAIL}
+                </a>
+                .
+              </p>
+            </div>
+          </section>
+        ) : null}
       </main>
       <SiteFooter />
       <DateDialog dialog={dialog} />

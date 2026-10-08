@@ -1,4 +1,9 @@
-import { PACKAGE_BUTTON_COPY, PUBLIC_EMAIL, INSTAGRAM_URL } from './crm/defaults.ts'
+import {
+  PACKAGE_BUTTON_COPY,
+  PUBLIC_EMAIL,
+  INSTAGRAM_URL,
+} from './crm/defaults.ts'
+import { PACKAGE_CENTS } from './piper/rules.ts'
 import { publicUrl } from './crm/safe-origin.ts'
 import site from './og/site.json' with { type: 'json' }
 
@@ -30,10 +35,7 @@ export function publicHead(opts: { path: '/' | '/book'; title: string }) {
 
 export function privateHead(title: string) {
   return {
-    meta: [
-      { title },
-      { name: 'robots', content: 'noindex, nofollow' },
-    ],
+    meta: [{ title }, { name: 'robots', content: 'noindex, nofollow' }],
   }
 }
 
@@ -72,6 +74,8 @@ export function professionalServiceJsonLd(): string {
     offers: PACKAGE_BUTTON_COPY.map((item) => ({
       '@type': 'Offer',
       name: item.name,
+      price: (PACKAGE_CENTS[item.id] / 100).toFixed(2),
+      priceCurrency: 'CAD',
     })),
   })
 }

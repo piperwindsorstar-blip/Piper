@@ -3,11 +3,17 @@ import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { SiteFooter, SiteHeader, bigButton } from '../components/site-frame.tsx'
 import { PACKAGE_BUTTON_COPY } from '../lib/crm/defaults.ts'
+import { cad } from '../lib/crm/money.ts'
 import { sendInquiry } from '../lib/crm/public.functions.ts'
+import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
 import { publicHead } from '../lib/seo.ts'
 
 export const Route = createFileRoute('/book')({
-  head: () => publicHead({ path: '/book', title: 'Book a wedding DJ in Brantford | Piper DJing' }),
+  head: () =>
+    publicHead({
+      path: '/book',
+      title: 'Book a wedding DJ in Brantford | Piper DJing',
+    }),
   component: BookPage,
 })
 
@@ -23,9 +29,13 @@ function BookPage() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-xl px-5 py-16 md:px-8">
         <h1 className="font-display text-4xl tracking-tight">Book me</h1>
-        <p className="mt-4 text-lg text-ink-soft">Tell Piper the date. The reply comes by email.</p>
+        <p className="mt-4 text-lg text-ink-soft">
+          Tell Piper the date. The reply comes by email.
+        </p>
         {done ? (
-          <p className="mt-10 font-display text-3xl tracking-tight">{message}</p>
+          <p className="mt-10 font-display text-3xl tracking-tight">
+            {message}
+          </p>
         ) : (
           <form
             className="mt-10 grid gap-4"
@@ -90,7 +100,7 @@ function BookPage() {
               >
                 {PACKAGE_BUTTON_COPY.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {item.name} · {cad(PACKAGE_CENTS[item.id])}
                   </option>
                 ))}
               </select>
