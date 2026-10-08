@@ -12,7 +12,13 @@ import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
 import { professionalServiceJsonLd } from '../lib/seo.ts'
 import { SiteFooter, SiteHeader, bigButton } from './site-frame.tsx'
 
-export function Landing({ kindWords = false }: { kindWords?: boolean }) {
+export function Landing({
+  kindWords = false,
+  partners = [],
+}: {
+  kindWords?: boolean
+  partners?: { id: number; name: string; href: string; src: string }[]
+}) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(true)
   const openDate = () => dialog.current?.showModal()
@@ -301,6 +307,38 @@ export function Landing({ kindWords = false }: { kindWords?: boolean }) {
                 .
               </p>
             </div>
+          </section>
+        ) : null}
+        {partners.length > 0 ? (
+          <section
+            className="mx-auto w-full max-w-6xl px-5 py-16 md:px-8"
+            aria-labelledby="partners-title"
+          >
+            <h2
+              id="partners-title"
+              className="font-display text-4xl tracking-tight sm:text-5xl"
+            >
+              Partner brands
+            </h2>
+            <ul className="mt-6 grid w-full max-w-sm grid-cols-4 gap-2">
+              {partners.map((partner) => (
+                <li key={partner.id}>
+                  <a
+                    href={partner.href}
+                    target="_blank"
+                    rel="noopener noreferrer sponsored"
+                    aria-label={partner.name}
+                    className="block aspect-square rounded-2xl border border-line bg-ivory p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                  >
+                    <img
+                      src={partner.src}
+                      alt=""
+                      className="size-full object-contain"
+                    />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
       </main>

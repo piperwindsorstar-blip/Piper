@@ -66,6 +66,13 @@ const EDGE_SCHEMA = [
     id integer PRIMARY KEY CHECK (id = 1),
     kind_words integer NOT NULL DEFAULT 0
   )`,
+  `CREATE TABLE IF NOT EXISTS partners (
+    id integer PRIMARY KEY,
+    name text NOT NULL,
+    href text NOT NULL,
+    mime text NOT NULL,
+    logo text NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS questions (
     id integer PRIMARY KEY AUTOINCREMENT,
     prompt text NOT NULL,

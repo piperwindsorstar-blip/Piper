@@ -1,9 +1,14 @@
 import { createServerFn } from '@tanstack/react-start'
-import { createInquiry, dateOpen, kindWordsOn } from './store.server.ts'
+import {
+  createInquiry,
+  dateOpen,
+  kindWordsOn,
+  listPartners,
+} from './store.server.ts'
 
 export const getPublicSite = createServerFn({ method: 'GET' }).handler(
   async () => {
-    return { kindWords: await kindWordsOn() }
+    return { kindWords: await kindWordsOn(), partners: await listPartners() }
   },
 )
 

@@ -14,12 +14,15 @@ const LINKS = [
   ['/desk/terms', 'Terms'],
   ['/desk/questions', 'Questions'],
   ['/desk/media', 'Media'],
+  ['/desk/partners', 'Partners'],
   ['/desk/bots', 'Bots'],
   ['/desk/settings', 'Settings'],
 ] as const
 
 export function DeskShell({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
   const router = useRouter()
   const out = useServerFn(signOut)
 
@@ -42,13 +45,18 @@ export function DeskShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="mx-auto flex w-full max-w-6xl gap-2 overflow-x-auto px-5 pb-4">
           {LINKS.map(([to, label]) => {
-            const active = to === '/desk' ? pathname === '/desk' || pathname === '/desk/' : pathname === to
+            const active =
+              to === '/desk'
+                ? pathname === '/desk' || pathname === '/desk/'
+                : pathname === to
             return (
               <Link
                 key={to}
                 to={to}
                 className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm ${
-                  active ? 'bg-ink text-ivory' : 'border border-line bg-ivory text-ink'
+                  active
+                    ? 'bg-ink text-ivory'
+                    : 'border border-line bg-ivory text-ink'
                 }`}
               >
                 {label}

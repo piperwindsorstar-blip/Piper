@@ -15,6 +15,6 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const { kindWords } = Route.useLoaderData()
-  return <Landing kindWords={kindWords} />
+  const { kindWords, partners } = Route.useLoaderData()
+  return <Landing kindWords={kindWords} partners={partners} />
 }

@@ -23,9 +23,12 @@ import {
   listBots,
   listBookings,
   listLeads,
+  addPartner,
   listMedia,
+  listPartners,
   listPayments,
   listQuestions,
+  removePartner,
   sendInvoice,
   setBookingStatus,
   updateBooking,
@@ -120,6 +123,36 @@ export const getMedia = createServerFn({ method: 'GET' }).handler(async () => {
   await requireDesk()
   return listMedia()
 })
+
+export const getPartners = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return listPartners()
+  },
+)
+
+export const savePartner = createServerFn({ method: 'POST' })
+  .validator((data: { name: string; href: string; logo: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, partner: await addPartner(data) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deletePartner = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removePartner(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const getBots = createServerFn({ method: 'GET' }).handler(async () => {
   await requireDesk()

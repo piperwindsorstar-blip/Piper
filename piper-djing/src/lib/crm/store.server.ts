@@ -900,6 +900,115 @@ export async function addMedia(title: string, url: string): Promise<void> {
   ])
 }
 
+const PARTNER_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp'])
+
+async function ensurePartners(): Promise<void> {
+  await query(
+    `CREATE TABLE IF NOT EXISTS partners (
+      id integer PRIMARY KEY,
+      name text NOT NULL,
+      href text NOT NULL,
+      mime text NOT NULL,
+      logo text NOT NULL
+    )`,
+  )
+}
+
+function partnerWebsite(value: string): string {
+  const next = text(value, 300, 'A website')
+  let url: URL
+  try {
+    url = new URL(next)
+  } catch {
+    throw new Error('Enter a full website address, starting with https://.')
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error('Enter a full website address, starting with https://.')
+  }
+  return url.toString()
+}
+
+function partnerLogoData(value: string): { mime: string; logo: string } {
+  const match =
+    /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/.exec(
+      value.trim(),
+    )
+  if (!match) throw new Error('Use a PNG, JPEG, or WebP logo.')
+  const mime = match[1] ?? ''
+  const logo = (match[2] ?? '').replace(/\s/g, '')
+  if (!PARTNER_MIMES.has(mime) || !logo) {
+    throw new Error('Use a PNG, JPEG, or WebP logo.')
+  }
+  if (logo.length > 280_000)
+    throw new Error('That logo is too large. Keep it under 200 KB.')
+  return { mime, logo }
+}
+
+export type PartnerView = {
+  id: number
+  name: string
+  href: string
+  src: string
+}
+
+export async function listPartners(): Promise<PartnerView[]> {
+  await ensurePartners()
+  const rows = await query<{
+    id: number
+    name: string
+    href: string
+    mime: string
+    logo: string
+  }>('SELECT id, name, href, mime, logo FROM partners ORDER BY id')
+  return rows.map((row) => ({
+    id: whole(row.id, 'Partner'),
+    name: row.name,
+    href: row.href,
+    src: `data:${row.mime};base64,${row.logo}`,
+  }))
+}
+
+export async function partnerLogo(
+  id: number,
+): Promise<{ mime: string; logo: string } | null> {
+  if (!Number.isInteger(id) || id < 1) return null
+  await ensurePartners()
+  const rows = await query<{ mime: string; logo: string }>(
+    'SELECT mime, logo FROM partners WHERE id = $1',
+    [id],
+  )
+  const row = rows[0]
+  if (!row || !PARTNER_MIMES.has(row.mime)) return null
+  return row
+}
+
+export async function addPartner(input: {
+  name: string
+  href: string
+  logo: string
+}): Promise<PartnerView> {
+  await ensurePartners()
+  const name = text(input.name, 80, 'A brand name')
+  const href = partnerWebsite(input.href)
+  const { mime, logo } = partnerLogoData(input.logo)
+  const ids = await query<{ id: number }>(
+    'SELECT COALESCE(MAX(id), 0) + 1 AS id FROM partners',
+  )
+  const id = whole(ids[0]?.id, 'Partner')
+  await query(
+    'INSERT INTO partners (id, name, href, mime, logo) VALUES ($1, $2, $3, $4, $5)',
+    [id, name, href, mime, logo],
+  )
+  return { id, name, href, src: `data:${mime};base64,${logo}` }
+}
+
+export async function removePartner(id: number): Promise<void> {
+  if (!Number.isInteger(id) || id < 1)
+    throw new Error('That brand is not on the page.')
+  await ensurePartners()
+  await query('DELETE FROM partners WHERE id = $1', [id])
+}
+
 export async function listBots(): Promise<
   { id: number; name: string; role: BotRole }[]
 > {

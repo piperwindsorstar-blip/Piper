@@ -73,6 +73,13 @@ CREATE TABLE site (
   id integer PRIMARY KEY CHECK (id = 1),
   kind_words integer NOT NULL DEFAULT 0
 );
+CREATE TABLE partners (
+  id integer PRIMARY KEY,
+  name text NOT NULL,
+  href text NOT NULL,
+  mime text NOT NULL,
+  logo text NOT NULL
+);
 CREATE TABLE questions (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   prompt text NOT NULL,
