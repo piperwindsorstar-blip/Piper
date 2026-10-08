@@ -10,33 +10,6 @@ import { checkDate } from '../lib/crm/public.functions.ts'
 import { professionalServiceJsonLd } from '../lib/seo.ts'
 import { SiteFooter, SiteHeader, bigButton } from './site-frame.tsx'
 
-const FAQ = [
-  {
-    q: 'Do you take requests during the reception?',
-    a: 'The planning meeting is where the music for the night is set, including the songs you want and the ones you do not. Light MC for introducing speeches is part of a full wedding day or reception only, if you ask.',
-  },
-  {
-    q: 'How far in advance should we book?',
-    a: 'Check the date as soon as you have it. If that day is still open, inquire within. A date moves from open, to a hold, to booked, and once it is booked it stays yours.',
-  },
-  {
-    q: 'What equipment do you bring, and do you have backup?',
-    a: 'Reception packages include wireless microphones, two speakers, dancefloor lighting, and backup equipment. Ceremony only is one speaker, one wireless microphone for the officiant, and backup. No reception audio, no dancefloor lighting, and no MC.',
-  },
-  {
-    q: 'Do you travel outside Brantford?',
-    a: 'Yes. Travel is calculated from the kilometres to each venue and quoted apart from the package, along with a second venue and uplighting.',
-  },
-  {
-    q: 'Our ceremony and reception are in different places. Is that okay?',
-    a: 'Yes, up to two venues. A full wedding day covers ceremony audio at one venue and the reception at the other. The second venue is quoted apart from the package.',
-  },
-  {
-    q: 'What happens at the planning meeting?',
-    a: 'Every package includes at least one meeting. We go through the timeline, the names to announce, the songs for the big moments, and how the room is set up, so the night runs the way you want it to.',
-  },
-]
-
 export function Landing() {
   const dialog = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(true)
@@ -319,35 +292,6 @@ export function Landing() {
               </a>
               .
             </p>
-          </div>
-        </section>
-        <section
-          className="mx-auto w-full max-w-3xl px-5 py-16 md:px-8 md:py-20"
-          aria-labelledby="faq-title"
-        >
-          <h2
-            id="faq-title"
-            className="font-display text-4xl tracking-tight sm:text-5xl"
-          >
-            Questions couples ask
-          </h2>
-          <div className="mt-8 border-b border-line">
-            {FAQ.map((item) => (
-              <details key={item.q} className="group border-t border-line py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-display text-2xl tracking-tight [&::-webkit-details-marker]:hidden">
-                  {item.q}
-                  <span
-                    aria-hidden="true"
-                    className="shrink-0 text-xl text-muted transition-transform duration-150 group-open:rotate-45"
-                  >
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">
-                  {item.a}
-                </p>
-              </details>
-            ))}
           </div>
         </section>
       </main>
