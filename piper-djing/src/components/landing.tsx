@@ -73,13 +73,13 @@ export function Landing() {
           <div className="md:col-span-4">
             <h2 className="font-display text-5xl tracking-tight sm:text-6xl">Dancefloor lighting</h2>
             <p className="mt-4 max-w-xs text-lg text-ink-soft">
-              Magenta and green on the wall. The head table is set. The first song is still ahead.
+              Magenta and green across the dance floor. It stays on until the last song.
             </p>
           </div>
           <figure className="md:col-span-6 md:col-start-7">
             <img
-              src="/photos/wedding-dancefloor-lights.jpg"
-              alt="Magenta and green dancefloor lighting on a brick wall, with a head table and white chairs."
+              src="/photos/wedding-dancefloor-beams.jpg"
+              alt="Magenta and green dancefloor lighting over guests on a wedding dance floor, a bride's dress in motion."
               width={1024}
               height={1024}
               loading="lazy"

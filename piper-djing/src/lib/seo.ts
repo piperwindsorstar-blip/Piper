@@ -46,7 +46,7 @@ export function professionalServiceJsonLd(): string {
     image: [
       `${site.url}/photos/dj-piper-at-the-booth.jpg`,
       `${site.url}/photos/wedding-reception-dance.jpg`,
-      `${site.url}/photos/wedding-dancefloor-lights.jpg`,
+      `${site.url}/photos/wedding-dancefloor-beams.jpg`,
     ],
     description: site.description,
     email: PUBLIC_EMAIL,
