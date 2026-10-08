@@ -37,16 +37,14 @@ export function Landing() {
         </section>
         <section className="mx-auto w-full max-w-6xl px-5 pt-12 md:px-8 md:pt-16">
           <h2 className="font-display text-5xl tracking-tight sm:text-6xl">At the booth</h2>
-          <p className="mt-4 max-w-md text-lg text-ink-soft">
-            DJ Piper. Headphones on, at the booth.
-          </p>
+          <p className="mt-4 max-w-md text-lg text-ink-soft">Headphones on, at the booth.</p>
           <figure className="pt-8">
             <img
-              src="/photos/dj-piper-booth.jpg"
-              alt="DJ Piper at a wedding booth, headphones on, with the DJ Piper P laptop open."
-              width={1200}
-              height={1260}
-              className="mx-auto aspect-square w-full max-w-3xl rounded-card object-cover object-top"
+              src="/photos/wedding-dj-booth.jpg"
+              alt="A wedding DJ at the booth, headphones on, laptop open."
+              width={1024}
+              height={1024}
+              className="mx-auto aspect-square w-full max-w-3xl rounded-card object-cover"
             />
             <figcaption className="mt-4 max-w-3xl text-sm text-muted">
               The booth, ready for the wedding.
@@ -62,10 +60,10 @@ export function Landing() {
           </div>
           <figure className="md:col-span-8">
             <img
-              src="/photos/wedding-reception.jpg"
+              src="/photos/wedding-reception-dance.jpg"
               alt="A bride dancing with guests under blue light at a wedding reception."
-              width={600}
-              height={600}
+              width={1024}
+              height={1024}
               loading="lazy"
               className="aspect-square w-full max-w-xl rounded-card object-cover"
             />
@@ -80,10 +78,10 @@ export function Landing() {
           </div>
           <figure className="md:col-span-6 md:col-start-7">
             <img
-              src="/photos/dancefloor-lighting.jpg"
+              src="/photos/wedding-dancefloor-lights.jpg"
               alt="Magenta and green dancefloor lighting on a brick wall, with a head table and white chairs."
-              width={600}
-              height={600}
+              width={1024}
+              height={1024}
               loading="lazy"
               className="aspect-square w-full rounded-card object-cover"
             />
