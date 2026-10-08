@@ -35,21 +35,21 @@ export function Landing() {
             className="mt-10 h-auto w-full max-w-2xl"
           />
         </section>
-        <section className="pt-12 md:pt-16">
-          <div className="mx-auto w-full max-w-6xl px-5 md:px-8">
-            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The first dance</h2>
-            <p className="mt-4 max-w-md text-lg text-ink-soft">
-              One song for the couple. Guests stand in a ring around the first dance.
-            </p>
-          </div>
+        <section className="mx-auto w-full max-w-6xl px-5 pt-12 md:px-8 md:pt-16">
+          <h2 className="font-display text-5xl tracking-tight sm:text-6xl">At the booth</h2>
+          <p className="mt-4 max-w-md text-lg text-ink-soft">
+            DJ Piper. Headphones on, at the booth.
+          </p>
           <figure className="pt-8">
             <img
-              src="/photos/spotlight.jpg"
-              alt="First dance at a wedding reception: a couple under one spotlight, guests watching from a dark ring."
-              className="aspect-3/2 w-full object-cover"
+              src="/photos/dj-piper-booth.jpg"
+              alt="DJ Piper at a wedding booth, headphones on, with the DJ Piper P laptop open."
+              width={1200}
+              height={1260}
+              className="mx-auto aspect-square w-full max-w-3xl rounded-card object-cover object-top"
             />
-            <figcaption className="mx-auto mt-4 w-full max-w-6xl px-5 text-sm text-muted md:px-8">
-              Lights down. One song. The whole room watching.
+            <figcaption className="mt-4 max-w-3xl text-sm text-muted">
+              The booth, ready for the wedding.
             </figcaption>
           </figure>
         </section>
@@ -62,26 +62,30 @@ export function Landing() {
           </div>
           <figure className="md:col-span-8">
             <img
-              src="/photos/dance.jpg"
-              alt="Wedding reception dance floor in warm light, guests dancing in gowns and black tie."
+              src="/photos/wedding-reception.jpg"
+              alt="A bride dancing with guests under blue light at a wedding reception."
+              width={600}
+              height={600}
               loading="lazy"
-              className="aspect-3/2 w-full rounded-card object-cover"
+              className="aspect-square w-full max-w-xl rounded-card object-cover"
             />
           </figure>
         </section>
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-16 md:grid-cols-12 md:px-8 md:pb-24">
           <div className="md:col-span-4">
-            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The last song</h2>
+            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">Dancefloor lighting</h2>
             <p className="mt-4 max-w-xs text-lg text-ink-soft">
-              The last song of the wedding. Nobody reaches for a coat. Play it that way.
+              Magenta and green on the wall. The head table is set. The first song is still ahead.
             </p>
           </div>
           <figure className="md:col-span-6 md:col-start-7">
             <img
-              src="/photos/spin.jpg"
-              alt="Last song at a wedding: a wedding dress mid-spin above a lit dance floor, a chandelier behind."
+              src="/photos/dancefloor-lighting.jpg"
+              alt="Magenta and green dancefloor lighting on a brick wall, with a head table and white chairs."
+              width={600}
+              height={600}
               loading="lazy"
-              className="aspect-2/3 w-full rounded-card object-cover"
+              className="aspect-square w-full rounded-card object-cover"
             />
           </figure>
         </section>
