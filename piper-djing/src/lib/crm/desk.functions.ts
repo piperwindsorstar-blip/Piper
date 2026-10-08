@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireDesk } from '../auth/session.server.ts'
+import { usesEdgeBook } from '../db.server.ts'
 import { DESK_OWNER_EMAIL } from './desk-owner.ts'
 import { HOME_BASE } from './home-base.ts'
 import {
@@ -34,6 +35,9 @@ import {
   updateBooking,
   kindWordsOn,
   setKindWords,
+  addReview,
+  listReviews,
+  removeReview,
   updateTerms,
   voidBookingInvoice,
   type BookingPatch,
@@ -166,10 +170,11 @@ export const getSettings = createServerFn({ method: 'GET' }).handler(
     return {
       email: DESK_OWNER_EMAIL,
       homeBase: HOME_BASE,
-      localBook: !process.env.DATABASE_URL,
+      localBook: !process.env.DATABASE_URL && !usesEdgeBook(),
       mailReady: mail.ready,
       mailFrom: mail.from,
       kindWords: await kindWordsOn(),
+      reviews: await listReviews(),
       emails: await listEmails(),
     }
   },
@@ -181,6 +186,29 @@ export const saveKindWords = createServerFn({ method: 'POST' })
     await requireDesk()
     try {
       return { ok: true as const, on: await setKindWords(data.on) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const saveReview = createServerFn({ method: 'POST' })
+  .validator((data: { quote: string; names: string; when: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, review: await addReview(data) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteReview = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeReview(data.id)
+      return { ok: true as const }
     } catch (error) {
       return fail(error)
     }

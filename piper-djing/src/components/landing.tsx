@@ -1,11 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useRef, useState, type RefObject } from 'react'
-import {
-  KIND_WORDS,
-  PACKAGE_BUTTON_COPY,
-  PUBLIC_EMAIL,
-} from '../lib/crm/defaults.ts'
+import { PACKAGE_BUTTON_COPY, PUBLIC_EMAIL } from '../lib/crm/defaults.ts'
 import { cad } from '../lib/crm/money.ts'
 import { checkDate } from '../lib/crm/public.functions.ts'
 import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
@@ -13,10 +9,10 @@ import { professionalServiceJsonLd } from '../lib/seo.ts'
 import { SiteFooter, SiteHeader, bigButton } from './site-frame.tsx'
 
 export function Landing({
-  kindWords = false,
+  reviews = [],
   partners = [],
 }: {
-  kindWords?: boolean
+  reviews?: { id: number; quote: string; names: string; when: string }[]
   partners?: { id: number; name: string; href: string; src: string }[]
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -248,7 +244,7 @@ export function Landing({
             </Link>
           </div>
         </section>
-        {kindWords ? (
+        {reviews.length > 0 ? (
           <section
             className="bg-ink text-ivory"
             aria-labelledby="kind-words-title"
@@ -263,36 +259,21 @@ export function Landing({
               <p className="mt-4 max-w-2xl text-lg leading-relaxed text-paper-deep">
                 From the couples who danced the night away.
               </p>
-              <ul className="mt-10 grid gap-5 md:grid-cols-3">
-                {KIND_WORDS.map((word, index) => (
+              <ul className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {reviews.map((word) => (
                   <li
-                    key={index}
+                    key={word.id}
                     className="flex flex-col justify-between rounded-card border border-ivory/20 bg-ink-soft px-6 py-8"
                   >
-                    {word.quote ? (
-                      <>
-                        <blockquote className="font-display text-xl leading-snug tracking-tight">
-                          “{word.quote}”
-                        </blockquote>
-                        <footer className="mt-6 text-sm text-paper-deep">
-                          {word.names}
-                          {word.when ? (
-                            <span className="block text-ivory/60">
-                              {word.when}
-                            </span>
-                          ) : null}
-                        </footer>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-display text-xl leading-snug tracking-tight text-ivory/70">
-                          This space is saved for a couple's kind words.
-                        </p>
-                        <p className="mt-6 text-sm text-ivory/60">
-                          Brantford wedding, coming soon
-                        </p>
-                      </>
-                    )}
+                    <blockquote className="font-display text-xl leading-snug tracking-tight whitespace-pre-wrap">
+                      “{word.quote}”
+                    </blockquote>
+                    <footer className="mt-6 text-sm text-paper-deep">
+                      {word.names}
+                      {word.when ? (
+                        <span className="block text-ivory/60">{word.when}</span>
+                      ) : null}
+                    </footer>
                   </li>
                 ))}
               </ul>

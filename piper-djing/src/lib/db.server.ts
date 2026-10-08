@@ -80,6 +80,12 @@ CREATE TABLE partners (
   mime text NOT NULL,
   logo text NOT NULL
 );
+CREATE TABLE reviews (
+  id integer PRIMARY KEY,
+  quote text NOT NULL,
+  names text NOT NULL,
+  when_label text NOT NULL DEFAULT ''
+);
 CREATE TABLE questions (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   prompt text NOT NULL,

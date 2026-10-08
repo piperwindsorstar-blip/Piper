@@ -73,6 +73,12 @@ const EDGE_SCHEMA = [
     mime text NOT NULL,
     logo text NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS reviews (
+    id integer PRIMARY KEY,
+    quote text NOT NULL,
+    names text NOT NULL,
+    when_label text NOT NULL DEFAULT ''
+  )`,
   `CREATE TABLE IF NOT EXISTS questions (
     id integer PRIMARY KEY AUTOINCREMENT,
     prompt text NOT NULL,

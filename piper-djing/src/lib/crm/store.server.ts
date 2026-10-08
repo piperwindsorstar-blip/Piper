@@ -13,6 +13,8 @@ import {
   matchCustom,
   recordMoney,
   releaseBooking,
+  SAVED_WEDDINGS,
+  savedWeddingNote,
   voidInvoice,
   type BookingState,
   type InvoiceState,
@@ -405,7 +407,113 @@ async function ensureDateFree(
   }
 }
 
+const SAVED_DEPOSIT_NOTE = 'Deposit cleared on the previous book.'
+
+async function savedWeddingId(
+  wedding: (typeof SAVED_WEDDINGS)[number],
+): Promise<number | null> {
+  const rows = await query<{ id: number }>(
+    `SELECT id FROM bookings
+     WHERE event_date = $1
+       AND (
+         (lower(partner_one) = lower($2) AND lower(partner_two) = lower($3))
+         OR (lower(partner_one) = lower($3) AND lower(partner_two) = lower($2))
+       )`,
+    [wedding.date, wedding.partnerOne, wedding.partnerTwo],
+  )
+  const id = rows[0]?.id
+  return id == null ? null : whole(id, 'Booking')
+}
+
+async function ensureSavedInvoice(
+  bookingId: number,
+  wedding: (typeof SAVED_WEDDINGS)[number],
+): Promise<void> {
+  const existing = await query<{ id: number }>(
+    'SELECT id FROM invoices WHERE booking_id = $1',
+    [bookingId],
+  )
+  let invoiceId = existing[0]?.id
+  if (invoiceId == null) {
+    const inserted = await query<{ id: number }>(
+      `INSERT INTO invoices (slug, booking_id, status, total_cents, deposit_cents, received_cents)
+       SELECT $1, $2, 'sent', $3, $4, $5
+       WHERE NOT EXISTS (SELECT 1 FROM invoices WHERE booking_id = $2)
+       RETURNING id`,
+      [
+        slug(),
+        bookingId,
+        wedding.totalCents,
+        wedding.depositClearedCents,
+        wedding.depositClearedCents,
+      ],
+    )
+    invoiceId = inserted[0]?.id
+    if (invoiceId == null) {
+      const again = await query<{ id: number }>(
+        'SELECT id FROM invoices WHERE booking_id = $1',
+        [bookingId],
+      )
+      invoiceId = again[0]?.id
+    }
+  }
+  if (invoiceId == null) return
+  await query(
+    `INSERT INTO payments (invoice_id, cents, note)
+     SELECT $1, $2, $3
+     WHERE NOT EXISTS (
+       SELECT 1 FROM payments WHERE invoice_id = $1 AND note = $3
+     )`,
+    [invoiceId, wedding.depositClearedCents, SAVED_DEPOSIT_NOTE],
+  )
+}
+
+/** Copies the four booked weddings onto this book once. Later visits leave them as they are. */
+export async function ensureSavedWeddings(): Promise<void> {
+  for (const wedding of SAVED_WEDDINGS) {
+    let id = await savedWeddingId(wedding)
+    if (id == null) {
+      const inserted = await query<{ id: number }>(
+        `INSERT INTO bookings (
+          slug, partner_one, partner_two, email, phone, event_date, stag_date, package_id, with_stag,
+          uplights, venue_km, venue_name, venue_street, venue_two_name, venue_two_street, sample,
+          status, total_cents, deposit_cents, hold_started_on, stag_released, notes
+        )
+        SELECT $1, $2, $3, '', '', $4, NULL, 'full', $9,
+          0, '[]', $5, '', '', '', $10,
+          'booked', $6, $7, NULL, $11, $8
+        WHERE NOT EXISTS (
+          SELECT 1 FROM bookings
+          WHERE event_date = $4
+            AND (
+              (lower(partner_one) = lower($2) AND lower(partner_two) = lower($3))
+              OR (lower(partner_one) = lower($3) AND lower(partner_two) = lower($2))
+            )
+        )
+        RETURNING id`,
+        [
+          slug(),
+          wedding.partnerOne,
+          wedding.partnerTwo,
+          wedding.date,
+          wedding.venueName,
+          wedding.totalCents,
+          wedding.depositClearedCents,
+          savedWeddingNote(wedding),
+          false,
+          false,
+          false,
+        ],
+      )
+      id = inserted[0]?.id ?? (await savedWeddingId(wedding))
+    }
+    if (id == null) continue
+    await ensureSavedInvoice(id, wedding)
+  }
+}
+
 export async function listBookings(): Promise<BookingView[]> {
+  await ensureSavedWeddings()
   const rows = await bookingRows()
   const invoices = await query<InvoiceRow>('SELECT * FROM invoices')
   const byBooking = new Map(invoices.map((row) => [row.booking_id, row]))
@@ -845,6 +953,87 @@ export async function setKindWords(on: boolean): Promise<boolean> {
   await ensureSite()
   await query('UPDATE site SET kind_words = $1 WHERE id = 1', [on ? 1 : 0])
   return kindWordsOn()
+}
+
+async function ensureReviews(): Promise<void> {
+  await query(
+    `CREATE TABLE IF NOT EXISTS reviews (
+      id integer PRIMARY KEY,
+      quote text NOT NULL,
+      names text NOT NULL,
+      when_label text NOT NULL DEFAULT ''
+    )`,
+  )
+}
+
+export type ReviewView = {
+  id: number
+  quote: string
+  names: string
+  when: string
+}
+
+function toReview(row: {
+  id: number
+  quote: string
+  names: string
+  when_label: string
+}): ReviewView {
+  return {
+    id: whole(row.id, 'Review'),
+    quote: row.quote,
+    names: row.names,
+    when: row.when_label,
+  }
+}
+
+export async function listReviews(): Promise<ReviewView[]> {
+  await ensureReviews()
+  const rows = await query<{
+    id: number
+    quote: string
+    names: string
+    when_label: string
+  }>('SELECT id, quote, names, when_label FROM reviews ORDER BY id')
+  return rows.map(toReview)
+}
+
+/** Homepage cards. Quotes stay off the public page while Kind Words is off. */
+export async function homepageReviews(): Promise<ReviewView[]> {
+  if (!(await kindWordsOn())) return []
+  return listReviews()
+}
+
+export async function addReview(input: {
+  quote: string
+  names: string
+  when: string
+}): Promise<ReviewView> {
+  await ensureReviews()
+  const quote = input.quote.trim()
+  const names = input.names.trim()
+  const when = input.when.trim()
+  if (!quote) throw new Error('The review is required.')
+  if (!names) throw new Error('A name is required.')
+  if (quote.length > 800) throw new Error('That review is too long.')
+  if (names.length > 80) throw new Error('That name is too long.')
+  if (when.length > 80) throw new Error('That line is too long.')
+  const ids = await query<{ id: number }>(
+    'SELECT COALESCE(MAX(id), 0) + 1 AS id FROM reviews',
+  )
+  const id = whole(ids[0]?.id, 'Review')
+  await query(
+    'INSERT INTO reviews (id, quote, names, when_label) VALUES ($1, $2, $3, $4)',
+    [id, quote, names, when],
+  )
+  return { id, quote, names, when }
+}
+
+export async function removeReview(id: number): Promise<void> {
+  if (!Number.isInteger(id) || id < 1)
+    throw new Error('That review is not on the page.')
+  await ensureReviews()
+  await query('DELETE FROM reviews WHERE id = $1', [id])
 }
 
 export async function getTerms(): Promise<string> {

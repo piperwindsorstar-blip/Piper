@@ -9,7 +9,8 @@ import {
   torontoToday,
 } from '../piper/rules.ts'
 
-export type BookingStatus = 'open' | 'hold' | 'booked' | 'cancelled' | 'released'
+export type BookingStatus =
+  'open' | 'hold' | 'booked' | 'cancelled' | 'released'
 
 export type InvoiceStatus = 'draft' | 'sent' | 'void'
 
@@ -49,39 +50,113 @@ export type CustomWedding = {
   depositClearedCents: number
 }
 
-/** These four weddings keep the totals already cleared. Same names on another date are ordinary. */
-export const CUSTOM_WEDDINGS: CustomWedding[] = [
-  { names: ['cj', 'laura'], date: '2027-03-12', totalCents: 100000, depositClearedCents: 30000 },
-  { names: ['kevin', 'jasmine'], date: '2027-06-05', totalCents: 170000, depositClearedCents: 50000 },
-  { names: ['lance', 'diana'], date: '2027-06-20', totalCents: 130000, depositClearedCents: 30000 },
-  { names: ['cobi', 'cameron'], date: '2027-07-17', totalCents: 140000, depositClearedCents: 40000 },
+export type SavedWedding = CustomWedding & {
+  partnerOne: string
+  partnerTwo: string
+  venueName: string
+  city: string
+}
+
+/**
+ * These four weddings keep the totals already cleared. Same names on another date are ordinary.
+ * Venue names come from the previous desk. Streets, emails, and phone numbers were not on that record.
+ */
+export const SAVED_WEDDINGS: SavedWedding[] = [
+  {
+    names: ['cj', 'laura'],
+    partnerOne: 'CJ',
+    partnerTwo: 'Laura',
+    date: '2027-03-12',
+    venueName: 'Rivers Edge',
+    city: 'Paris',
+    totalCents: 100000,
+    depositClearedCents: 30000,
+  },
+  {
+    names: ['kevin', 'jasmine'],
+    partnerOne: 'Kevin',
+    partnerTwo: 'Jasmine',
+    date: '2027-06-05',
+    venueName: 'Oakwood Resort',
+    city: 'Grand Bend',
+    totalCents: 170000,
+    depositClearedCents: 50000,
+  },
+  {
+    names: ['lance', 'diana'],
+    partnerOne: 'Lance',
+    partnerTwo: 'Diana',
+    date: '2027-06-20',
+    venueName: 'Rivers Edge',
+    city: 'Paris',
+    totalCents: 130000,
+    depositClearedCents: 30000,
+  },
+  {
+    names: ['cobi', 'cameron'],
+    partnerOne: 'Cobi',
+    partnerTwo: 'Cameron',
+    date: '2027-07-17',
+    venueName: 'The Lavender Farm',
+    city: '',
+    totalCents: 140000,
+    depositClearedCents: 40000,
+  },
 ]
 
-export function matchCustom(partnerOne: string, partnerTwo: string, eventDate: string): CustomWedding | null {
+export const CUSTOM_WEDDINGS: CustomWedding[] = SAVED_WEDDINGS
+
+export function savedWeddingNote(wedding: SavedWedding): string {
+  const place = [wedding.venueName, wedding.city].filter(Boolean).join(', ')
+  return `Transferred from the previous book. ${place}. The agreed total stays.`
+}
+
+export function matchCustom(
+  partnerOne: string,
+  partnerTwo: string,
+  eventDate: string,
+): CustomWedding | null {
   const words = nameWords(`${partnerOne} ${partnerTwo}`)
   return (
     CUSTOM_WEDDINGS.find(
       (wedding) =>
-        wedding.date === eventDate && wedding.names.every((name) => words.includes(name)),
+        wedding.date === eventDate &&
+        wedding.names.every((name) => words.includes(name)),
     ) ?? null
   )
 }
 
-export function figuresFor(input: WeddingInput): { totalCents: number; depositCents: number } {
-  const custom = matchCustom(input.partnerOne, input.partnerTwo, input.eventDate)
+export function figuresFor(input: WeddingInput): {
+  totalCents: number
+  depositCents: number
+} {
+  const custom = matchCustom(
+    input.partnerOne,
+    input.partnerTwo,
+    input.eventDate,
+  )
   if (custom) {
-    return { totalCents: custom.totalCents, depositCents: custom.depositClearedCents }
+    return {
+      totalCents: custom.totalCents,
+      depositCents: custom.depositClearedCents,
+    }
   }
   return quote(input)
 }
 
-export function assertBookableNames(partnerOne: string, partnerTwo: string): void {
+export function assertBookableNames(
+  partnerOne: string,
+  partnerTwo: string,
+): void {
   if (isRejectedName(partnerOne, partnerTwo)) {
     throw new Error('Those names are not booked.')
   }
 }
 
-export function assertBookableDate(eventDate: string, stagDate: string | null): void {
+export function assertBookableDate(
+  eventDate: string,
+  stagDate: string | null,
+): void {
   if (isBlockedDate(eventDate, stagDate)) {
     throw new Error('20 February 2027 is not booked.')
   }
@@ -98,7 +173,10 @@ export type Transition = {
   newlyBooked: boolean
 }
 
-function bookIfCovered(booking: BookingState, invoice: InvoiceState): Transition {
+function bookIfCovered(
+  booking: BookingState,
+  invoice: InvoiceState,
+): Transition {
   if (booking.status === 'booked') {
     return { booking, invoice, newlyBooked: false }
   }
@@ -148,7 +226,10 @@ export function markInvoiceSent(
   return bookIfCovered(next, sent)
 }
 
-export function voidInvoice(booking: BookingState, invoice: InvoiceState): Transition {
+export function voidInvoice(
+  booking: BookingState,
+  invoice: InvoiceState,
+): Transition {
   return {
     booking,
     invoice: { ...invoice, status: 'void' },
@@ -166,7 +247,10 @@ export function recordMoney(
   return bookIfCovered(booking, { ...invoice, receivedCents })
 }
 
-export function releaseBooking(booking: BookingState, invoice: InvoiceState): Transition {
+export function releaseBooking(
+  booking: BookingState,
+  invoice: InvoiceState,
+): Transition {
   return {
     booking: { ...booking, status: 'released' },
     invoice,
@@ -174,7 +258,10 @@ export function releaseBooking(booking: BookingState, invoice: InvoiceState): Tr
   }
 }
 
-export function cancelBooking(booking: BookingState, invoice: InvoiceState): Transition {
+export function cancelBooking(
+  booking: BookingState,
+  invoice: InvoiceState,
+): Transition {
   return {
     booking: { ...booking, status: 'cancelled' },
     invoice,
@@ -190,7 +277,9 @@ export function dateIsTaken(
   return rows.some((row) => {
     if (row.sample) return false
     if (row.status !== 'hold' && row.status !== 'booked') return false
-    const active = row.status === 'booked' || (row.holdStartedOn != null && holdCovers(row.holdStartedOn, today))
+    const active =
+      row.status === 'booked' ||
+      (row.holdStartedOn != null && holdCovers(row.holdStartedOn, today))
     if (!active) return false
     if (row.eventDate === day) return true
     if (row.stagDate === day && !row.stagReleased) return true
@@ -200,6 +289,9 @@ export function dateIsTaken(
 
 export function countedCents(rows: BookingState[]): number {
   return rows
-    .filter((row) => !row.sample && row.status !== 'cancelled' && row.status !== 'released')
+    .filter(
+      (row) =>
+        !row.sample && row.status !== 'cancelled' && row.status !== 'released',
+    )
     .reduce((sum, row) => sum + row.totalCents, 0)
 }

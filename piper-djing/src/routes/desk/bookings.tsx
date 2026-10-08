@@ -29,10 +29,15 @@ function BookingsPage() {
     <div className="grid gap-8">
       <h1 className="font-display text-4xl tracking-tight">Bookings</h1>
       <NewBooking />
-      {bookings.length === 0 ? <p className="text-ink-soft">The local book is empty.</p> : null}
+      {bookings.length === 0 ? (
+        <p className="text-ink-soft">No bookings yet.</p>
+      ) : null}
       <div className="grid gap-6">
         {bookings.map((booking) => (
-          <BookingCard key={`${booking.id}-${booking.status}-${booking.invoice?.receivedCents}`} booking={booking} />
+          <BookingCard
+            key={`${booking.id}-${booking.status}-${booking.invoice?.receivedCents}`}
+            booking={booking}
+          />
         ))}
       </div>
     </div>
@@ -47,7 +52,9 @@ function NewBooking() {
 
   return (
     <details className="rounded-card border border-line bg-ivory px-5 py-4">
-      <summary className="cursor-pointer font-display text-2xl">New booking</summary>
+      <summary className="cursor-pointer font-display text-2xl">
+        New booking
+      </summary>
       <form
         className="mt-4 grid gap-3"
         onSubmit={(event) => {
@@ -85,7 +92,10 @@ function NewBooking() {
       >
         <BookingFields packageId={packageId} onPackage={setPackageId} />
         {error ? <p className="text-sm text-danger">{error}</p> : null}
-        <button type="submit" className="min-h-11 rounded-full bg-ink px-4 text-sm text-ivory">
+        <button
+          type="submit"
+          className="min-h-11 rounded-full bg-ink px-4 text-sm text-ivory"
+        >
           Save as open
         </button>
       </form>
@@ -150,9 +160,13 @@ function BookingCard({
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-display text-2xl">
           {booking.partnerOne} and {booking.partnerTwo}
-          {booking.sample ? <span className="ml-3 text-sm tracking-wide text-danger">TEST</span> : null}
+          {booking.sample ? (
+            <span className="ml-3 text-sm tracking-wide text-danger">TEST</span>
+          ) : null}
         </h2>
-        <p className="text-sm uppercase tracking-wide text-muted">{booking.status}</p>
+        <p className="text-sm uppercase tracking-wide text-muted">
+          {booking.status}
+        </p>
       </div>
       <p className="mt-2 text-sm text-muted">
         {longDate(booking.eventDate)}
@@ -161,21 +175,31 @@ function BookingCard({
       </p>
       {booking.holdStartedOn && booking.holdLastDay ? (
         <p className="mt-1 text-sm text-muted">
-          Hold {longDate(booking.holdStartedOn)} through {longDate(booking.holdLastDay)}
+          Hold {longDate(booking.holdStartedOn)} through{' '}
+          {longDate(booking.holdLastDay)}
         </p>
       ) : null}
       <p className="mt-3 text-sm">
-        {cad(booking.invoice?.totalCents ?? booking.totalCents)} total · {cad(booking.invoice?.depositCents ?? booking.depositCents)}{' '}
-        deposit · {cad(booking.invoice?.receivedCents ?? 0)} received · {cad(booking.invoice?.balanceCents ?? booking.totalCents)}{' '}
-        balance
+        {cad(booking.invoice?.totalCents ?? booking.totalCents)} total ·{' '}
+        {cad(booking.invoice?.depositCents ?? booking.depositCents)} deposit ·{' '}
+        {cad(booking.invoice?.receivedCents ?? 0)} received ·{' '}
+        {cad(booking.invoice?.balanceCents ?? booking.totalCents)} balance
         {booking.invoice ? ` · invoice ${booking.invoice.status}` : ''}
       </p>
       <p className="mt-3 flex flex-wrap gap-4 text-sm">
-        <Link to="/c/$slug" params={{ slug: booking.slug }} className="text-ink">
+        <Link
+          to="/c/$slug"
+          params={{ slug: booking.slug }}
+          className="text-ink"
+        >
           Couple page
         </Link>
         {booking.invoice ? (
-          <Link to="/p/$slug" params={{ slug: booking.invoice.slug }} className="text-ink">
+          <Link
+            to="/p/$slug"
+            params={{ slug: booking.invoice.slug }}
+            className="text-ink"
+          >
             Invoice page
           </Link>
         ) : null}
@@ -239,7 +263,10 @@ function BookingCard({
             notes: booking.notes,
           }}
         />
-        <button type="submit" className="min-h-11 rounded-full border border-ink px-4 text-sm">
+        <button
+          type="submit"
+          className="min-h-11 rounded-full border border-ink px-4 text-sm"
+        >
           Save details
         </button>
       </form>
@@ -254,7 +281,11 @@ function BookingCard({
                 return
               }
               setError(null)
-              setNotice(result.newlyBooked ? 'The deposit cleared. The date is booked.' : 'The invoice is sent.')
+              setNotice(
+                result.newlyBooked
+                  ? 'The deposit cleared. The date is booked.'
+                  : 'The invoice is sent.',
+              )
               await router.invalidate()
             })
           }}
@@ -281,15 +312,21 @@ function BookingCard({
           type="button"
           className="min-h-11 rounded-full border border-ink px-4 text-sm"
           onClick={() => {
-            void mailBooking({ data: { id: booking.id } }).then(async (result) => {
-              if (!result.ok) {
-                setError(result.error)
-                return
-              }
-              setError(null)
-              setNotice(result.delivered ? `The booking email is on its way to ${booking.email}.` : result.detail)
-              await router.invalidate()
-            })
+            void mailBooking({ data: { id: booking.id } }).then(
+              async (result) => {
+                if (!result.ok) {
+                  setError(result.error)
+                  return
+                }
+                setError(null)
+                setNotice(
+                  result.delivered
+                    ? `The booking email is on its way to ${booking.email}.`
+                    : result.detail,
+                )
+                await router.invalidate()
+              },
+            )
           }}
         >
           Email the booking
@@ -299,15 +336,21 @@ function BookingCard({
             type="button"
             className="min-h-11 rounded-full border border-ink px-4 text-sm"
             onClick={() => {
-              void mailInvoice({ data: { id: booking.id } }).then(async (result) => {
-                if (!result.ok) {
-                  setError(result.error)
-                  return
-                }
-                setError(null)
-                setNotice(result.delivered ? `The invoice email is on its way to ${booking.email}.` : result.detail)
-                await router.invalidate()
-              })
+              void mailInvoice({ data: { id: booking.id } }).then(
+                async (result) => {
+                  if (!result.ok) {
+                    setError(result.error)
+                    return
+                  }
+                  setError(null)
+                  setNotice(
+                    result.delivered
+                      ? `The invoice email is on its way to ${booking.email}.`
+                      : result.detail,
+                  )
+                  await router.invalidate()
+                },
+              )
             }}
           >
             Email the invoice
@@ -320,16 +363,23 @@ function BookingCard({
           event.preventDefault()
           const form = new FormData(event.currentTarget)
           const action = String(form.get('action') ?? '')
-          if (action !== 'release' && action !== 'cancel' && action !== 'release-stag') return
-          void status({ data: { id: booking.id, action } }).then(async (result) => {
-            if (!result.ok) {
-              setError(result.error)
-              return
-            }
-            setError(null)
-            setNotice('The status is updated.')
-            await router.invalidate()
-          })
+          if (
+            action !== 'release' &&
+            action !== 'cancel' &&
+            action !== 'release-stag'
+          )
+            return
+          void status({ data: { id: booking.id, action } }).then(
+            async (result) => {
+              if (!result.ok) {
+                setError(result.error)
+                return
+              }
+              setError(null)
+              setNotice('The status is updated.')
+              await router.invalidate()
+            },
+          )
         }}
       >
         <label className="field min-w-52">
@@ -342,7 +392,10 @@ function BookingCard({
             ) : null}
           </select>
         </label>
-        <button type="submit" className="min-h-11 rounded-full border border-ink px-4 text-sm">
+        <button
+          type="submit"
+          className="min-h-11 rounded-full border border-ink px-4 text-sm"
+        >
           Update status
         </button>
       </form>
@@ -350,13 +403,20 @@ function BookingCard({
         className="mt-4 flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
           event.preventDefault()
-          const submitter = event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null
+          const submitter =
+            event.nativeEvent instanceof SubmitEvent
+              ? event.nativeEvent.submitter
+              : null
           const form = new FormData(event.currentTarget, submitter)
           const refund = form.get('kind') === 'refund'
           try {
             const cents = dollarsToCents(String(form.get('amount') ?? ''))
             void pay({
-              data: { id: booking.id, cents: refund ? -cents : cents, note: String(form.get('note') ?? '') },
+              data: {
+                id: booking.id,
+                cents: refund ? -cents : cents,
+                note: String(form.get('note') ?? ''),
+              },
             }).then(async (result) => {
               if (!result.ok) {
                 setError(result.error)
@@ -373,7 +433,9 @@ function BookingCard({
               await router.invalidate()
             })
           } catch (caught) {
-            setError(caught instanceof Error ? caught.message : 'Enter an amount.')
+            setError(
+              caught instanceof Error ? caught.message : 'Enter an amount.',
+            )
           }
         }}
       >
@@ -385,10 +447,18 @@ function BookingCard({
           Note
           <input name="note" />
         </label>
-        <button name="kind" value="payment" className="min-h-11 rounded-full bg-ink px-4 text-sm text-ivory">
+        <button
+          name="kind"
+          value="payment"
+          className="min-h-11 rounded-full bg-ink px-4 text-sm text-ivory"
+        >
           Record payment
         </button>
-        <button name="kind" value="refund" className="min-h-11 rounded-full border border-ink px-4 text-sm">
+        <button
+          name="kind"
+          value="refund"
+          className="min-h-11 rounded-full border border-ink px-4 text-sm"
+        >
           Record refund
         </button>
       </form>
@@ -451,7 +521,12 @@ function BookingFields({
       </label>
       <label className="field">
         Wedding date
-        <input name="eventDate" type="date" required defaultValue={defaults?.eventDate} />
+        <input
+          name="eventDate"
+          type="date"
+          required
+          defaultValue={defaults?.eventDate}
+        />
       </label>
       <label className="field">
         Package
@@ -469,27 +544,48 @@ function BookingFields({
       </label>
       {packageId === 'full' ? (
         <label className="flex items-center gap-3 text-sm sm:col-span-2">
-          <input name="withStag" type="checkbox" defaultChecked={defaults?.withStag} />
+          <input
+            name="withStag"
+            type="checkbox"
+            defaultChecked={defaults?.withStag}
+          />
           Full day plus a stag, one booking
         </label>
       ) : null}
       {packageId === 'full' ? (
         <label className="field">
           Stag date
-          <input name="stagDate" type="date" defaultValue={defaults?.stagDate} />
+          <input
+            name="stagDate"
+            type="date"
+            defaultValue={defaults?.stagDate}
+          />
         </label>
       ) : null}
       <label className="field">
         Uplights
-        <input name="uplights" type="number" min={0} defaultValue={defaults?.uplights ?? 0} />
+        <input
+          name="uplights"
+          type="number"
+          min={0}
+          defaultValue={defaults?.uplights ?? 0}
+        />
       </label>
       <label className="field">
         Kilometres to the venue
-        <input name="kmOne" inputMode="decimal" defaultValue={defaults?.kmOne} />
+        <input
+          name="kmOne"
+          inputMode="decimal"
+          defaultValue={defaults?.kmOne}
+        />
       </label>
       <label className="field">
         Kilometres to the second venue
-        <input name="kmTwo" inputMode="decimal" defaultValue={defaults?.kmTwo} />
+        <input
+          name="kmTwo"
+          inputMode="decimal"
+          defaultValue={defaults?.kmTwo}
+        />
       </label>
       <label className="field">
         Venue name
@@ -512,8 +608,13 @@ function BookingFields({
         <textarea name="notes" rows={3} defaultValue={defaults?.notes} />
       </label>
       <label className="flex items-center gap-3 text-sm sm:col-span-2">
-        <input name="sample" type="checkbox" defaultChecked={defaults?.sample} />
-        TEST sample. Off the public date check, off the calendar, and out of totals.
+        <input
+          name="sample"
+          type="checkbox"
+          defaultChecked={defaults?.sample}
+        />
+        TEST sample. Off the public date check, off the calendar, and out of
+        totals.
       </label>
     </div>
   )

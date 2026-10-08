@@ -56,20 +56,6 @@ export const PACKAGE_BUTTON_COPY = [
   },
 ] as const
 
-/**
- * Kind words from past couples. Each slot is one card on the homepage.
- * Fill in quote, names, and when; an empty quote shows as an open slot.
- */
-export const KIND_WORDS: ReadonlyArray<{
-  quote: string
-  names: string
-  when: string
-}> = [
-  { quote: '', names: '', when: '' },
-  { quote: '', names: '', when: '' },
-  { quote: '', names: '', when: '' },
-]
-
 export type PackageId = (typeof PACKAGE_BUTTON_COPY)[number]['id']
 
 export function isPackageId(value: string): value is PackageId {
