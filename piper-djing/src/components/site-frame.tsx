@@ -18,7 +18,7 @@ export function SiteHeader({ onDate }: { onDate?: () => void }) {
               className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full border border-ink bg-ivory px-4 text-sm text-ink ${focus}`}
               onClick={onDate}
             >
-              Is My Date Available?
+              Check your date
             </button>
             <Link
               to="/book"

@@ -18,16 +18,28 @@ export function Landing() {
       <main>
         <section className="mx-auto w-full max-w-6xl px-5 pt-16 md:px-8 md:pt-28">
           <h1 className="max-w-3xl font-display text-4xl leading-tight tracking-tight sm:text-5xl">
-            Wedding DJ in Brantford, Ontario
+            Brantford Wedding DJ & Unforgettable Reception Entertainment
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft">
-            Piper DJing is a Brantford wedding DJ for ceremonies, receptions and full wedding days across
-            Brantford, Hamilton, Cambridge, Paris and Brant County and surrounding areas in Ontario. Dancefloor
-            lighting, at least one planning meeting and light MC duties come with every reception.
+            Your love story deserves a soundtrack you will still be talking about years from now. Serving
+            Brantford, Hamilton, Cambridge, Paris, Brant County, and surrounding Ontario venues with ceremony
+            audio, a packed dance floor, and a night that is already planned.
           </p>
-          <p className="mt-6 max-w-2xl font-display text-2xl leading-tight tracking-tight text-ink-soft sm:text-4xl">
-            The night they will still be talking about.
-          </p>
+          <div className="mt-8 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center rounded-full border border-ink bg-ivory px-5 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+              onClick={openDate}
+            >
+              Check your date
+            </button>
+            <Link
+              to="/book"
+              className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm text-ivory focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+            >
+              Book me
+            </Link>
+          </div>
           <img
             src="/photos/logo-inverted.png"
             alt="Piper DJing"
@@ -36,8 +48,14 @@ export function Landing() {
           />
         </section>
         <section className="mx-auto w-full max-w-6xl px-5 pt-12 md:px-8 md:pt-16">
-          <h2 className="font-display text-5xl tracking-tight sm:text-6xl">At the booth</h2>
-          <p className="mt-4 max-w-md text-lg text-ink-soft">DJ Piper. Headphones on.</p>
+          <h2 className="max-w-3xl font-display text-4xl tracking-tight sm:text-6xl">
+            Behind the Booth: The Vibe, The Mix, The Memories
+          </h2>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">
+            DJ Piper at the decks, headphones on, reading the room. A wedding night is put together on purpose.
+            From the walk down the aisle to the last song everyone sings, every part of the night follows your
+            energy.
+          </p>
           <figure className="pt-8">
             <img
               src="/photos/dj-piper-at-the-booth.jpg"
@@ -47,15 +65,16 @@ export function Landing() {
               className="mx-auto h-auto w-full max-w-md rounded-card"
             />
             <figcaption className="mt-4 max-w-3xl text-sm text-muted">
-              The booth, ready for the wedding.
+              DJ Piper at the booth, headphones on.
             </figcaption>
           </figure>
         </section>
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 py-16 md:grid-cols-12 md:px-8 md:py-24">
           <div className="md:col-span-4">
-            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The reception</h2>
+            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The Party You Deserve</h2>
             <p className="mt-4 max-w-sm text-lg text-ink-soft">
-              This is the wedding they came for. The bride out with her people, and a song the whole room knows.
+              This is what you have been waiting for. Shoes off, hands in the air, your favourite people around
+              you, and a song that fills the room.
             </p>
           </div>
           <figure className="md:col-span-8">
@@ -71,9 +90,12 @@ export function Landing() {
         </section>
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-16 md:grid-cols-12 md:px-8 md:pb-24">
           <div className="md:col-span-4">
-            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">The first dance</h2>
+            <h2 className="font-display text-5xl tracking-tight sm:text-6xl">
+              Your First Dance, Perfectly Framed
+            </h2>
             <p className="mt-4 max-w-sm text-lg text-ink-soft">
-              Just the two of them, and everyone they love standing close enough to see it.
+              The room falls away for a few minutes. Just the two of you, under the lights, with everyone you love
+              standing close enough to see it.
             </p>
           </div>
           <figure className="md:col-span-6 md:col-start-7">
@@ -88,12 +110,13 @@ export function Landing() {
           </figure>
         </section>
         <section className="mx-auto w-full max-w-6xl px-5 pb-4 md:px-8">
-          <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
-            Wedding DJ in Brantford and nearby
+          <h2 className="max-w-3xl font-display text-4xl tracking-tight sm:text-5xl">
+            Premium Wedding DJ Services Across Southwestern Ontario
           </h2>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">
-            Ceremonies and receptions in Hamilton, Cambridge, Paris and Brant County, and the surrounding area in
-            Ontario.
+            Dance floors in Brantford, Hamilton, Cambridge, Paris, Brant County, and beyond. A rustic barn, an
+            urban loft, or a ballroom: sound, dancefloor lighting, and MC flow for the reception, set up for that
+            room.
           </p>
         </section>
         <section className="border-t border-line" aria-label="Packages and inquiry">
@@ -105,15 +128,20 @@ export function Landing() {
               aria-controls="packages-panel"
               onClick={() => setOpen((value) => !value)}
             >
-              <span className="font-display text-2xl leading-tight">Packages and pricing</span>
+              <span className="font-display text-2xl leading-tight">Simple packages, exceptional experience</span>
             </button>
             <div
               id="packages-panel"
               hidden={!open}
               className="scroll-mt-24 rounded-card border border-line bg-ivory px-6 py-8 md:px-10 md:py-12"
             >
-              <h2 className="sr-only">Packages and pricing</h2>
-              <ul className="mt-2">
+              <h2 className="sr-only">Simple packages, exceptional experience</h2>
+              <p className="max-w-prose text-sm leading-relaxed text-ink-soft">
+                A full wedding day and reception only each include dancefloor lighting, at least one planning
+                meeting, wireless microphones, backup, and light MC if you ask. A stag and doe includes MC duties.
+                Ceremony only does not include reception audio, dancefloor lighting, or an MC.
+              </p>
+              <ul className="mt-6">
                 {PACKAGE_BUTTON_COPY.map((item) => (
                   <li key={item.id} className="border-t border-line py-6 first:border-t-0 first:pt-0">
                     <h3 className="font-display text-2xl tracking-tight">{item.name}</h3>
@@ -122,8 +150,8 @@ export function Landing() {
                 ))}
               </ul>
               <p className="mt-2 border-t border-line pt-6 text-sm text-muted">
-                A full wedding day can include a stag and doe as one booking. Travel from Brantford, a second
-                venue, and uplights are quoted apart from the package.
+                A full wedding day can include a stag and doe as one booking. Travel outside Brantford, a second
+                venue, and uplighting are quoted apart from the package.
               </p>
             </div>
             <button
@@ -131,12 +159,47 @@ export function Landing() {
               className={`${bigButton} border border-ink bg-ivory text-ink hover:bg-paper-deep`}
               onClick={openDate}
             >
-              <span className="font-display text-2xl leading-tight">Is My Date Available?</span>
+              <span className="font-display text-2xl leading-tight">Check your date</span>
             </button>
             <Link to="/book" className={`${bigButton} bg-ink text-ivory hover:bg-ink-soft`}>
-              <span className="font-display text-2xl leading-tight">Book me</span>
+              <span className="font-display text-2xl leading-tight">Secure your date</span>
               <span className="text-sm">Inquire within</span>
             </Link>
+          </div>
+        </section>
+        <section className="mx-auto w-full max-w-3xl px-5 pb-16 md:px-8" aria-labelledby="faq-title">
+          <h2 id="faq-title" className="font-display text-4xl tracking-tight sm:text-5xl">
+            Questions couples ask
+          </h2>
+          <div className="mt-8 border-b border-line">
+            <details className="border-t border-line py-5">
+              <summary className="cursor-pointer font-display text-2xl tracking-tight">
+                Do you take requests during the reception?
+              </summary>
+              <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">
+                The planning meeting is where the music for the night is set. Light MC for introducing speeches is
+                part of a full wedding day or reception only, if you ask.
+              </p>
+            </details>
+            <details className="border-t border-line py-5">
+              <summary className="cursor-pointer font-display text-2xl tracking-tight">
+                How far in advance should we book?
+              </summary>
+              <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">
+                Check the date as soon as you have it. If that day is still open, inquire within. A date moves from
+                open, to a hold, to booked.
+              </p>
+            </details>
+            <details className="border-t border-line py-5">
+              <summary className="cursor-pointer font-display text-2xl tracking-tight">
+                What equipment do you bring, and do you have backup?
+              </summary>
+              <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">
+                Reception packages include wireless microphones, two speakers, dancefloor lighting, and backup.
+                Ceremony only is one speaker, one wireless microphone, and backup. No reception, no dancefloor
+                lighting, and no MC. The officiant conducts the ceremony.
+              </p>
+            </details>
           </div>
         </section>
       </main>
