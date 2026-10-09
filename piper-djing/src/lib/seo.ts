@@ -13,17 +13,25 @@ function lockedUrl(path: string): string {
   return `${base}${path}`
 }
 
-export function publicHead(opts: { path: '/' | '/book'; title: string }) {
+export const BRAND_DESCRIPTION =
+  'DJ Piper P is Piper DJing in Brantford. See the booth, follow @DJ_PIPERP, and open wedding dates.'
+
+export function publicHead(opts: {
+  path: '/' | '/book' | '/weddings'
+  title: string
+  description?: string
+}) {
   const canonical = publicUrl(opts.path)
   const ogUrl = lockedUrl(opts.path)
+  const description = opts.description ?? site.description
   return {
     meta: [
       { title: opts.title },
-      { name: 'description', content: site.description },
+      { name: 'description', content: description },
       { name: 'robots', content: 'index, follow' },
       { name: 'twitter:card', content: 'summary_large_image' },
-      { property: 'og:title', content: site.title },
-      { property: 'og:description', content: site.description },
+      { property: 'og:title', content: opts.title },
+      { property: 'og:description', content: description },
       { property: 'og:image', content: site.image },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
@@ -44,7 +52,7 @@ export function professionalServiceJsonLd(): string {
     '@context': 'https://schema.org',
     '@type': 'ProfessionalService',
     name: 'Piper DJing',
-    url: lockedUrl('/'),
+    url: lockedUrl('/weddings'),
     image: [
       `${site.url}/photos/dj-piper-at-the-booth.jpg`,
       `${site.url}/photos/wedding-reception-dance.jpg`,
@@ -77,5 +85,29 @@ export function professionalServiceJsonLd(): string {
       price: (PACKAGE_CENTS[item.id] / 100).toFixed(2),
       priceCurrency: 'CAD',
     })),
+  })
+}
+
+export function personJsonLd(): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: 'DJ Piper P',
+    alternateName: 'Piper DJing',
+    url: lockedUrl('/'),
+    image: [
+      `${site.url}/photos/logo-inverted.png`,
+      `${site.url}/photos/dj-piper-at-the-booth.jpg`,
+    ],
+    description: BRAND_DESCRIPTION,
+    jobTitle: 'DJ',
+    email: PUBLIC_EMAIL,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Brantford',
+      addressRegion: 'ON',
+      addressCountry: 'CA',
+    },
+    sameAs: [INSTAGRAM_URL],
   })
 }

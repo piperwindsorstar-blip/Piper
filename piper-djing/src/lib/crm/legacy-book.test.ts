@@ -19,7 +19,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
 describe('old host', () => {
   it('sends the public pages to the new address', () => {
-    assert.equal(legacyLocation('piperp-wedding-dj.grok.me', '/', ''), 'https://piperpweddingdj.services/')
+    assert.equal(
+      legacyLocation('piperp-wedding-dj.grok.me', '/', ''),
+      'https://piperpweddingdj.services/',
+    )
+    assert.equal(
+      legacyLocation('piperp-wedding-dj.grok.me', '/weddings', ''),
+      'https://piperpweddingdj.services/weddings',
+    )
     assert.equal(
       legacyLocation('piperp-wedding-dj.grok.me', '/book', '?from=home'),
       'https://piperpweddingdj.services/book?from=home',
@@ -27,10 +34,22 @@ describe('old host', () => {
   })
 
   it('leaves the bot connection and couple links on the old host', () => {
-    assert.equal(legacyLocation('piperp-wedding-dj.grok.me', '/api/bots/v1', ''), null)
-    assert.equal(legacyLocation('piperp-wedding-dj.grok.me', '/api/bots/v1/join', ''), null)
-    assert.equal(legacyLocation('piperp-wedding-dj.grok.me', '/c/abc', ''), null)
-    assert.equal(legacyLocation('piperp-wedding-dj.grok.me', '/p/abc', ''), null)
+    assert.equal(
+      legacyLocation('piperp-wedding-dj.grok.me', '/api/bots/v1', ''),
+      null,
+    )
+    assert.equal(
+      legacyLocation('piperp-wedding-dj.grok.me', '/api/bots/v1/join', ''),
+      null,
+    )
+    assert.equal(
+      legacyLocation('piperp-wedding-dj.grok.me', '/c/abc', ''),
+      null,
+    )
+    assert.equal(
+      legacyLocation('piperp-wedding-dj.grok.me', '/p/abc', ''),
+      null,
+    )
     assert.equal(legacyLocation('piperpweddingdj.services', '/', ''), null)
   })
 })
@@ -46,29 +65,49 @@ describe('which book answers', () => {
   })
 
   it('keeps an exact couple or invoice slug for the desk that created it', () => {
-    assert.deepEqual(bookPathAction('/c/nora'), { kind: 'couple', slug: 'nora' })
-    assert.deepEqual(bookPathAction('/c/nora/'), { kind: 'couple', slug: 'nora' })
-    assert.deepEqual(bookPathAction('/p/inv-1'), { kind: 'invoice', slug: 'inv-1' })
+    assert.deepEqual(bookPathAction('/c/nora'), {
+      kind: 'couple',
+      slug: 'nora',
+    })
+    assert.deepEqual(bookPathAction('/c/nora/'), {
+      kind: 'couple',
+      slug: 'nora',
+    })
+    assert.deepEqual(bookPathAction('/p/inv-1'), {
+      kind: 'invoice',
+      slug: 'inv-1',
+    })
   })
 
   it('names a server function by its id', () => {
-    assert.deepEqual(bookPathAction('/_serverFn/abc123'), { kind: 'server-fn', id: 'abc123' })
+    assert.deepEqual(bookPathAction('/_serverFn/abc123'), {
+      kind: 'server-fn',
+      id: 'abc123',
+    })
   })
 })
 
 describe('old pages on the new address', () => {
   it('loads the old scripts from the old host', () => {
-    const html = rewriteLegacyHtml('<link href="/assets/app.js"><script src="/assets/app.js"></script>')
+    const html = rewriteLegacyHtml(
+      '<link href="/assets/app.js"><script src="/assets/app.js"></script>',
+    )
     assert.match(html, /https:\/\/piperp-wedding-dj\.grok\.me\/assets\/app\.js/)
     assert.doesNotMatch(html, /href="\/assets\//)
   })
 
   it('keeps a redirect on the address the visitor is using', () => {
     assert.equal(
-      rewriteLegacyLocation('https://piperp-wedding-dj.grok.me/c/abc', 'https://piperpweddingdj.services'),
+      rewriteLegacyLocation(
+        'https://piperp-wedding-dj.grok.me/c/abc',
+        'https://piperpweddingdj.services',
+      ),
       'https://piperpweddingdj.services/c/abc',
     )
-    assert.equal(rewriteLegacyLocation('/c/abc', 'https://piperpweddingdj.services'), '/c/abc')
+    assert.equal(
+      rewriteLegacyLocation('/c/abc', 'https://piperpweddingdj.services'),
+      '/c/abc',
+    )
   })
 
   it('does not pin a cookie to the old host', () => {
@@ -79,10 +118,13 @@ describe('old pages on the new address', () => {
   })
 
   it('recognises an unknown server function', () => {
-    const unknown = new Response('{"status":500,"unhandled":true,"message":"HTTPError"}', {
-      status: 500,
-      headers: { 'content-type': 'application/json' },
-    })
+    const unknown = new Response(
+      '{"status":500,"unhandled":true,"message":"HTTPError"}',
+      {
+        status: 500,
+        headers: { 'content-type': 'application/json' },
+      },
+    )
     const known = new Response('{"open":true}', { status: 200 })
     const ours = new Response('{"message":"Choose a date."}', {
       status: 500,
@@ -97,10 +139,22 @@ describe('old pages on the new address', () => {
     assert.equal(isLegacyAsset('/assets/styles-DuKtIWRK.css'), true)
     assert.equal(isLegacyAsset('/photos/instagram-nametag.png'), true)
     assert.equal(isLegacyAsset('/book'), false)
-    const missing = new Response('missing', { status: 404, headers: { 'content-type': 'text/html' } })
-    const found = new Response('png', { status: 200, headers: { 'content-type': 'image/png' } })
-    assert.equal(relayMissingAsset(missing, '/assets/styles-DuKtIWRK.css'), true)
-    assert.equal(relayMissingAsset(found, '/photos/instagram-nametag.png'), false)
+    const missing = new Response('missing', {
+      status: 404,
+      headers: { 'content-type': 'text/html' },
+    })
+    const found = new Response('png', {
+      status: 200,
+      headers: { 'content-type': 'image/png' },
+    })
+    assert.equal(
+      relayMissingAsset(missing, '/assets/styles-DuKtIWRK.css'),
+      true,
+    )
+    assert.equal(
+      relayMissingAsset(found, '/photos/instagram-nametag.png'),
+      false,
+    )
   })
 
   it('reads taken and open from the old date check', () => {
@@ -128,7 +182,10 @@ describe('the book is not wiped', () => {
       /\bDELETE\s+FROM\s+(bookings|payments|invoices|media|leads|forms|bots|questions|terms|emails)\b/i,
     )
     assert.match(source, /CREATE TABLE IF NOT EXISTS bookings/)
-    assert.match(source, /migrations: \[\{ tag: 'v1', new_sqlite_classes: \['Book'\] \}\]/)
+    assert.match(
+      source,
+      /migrations: \[\{ tag: 'v1', new_sqlite_classes: \['Book'\] \}\]/,
+    )
     assert.match(source, /export class Book extends DurableObject/)
   })
 })

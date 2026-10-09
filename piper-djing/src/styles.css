@@ -11,6 +11,8 @@
   --color-muted: #6f6a64;
   --color-line: #e3ddd4;
   --color-danger: #8d3b34;
+  --color-stage: #000000;
+  --color-mark: #f034ea;
   --radius-card: 2rem;
 }
 

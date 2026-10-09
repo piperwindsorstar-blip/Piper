@@ -1,20 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Landing } from '../components/landing.tsx'
-import { getPublicSite } from '../lib/crm/public.functions.ts'
-import { publicHead } from '../lib/seo.ts'
+import { BrandHome } from '../components/brand.tsx'
+import { BRAND_DESCRIPTION, publicHead } from '../lib/seo.ts'
 
 export const Route = createFileRoute('/')({
-  loader: () => getPublicSite(),
   head: () =>
     publicHead({
       path: '/',
-      title:
-        'Brantford Wedding DJ & The Ultimate Dance Floor Experience | Piper DJing',
+      title: 'DJ Piper P | Piper DJing',
+      description: BRAND_DESCRIPTION,
     }),
   component: Home,
 })
 
 function Home() {
-  const { reviews, partners } = Route.useLoaderData()
-  return <Landing reviews={reviews} partners={partners} />
+  return <BrandHome />
 }
