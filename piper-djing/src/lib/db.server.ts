@@ -36,7 +36,8 @@ CREATE TABLE bookings (
   deposit_cents integer NOT NULL,
   hold_started_on text,
   stag_released boolean NOT NULL DEFAULT false,
-  notes text NOT NULL DEFAULT ''
+  notes text NOT NULL DEFAULT '',
+  planning text NOT NULL DEFAULT ''
 );
 CREATE TABLE invoices (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

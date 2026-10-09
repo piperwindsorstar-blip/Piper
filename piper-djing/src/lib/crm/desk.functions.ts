@@ -16,6 +16,7 @@ import {
   addPayment,
   addQuestion,
   coupleBySlug,
+  saveCouplePlanning,
   createBooking,
   countedTotal,
   getTerms,
@@ -217,6 +218,19 @@ export const deleteReview = createServerFn({ method: 'POST' })
 export const getCouple = createServerFn({ method: 'POST' })
   .validator((data: { slug: string }) => data)
   .handler(async ({ data }) => coupleBySlug(data.slug))
+
+export const saveCouplePlanningForm = createServerFn({ method: 'POST' })
+  .validator((data: { slug: string; planning: unknown }) => data)
+  .handler(async ({ data }) => {
+    try {
+      return {
+        ok: true as const,
+        planning: await saveCouplePlanning(data.slug, data.planning),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const getInvoicePage = createServerFn({ method: 'POST' })
   .validator((data: { slug: string }) => data)

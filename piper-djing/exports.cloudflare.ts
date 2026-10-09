@@ -29,7 +29,8 @@ const EDGE_SCHEMA = [
     deposit_cents integer NOT NULL,
     hold_started_on text,
     stag_released integer NOT NULL DEFAULT 0,
-    notes text NOT NULL DEFAULT ''
+    notes text NOT NULL DEFAULT '',
+    planning text NOT NULL DEFAULT ''
   )`,
   `CREATE TABLE IF NOT EXISTS invoices (
     id integer PRIMARY KEY AUTOINCREMENT,
@@ -131,6 +132,15 @@ export class Book extends DurableObject {
 
   private async init(): Promise<void> {
     for (const statement of EDGE_SCHEMA) this.ctx.storage.sql.exec(statement)
+    const columns = this.ctx.storage.sql
+      .exec('PRAGMA table_info(bookings)')
+      .toArray()
+    const hasPlanning = columns.some((column) => column.name === 'planning')
+    if (!hasPlanning) {
+      this.ctx.storage.sql.exec(
+        "ALTER TABLE bookings ADD COLUMN planning text NOT NULL DEFAULT ''",
+      )
+    }
     const existing = this.ctx.storage.sql.exec('SELECT id FROM terms').toArray()
     if (existing.length === 0) {
       this.ctx.storage.sql.exec(

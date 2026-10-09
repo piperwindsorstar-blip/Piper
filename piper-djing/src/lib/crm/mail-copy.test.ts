@@ -52,6 +52,7 @@ describe('couple emails', () => {
     assert.match(letter.text, /\$2,350\.00/)
     assert.match(letter.text, /\$500\.00/)
     assert.match(letter.text, /https:\/\/piperpweddingdj\.services\/c\/mara-quinn/)
+    assert.match(letter.text, /planning form is on that page/)
     assert.match(letter.text, /https:\/\/piperpweddingdj\.services\/p\/inv-mara/)
     assert.doesNotMatch(letter.text, /Chapel/)
     assert.doesNotMatch(letter.text, /Mill Road/)

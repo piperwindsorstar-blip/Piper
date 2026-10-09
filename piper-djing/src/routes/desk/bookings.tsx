@@ -194,6 +194,7 @@ function BookingCard({
         >
           Couple page
         </Link>
+        <span className="text-muted">Their planning form is on that page.</span>
         {booking.invoice ? (
           <Link
             to="/p/$slug"

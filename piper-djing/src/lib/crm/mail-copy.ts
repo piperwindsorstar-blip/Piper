@@ -58,7 +58,10 @@ export function coupleAddress(email: string): string {
   return trimmed
 }
 
-export function bookingLetter(booking: LetterBooking, url: (path: string) => string): Letter {
+export function bookingLetter(
+  booking: LetterBooking,
+  url: (path: string) => string,
+): Letter {
   const received = booking.invoice?.receivedCents ?? 0
   const balance = booking.invoice?.balanceCents ?? booking.totalCents
   const lines = [
@@ -81,6 +84,7 @@ export function bookingLetter(booking: LetterBooking, url: (path: string) => str
     ),
     '',
     `Your page: ${url(`/c/${booking.slug}`)}`,
+    'Your planning form is on that page.',
     booking.invoice ? `Invoice: ${url(`/p/${booking.invoice.slug}`)}` : '',
     '',
     signOff(),
@@ -91,7 +95,10 @@ export function bookingLetter(booking: LetterBooking, url: (path: string) => str
   }
 }
 
-export function invoiceLetter(booking: LetterBooking, url: (path: string) => string): Letter {
+export function invoiceLetter(
+  booking: LetterBooking,
+  url: (path: string) => string,
+): Letter {
   const invoice = booking.invoice
   if (!invoice) throw new Error('This booking has no invoice.')
   const lines = [
@@ -99,11 +106,18 @@ export function invoiceLetter(booking: LetterBooking, url: (path: string) => str
     '',
     sampleLine(booking),
     `Your invoice is ${label(invoice.status).toLowerCase()}.`,
-    invoice.status === 'void' ? 'This invoice is void. The balance is zero.' : '',
+    invoice.status === 'void'
+      ? 'This invoice is void. The balance is zero.'
+      : '',
     `Date: ${longDate(booking.eventDate)}`,
     `Package: ${booking.packageName}`,
     '',
-    moneyBlock(invoice.totalCents, invoice.depositCents, invoice.receivedCents, invoice.balanceCents),
+    moneyBlock(
+      invoice.totalCents,
+      invoice.depositCents,
+      invoice.receivedCents,
+      invoice.balanceCents,
+    ),
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
     `Your page: ${url(`/c/${booking.slug}`)}`,
@@ -132,7 +146,12 @@ function stagLine(booking: LetterBooking): string {
 }
 
 function holdLine(booking: LetterBooking): string {
-  if (booking.status !== 'hold' || !booking.holdStartedOn || !booking.holdLastDay) return ''
+  if (
+    booking.status !== 'hold' ||
+    !booking.holdStartedOn ||
+    !booking.holdLastDay
+  )
+    return ''
   return `Hold: ${longDate(booking.holdStartedOn)} through ${longDate(booking.holdLastDay)}`
 }
 
@@ -141,7 +160,12 @@ function venueLine(labelText: string, name: string): string {
   return trimmed ? `${labelText}: ${trimmed}` : ''
 }
 
-function moneyBlock(total: number, deposit: number, received: number, balance: number): string {
+function moneyBlock(
+  total: number,
+  deposit: number,
+  received: number,
+  balance: number,
+): string {
   return [
     `Total: ${cad(total)}`,
     `Deposit: ${cad(deposit)}`,

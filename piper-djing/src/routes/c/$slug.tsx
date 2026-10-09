@@ -1,7 +1,12 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { PlanningForm } from '../../components/planning-form.tsx'
 import { SiteFooter, SiteHeader } from '../../components/site-frame.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
-import { getCouple } from '../../lib/crm/desk.functions.ts'
+import {
+  getCouple,
+  saveCouplePlanningForm,
+} from '../../lib/crm/desk.functions.ts'
 import { cad } from '../../lib/crm/money.ts'
 import { privateHead } from '../../lib/seo.ts'
 
@@ -17,6 +22,8 @@ export const Route = createFileRoute('/c/$slug')({
 
 function CouplePage() {
   const booking = Route.useLoaderData()
+  const { slug } = Route.useParams()
+  const save = useServerFn(saveCouplePlanningForm)
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -28,22 +35,33 @@ function CouplePage() {
           {booking.partnerOne} and {booking.partnerTwo}
         </h1>
         <p className="mt-6 text-lg">{longDate(booking.eventDate)}</p>
-        {booking.withStag ? <p className="mt-2 text-ink-soft">{stagLine(booking)}</p> : null}
+        {booking.withStag ? (
+          <p className="mt-2 text-ink-soft">{stagLine(booking)}</p>
+        ) : null}
         <p className="mt-2 text-ink-soft">
           {booking.packageName}
           {booking.withStag ? ', with a stag and doe' : ''}
         </p>
-        {booking.venueName ? <p className="mt-2 text-ink-soft">Venue: {booking.venueName}</p> : null}
-        {booking.venueTwoName ? (
-          <p className="mt-2 text-ink-soft">Second venue: {booking.venueTwoName}</p>
+        {booking.venueName ? (
+          <p className="mt-2 text-ink-soft">Venue: {booking.venueName}</p>
         ) : null}
-        {booking.status === 'hold' && booking.holdStartedOn && booking.holdLastDay ? (
+        {booking.venueTwoName ? (
           <p className="mt-2 text-ink-soft">
-            Hold: {longDate(booking.holdStartedOn)} through {longDate(booking.holdLastDay)}
+            Second venue: {booking.venueTwoName}
+          </p>
+        ) : null}
+        {booking.status === 'hold' &&
+        booking.holdStartedOn &&
+        booking.holdLastDay ? (
+          <p className="mt-2 text-ink-soft">
+            Hold: {longDate(booking.holdStartedOn)} through{' '}
+            {longDate(booking.holdLastDay)}
           </p>
         ) : null}
         {booking.invoiceStatus === 'void' ? (
-          <p className="mt-6 text-sm">This invoice is void. The balance is zero.</p>
+          <p className="mt-6 text-sm">
+            This invoice is void. The balance is zero.
+          </p>
         ) : null}
         <dl className="mt-8 grid gap-2 text-sm">
           <Row label="Total" value={cad(booking.totalCents)} />
@@ -63,6 +81,15 @@ function CouplePage() {
             </Link>
           </p>
         ) : null}
+        <PlanningForm
+          initial={booking.planning}
+          saved={booking.planningSaved}
+          onSave={async (planning) => {
+            const result = await save({ data: { slug, planning } })
+            if (!result.ok) return result
+            return { ok: true as const }
+          }}
+        />
       </main>
       <SiteFooter />
     </div>

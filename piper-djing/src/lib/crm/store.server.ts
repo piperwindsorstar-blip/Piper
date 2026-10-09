@@ -19,7 +19,14 @@ import {
   type BookingState,
   type InvoiceState,
 } from './booking-rules.ts'
+import { longDate } from './dates.ts'
 import { isPackageId, packageName, type PackageId } from './defaults.ts'
+import {
+  parsePlanning,
+  planningFromUnknown,
+  type Planning,
+  type PlanningSeed,
+} from './planning.ts'
 import { askLegacyDate } from '../legacy-book.server.ts'
 import { holdLastDay, isBlockedDate } from '../piper/rules.ts'
 
@@ -252,7 +259,18 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
   }
 }
 
+async function ensurePlanningColumn(): Promise<void> {
+  try {
+    await query('SELECT planning FROM bookings LIMIT 0')
+  } catch {
+    await query(
+      `ALTER TABLE bookings ADD COLUMN planning text NOT NULL DEFAULT ''`,
+    )
+  }
+}
+
 async function bookingRows(): Promise<BookingRow[]> {
+  await ensurePlanningColumn()
   return query<BookingRow>('SELECT * FROM bookings ORDER BY id DESC')
 }
 
@@ -1244,14 +1262,26 @@ export async function botFromToken(
   return { id: row.id, name: row.name, role: asRole(row.role) }
 }
 
+function planningSeed(row: BookingRow): PlanningSeed {
+  return {
+    coupleNames: `${row.partner_one} and ${row.partner_two}`,
+    email: row.email,
+    phone: row.phone,
+    weddingDate: longDate(row.event_date),
+    venueName: row.venue_name,
+  }
+}
+
 export async function coupleBySlug(slugValue: string) {
-  const rows = await query<BookingRow>(
+  await ensurePlanningColumn()
+  const rows = await query<BookingRow & { planning?: string }>(
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
   )
   const row = rows[0]
   if (!row) return null
   const view = toView(row, await invoiceFor(row.id))
+  const planning = parsePlanning(row.planning, planningSeed(row))
   return {
     partnerOne: view.partnerOne,
     partnerTwo: view.partnerTwo,
@@ -1272,7 +1302,28 @@ export async function coupleBySlug(slugValue: string) {
     balanceCents: view.invoice?.balanceCents ?? view.totalCents,
     invoiceStatus: view.invoice?.status ?? null,
     invoiceSlug: view.invoice?.slug ?? null,
+    planning: planning.planning,
+    planningSaved: planning.saved,
   }
+}
+
+export async function saveCouplePlanning(
+  slugValue: string,
+  value: unknown,
+): Promise<Planning> {
+  await ensurePlanningColumn()
+  const rows = await query<BookingRow>(
+    'SELECT * FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  const row = rows[0]
+  if (!row) throw new Error('That page was not found.')
+  const planning = planningFromUnknown(value, planningSeed(row))
+  await query('UPDATE bookings SET planning = $1 WHERE id = $2', [
+    JSON.stringify(planning),
+    row.id,
+  ])
+  return planning
 }
 
 export async function invoiceBySlug(slugValue: string) {
