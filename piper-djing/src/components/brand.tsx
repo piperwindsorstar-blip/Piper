@@ -217,9 +217,9 @@ function PillarIcon({ name }: { name: 'booth' | 'dates' | 'star' }) {
   }
   return (
     <svg {...common}>
-      <path d="M4 10v8h16v-8" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-      <path d="M4 14h16" />
+      <path d="M6 12a6 6 0 0 1 12 0" />
+      <path d="M4 13v3a2 2 0 0 0 2 2h1v-7H6a2 2 0 0 0-2 2z" />
+      <path d="M20 13v3a2 2 0 0 1-2 2h-1v-7h1a2 2 0 0 1 2 2z" />
     </svg>
   )
 }
