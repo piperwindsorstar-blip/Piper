@@ -354,7 +354,7 @@ export function PlanningForm({
         ))}
       </fieldset>
 
-      <div className="sticky bottom-0 -mx-5 border-t border-line bg-paper px-5 py-4">
+      <div>
         <button
           type="submit"
           className="min-h-11 rounded-full bg-ink px-5 text-sm text-ivory"
