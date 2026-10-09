@@ -17,12 +17,19 @@ export function SiteHeader({
   onDate?: () => void
   brand?: boolean
 }) {
+  const ring = brand ? focusLight : focus
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-paper">
+    <header
+      className={
+        brand
+          ? 'sticky top-0 z-30 border-b border-white/10 bg-night/80 text-ivory backdrop-blur-md'
+          : 'sticky top-0 z-20 border-b border-line bg-paper'
+      }
+    >
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3 md:px-8">
         <Link
           to="/"
-          className={`${brand ? 'font-medium' : 'font-display'} text-xl tracking-tight ${focus}`}
+          className={`${brand ? 'font-semibold' : 'font-display'} text-xl tracking-tight ${ring}`}
         >
           {brand ? 'DJ Piper P' : 'Piper DJing'}
         </Link>
@@ -33,7 +40,7 @@ export function SiteHeader({
             activeProps={{
               className: 'underline decoration-2 underline-offset-4',
             }}
-            className={`inline-flex min-h-11 items-center px-3 text-sm ${focus}`}
+            className={`inline-flex min-h-11 items-center px-3 text-sm ${ring}`}
           >
             Weddings
           </Link>

@@ -12,8 +12,31 @@
   --color-line: #e3ddd4;
   --color-danger: #8d3b34;
   --color-stage: #000000;
+  --color-night: #0b0f17;
   --color-mark: #f034ea;
   --radius-card: 2rem;
+  --animate-brand-float: brand-float 4.5s ease-in-out infinite;
+  --animate-brand-glow: brand-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes brand-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes brand-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(240 52 234 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 32px 2px rgb(240 52 234 / 0.55);
+  }
 }
 
 html,
