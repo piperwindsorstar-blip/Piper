@@ -170,6 +170,10 @@ async function deliverAndRemember(
   return result
 }
 
+export async function emailOwner(letter: Letter): Promise<MailResult> {
+  return deliver(PUBLIC_EMAIL, letter)
+}
+
 async function deliver(to: string, letter: Letter): Promise<MailResult> {
   const smtp = smtpConfig()
   if (!smtp) {

@@ -1,4 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
+import { parseDateRequest, todayInToronto } from './date-request.ts'
+import { emailOwner } from './mail.server.ts'
 import {
   createInquiry,
   dateOpen,
@@ -22,6 +24,39 @@ export const checkDate = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const open = await dateOpen(data.date)
     return { open }
+  })
+
+export const sendDateRequest = createServerFn({ method: 'POST' })
+  .validator(
+    (data: { date: string; eventType: string; company: string }) => data,
+  )
+  .handler(async ({ data }) => {
+    const parsed = parseDateRequest(data, todayInToronto())
+    if (!parsed.ok) return parsed
+    if (parsed.silent) return { ok: true as const }
+    let open = false
+    try {
+      open = await dateOpen(parsed.date)
+    } catch {
+      open = false
+    }
+    const result = await emailOwner({
+      subject: `Date check: ${parsed.eventType} on ${parsed.date}`,
+      text: [
+        `A couple asked about a ${parsed.eventType.toLowerCase()} on ${parsed.date}.`,
+        open
+          ? 'The book shows that date as open.'
+          : 'The book shows that date as held or blocked.',
+      ].join('\n'),
+    })
+    if (!result.delivered) {
+      return {
+        ok: false as const,
+        error:
+          'That request did not send. Email PiperPWeddingDJ@gmail.com and Piper will write back.',
+      }
+    }
+    return { ok: true as const }
   })
 
 export const sendInquiry = createServerFn({ method: 'POST' })

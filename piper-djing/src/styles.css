@@ -14,6 +14,18 @@
   --color-stage: #000000;
   --color-night: #0b0f17;
   --color-mark: #f034ea;
+  --color-mist: #f7f4fd;
+  --color-soft: #5e5775;
+  --color-neon: #ff007f;
+  --color-hot: #ff1493;
+  --color-rosy: #ec4899;
+  --color-blush: #ffe6f2;
+  --color-violet: #7c3aed;
+  --color-lilac: #eee8ff;
+  --color-sky: #8fd3f4;
+  --color-ice: #e3f4fd;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --radius-card: 2rem;
   --animate-brand-float: brand-float 4.5s ease-in-out infinite;
   --animate-brand-glow: brand-glow 2.8s ease-in-out infinite;
@@ -87,4 +99,63 @@ textarea {
   background: var(--color-ivory);
   padding: 0.75rem 1rem;
   color: var(--color-ink);
+}
+
+/* Wedding page tokens stay on this route. The brand page keeps its own paper and ink. */
+.weddings {
+  --color-paper: #ffffff;
+  --color-ink: #1c1533;
+  --color-line: #e3dcf2;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+}
+
+.weddings :focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(#e3dcf2 1px, transparent 1px),
+    linear-gradient(90deg, #e3dcf2 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.grid-fade {
+  -webkit-mask-image: radial-gradient(70% 70% at 50% 40%, #000, transparent);
+  mask-image: radial-gradient(70% 70% at 50% 40%, #000, transparent);
+}
+
+@keyframes wed-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee {
+  animation: wed-marquee 36s linear infinite;
+  width: max-content;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }

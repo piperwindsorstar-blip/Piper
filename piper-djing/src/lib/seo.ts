@@ -16,6 +16,11 @@ function lockedUrl(path: string): string {
 export const BRAND_DESCRIPTION =
   'DJ Piper P is Piper DJing in Brantford. See the booth, follow @DJ_PIPERP, and open wedding dates.'
 
+export const WEDDING_DESCRIPTION =
+  'Custom playlists, premium sound and lighting, and stress-free coordination for weddings in Brantford, Paris, Hamilton, Cambridge, and nearby Ontario.'
+
+export const WEDDING_OG_IMAGE = `${site.url}/photos/brand/brand-beam.jpg`
+
 export function publicHead(opts: {
   path: '/' | '/book' | '/weddings'
   title: string
@@ -85,6 +90,35 @@ export function professionalServiceJsonLd(): string {
       price: (PACKAGE_CENTS[item.id] / 100).toFixed(2),
       priceCurrency: 'CAD',
     })),
+  })
+}
+
+export function weddingLocalBusinessJsonLd(): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: 'DJ Piper P',
+    url: lockedUrl('/weddings'),
+    image: WEDDING_OG_IMAGE,
+    description: WEDDING_DESCRIPTION,
+    email: PUBLIC_EMAIL,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Brantford',
+      addressRegion: 'ON',
+      addressCountry: 'CA',
+    },
+    areaServed: [
+      'Brantford',
+      'Paris',
+      'Hamilton',
+      'Cambridge',
+      'Woodstock',
+      'Burlington',
+      'Guelph',
+      'Oakville',
+    ].map((name) => ({ '@type': 'City', name })),
+    sameAs: [INSTAGRAM_URL],
   })
 }
 

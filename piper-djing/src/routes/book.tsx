@@ -9,6 +9,13 @@ import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
 import { publicHead } from '../lib/seo.ts'
 
 export const Route = createFileRoute('/book')({
+  validateSearch: (search: Record<string, unknown>): { date?: string } => {
+    const raw = search.date
+    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return { date: raw }
+    }
+    return {}
+  },
   head: () =>
     publicHead({
       path: '/book',
@@ -18,6 +25,7 @@ export const Route = createFileRoute('/book')({
 })
 
 function BookPage() {
+  const { date: requestedDate = '' } = Route.useSearch()
   const send = useServerFn(sendInquiry)
   const [packageId, setPackageId] = useState('full')
   const [withStag, setWithStag] = useState(false)
@@ -86,7 +94,12 @@ function BookPage() {
             </label>
             <label className="field">
               Wedding date
-              <input name="eventDate" type="date" required />
+              <input
+                name="eventDate"
+                type="date"
+                required
+                defaultValue={requestedDate}
+              />
             </label>
             <label className="field">
               Package
