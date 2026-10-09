@@ -44,14 +44,14 @@ function SettingsPage() {
               setKindWords(result.on)
               setNotice(
                 result.on
-                  ? 'Kind words are on the homepage.'
-                  : 'Kind words are off the homepage.',
+                  ? 'Kind words are on the wedding page.'
+                  : 'Kind words are off the wedding page.',
               )
               await router.invalidate()
             })
           }}
         />
-        Show Kind Words on the homepage
+        Show Kind Words on the wedding page
       </label>
       <section className="grid gap-3">
         <h2 className="font-display text-2xl">Reviews</h2>

@@ -42,7 +42,7 @@ function PartnersPage() {
     <div className="grid max-w-xl gap-6">
       <h1 className="font-display text-4xl tracking-tight">Partner brands</h1>
       <p className="text-sm text-muted">
-        Each logo is a small link on the homepage. Four fit across a phone. Add
+        Each logo is a small link on the wedding page. Four fit across a phone. Add
         or remove them here.
       </p>
       <form
@@ -105,7 +105,7 @@ function PartnersPage() {
       {notice ? <p className="text-sm">{notice}</p> : null}
       {partners.length === 0 ? (
         <p className="text-sm text-muted">
-          No partner brands yet. The homepage section stays hidden.
+          No partner brands yet. The wedding page section stays hidden.
         </p>
       ) : (
         <ul className="grid gap-3">

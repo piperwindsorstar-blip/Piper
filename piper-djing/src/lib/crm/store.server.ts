@@ -958,7 +958,7 @@ async function ensureSite(): Promise<void> {
   )
 }
 
-/** The homepage Kind Words section. Missing or unset means off. */
+/** The wedding page Kind Words section. Missing or unset means off. */
 export async function kindWordsOn(): Promise<boolean> {
   await ensureSite()
   const rows = await query<{ kind_words: unknown }>(
@@ -1016,7 +1016,7 @@ export async function listReviews(): Promise<ReviewView[]> {
   return rows.map(toReview)
 }
 
-/** Homepage cards. Quotes stay off the public page while Kind Words is off. */
+/** Wedding page cards. Quotes stay off the public page while Kind Words is off. */
 export async function homepageReviews(): Promise<ReviewView[]> {
   if (!(await kindWordsOn())) return []
   return listReviews()
