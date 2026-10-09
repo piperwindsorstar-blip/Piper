@@ -13,8 +13,8 @@ function lockedUrl(path: string): string {
   return `${base}${path}`
 }
 
-export const BRAND_DESCRIPTION =
-  'DJ Piper P is Piper DJing in Brantford. See the booth, follow @DJ_PIPERP, and open wedding dates.'
+export const HOME_DESCRIPTION =
+  'DJ Piper P is a warm, well-planned, flexible DJ for weddings, private events, charity and community events in Brantford, Ontario and the surrounding area.'
 
 export const WEDDING_DESCRIPTION =
   'Custom playlists, premium sound and lighting, and stress-free coordination for weddings in Brantford, Paris, Hamilton, Cambridge, and nearby Ontario.'
@@ -122,6 +122,26 @@ export function weddingLocalBusinessJsonLd(): string {
   })
 }
 
+export function homeLocalBusinessJsonLd(): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: 'DJ Piper P',
+    url: lockedUrl('/'),
+    image: WEDDING_OG_IMAGE,
+    description: HOME_DESCRIPTION,
+    email: PUBLIC_EMAIL,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Brantford',
+      addressRegion: 'ON',
+      addressCountry: 'CA',
+    },
+    areaServed: { '@type': 'City', name: 'Brantford' },
+    sameAs: [INSTAGRAM_URL],
+  })
+}
+
 export function personJsonLd(): string {
   return JSON.stringify({
     '@context': 'https://schema.org',
@@ -133,7 +153,7 @@ export function personJsonLd(): string {
       `${site.url}/photos/logo-inverted.png`,
       `${site.url}/photos/dj-piper-at-the-booth.jpg`,
     ],
-    description: BRAND_DESCRIPTION,
+    description: HOME_DESCRIPTION,
     jobTitle: 'DJ',
     email: PUBLIC_EMAIL,
     address: {

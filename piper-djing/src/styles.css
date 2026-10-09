@@ -19,6 +19,11 @@
   --color-neon: #ff007f;
   --color-hot: #ff1493;
   --color-rosy: #ec4899;
+  --color-rose2: #f43f5e;
+  --color-ink-950: #0d0d0d;
+  --color-ink-900: #121212;
+  --color-ink-800: #1a1a1a;
+  --color-ink-700: #262626;
   --color-blush: #ffe6f2;
   --color-violet: #7c3aed;
   --color-lilac: #eee8ff;
@@ -101,7 +106,7 @@ textarea {
   color: var(--color-ink);
 }
 
-/* Wedding page tokens stay on this route. The brand page keeps its own paper and ink. */
+/* Wedding page tokens stay on this route. The home page scopes its own dark type. */
 .weddings {
   --color-paper: #ffffff;
   --color-ink: #1c1533;
@@ -116,6 +121,23 @@ textarea {
 .weddings :focus-visible {
   outline: 2px solid #7c3aed;
   outline-offset: 2px;
+}
+
+.home {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+.home :focus-visible {
+  outline: 2px solid #ff1493;
+  outline-offset: 2px;
+}
+
+.text-glow {
+  text-shadow: 0 0 30px rgba(255, 0, 127, 0.55);
 }
 
 .grid-lines {
@@ -139,9 +161,47 @@ textarea {
   }
 }
 
-.marquee {
+.weddings .marquee {
   animation: wed-marquee 36s linear infinite;
   width: max-content;
+}
+
+@keyframes home-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.home .marquee {
+  animation: home-marquee 34s linear infinite;
+  width: max-content;
+}
+
+@keyframes home-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-slow {
+  animation: home-spin 22s linear infinite;
+}
+
+@keyframes home-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-glow {
+  animation: home-pulse 3s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -151,7 +211,9 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .marquee {
+  .marquee,
+  .spin-slow,
+  .pulse-glow {
     animation: none;
   }
 
