@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { INSTAGRAM_URL } from '../lib/crm/defaults.ts'
+import { GOOGLE_REVIEW_URL, INSTAGRAM_URL } from '../lib/crm/defaults.ts'
 import { personJsonLd } from '../lib/seo.ts'
 import { SiteFooter, SiteHeader } from './site-frame.tsx'
 
@@ -78,14 +78,24 @@ export function BrandHome() {
               <h2 className="text-3xl font-medium tracking-tight">
                 @DJ_PIPERP
               </h2>
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`mt-3 inline-flex min-h-11 items-center text-mark ${focusLight}`}
-              >
-                Instagram
-              </a>
+              <div className="mt-3 flex flex-wrap gap-x-5">
+                <a
+                  href={INSTAGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex min-h-11 items-center text-mark ${focusLight}`}
+                >
+                  Instagram
+                </a>
+                <a
+                  href={GOOGLE_REVIEW_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex min-h-11 items-center text-mark ${focusLight}`}
+                >
+                  Google review
+                </a>
+              </div>
             </div>
           </div>
         </section>

@@ -1,7 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useRef, useState, type RefObject } from 'react'
-import { PACKAGE_BUTTON_COPY, PUBLIC_EMAIL } from '../lib/crm/defaults.ts'
+import {
+  GOOGLE_REVIEW_URL,
+  PACKAGE_BUTTON_COPY,
+  PUBLIC_EMAIL,
+} from '../lib/crm/defaults.ts'
 import { cad } from '../lib/crm/money.ts'
 import { checkDate } from '../lib/crm/public.functions.ts'
 import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
@@ -284,6 +288,15 @@ export function Landing({
                   className="underline underline-offset-4"
                 >
                   {PUBLIC_EMAIL}
+                </a>
+                , or leave a{' '}
+                <a
+                  href={GOOGLE_REVIEW_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-4"
+                >
+                  Google review
                 </a>
                 .
               </p>

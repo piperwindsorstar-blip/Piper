@@ -1,5 +1,9 @@
 import { Link } from '@tanstack/react-router'
-import { INSTAGRAM_URL, PUBLIC_EMAIL } from '../lib/crm/defaults.ts'
+import {
+  GOOGLE_REVIEW_URL,
+  INSTAGRAM_URL,
+  PUBLIC_EMAIL,
+} from '../lib/crm/defaults.ts'
 
 const focus =
   'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink'
@@ -96,6 +100,14 @@ export function SiteFooter({ brand = false }: { brand?: boolean }) {
           className={`inline-flex min-h-11 items-center text-sm ${brand ? `text-white/70 ${focusLight}` : `text-muted ${focus}`}`}
         >
           {PUBLIC_EMAIL}
+        </a>
+        <a
+          href={GOOGLE_REVIEW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex min-h-11 items-center text-sm underline underline-offset-4 ${brand ? `text-ivory ${focusLight}` : `text-ink ${focus}`}`}
+        >
+          Google review
         </a>
       </div>
     </footer>

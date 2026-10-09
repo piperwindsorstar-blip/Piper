@@ -3,6 +3,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { PlanningForm } from '../../components/planning-form.tsx'
 import { SiteFooter, SiteHeader } from '../../components/site-frame.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
+import { GOOGLE_REVIEW_URL } from '../../lib/crm/defaults.ts'
 import {
   getCouple,
   saveCouplePlanningForm,
@@ -79,6 +80,18 @@ function CouplePage() {
             >
               Invoice
             </Link>
+          </p>
+        ) : null}
+        {booking.status === 'booked' ? (
+          <p className="mt-8 text-sm">
+            <a
+              href={GOOGLE_REVIEW_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center underline underline-offset-4"
+            >
+              Leave a Google review
+            </a>
           </p>
         ) : null}
         <PlanningForm
