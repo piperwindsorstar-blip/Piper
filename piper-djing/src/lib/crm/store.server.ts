@@ -982,6 +982,16 @@ export async function setKindWords(on: boolean): Promise<boolean> {
   return kindWordsOn()
 }
 
+async function addReviewColumn(name: string, definition: string): Promise<void> {
+  try {
+    await query(`ALTER TABLE reviews ADD COLUMN ${name} ${definition}`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/duplicate column|already exists/i.test(message)) return
+    throw error
+  }
+}
+
 async function ensureReviews(): Promise<void> {
   await query(
     `CREATE TABLE IF NOT EXISTS reviews (
@@ -991,21 +1001,11 @@ async function ensureReviews(): Promise<void> {
       when_label text NOT NULL DEFAULT ''
     )`,
   )
-  await query(
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS event_type text NOT NULL DEFAULT ''`,
-  )
-  await query(
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS town text NOT NULL DEFAULT ''`,
-  )
-  await query(
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewed_on text NOT NULL DEFAULT ''`,
-  )
-  await query(
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'other'`,
-  )
-  await query(
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS show_on_site integer NOT NULL DEFAULT 0`,
-  )
+  await addReviewColumn('event_type', `text NOT NULL DEFAULT ''`)
+  await addReviewColumn('town', `text NOT NULL DEFAULT ''`)
+  await addReviewColumn('reviewed_on', `text NOT NULL DEFAULT ''`)
+  await addReviewColumn('source', `text NOT NULL DEFAULT 'other'`)
+  await addReviewColumn('show_on_site', `integer NOT NULL DEFAULT 0`)
 }
 
 type ReviewRow = {
