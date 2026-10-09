@@ -30,6 +30,7 @@ export function InstagramStrip() {
               href={LINKS.insta}
               target="_blank"
               rel="noreferrer"
+              aria-label="Open @DJ_PIPERP on Instagram"
               className="group relative block aspect-square overflow-hidden rounded-xl border border-white/10"
             >
               <img
