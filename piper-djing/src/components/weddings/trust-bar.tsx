@@ -5,7 +5,7 @@ import type { IconName } from './icon.tsx'
 export function TrustBar() {
   return (
     <section className="border-y border-ink bg-ink text-white">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-5 py-6 md:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-6 px-5 py-6 sm:grid-cols-3">
         {TRUST.map(([icon, label]) => (
           <div
             key={label}

@@ -1,5 +1,7 @@
 export const EVENT_TYPES = [
   'Wedding',
+  'Stag and doe',
+  'Ceremony only',
   'Engagement party',
   'Anniversary',
   'Private party',

@@ -15,6 +15,23 @@ describe('date request', () => {
     )
   })
 
+  it('accepts a stag and doe and a ceremony-only date', () => {
+    assert.equal(
+      parseDateRequest(
+        { date: '2026-11-14', eventType: 'Stag and doe', company: '' },
+        today,
+      ).ok,
+      true,
+    )
+    assert.equal(
+      parseDateRequest(
+        { date: '2026-11-14', eventType: 'Ceremony only', company: '' },
+        today,
+      ).ok,
+      true,
+    )
+  })
+
   it('rejects a past date and an unknown event', () => {
     assert.equal(
       parseDateRequest(

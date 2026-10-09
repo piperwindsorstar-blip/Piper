@@ -1,7 +1,5 @@
 import { GOOGLE_REVIEW_URL, PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
 
-export const SHOW_PLACEHOLDER_NOTES = false as boolean
-
 export const LINKS = {
   weddings: '/weddings',
   book: '/book',
@@ -17,56 +15,61 @@ export const PHOTOS = {
   stack: '/photos/brand/brand-stack.jpg',
 } as const
 
-// TODO: real Google reviews. These quotes are sample copy and have no couple names.
-export const REVIEWS = [
-  {
-    q: 'Our dance floor was full from the first song to the last. Piper read the room, kept the grandparents and the college friends happy, and never once made an awkward announcement.',
-    w: 'Wedding · Brantford',
-  },
-  {
-    q: 'Zero stress. We handed over our must-play and do-not-play lists and the night just flowed. The lighting made the whole venue feel like a different place.',
-    w: 'Reception · Paris, ON',
-  },
-  {
-    q: 'Every transition was smooth, the sound was crisp at the back of the hall, and guests are still asking who our DJ was.',
-    w: 'Wedding · Hamilton',
-  },
-]
-
-// TODO: real packages. Names and inclusions are placeholders.
 export const TIERS = [
   {
-    n: 'Essentials',
-    tag: 'Reception only',
+    n: 'The Main Event',
+    plain: 'Full Wedding Day',
+    price: '$1,650',
     f: [
-      'Up to 5 hours of music',
-      'Premium sound system',
-      'Wireless mic for toasts',
-      'Custom must-play list',
-    ],
-    hl: false,
-  },
-  {
-    n: 'Signature',
-    tag: 'Most popular',
-    f: [
-      'Ceremony + reception coverage',
-      'Programmable uplighting',
-      'Planning call and timeline',
-      'Grand entrance and first dance mixes',
-      'Backup gear on site',
+      'Ceremony audio through the reception, up to 1:00 a.m.',
+      'Wireless microphones for the ceremony and speeches',
+      'Two speakers',
+      'Dancefloor lighting',
+      'Backup equipment',
+      'At least one planning meeting',
+      'Light MC duties',
     ],
     hl: true,
   },
   {
-    n: 'Full Experience',
-    tag: 'Everything, handled',
+    n: 'The After Party',
+    plain: 'Reception Only',
+    price: '$1,550',
     f: [
-      'Everything in Signature',
-      'Dance-floor lighting package',
-      'Cocktail-hour set',
-      'Extended hours available',
-      'Priority planner coordination',
+      'The reception up to 1:00 a.m.',
+      'Wireless microphones',
+      'Two speakers',
+      'Dancefloor lighting',
+      'Backup equipment',
+      'At least one planning meeting',
+      'Light MC duties',
+    ],
+    hl: false,
+  },
+  {
+    n: 'The Pre-Party',
+    plain: 'Stag and Doe',
+    price: '$700',
+    f: [
+      'Up to 1:00 a.m.',
+      'Two speakers',
+      'One wireless microphone',
+      'Dancefloor lighting',
+      'Backup equipment',
+      'DJ and MC duties',
+    ],
+    hl: false,
+  },
+  {
+    n: 'The Aisle',
+    plain: 'Ceremony Only',
+    price: '$350 paid in full',
+    f: [
+      'Ceremony audio',
+      'One speaker and one wireless microphone for the officiant',
+      'Backup equipment',
+      'At least one planning meeting',
+      'No dancefloor lighting or MC',
     ],
     hl: false,
   },
@@ -105,7 +108,7 @@ export const GEAR = [
   {
     i: 'bulb' as const,
     t: 'The Lighting',
-    d: 'Color washes and beams that move from dinner glow to full dance energy.',
+    d: 'Dancefloor lighting that takes the room from dinner glow to full dance energy.',
   },
   {
     i: 'heart' as const,
@@ -161,8 +164,7 @@ export const CHECKLIST = [
 ]
 
 export const TRUST = [
-  ['star', '5.0 on Google'],
-  ['zap', 'Reply in 24 hours'],
+  ['zap', 'Reply within one business day'],
   ['mic', 'Backup gear on site'],
   ['pin', 'Brantford & area'],
 ] as const

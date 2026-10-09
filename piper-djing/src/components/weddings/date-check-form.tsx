@@ -1,17 +1,10 @@
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { sendDateRequest } from '../../lib/crm/public.functions.ts'
-import { todayInToronto } from '../../lib/crm/date-request.ts'
+import { EVENT_TYPES, todayInToronto } from '../../lib/crm/date-request.ts'
 import { LINKS } from './content.ts'
 import { useDateDraft } from './date-draft.tsx'
 import { Icon } from './icon.tsx'
-
-const EVENT_TYPES = [
-  'Wedding',
-  'Engagement party',
-  'Anniversary',
-  'Private party',
-]
 
 export function DateCheckForm() {
   const send = useServerFn(sendDateRequest)
