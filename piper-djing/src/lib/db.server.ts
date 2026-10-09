@@ -84,8 +84,13 @@ CREATE TABLE partners (
 CREATE TABLE reviews (
   id integer PRIMARY KEY,
   quote text NOT NULL,
-  names text NOT NULL,
-  when_label text NOT NULL DEFAULT ''
+  names text NOT NULL DEFAULT '',
+  when_label text NOT NULL DEFAULT '',
+  event_type text NOT NULL DEFAULT '',
+  town text NOT NULL DEFAULT '',
+  reviewed_on text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'other',
+  show_on_site integer NOT NULL DEFAULT 0
 );
 CREATE TABLE questions (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

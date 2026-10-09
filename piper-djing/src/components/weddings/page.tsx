@@ -1,3 +1,4 @@
+import type { PublicReview } from '../../lib/crm/reviews.ts'
 import { AreaMarquee } from './area-marquee.tsx'
 import { DateDraftProvider } from './date-draft.tsx'
 import { Faq } from './faq.tsx'
@@ -16,7 +17,7 @@ import {
   weddingLocalBusinessJsonLd,
 } from '../../lib/seo.ts'
 
-export function WeddingsPage() {
+export function WeddingsPage({ reviews }: { reviews: PublicReview[] }) {
   return (
     <DateDraftProvider>
       <div className="weddings overflow-x-clip bg-paper pb-20 font-sans text-ink">
@@ -36,7 +37,7 @@ export function WeddingsPage() {
           <AreaMarquee />
           <Process />
           <GearSection />
-          <Reviews />
+          <Reviews reviews={reviews} />
           <Faq />
           <FinalCta />
         </main>

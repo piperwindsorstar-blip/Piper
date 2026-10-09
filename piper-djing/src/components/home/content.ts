@@ -6,7 +6,8 @@ export const PHOTOS = {
 }
 
 /** Set this to a portrait path to replace the labeled placeholder. */
-export const PORTRAIT_SRC = ''
+export const PORTRAIT_SRC = '/photos/dj-piper-at-the-booth.jpg'
+export const PORTRAIT_ALT = 'DJ Piper P at the booth.'
 
 /** Sample review and Instagram notes stay hidden until real content replaces them. */
 export const SHOW_PLACEHOLDER_NOTES = false as boolean
@@ -153,13 +154,6 @@ export const STEPS = [
     'I follow up, because I want to know how it felt. Your feedback shapes the next night.',
   ],
 ] as const
-
-// TODO: replace with real Google reviews.
-export const REVIEWS = [
-  'Our dance floor was full from the first song to the last. Piper read the room, kept the grandparents and the college friends happy, and never once made an awkward announcement.',
-  'Zero stress. We handed over our lists and the night just flowed. Piper was easy to talk to, quick to reply and incredibly organized.',
-  'Every transition was smooth, the sound was crisp at the back of the hall, and guests are still asking who our DJ was.',
-]
 
 // TODO: replace with real Instagram posts or a feed embed.
 export const INSTAGRAM_POSTS = [

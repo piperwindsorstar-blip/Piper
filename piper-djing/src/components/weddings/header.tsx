@@ -2,7 +2,11 @@ import { Link } from '@tanstack/react-router'
 import { NAV } from './content.ts'
 import { useDateDraft } from './date-draft.tsx'
 
-export function Header() {
+export function Header({
+  sectionBase = '',
+}: {
+  sectionBase?: '' | '/weddings'
+}) {
   const { date } = useDateDraft()
   return (
     <header
@@ -18,7 +22,11 @@ export function Header() {
         </Link>
         <nav className="hidden gap-8 text-sm font-medium text-soft md:flex">
           {NAV.map(([label, href]) => (
-            <a key={label} href={href} className="hover:text-ink">
+            <a
+              key={label}
+              href={`${sectionBase}${href}`}
+              className="hover:text-ink"
+            >
               {label}
             </a>
           ))}

@@ -10,6 +10,7 @@ import {
   mailStatus,
 } from './mail.server.ts'
 import { PACKAGE_CENTS } from '../piper/rules.ts'
+import type { ReviewDraft } from './reviews.ts'
 import { PACKAGE_BUTTON_COPY } from './defaults.ts'
 import {
   addMedia,
@@ -39,10 +40,12 @@ import {
   addReview,
   listReviews,
   removeReview,
+  setReviewShown,
+  updateReview,
   updateTerms,
   voidBookingInvoice,
-  type BookingPatch,
 } from './store.server.ts'
+import type { BookingPatch } from './store.server.ts'
 
 function fail(error: unknown) {
   return {
@@ -164,6 +167,13 @@ export const getBots = createServerFn({ method: 'GET' }).handler(async () => {
   return listBots()
 })
 
+export const getReviews = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return listReviews()
+  },
+)
+
 export const getSettings = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireDesk()
@@ -175,7 +185,6 @@ export const getSettings = createServerFn({ method: 'GET' }).handler(
       mailReady: mail.ready,
       mailFrom: mail.from,
       kindWords: await kindWordsOn(),
-      reviews: await listReviews(),
       emails: await listEmails(),
     }
   },
@@ -193,11 +202,37 @@ export const saveKindWords = createServerFn({ method: 'POST' })
   })
 
 export const saveReview = createServerFn({ method: 'POST' })
-  .validator((data: { quote: string; names: string; when: string }) => data)
+  .validator((data: ReviewDraft) => data)
   .handler(async ({ data }) => {
     await requireDesk()
     try {
       return { ok: true as const, review: await addReview(data) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const editReview = createServerFn({ method: 'POST' })
+  .validator((data: { id: number } & ReviewDraft) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      const { id, ...draft } = data
+      return { ok: true as const, review: await updateReview(id, draft) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const showReview = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; show: boolean }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        review: await setReviewShown(data.id, data.show),
+      }
     } catch (error) {
       return fail(error)
     }

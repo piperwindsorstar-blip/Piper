@@ -1,7 +1,9 @@
-import { LINKS, REVIEWS, SHOW_PLACEHOLDER_NOTES } from './content.ts'
-import { Eyebrow, Stars } from './ui.tsx'
+import type { PublicReview } from '../../lib/crm/reviews.ts'
+import { reviewCaption } from '../../lib/crm/reviews.ts'
+import { LINKS } from './content.ts'
+import { Eyebrow } from './ui.tsx'
 
-export function Reviews() {
+export function Reviews({ reviews }: { reviews: PublicReview[] }) {
   return (
     <section id="reviews" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-24">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -20,29 +22,23 @@ export function Reviews() {
           Read or leave a Google review →
         </a>
       </div>
-      <div className="mt-10 grid gap-5 md:grid-cols-3">
-        {REVIEWS.map((quote) => (
-          <figure
-            key={quote}
-            className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl transition hover:border-neon/50"
-          >
-            <div className="flex items-center justify-between">
-              <Stars />
-              {SHOW_PLACEHOLDER_NOTES ? (
-                <span className="rounded border border-white/15 px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-white/45 uppercase">
-                  Sample copy
-                </span>
-              ) : null}
-            </div>
-            <blockquote className="mt-4 flex-1 leading-relaxed text-white/85">
-              “{quote}”
-            </blockquote>
-            <figcaption className="mt-5 border-t border-white/10 pt-4 text-sm text-white/50">
-              Google Review
-            </figcaption>
-          </figure>
-        ))}
-      </div>
+      {reviews.length > 0 ? (
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {reviews.map((review) => (
+            <figure
+              key={review.id}
+              className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl transition hover:border-neon/50"
+            >
+              <blockquote className="flex-1 leading-relaxed text-white/85">
+                “{review.quote}”
+              </blockquote>
+              <figcaption className="mt-5 border-t border-white/10 pt-4 text-sm text-white/50">
+                {reviewCaption(review)}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }

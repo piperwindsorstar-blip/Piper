@@ -1,4 +1,4 @@
-import { LINKS, PHOTOS, PORTRAIT_SRC } from './content.ts'
+import { LINKS, PHOTOS, PORTRAIT_ALT, PORTRAIT_SRC } from './content.ts'
 import { Icon } from './icon.tsx'
 import { Eyebrow } from './ui.tsx'
 
@@ -13,7 +13,7 @@ export function About() {
         <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-neon/30 bg-ink-800 shadow-[0_0_60px_rgba(255,0,127,0.18)]">
           <img
             src={portrait ? PORTRAIT_SRC : PHOTOS.phones}
-            alt=""
+            alt={portrait ? PORTRAIT_ALT : ''}
             className={`absolute inset-0 h-full w-full object-cover ${portrait ? '' : 'opacity-70'}`}
             loading="lazy"
             sizes="(min-width: 1024px) 40vw, 90vw"

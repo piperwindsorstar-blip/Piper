@@ -1,3 +1,4 @@
+import type { PublicReview } from '../../lib/crm/reviews.ts'
 import { homeLocalBusinessJsonLd, personJsonLd } from '../../lib/seo.ts'
 import { About } from './about.tsx'
 import { EventCards } from './event-cards.tsx'
@@ -11,7 +12,7 @@ import { PromiseTabs } from './promise-tabs.tsx'
 import { Reviews } from './reviews.tsx'
 import { SiteFooter } from './site-footer.tsx'
 
-export function HomePage() {
+export function HomePage({ reviews }: { reviews: PublicReview[] }) {
   return (
     <div className="home overflow-x-clip bg-ink-950 text-white">
       <script
@@ -30,7 +31,7 @@ export function HomePage() {
         <PromiseTabs />
         <EventCards />
         <Process />
-        <Reviews />
+        <Reviews reviews={reviews} />
         <InstagramStrip />
         <FinalCta />
       </main>

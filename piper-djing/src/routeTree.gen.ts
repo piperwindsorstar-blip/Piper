@@ -27,6 +27,7 @@ import { Route as DeskPackagesRouteImport } from './routes/desk/packages'
 import { Route as DeskPartnersRouteImport } from './routes/desk/partners'
 import { Route as DeskPaymentsRouteImport } from './routes/desk/payments'
 import { Route as DeskQuestionsRouteImport } from './routes/desk/questions'
+import { Route as DeskReviewsRouteImport } from './routes/desk/reviews'
 import { Route as DeskSettingsRouteImport } from './routes/desk/settings'
 import { Route as DeskTermsRouteImport } from './routes/desk/terms'
 import { Route as PSlugRouteImport } from './routes/p/$slug'
@@ -122,6 +123,11 @@ const DeskQuestionsRoute = DeskQuestionsRouteImport.update({
   path: '/questions',
   getParentRoute: () => DeskRouteRoute,
 } as any)
+const DeskReviewsRoute = DeskReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
 const DeskSettingsRoute = DeskSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/desk/partners': typeof DeskPartnersRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
+  '/desk/reviews': typeof DeskReviewsRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/desk/partners': typeof DeskPartnersRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
+  '/desk/reviews': typeof DeskReviewsRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/desk/partners': typeof DeskPartnersRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
+  '/desk/reviews': typeof DeskReviewsRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/desk/partners'
     | '/desk/payments'
     | '/desk/questions'
+    | '/desk/reviews'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/desk/partners'
     | '/desk/payments'
     | '/desk/questions'
+    | '/desk/reviews'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/desk/partners'
     | '/desk/payments'
     | '/desk/questions'
+    | '/desk/reviews'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -430,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskQuestionsRouteImport
       parentRoute: typeof DeskRouteRoute
     }
+    '/desk/reviews': {
+      id: '/desk/reviews'
+      path: '/reviews'
+      fullPath: '/desk/reviews'
+      preLoaderRoute: typeof DeskReviewsRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
     '/desk/settings': {
       id: '/desk/settings'
       path: '/settings'
@@ -471,6 +490,7 @@ interface DeskRouteRouteChildren {
   DeskPartnersRoute: typeof DeskPartnersRoute
   DeskPaymentsRoute: typeof DeskPaymentsRoute
   DeskQuestionsRoute: typeof DeskQuestionsRoute
+  DeskReviewsRoute: typeof DeskReviewsRoute
   DeskSettingsRoute: typeof DeskSettingsRoute
   DeskTermsRoute: typeof DeskTermsRoute
   DeskIndexRoute: typeof DeskIndexRoute
@@ -486,6 +506,7 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskPartnersRoute: DeskPartnersRoute,
   DeskPaymentsRoute: DeskPaymentsRoute,
   DeskQuestionsRoute: DeskQuestionsRoute,
+  DeskReviewsRoute: DeskReviewsRoute,
   DeskSettingsRoute: DeskSettingsRoute,
   DeskTermsRoute: DeskTermsRoute,
   DeskIndexRoute: DeskIndexRoute,

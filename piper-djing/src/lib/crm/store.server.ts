@@ -27,8 +27,17 @@ import {
   type Planning,
   type PlanningSeed,
 } from './planning.ts'
+import { isReviewSource } from './reviews.ts'
+import type {
+  PublicReview,
+  ReviewDraft,
+  ReviewSource,
+  ReviewView,
+} from './reviews.ts'
 import { askLegacyDate } from '../legacy-book.server.ts'
 import { holdLastDay, isBlockedDate } from '../piper/rules.ts'
+
+export type { ReviewView }
 
 export type BotRole = 'reader' | 'writer' | 'ceo'
 
@@ -978,80 +987,193 @@ async function ensureReviews(): Promise<void> {
     `CREATE TABLE IF NOT EXISTS reviews (
       id integer PRIMARY KEY,
       quote text NOT NULL,
-      names text NOT NULL,
+      names text NOT NULL DEFAULT '',
       when_label text NOT NULL DEFAULT ''
     )`,
   )
+  await query(
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS event_type text NOT NULL DEFAULT ''`,
+  )
+  await query(
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS town text NOT NULL DEFAULT ''`,
+  )
+  await query(
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewed_on text NOT NULL DEFAULT ''`,
+  )
+  await query(
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'other'`,
+  )
+  await query(
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS show_on_site integer NOT NULL DEFAULT 0`,
+  )
 }
 
-export type ReviewView = {
+type ReviewRow = {
   id: number
   quote: string
   names: string
-  when: string
+  event_type: string
+  town: string
+  reviewed_on: string
+  source: string
+  show_on_site: unknown
 }
 
-function toReview(row: {
-  id: number
-  quote: string
-  names: string
-  when_label: string
-}): ReviewView {
+function toReview(row: ReviewRow): ReviewView {
+  const source: ReviewSource = isReviewSource(row.source) ? row.source : 'other'
   return {
     id: whole(row.id, 'Review'),
     quote: row.quote,
     names: row.names,
-    when: row.when_label,
+    eventType: row.event_type,
+    town: row.town,
+    date: row.reviewed_on,
+    source,
+    show: flag(row.show_on_site),
+  }
+}
+
+const REVIEW_COLUMNS =
+  'id, quote, names, event_type, town, reviewed_on, source, show_on_site'
+
+function reviewId(id: number): number {
+  if (!Number.isInteger(id) || id < 1) {
+    throw new Error('That review is not on the page.')
+  }
+  return id
+}
+
+function parseReview(input: ReviewDraft): Omit<ReviewView, 'id'> {
+  const quote = input.quote.trim()
+  const names = input.names.trim()
+  const eventType = input.eventType.trim()
+  const town = input.town.trim()
+  const date = input.date.trim()
+  if (!quote) throw new Error('The review is required.')
+  if (quote.length > 800) throw new Error('That review is too long.')
+  if (names.length > 80) throw new Error('That name is too long.')
+  if (eventType.length > 80) throw new Error('That event type is too long.')
+  if (town.length > 80) throw new Error('That town is too long.')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+    throw new Error('The date is required.')
+  const [year, month, day] = date.split('-').map(Number)
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    throw new Error('That date is not valid.')
+  }
+  if (!isReviewSource(input.source)) {
+    throw new Error('Choose where the review came from.')
+  }
+  return {
+    quote,
+    names,
+    eventType,
+    town,
+    date,
+    source: input.source,
+    show: input.show,
   }
 }
 
 export async function listReviews(): Promise<ReviewView[]> {
   await ensureReviews()
-  const rows = await query<{
-    id: number
-    quote: string
-    names: string
-    when_label: string
-  }>('SELECT id, quote, names, when_label FROM reviews ORDER BY id')
+  const rows = await query<ReviewRow>(
+    `SELECT ${REVIEW_COLUMNS} FROM reviews ORDER BY reviewed_on DESC, id DESC`,
+  )
   return rows.map(toReview)
 }
 
-/** Wedding page cards. Quotes stay off the public page while Kind Words is off. */
-export async function homepageReviews(): Promise<ReviewView[]> {
-  if (!(await kindWordsOn())) return []
-  return listReviews()
+/** Public cards. Only reviews switched on, newest first. */
+export async function homepageReviews(): Promise<PublicReview[]> {
+  const reviews = await listReviews()
+  return reviews
+    .filter((review) => review.show)
+    .map((review) => ({
+      id: review.id,
+      quote: review.quote,
+      names: review.names,
+      eventType: review.eventType,
+      town: review.town,
+      date: review.date,
+      source: review.source,
+    }))
 }
 
-export async function addReview(input: {
-  quote: string
-  names: string
-  when: string
-}): Promise<ReviewView> {
+export async function addReview(input: ReviewDraft): Promise<ReviewView> {
   await ensureReviews()
-  const quote = input.quote.trim()
-  const names = input.names.trim()
-  const when = input.when.trim()
-  if (!quote) throw new Error('The review is required.')
-  if (!names) throw new Error('A name is required.')
-  if (quote.length > 800) throw new Error('That review is too long.')
-  if (names.length > 80) throw new Error('That name is too long.')
-  if (when.length > 80) throw new Error('That line is too long.')
+  const review = parseReview(input)
   const ids = await query<{ id: number }>(
     'SELECT COALESCE(MAX(id), 0) + 1 AS id FROM reviews',
   )
   const id = whole(ids[0]?.id, 'Review')
   await query(
-    'INSERT INTO reviews (id, quote, names, when_label) VALUES ($1, $2, $3, $4)',
-    [id, quote, names, when],
+    `INSERT INTO reviews (id, quote, names, when_label, event_type, town, reviewed_on, source, show_on_site)
+     VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8)`,
+    [
+      id,
+      review.quote,
+      review.names,
+      review.eventType,
+      review.town,
+      review.date,
+      review.source,
+      review.show ? 1 : 0,
+    ],
   )
-  return { id, quote, names, when }
+  return { id, ...review }
+}
+
+export async function updateReview(
+  id: number,
+  input: ReviewDraft,
+): Promise<ReviewView> {
+  const reviewIdValue = reviewId(id)
+  await ensureReviews()
+  const review = parseReview(input)
+  const rows = await query<ReviewRow>(
+    `UPDATE reviews
+     SET quote = $1, names = $2, event_type = $3, town = $4, reviewed_on = $5, source = $6, show_on_site = $7
+     WHERE id = $8
+     RETURNING ${REVIEW_COLUMNS}`,
+    [
+      review.quote,
+      review.names,
+      review.eventType,
+      review.town,
+      review.date,
+      review.source,
+      review.show ? 1 : 0,
+      reviewIdValue,
+    ],
+  )
+  const saved = rows[0]
+  if (!saved) throw new Error('That review is not on the page.')
+  return toReview(saved)
+}
+
+export async function setReviewShown(
+  id: number,
+  show: boolean,
+): Promise<ReviewView> {
+  const reviewIdValue = reviewId(id)
+  await ensureReviews()
+  const rows = await query<ReviewRow>(
+    `UPDATE reviews SET show_on_site = $1 WHERE id = $2 RETURNING ${REVIEW_COLUMNS}`,
+    [show ? 1 : 0, reviewIdValue],
+  )
+  const saved = rows[0]
+  if (!saved) throw new Error('That review is not on the page.')
+  return toReview(saved)
 }
 
 export async function removeReview(id: number): Promise<void> {
-  if (!Number.isInteger(id) || id < 1)
-    throw new Error('That review is not on the page.')
+  const reviewIdValue = reviewId(id)
   await ensureReviews()
-  await query('DELETE FROM reviews WHERE id = $1', [id])
+  await query('DELETE FROM reviews WHERE id = $1', [reviewIdValue])
 }
 
 export async function getTerms(): Promise<string> {

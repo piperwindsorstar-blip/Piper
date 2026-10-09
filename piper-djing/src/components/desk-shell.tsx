@@ -15,6 +15,7 @@ const LINKS = [
   ['/desk/questions', 'Questions'],
   ['/desk/media', 'Media'],
   ['/desk/partners', 'Partners'],
+  ['/desk/reviews', 'Reviews'],
   ['/desk/bots', 'Bots'],
   ['/desk/settings', 'Settings'],
 ] as const
