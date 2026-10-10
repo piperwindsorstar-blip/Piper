@@ -27,6 +27,7 @@ export type LetterBooking = {
   status: string
   totalCents: number
   depositCents: number
+  discountCents?: number
   slug: string
   holdStartedOn: string | null
   holdLastDay: string | null
@@ -85,6 +86,7 @@ export function bookingLetter(
       booking.invoice?.depositCents ?? booking.depositCents,
       received,
       balance,
+      booking.discountCents ?? 0,
     ),
     '',
     `Your page: ${url(`/c/${booking.slug}`)}`,
@@ -121,6 +123,7 @@ export function invoiceLetter(
       invoice.depositCents,
       invoice.receivedCents,
       invoice.balanceCents,
+      booking.discountCents ?? 0,
     ),
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
@@ -169,8 +172,10 @@ function moneyBlock(
   deposit: number,
   received: number,
   balance: number,
+  discount = 0,
 ): string {
   return [
+    ...(discount > 0 ? [`Discount: ${cad(discount)}`] : []),
     `Total: ${cad(total)}`,
     `Deposit: ${cad(deposit)}`,
     `Received: ${cad(received)}`,

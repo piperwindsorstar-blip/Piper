@@ -135,6 +135,7 @@ function toLetter(booking: BookingView): LetterBooking {
     status: booking.status,
     totalCents: booking.totalCents,
     depositCents: booking.depositCents,
+    discountCents: booking.discountCents,
     slug: booking.slug,
     holdStartedOn: booking.holdStartedOn,
     holdLastDay: booking.holdLastDay,

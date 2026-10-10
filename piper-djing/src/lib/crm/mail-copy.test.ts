@@ -100,6 +100,13 @@ describe('couple emails', () => {
     assert.doesNotMatch(letter.text, /Butcher/)
   })
 
+  it('names a custom discount and leaves it off when there is none', () => {
+    const letter = bookingLetter({ ...sample, discountCents: 10000 }, url)
+    assert.match(letter.text, /Discount: \$100\.00/)
+    assert.match(letter.text, /Total: \$2,350\.00/)
+    assert.doesNotMatch(bookingLetter(sample, url).text, /Discount:/)
+  })
+
   it('refuses an invoice letter when there is no invoice', () => {
     assert.throws(
       () => invoiceLetter({ ...sample, invoice: null }, url),

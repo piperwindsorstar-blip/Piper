@@ -161,3 +161,26 @@ export function quote(
         : deposit30(totalCents)
   return { totalCents, depositCents }
 }
+
+/** A custom discount comes off the quoted total. The deposit is calculated again. */
+export function applyDiscount(
+  quoted: { totalCents: number; depositCents: number },
+  discountCents: number,
+  shape: { packageId: PackageId; withStag: boolean },
+): { totalCents: number; depositCents: number; discountCents: number } {
+  if (!Number.isInteger(discountCents) || discountCents < 0) {
+    throw new Error('The discount is a whole amount.')
+  }
+  if (discountCents === 0) return { ...quoted, discountCents: 0 }
+  if (discountCents > quoted.totalCents) {
+    throw new Error('That discount is larger than the total.')
+  }
+  const totalCents = quoted.totalCents - discountCents
+  const depositCents =
+    shape.packageId === 'ceremony'
+      ? totalCents
+      : shape.packageId === 'full' && shape.withStag
+        ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, totalCents)
+        : deposit30(totalCents)
+  return { totalCents, depositCents, discountCents }
+}

@@ -1,3 +1,4 @@
+import { optionalDiscount } from '../crm/money.ts'
 import { emailBooking, emailInvoice, listEmails } from '../crm/mail.server.ts'
 import {
   addMedia,
@@ -235,6 +236,7 @@ async function writeAction(
           venueTwoStreet: str(body, 'venueTwoStreet'),
           sample: bool(body, 'sample'),
           notes: str(body, 'notes'),
+          discountCents: optionalDiscount(body, 0),
         }),
       })
     case 'update_booking': {
@@ -285,6 +287,7 @@ async function writeAction(
           sample:
             body.sample === undefined ? current.sample : bool(body, 'sample'),
           notes: body.notes === undefined ? current.notes : str(body, 'notes'),
+          discountCents: optionalDiscount(body, current.discountCents),
         }),
       })
     }

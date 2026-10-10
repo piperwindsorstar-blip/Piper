@@ -5,6 +5,7 @@ import {
   FULL_PLUS_STAG_DEPOSIT_CENTS,
   HOLD_DAYS,
   UPLIGHT_CENTS,
+  applyDiscount,
   deposit30,
   holdCovers,
   quote,
@@ -49,21 +50,97 @@ describe('travel and uplights', () => {
 
 describe('packages', () => {
   it('keeps the locked package totals', () => {
-    assert.equal(quote({ packageId: 'full', withStag: false, uplights: 0, venueKm: [] }).totalCents, 165000)
-    assert.equal(quote({ packageId: 'reception', withStag: false, uplights: 0, venueKm: [] }).totalCents, 155000)
-    assert.equal(quote({ packageId: 'stag', withStag: false, uplights: 0, venueKm: [] }).totalCents, 70000)
-    assert.equal(quote({ packageId: 'ceremony', withStag: false, uplights: 0, venueKm: [] }).totalCents, 35000)
+    assert.equal(
+      quote({ packageId: 'full', withStag: false, uplights: 0, venueKm: [] })
+        .totalCents,
+      165000,
+    )
+    assert.equal(
+      quote({
+        packageId: 'reception',
+        withStag: false,
+        uplights: 0,
+        venueKm: [],
+      }).totalCents,
+      155000,
+    )
+    assert.equal(
+      quote({ packageId: 'stag', withStag: false, uplights: 0, venueKm: [] })
+        .totalCents,
+      70000,
+    )
+    assert.equal(
+      quote({
+        packageId: 'ceremony',
+        withStag: false,
+        uplights: 0,
+        venueKm: [],
+      }).totalCents,
+      35000,
+    )
   })
 
   it('books a full day plus a stag as one total with a $500 deposit', () => {
-    const quoted = quote({ packageId: 'full', withStag: true, uplights: 0, venueKm: [] })
+    const quoted = quote({
+      packageId: 'full',
+      withStag: true,
+      uplights: 0,
+      venueKm: [],
+    })
     assert.equal(quoted.totalCents, 165000 + 70000)
     assert.equal(quoted.depositCents, FULL_PLUS_STAG_DEPOSIT_CENTS)
   })
 
+  it('takes a custom discount off the total and calculates the deposit again', () => {
+    const full = quote({
+      packageId: 'full',
+      withStag: false,
+      uplights: 0,
+      venueKm: [],
+    })
+    const discounted = applyDiscount(full, 10000, {
+      packageId: 'full',
+      withStag: false,
+    })
+    assert.equal(discounted.totalCents, 155000)
+    assert.equal(discounted.depositCents, 47500)
+    const ceremony = quote({
+      packageId: 'ceremony',
+      withStag: false,
+      uplights: 0,
+      venueKm: [],
+    })
+    const ceremonyOff = applyDiscount(ceremony, 5000, {
+      packageId: 'ceremony',
+      withStag: false,
+    })
+    assert.equal(ceremonyOff.totalCents, 30000)
+    assert.equal(ceremonyOff.depositCents, 30000)
+    const stag = quote({
+      packageId: 'full',
+      withStag: true,
+      uplights: 0,
+      venueKm: [],
+    })
+    const stagOff = applyDiscount(stag, 10000, {
+      packageId: 'full',
+      withStag: true,
+    })
+    assert.equal(stagOff.totalCents, 225000)
+    assert.equal(stagOff.depositCents, 50000)
+    assert.throws(
+      () => applyDiscount(full, 200000, { packageId: 'full', withStag: false }),
+      /larger than the total/,
+    )
+  })
+
   it('keeps the ceremony deposit at the full amount', () => {
     assert.equal(
-      requiredDeposit({ packageId: 'ceremony', withStag: false, invoiceDepositCents: 1000 }),
+      requiredDeposit({
+        packageId: 'ceremony',
+        withStag: false,
+        invoiceDepositCents: 1000,
+      }),
       CEREMONY_DEPOSIT_CENTS,
     )
   })
@@ -78,7 +155,13 @@ describe('hold window', () => {
   })
 
   it('uses the Toronto calendar day', () => {
-    assert.equal(torontoToday(new Date('2026-10-07T02:30:00.000Z')), '2026-10-06')
-    assert.equal(torontoToday(new Date('2026-10-07T04:30:00.000Z')), '2026-10-07')
+    assert.equal(
+      torontoToday(new Date('2026-10-07T02:30:00.000Z')),
+      '2026-10-06',
+    )
+    assert.equal(
+      torontoToday(new Date('2026-10-07T04:30:00.000Z')),
+      '2026-10-07',
+    )
   })
 })

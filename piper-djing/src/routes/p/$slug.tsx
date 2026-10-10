@@ -29,9 +29,14 @@ function InvoicePage() {
         </h1>
         <p className="mt-4 text-ink-soft">{longDate(invoice.eventDate)}</p>
         {invoice.status === 'void' ? (
-          <p className="mt-6 text-sm">This invoice is void. The balance is zero.</p>
+          <p className="mt-6 text-sm">
+            This invoice is void. The balance is zero.
+          </p>
         ) : null}
         <dl className="mt-8 grid gap-2 text-sm">
+          {invoice.discountCents > 0 ? (
+            <Row label="Discount" value={cad(invoice.discountCents)} />
+          ) : null}
           <Row label="Total" value={cad(invoice.totalCents)} />
           <Row label="Deposit" value={cad(invoice.depositCents)} />
           <Row label="Received" value={cad(invoice.receivedCents)} />

@@ -65,6 +65,9 @@ function CouplePage() {
           </p>
         ) : null}
         <dl className="mt-8 grid gap-2 text-sm">
+          {booking.discountCents > 0 ? (
+            <Row label="Discount" value={cad(booking.discountCents)} />
+          ) : null}
           <Row label="Total" value={cad(booking.totalCents)} />
           <Row label="Deposit" value={cad(booking.depositCents)} />
           <Row label="Received" value={cad(booking.receivedCents)} />

@@ -34,6 +34,7 @@ CREATE TABLE bookings (
   status text NOT NULL,
   total_cents integer NOT NULL,
   deposit_cents integer NOT NULL,
+  discount_cents integer NOT NULL DEFAULT 0,
   hold_started_on text,
   stag_released boolean NOT NULL DEFAULT false,
   notes text NOT NULL DEFAULT '',

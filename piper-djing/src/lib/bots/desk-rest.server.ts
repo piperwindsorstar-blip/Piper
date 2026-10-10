@@ -56,7 +56,7 @@ import {
 import type { BookingView, BotRole, LeadView } from '../crm/store.server.ts'
 import type { ReviewDraft } from '../crm/reviews.ts'
 import { isPackageId } from '../crm/defaults.ts'
-import { dollarsToCents } from '../crm/money.ts'
+import { dollarsToCents, optionalDiscount } from '../crm/money.ts'
 import { legacyRole } from './desk-leads.server.ts'
 import { selectLeads, toBotLead } from './desk-leads.ts'
 import { deskBotTarget } from './desk-rest.ts'
@@ -413,6 +413,7 @@ async function bookingResource(
           venueTwoStreet: str(body, 'venueTwoStreet'),
           sample: body.sample === true || body.test === true,
           notes: str(body, 'notes'),
+          discountCents: optionalDiscount(body, 0),
         }),
       ),
     })
@@ -472,6 +473,7 @@ async function bookingResource(
               ? current.sample
               : body.sample === true || body.test === true,
           notes: body.notes === undefined ? current.notes : str(body, 'notes'),
+          discountCents: optionalDiscount(body, current.discountCents),
         }),
       ),
     })

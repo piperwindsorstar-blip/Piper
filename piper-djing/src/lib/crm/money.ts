@@ -7,6 +7,27 @@ export function cad(cents: number): string {
   return `${sign}$${dollars.toLocaleString('en-CA')}.${rest}`
 }
 
+export function optionalDiscount(
+  body: { discountCents?: unknown; discountDollars?: unknown },
+  fallback: number,
+): number {
+  if (body.discountCents !== undefined) {
+    const value =
+      typeof body.discountCents === 'number'
+        ? body.discountCents
+        : Number(body.discountCents)
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error('The discount is a whole amount.')
+    }
+    return value
+  }
+  if (body.discountDollars !== undefined) {
+    const raw = String(body.discountDollars).trim()
+    return raw ? dollarsToCents(raw) : 0
+  }
+  return fallback
+}
+
 export function dollarsToCents(value: string): number {
   const trimmed = value.trim()
   if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {

@@ -52,7 +52,7 @@ import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
 import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
-import { PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
+import { applyDiscount, PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
 
 const deskRoute = getRouteApi('/desk')
 
@@ -169,12 +169,13 @@ function NewBooking({
   const [packageId, setPackageId] = useState('full')
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(0)
-  const [preview, setPreview] = useState(() =>
-    quote(
+  const [preview, setPreview] = useState(() => ({
+    ...quote(
       { packageId: 'full', withStag: false, uplights: 0, venueKm: [] },
       prices,
     ),
-  )
+    discountCents: 0,
+  }))
 
   return (
     <section className={`${deskCard} ${open ? 'border-neon/40' : ''}`}>
@@ -206,6 +207,11 @@ function NewBooking({
           const formElement = event.currentTarget
           const form = new FormData(formElement)
           const withStag = form.get('withStag') === 'on'
+          const discount = readDiscount(form)
+          if (!discount.ok) {
+            setError(discount.error)
+            return
+          }
           void add({
             data: {
               partnerOne: String(form.get('partnerOne') ?? ''),
@@ -224,6 +230,7 @@ function NewBooking({
               venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
               sample: form.get('sample') === 'on',
               notes: String(form.get('notes') ?? ''),
+              discountCents: discount.cents,
             },
           }).then(async (result) => {
             if (!result.ok) {
@@ -235,8 +242,8 @@ function NewBooking({
             formElement.reset()
             setDraft((value) => value + 1)
             setPackageId('full')
-            setPreview(
-              quote(
+            setPreview({
+              ...quote(
                 {
                   packageId: 'full',
                   withStag: false,
@@ -245,7 +252,8 @@ function NewBooking({
                 },
                 prices,
               ),
-            )
+              discountCents: 0,
+            })
             await router.invalidate()
           })
         }}
@@ -267,6 +275,11 @@ function NewBooking({
               <p className="font-display text-2xl font-extrabold tabular-nums">
                 {cad(preview.totalCents)}
               </p>
+              {preview.discountCents > 0 ? (
+                <p className="text-xs text-white/65">
+                  {cad(preview.discountCents)} off
+                </p>
+              ) : null}
             </div>
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">
@@ -764,8 +777,10 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
   const venueKm = kilometres(data).filter(
     (km) => Number.isFinite(km) && km >= 0,
   )
+  const rawDiscount = String(data.get('discount') ?? '').trim()
   try {
-    return quote(
+    const discountCents = rawDiscount ? dollarsToCents(rawDiscount) : 0
+    const quoted = quote(
       {
         packageId,
         withStag: packageId === 'full' && data.get('withStag') === 'on',
@@ -774,8 +789,31 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
       },
       prices,
     )
+    return applyDiscount(quoted, discountCents, {
+      packageId,
+      withStag: packageId === 'full' && data.get('withStag') === 'on',
+    })
   } catch {
     return null
+  }
+}
+
+function discountFrom(form: FormData): number {
+  const raw = String(form.get('discount') ?? '').trim()
+  if (!raw) return 0
+  return dollarsToCents(raw)
+}
+
+function readDiscount(
+  form: FormData,
+): { ok: true; cents: number } | { ok: false; error: string } {
+  try {
+    return { ok: true, cents: discountFrom(form) }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Enter a discount.',
+    }
   }
 }
 
@@ -809,6 +847,7 @@ function BookingCard({
     status: string
     totalCents: number
     depositCents: number
+    discountCents: number
     holdStartedOn: string | null
     holdLastDay: string | null
     stagReleased: boolean
@@ -879,9 +918,12 @@ function BookingCard({
             </p>
           ) : null}
           <p className="mt-1 text-sm text-white/85 tabular-nums">
-            {cad(booking.invoice?.totalCents ?? booking.totalCents)} total ·{' '}
-            {cad(booking.invoice?.depositCents ?? booking.depositCents)} deposit
-            · {cad(booking.invoice?.receivedCents ?? 0)} received ·{' '}
+            {cad(booking.invoice?.totalCents ?? booking.totalCents)} total
+            {booking.discountCents > 0
+              ? ` · ${cad(booking.discountCents)} off`
+              : ''}{' '}
+            · {cad(booking.invoice?.depositCents ?? booking.depositCents)}{' '}
+            deposit · {cad(booking.invoice?.receivedCents ?? 0)} received ·{' '}
             {cad(booking.invoice?.balanceCents ?? booking.totalCents)} balance
             {booking.invoice ? ` · invoice ${booking.invoice.status}` : ''}
           </p>
@@ -939,6 +981,11 @@ function BookingCard({
             event.preventDefault()
             const form = new FormData(event.currentTarget)
             const withStag = form.get('withStag') === 'on'
+            const discount = readDiscount(form)
+            if (!discount.ok) {
+              setError(discount.error)
+              return
+            }
             void save({
               data: {
                 id: booking.id,
@@ -958,6 +1005,7 @@ function BookingCard({
                 venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
                 sample: form.get('sample') === 'on',
                 notes: String(form.get('notes') ?? ''),
+                discountCents: discount.cents,
               },
             }).then(async (result) => {
               if (!result.ok) {
@@ -993,6 +1041,7 @@ function BookingCard({
               venueTwoStreet: booking.venueTwoStreet,
               sample: booking.sample,
               notes: booking.notes,
+              discountCents: booking.discountCents,
             }}
           />
           {!booking.venueName.trim() || !booking.venueStreet.trim() ? (
@@ -1505,6 +1554,7 @@ function BookingFields({
     venueTwoStreet: string
     sample: boolean
     notes: string
+    discountCents: number
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
@@ -1596,6 +1646,19 @@ function BookingFields({
           name="kmTwo"
           inputMode="decimal"
           defaultValue={defaults?.kmTwo}
+        />
+      </label>
+      <label className="field">
+        Discount
+        <input
+          name="discount"
+          inputMode="decimal"
+          placeholder="0.00"
+          defaultValue={
+            defaults?.discountCents
+              ? (defaults.discountCents / 100).toFixed(2)
+              : ''
+          }
         />
       </label>
       <VenuePair

@@ -27,6 +27,7 @@ const EDGE_SCHEMA = [
     status text NOT NULL,
     total_cents integer NOT NULL,
     deposit_cents integer NOT NULL,
+    discount_cents integer NOT NULL DEFAULT 0,
     hold_started_on text,
     stag_released integer NOT NULL DEFAULT 0,
     notes text NOT NULL DEFAULT '',

@@ -79,6 +79,7 @@ export type BookingView = {
   status: BookingState['status']
   totalCents: number
   depositCents: number
+  discountCents: number
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -130,6 +131,7 @@ type BookingRow = {
   status: string
   total_cents: unknown
   deposit_cents: unknown
+  discount_cents?: unknown
   hold_started_on: string | null
   stag_released: unknown
   notes: string
@@ -224,6 +226,7 @@ function toState(row: BookingRow): BookingState {
     status: asStatus(row.status),
     totalCents: whole(row.total_cents, 'Total'),
     depositCents: whole(row.deposit_cents, 'Deposit'),
+    discountCents: whole(row.discount_cents ?? 0, 'Discount'),
     holdStartedOn: row.hold_started_on,
     stagReleased: flag(row.stag_released),
   }
@@ -275,6 +278,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     status: state.status,
     totalCents: state.totalCents,
     depositCents: state.depositCents,
+    discountCents: state.discountCents,
     holdStartedOn: state.holdStartedOn,
     holdLastDay: state.holdStartedOn ? holdLastDay(state.holdStartedOn) : null,
     stagReleased: state.stagReleased,
@@ -293,8 +297,24 @@ async function ensurePlanningColumn(): Promise<void> {
   }
 }
 
+async function ensureDiscountColumn(): Promise<void> {
+  try {
+    await query('SELECT discount_cents FROM bookings LIMIT 0')
+  } catch {
+    try {
+      await query(
+        'ALTER TABLE bookings ADD COLUMN discount_cents integer NOT NULL DEFAULT 0',
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!/duplicate column|already exists/i.test(message)) throw error
+    }
+  }
+}
+
 async function bookingRows(): Promise<BookingRow[]> {
   await ensurePlanningColumn()
+  await ensureDiscountColumn()
   return query<BookingRow>('SELECT * FROM bookings ORDER BY id DESC')
 }
 
@@ -307,6 +327,7 @@ async function invoiceFor(bookingId: number): Promise<InvoiceRow | null> {
 }
 
 async function bookingRow(id: number): Promise<BookingRow> {
+  await ensureDiscountColumn()
   const rows = await query<BookingRow>('SELECT * FROM bookings WHERE id = $1', [
     id,
   ])
@@ -361,6 +382,15 @@ export type BookingInput = {
   venueTwoStreet: string
   sample: boolean
   notes: string
+  discountCents?: number
+}
+
+function discountAmount(value: number | undefined): number {
+  const amount = value ?? 0
+  if (!Number.isInteger(amount) || amount < 0) {
+    throw new Error('The discount is a whole amount.')
+  }
+  return amount
 }
 
 function normalize(input: BookingInput) {
@@ -399,6 +429,7 @@ function normalize(input: BookingInput) {
     venueTwoStreet: optional(input.venueTwoStreet, 160),
     sample: input.sample,
     notes: optional(input.notes, 2000),
+    discountCents: discountAmount(input.discountCents),
   }
 }
 
@@ -778,6 +809,7 @@ export async function removeVenue(id: number): Promise<void> {
 }
 
 export async function createBooking(input: BookingInput): Promise<BookingView> {
+  await ensureDiscountColumn()
   const next = normalize(input)
   await guardIdentity(
     next.partnerOne,
@@ -801,9 +833,9 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
     `INSERT INTO bookings (
       slug, partner_one, partner_two, email, phone, event_date, stag_date, package_id, with_stag,
       uplights, venue_km, venue_name, venue_street, venue_two_name, venue_two_street, sample,
-      status, total_cents, deposit_cents, hold_started_on, stag_released, notes
+      status, total_cents, deposit_cents, hold_started_on, stag_released, notes, discount_cents
     ) VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,$18,NULL,false,$19
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,$18,NULL,false,$19,$20
     ) RETURNING id`,
     [
       bookingSlug,
@@ -825,6 +857,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
       figures.totalCents,
       figures.depositCents,
       next.notes,
+      figures.discountCents,
     ],
   )
   const id = inserted[0]?.id
@@ -1260,6 +1293,7 @@ export type BookingPatch = {
   venueTwoStreet: string
   sample: boolean
   notes: string
+  discountCents?: number
 }
 
 export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
@@ -1289,8 +1323,15 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     current.id,
   )
   const prices = await packagePriceMap()
+  if (locked && next.discountCents > 0) {
+    throw new Error('That agreed total stays.')
+  }
   const figures = locked
-    ? { totalCents: state.totalCents, depositCents: state.depositCents }
+    ? {
+        totalCents: state.totalCents,
+        depositCents: state.depositCents,
+        discountCents: 0,
+      }
     : figuresFor(
         {
           partnerOne: next.partnerOne,
@@ -1304,6 +1345,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
           venueName: next.venueName,
           venueStreet: next.venueStreet,
           sample: next.sample,
+          discountCents: next.discountCents,
         },
         prices,
       )
@@ -1312,8 +1354,8 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
       partner_one = $1, partner_two = $2, email = $3, phone = $4, event_date = $5, stag_date = $6,
       package_id = $7, with_stag = $8, uplights = $9, venue_km = $10, venue_name = $11,
       venue_street = $12, venue_two_name = $13, venue_two_street = $14, sample = $15, notes = $16,
-      total_cents = $17, deposit_cents = $18
-     WHERE id = $19`,
+      total_cents = $17, deposit_cents = $18, discount_cents = $19
+     WHERE id = $20`,
     [
       next.partnerOne,
       next.partnerTwo,
@@ -1333,6 +1375,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
       next.notes,
       figures.totalCents,
       figures.depositCents,
+      figures.discountCents,
       current.id,
     ],
   )
@@ -2407,6 +2450,7 @@ function planningSeed(row: BookingRow): PlanningSeed {
 
 export async function coupleBySlug(slugValue: string) {
   await ensurePlanningColumn()
+  await ensureDiscountColumn()
   const rows = await query<BookingRow & { planning?: string }>(
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
@@ -2431,6 +2475,7 @@ export async function coupleBySlug(slugValue: string) {
     holdLastDay: view.holdLastDay,
     totalCents: view.invoice?.totalCents ?? view.totalCents,
     depositCents: view.invoice?.depositCents ?? view.depositCents,
+    discountCents: view.discountCents,
     receivedCents: view.invoice?.receivedCents ?? 0,
     balanceCents: view.invoice?.balanceCents ?? view.totalCents,
     invoiceStatus: view.invoice?.status ?? null,
@@ -2477,6 +2522,7 @@ export async function invoiceBySlug(slugValue: string) {
     status: view.invoice?.status ?? 'draft',
     totalCents: view.invoice?.totalCents ?? 0,
     depositCents: view.invoice?.depositCents ?? 0,
+    discountCents: view.discountCents,
     receivedCents: view.invoice?.receivedCents ?? 0,
     balanceCents: view.invoice?.balanceCents ?? 0,
   }

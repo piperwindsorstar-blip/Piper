@@ -1,6 +1,8 @@
 import type { PackageId } from './defaults.ts'
 import {
+  applyDiscount,
   CEREMONY_DEPOSIT_CENTS,
+  FULL_PLUS_STAG_DEPOSIT_CENTS,
   holdCovers,
   isBlockedDate,
   isRejectedName,
@@ -27,6 +29,7 @@ export type WeddingInput = {
   venueName: string
   venueStreet: string
   sample: boolean
+  discountCents?: number
 }
 
 export type BookingState = WeddingInput & {
@@ -133,19 +136,26 @@ export function figuresFor(
 ): {
   totalCents: number
   depositCents: number
+  discountCents: number
 } {
+  const discountCents = input.discountCents ?? 0
   const custom = matchCustom(
     input.partnerOne,
     input.partnerTwo,
     input.eventDate,
   )
   if (custom) {
+    if (discountCents > 0) throw new Error('That agreed total stays.')
     return {
       totalCents: custom.totalCents,
       depositCents: custom.depositClearedCents,
+      discountCents: 0,
     }
   }
-  return quote(input, prices)
+  return applyDiscount(quote(input, prices), discountCents, {
+    packageId: input.packageId,
+    withStag: input.withStag,
+  })
 }
 
 export function assertBookableNames(
@@ -185,14 +195,21 @@ function bookIfCovered(
   if (booking.status === 'booked') {
     return { booking, invoice, newlyBooked: false }
   }
+  const discount = booking.discountCents ?? 0
   const required =
     booking.packageId === 'ceremony'
-      ? Math.max(ceremonyCents, invoice.depositCents)
-      : requiredDeposit({
-          packageId: booking.packageId,
-          withStag: booking.withStag,
-          invoiceDepositCents: invoice.depositCents,
-        })
+      ? discount > 0
+        ? invoice.depositCents
+        : Math.max(ceremonyCents, invoice.depositCents)
+      : booking.packageId === 'full' && booking.withStag
+        ? discount > 0
+          ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, invoice.depositCents)
+          : FULL_PLUS_STAG_DEPOSIT_CENTS
+        : requiredDeposit({
+            packageId: booking.packageId,
+            withStag: booking.withStag,
+            invoiceDepositCents: invoice.depositCents,
+          })
   const covered =
     invoice.status === 'sent' &&
     invoice.totalCents > 0 &&
