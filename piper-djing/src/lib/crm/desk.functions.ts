@@ -100,6 +100,12 @@ export const addExternalDate = createServerFn({ method: 'POST' })
       kind: string
       company: string
       label: string
+      partnerOne: string
+      partnerTwo: string
+      venueName: string
+      venueStreet: string
+      venueTwoName: string
+      venueTwoStreet: string
       notes: string
     }) => data,
   )

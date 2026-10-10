@@ -221,6 +221,14 @@ async function externals(
         kind: str(body, 'kind'),
         company: str(body, 'company'),
         label: str(body, 'label') || str(body, 'name'),
+        partnerOne:
+          str(body, 'partnerOne') || coupleNames(str(body, 'couple'))[0],
+        partnerTwo:
+          str(body, 'partnerTwo') || coupleNames(str(body, 'couple'))[1],
+        venueName: str(body, 'venueName') || str(body, 'venue'),
+        venueStreet: str(body, 'venueStreet') || str(body, 'streetAddress'),
+        venueTwoName: str(body, 'venueTwoName'),
+        venueTwoStreet: str(body, 'venueTwoStreet'),
         notes: str(body, 'notes'),
       }),
     })

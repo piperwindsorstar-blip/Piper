@@ -127,6 +127,12 @@ CREATE TABLE external_dates (
   kind text NOT NULL,
   company text NOT NULL,
   label text NOT NULL DEFAULT '',
+  partner_one text NOT NULL DEFAULT '',
+  partner_two text NOT NULL DEFAULT '',
+  venue_name text NOT NULL DEFAULT '',
+  venue_street text NOT NULL DEFAULT '',
+  venue_two_name text NOT NULL DEFAULT '',
+  venue_two_street text NOT NULL DEFAULT '',
   notes text NOT NULL DEFAULT '',
   released integer NOT NULL DEFAULT 0
 );

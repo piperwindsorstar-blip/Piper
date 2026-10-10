@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { deskBotResponse } from '../bots/desk-rest.server.ts'
+import { externalCouple, externalVenues } from './external-dates.ts'
 import { setLegacyDateReader } from '../legacy-book.server.ts'
 import {
   bookExternalDate,
@@ -84,6 +85,38 @@ describe('external dates', { skip: liveBook }, () => {
     assert.equal(await dateOpen('2028-11-15'), false)
   })
 
+  it('saves the couple and both venue addresses', async () => {
+    setLegacyDateReader(async () => 'open')
+    const saved = await bookExternalDate({
+      eventDate: '2028-12-12',
+      kind: 'wedding',
+      company: 'Northstar Events',
+      label: '',
+      notes: 'Outdoor ceremony',
+      partnerOne: 'Sam',
+      partnerTwo: 'Jules',
+      venueName: 'The Barn',
+      venueStreet: '12 Mill Road',
+      venueTwoName: 'Town Hall',
+      venueTwoStreet: '4 King Street',
+    })
+    assert.equal(saved.partnerOne, 'Sam')
+    assert.equal(saved.partnerTwo, 'Jules')
+    assert.equal(saved.venueStreet, '12 Mill Road')
+    assert.equal(saved.venueTwoStreet, '4 King Street')
+    assert.equal(externalCouple(saved), 'Sam and Jules')
+    assert.deepEqual(externalVenues(saved), [
+      'The Barn, 12 Mill Road',
+      'Town Hall, 4 King Street',
+    ])
+    const listed = (await listExternalDates()).find(
+      (row) => row.id === saved.id,
+    )
+    assert.ok(listed)
+    assert.equal(listed.venueName, 'The Barn')
+    assert.equal(listed.venueTwoName, 'Town Hall')
+  })
+
   it('refuses the blocked day, a saved wedding, a blank company, and an unknown kind', async () => {
     setLegacyDateReader(async () => 'open')
     await assert.rejects(
@@ -154,15 +187,30 @@ describe('external dates', { skip: liveBook }, () => {
           kind: 'event',
           company: 'Writer Co',
           name: 'Holiday party',
+          couple: 'Alex and Taylor',
+          venue: 'Harbour Hall',
+          streetAddress: '8 Dock Street',
         }),
       }),
       async () => 'no',
     )
     assert.equal(saved.status, 200)
     const body = (await saved.json()) as {
-      external: { id: number; label: string; released: boolean }
+      external: {
+        id: number
+        label: string
+        partnerOne: string
+        partnerTwo: string
+        venueName: string
+        venueStreet: string
+        released: boolean
+      }
     }
     assert.equal(body.external.label, 'Holiday party')
+    assert.equal(body.external.partnerOne, 'Alex')
+    assert.equal(body.external.partnerTwo, 'Taylor')
+    assert.equal(body.external.venueName, 'Harbour Hall')
+    assert.equal(body.external.venueStreet, '8 Dock Street')
     assert.equal(body.external.released, false)
     assert.equal(await dateOpen('2028-12-01'), false)
     const removed = await deskBotResponse(

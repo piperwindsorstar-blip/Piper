@@ -18,7 +18,11 @@ import {
   statusTone,
 } from '../../components/desk-ui.tsx'
 import { isPackageId } from '../../lib/crm/defaults.ts'
-import { externalKindLabel } from '../../lib/crm/external-dates.ts'
+import {
+  externalCouple,
+  externalKindLabel,
+  externalVenues,
+} from '../../lib/crm/external-dates.ts'
 import type { ExternalDate } from '../../lib/crm/external-dates.ts'
 import type { PackageId } from '../../lib/crm/defaults.ts'
 import { longDate } from '../../lib/crm/dates.ts'
@@ -310,6 +314,12 @@ function ExternalDates({ dates }: { dates: ExternalDate[] }) {
               kind: String(form.get('kind') ?? ''),
               company: String(form.get('company') ?? ''),
               label: String(form.get('label') ?? ''),
+              partnerOne: String(form.get('partnerOne') ?? ''),
+              partnerTwo: String(form.get('partnerTwo') ?? ''),
+              venueName: String(form.get('venueName') ?? ''),
+              venueStreet: String(form.get('venueStreet') ?? ''),
+              venueTwoName: String(form.get('venueTwoName') ?? ''),
+              venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
               notes: String(form.get('notes') ?? ''),
             },
           }).then(async (result) => {
@@ -364,6 +374,54 @@ function ExternalDates({ dates }: { dates: ExternalDate[] }) {
               className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
             />
           </label>
+          <label className="grid gap-1 text-sm">
+            First partner
+            <input
+              name="partnerOne"
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Second partner
+            <input
+              name="partnerTwo"
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Venue name
+            <input
+              name="venueName"
+              maxLength={160}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Venue address
+            <input
+              name="venueStreet"
+              maxLength={160}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Second venue name
+            <input
+              name="venueTwoName"
+              maxLength={160}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Second venue address
+            <input
+              name="venueTwoStreet"
+              maxLength={160}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
         </div>
         <label className="grid gap-1 text-sm">
           Note
@@ -392,12 +450,17 @@ function ExternalDates({ dates }: { dates: ExternalDate[] }) {
               <div className="min-w-0">
                 <p className="font-semibold">
                   {row.company}
-                  {row.label ? ` · ${row.label}` : ''}
+                  {externalCouple(row) ? ` · ${externalCouple(row)}` : ''}
                 </p>
                 <p className="text-sm text-white/65">
                   {longDate(row.eventDate)} · {externalKindLabel(row.kind)}
                   {row.notes ? ` · ${row.notes}` : ''}
                 </p>
+                {externalVenues(row).map((venue) => (
+                  <p key={venue} className="text-sm text-white/65">
+                    {venue}
+                  </p>
+                ))}
                 {row.released ? (
                   <p className="text-sm text-white/55">
                     A released date stays released.

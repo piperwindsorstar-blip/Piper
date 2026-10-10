@@ -759,8 +759,35 @@ type ExternalRow = {
   kind: string
   company: string
   label: string
+  partner_one: string
+  partner_two: string
+  venue_name: string
+  venue_street: string
+  venue_two_name: string
+  venue_two_street: string
   notes: string
   released: unknown
+}
+
+const EXTERNAL_COLUMNS = [
+  'partner_one',
+  'partner_two',
+  'venue_name',
+  'venue_street',
+  'venue_two_name',
+  'venue_two_street',
+] as const
+
+async function addExternalColumn(name: string): Promise<void> {
+  try {
+    await query(
+      `ALTER TABLE external_dates ADD COLUMN ${name} text NOT NULL DEFAULT ''`,
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/duplicate column|already exists/i.test(message)) return
+    throw error
+  }
 }
 
 async function ensureExternalDates(): Promise<void> {
@@ -780,6 +807,7 @@ async function ensureExternalDates(): Promise<void> {
       notes text NOT NULL DEFAULT '',
       released integer NOT NULL DEFAULT 0`
   await query(`CREATE TABLE IF NOT EXISTS external_dates (${definition})`)
+  for (const name of EXTERNAL_COLUMNS) await addExternalColumn(name)
 }
 
 function toExternal(row: ExternalRow): ExternalDate {
@@ -789,6 +817,12 @@ function toExternal(row: ExternalRow): ExternalDate {
     kind: asExternalKind(row.kind),
     company: row.company,
     label: row.label,
+    partnerOne: row.partner_one,
+    partnerTwo: row.partner_two,
+    venueName: row.venue_name,
+    venueStreet: row.venue_street,
+    venueTwoName: row.venue_two_name,
+    venueTwoStreet: row.venue_two_street,
     notes: row.notes,
     released: flag(row.released),
   }
@@ -831,6 +865,12 @@ export async function bookExternalDate(input: {
   company: string
   label: string
   notes: string
+  partnerOne?: string
+  partnerTwo?: string
+  venueName?: string
+  venueStreet?: string
+  venueTwoName?: string
+  venueTwoStreet?: string
 }): Promise<ExternalDate> {
   const eventDate = input.eventDate.trim()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
@@ -842,14 +882,34 @@ export async function bookExternalDate(input: {
   const kind = asExternalKind(input.kind)
   const company = text(input.company, 80, 'The company')
   const label = optional(input.label, 80)
+  const partnerOne = optional(input.partnerOne ?? '', 80)
+  const partnerTwo = optional(input.partnerTwo ?? '', 80)
+  const venueName = optional(input.venueName ?? '', 160)
+  const venueStreet = optional(input.venueStreet ?? '', 160)
+  const venueTwoName = optional(input.venueTwoName ?? '', 160)
+  const venueTwoStreet = optional(input.venueTwoStreet ?? '', 160)
   const notes = optional(input.notes, 500)
   if (!(await dateOpen(eventDate))) {
     throw new Error('That date is already held.')
   }
   const inserted = await query<{ id: number }>(
-    `INSERT INTO external_dates (event_date, kind, company, label, notes, released)
-     VALUES ($1, $2, $3, $4, $5, 0) RETURNING id`,
-    [eventDate, kind, company, label, notes],
+    `INSERT INTO external_dates (
+      event_date, kind, company, label, partner_one, partner_two,
+      venue_name, venue_street, venue_two_name, venue_two_street, notes, released
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0) RETURNING id`,
+    [
+      eventDate,
+      kind,
+      company,
+      label,
+      partnerOne,
+      partnerTwo,
+      venueName,
+      venueStreet,
+      venueTwoName,
+      venueTwoStreet,
+      notes,
+    ],
   )
   const id = inserted[0]?.id
   if (id == null) throw new Error('That date was not saved.')

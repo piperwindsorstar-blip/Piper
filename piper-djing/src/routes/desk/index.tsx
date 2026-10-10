@@ -1,5 +1,9 @@
 import { Link, createFileRoute, getRouteApi } from '@tanstack/react-router'
-import { externalKindLabel } from '../../lib/crm/external-dates.ts'
+import {
+  externalCouple,
+  externalKindLabel,
+  externalVenues,
+} from '../../lib/crm/external-dates.ts'
 import { cad } from '../../lib/crm/money.ts'
 import { longDate } from '../../lib/crm/dates.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
@@ -77,11 +81,14 @@ function OverviewPage() {
                   <div>
                     <p className="font-semibold">
                       {row.company}
-                      {row.label ? ` · ${row.label}` : ''}
+                      {externalCouple(row) ? ` · ${externalCouple(row)}` : ''}
                     </p>
                     <p className="text-sm text-white/65">
                       {longDate(row.eventDate)} · {externalKindLabel(row.kind)}{' '}
                       for another company
+                      {externalVenues(row).length > 0
+                        ? ` · ${externalVenues(row).join(' · ')}`
+                        : ''}
                     </p>
                   </div>
                   <Chip tone={statusTone('booked')}>booked</Chip>
