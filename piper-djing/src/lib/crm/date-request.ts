@@ -46,6 +46,8 @@ export function parseDateRequest(
   return { ok: true, silent: false, date, eventType }
 }
 
-export function heldDateNotice(open: boolean): string | null {
-  return open ? null : 'That date is already held.'
+export function dateCheckAnswer(open: boolean): string {
+  return open
+    ? 'Yes, your date is available.'
+    : 'No, your date is not available.'
 }

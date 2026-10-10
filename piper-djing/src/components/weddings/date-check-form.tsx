@@ -1,25 +1,29 @@
-import { useRouter } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useRef, useState } from 'react'
 import {
   EVENT_TYPES,
-  heldDateNotice,
+  dateCheckAnswer,
   parseDateRequest,
   todayInToronto,
 } from '../../lib/crm/date-request.ts'
+import type { EventType } from '../../lib/crm/date-request.ts'
 import { checkDate } from '../../lib/crm/public.functions.ts'
 import { LINKS } from './content.ts'
 import { useDateDraft } from './date-draft.tsx'
 import { Icon } from './icon.tsx'
 
 export function DateCheckForm() {
-  const router = useRouter()
   const check = useServerFn(checkDate)
   const { date, setDate } = useDateDraft()
   const [eventType, setEventType] = useState('Wedding')
   const [company, setCompany] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<{
+    message: string
+    booking: { date: string; event: EventType } | null
+  } | null>(null)
   const ticket = useRef(0)
   const field =
     'mt-2 w-full rounded-lg border border-line bg-mist px-4 py-3 text-ink focus:border-violet focus:bg-paper focus:outline-none'
@@ -36,28 +40,28 @@ export function DateCheckForm() {
           todayInToronto(),
         )
         if (!parsed.ok) {
+          setResult(null)
           setError(parsed.error)
           return
         }
         if (parsed.silent) return
         const current = ++ticket.current
         setError(null)
+        setResult(null)
         setPending(true)
         void check({ data: { date: parsed.date } })
           .then((answer) => {
             if (current !== ticket.current) return
-            const held = heldDateNotice(answer.open)
-            if (held) {
-              setError(held)
-              return
-            }
-            void router.navigate({
-              to: '/book',
-              search: { date: parsed.date, event: parsed.eventType },
+            setResult({
+              message: dateCheckAnswer(answer.open),
+              booking: answer.open
+                ? { date: parsed.date, event: parsed.eventType }
+                : null,
             })
           })
           .catch(() => {
             if (current !== ticket.current) return
+            setResult(null)
             setError(
               'That date could not be checked. Email PiperPWeddingDJ@gmail.com and Piper will write back.',
             )
@@ -85,7 +89,11 @@ export function DateCheckForm() {
         required
         min={todayInToronto()}
         value={date}
-        onChange={(event) => setDate(event.target.value)}
+        onChange={(event) => {
+          setDate(event.target.value)
+          setResult(null)
+          setError(null)
+        }}
         className={field}
       />
       <label
@@ -97,7 +105,11 @@ export function DateCheckForm() {
       <select
         id="w-type"
         value={eventType}
-        onChange={(event) => setEventType(event.target.value)}
+        onChange={(event) => {
+          setEventType(event.target.value)
+          setResult(null)
+          setError(null)
+        }}
         className={field}
       >
         {EVENT_TYPES.map((item) => (
@@ -124,6 +136,24 @@ export function DateCheckForm() {
         {pending ? 'Checking the date' : 'Check Wedding Dates'}
         <Icon n="arrow" className="h-4 w-4" />
       </button>
+      {result ? (
+        <p
+          role="status"
+          className="mt-4 text-center font-display text-xl font-bold text-balance text-ink"
+        >
+          {result.message}
+        </p>
+      ) : null}
+      {result?.booking ? (
+        <Link
+          to="/book"
+          search={{ date: result.booking.date, event: result.booking.event }}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-ink py-3 font-bold text-ink transition hover:bg-ink hover:text-white"
+        >
+          Book this date
+          <Icon n="arrow" className="h-4 w-4" />
+        </Link>
+      ) : null}
       {error ? (
         <p
           role="alert"
