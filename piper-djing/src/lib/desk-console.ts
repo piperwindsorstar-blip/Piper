@@ -242,16 +242,19 @@ export function monthActivity(
   key: string,
   bookings: ConsoleBooking[],
   leads: ConsoleLead[],
+  external: { eventDate: string; released: boolean }[] = [],
 ) {
   const onDate = (date: string | null | undefined) =>
     Boolean(date && date.startsWith(key))
   return {
-    booked: bookings.filter(
-      (booking) =>
-        !booking.sample &&
-        booking.status === 'booked' &&
-        onDate(booking.eventDate),
-    ).length,
+    booked:
+      bookings.filter(
+        (booking) =>
+          !booking.sample &&
+          booking.status === 'booked' &&
+          onDate(booking.eventDate),
+      ).length +
+      external.filter((row) => !row.released && onDate(row.eventDate)).length,
     held: bookings.filter(
       (booking) =>
         !booking.sample &&
@@ -265,9 +268,12 @@ export function monthActivity(
 export function bookChartLabel(
   bookings: ConsoleBooking[],
   leads: ConsoleLead[],
+  external: { released: boolean }[] = [],
 ): string {
   const real = bookings.filter((booking) => !booking.sample)
-  const booked = real.filter((booking) => booking.status === 'booked').length
+  const booked =
+    real.filter((booking) => booking.status === 'booked').length +
+    external.filter((row) => !row.released).length
   const held = real.filter((booking) => booking.status === 'hold').length
   return `Weddings per month for the next 24 months. ${booked} booked, ${held} held, ${leads.length} leads. Test samples are excluded.`
 }

@@ -11,6 +11,7 @@ const RESOURCES = [
   'reviews',
   'bots',
   'emails',
+  'externals',
   'settings',
 ] as const
 

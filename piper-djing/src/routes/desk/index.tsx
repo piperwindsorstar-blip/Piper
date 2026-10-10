@@ -1,4 +1,5 @@
 import { Link, createFileRoute, getRouteApi } from '@tanstack/react-router'
+import { externalKindLabel } from '../../lib/crm/external-dates.ts'
 import { cad } from '../../lib/crm/money.ts'
 import { longDate } from '../../lib/crm/dates.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
@@ -46,7 +47,7 @@ function OverviewPage() {
           <p className="mt-0.5 text-sm text-white/65">
             Samples stay off this list.
           </p>
-          {data.upcoming.length === 0 ? (
+          {data.upcoming.length === 0 && data.external.length === 0 ? (
             <p className="mt-4 text-sm text-white/65">No date is held yet.</p>
           ) : (
             <ul className="mt-2 divide-y divide-white/10">
@@ -66,6 +67,24 @@ function OverviewPage() {
                   <Chip tone={statusTone(booking.status)}>
                     {booking.status}
                   </Chip>
+                </li>
+              ))}
+              {data.external.map((row) => (
+                <li
+                  key={`external-${row.id}`}
+                  className="flex items-center justify-between gap-3 py-3"
+                >
+                  <div>
+                    <p className="font-semibold">
+                      {row.company}
+                      {row.label ? ` · ${row.label}` : ''}
+                    </p>
+                    <p className="text-sm text-white/65">
+                      {longDate(row.eventDate)} · {externalKindLabel(row.kind)}{' '}
+                      for another company
+                    </p>
+                  </div>
+                  <Chip tone={statusTone('booked')}>booked</Chip>
                 </li>
               ))}
             </ul>

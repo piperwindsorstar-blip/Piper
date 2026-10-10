@@ -121,6 +121,15 @@ CREATE TABLE emails (
   detail text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE external_dates (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  event_date text NOT NULL,
+  kind text NOT NULL,
+  company text NOT NULL,
+  label text NOT NULL DEFAULT '',
+  notes text NOT NULL DEFAULT '',
+  released integer NOT NULL DEFAULT 0
+);
 `
 
 type EdgeBook = {

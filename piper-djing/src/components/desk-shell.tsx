@@ -104,6 +104,7 @@ export type DeskConsoleData = {
   overview: { totalCents: number }
   bookings: ConsoleBooking[]
   leads: ConsoleLead[]
+  externalDates: { eventDate: string; released: boolean }[]
   questions: unknown[]
   media: unknown[]
   partners: unknown[]
@@ -140,7 +141,8 @@ export function DeskShell({
   const bank = picked ?? routeBank
   const today = todayInToronto()
   const months = upcomingMonths(today)
-  const bookCount = onTheBook(data.bookings).length
+  const externalDates = data.externalDates.filter((row) => !row.released)
+  const bookCount = onTheBook(data.bookings).length + externalDates.length
   const meterInput = {
     bookings: data.bookings,
     leads: data.leads,
@@ -196,10 +198,19 @@ export function DeskShell({
         <div
           className="mt-2 flex h-16 items-end gap-1"
           role="img"
-          aria-label={bookChartLabel(data.bookings, data.leads)}
+          aria-label={bookChartLabel(
+            data.bookings,
+            data.leads,
+            data.externalDates,
+          )}
         >
           {months.map((month) => {
-            const counts = monthActivity(month.key, data.bookings, data.leads)
+            const counts = monthActivity(
+              month.key,
+              data.bookings,
+              data.leads,
+              data.externalDates,
+            )
             const empty = counts.booked + counts.held + counts.lead === 0
             const label = `${month.name} ${month.year}: ${counts.booked} booked, ${counts.held} held, ${counts.lead} lead`
             return (

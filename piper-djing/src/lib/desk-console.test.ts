@@ -52,6 +52,18 @@ describe('desk console meters', () => {
     assert.match(bookChartLabel(bookings, leads), /1 booked, 1 held, 1 leads/)
     assert.equal(monthActivity('2027-06', bookings, []).booked, 1)
     assert.equal(monthActivity('2028-01', bookings, []).booked, 0)
+    assert.equal(
+      monthActivity(
+        '2028-01',
+        bookings,
+        [],
+        [
+          { eventDate: '2028-01-04', released: false },
+          { eventDate: '2028-01-05', released: true },
+        ],
+      ).booked,
+      1,
+    )
   })
 
   it('lights a hold that ends within 14 days and badges real drafts', () => {

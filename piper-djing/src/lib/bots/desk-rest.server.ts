@@ -3,6 +3,7 @@ import { query } from '../db.server.ts'
 import { listEmails } from '../crm/mail.server.ts'
 import {
   addMedia,
+  bookExternalDate,
   addPartner,
   addPayment,
   addQuestion,
@@ -15,6 +16,7 @@ import {
   inviteBot,
   listBots,
   listBookings,
+  listExternalDates,
   listLeads,
   listMedia,
   listPackageOffers,
@@ -22,6 +24,7 @@ import {
   listPayments,
   listQuestions,
   listReviews,
+  releaseExternalDate,
   removeBot,
   removeLead,
   removeMedia,
@@ -187,11 +190,57 @@ async function route(
         return botJson({ error: 'Emails are a record of what was sent.' }, 405)
       }
       return botJson({ emails: await listEmails() })
+    case 'externals':
+      return externals(method, target.id, body)
     case 'settings':
       return settings(method, body, role)
     default:
       return botJson({ error: 'That resource is not on the desk.' }, 404)
   }
+}
+
+async function externals(
+  method: string,
+  id: string | null,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  if (method === 'GET' && !id) {
+    return botJson({ externals: await listExternalDates() })
+  }
+  if (method === 'GET') {
+    const row = (await listExternalDates()).find(
+      (item) => item.id === intId(id),
+    )
+    if (!row) return botJson({ error: 'That date is not on the book.' }, 404)
+    return botJson({ external: row })
+  }
+  if (method === 'POST' && !id) {
+    return botJson({
+      external: await bookExternalDate({
+        eventDate: str(body, 'eventDate') || str(body, 'date'),
+        kind: str(body, 'kind'),
+        company: str(body, 'company'),
+        label: str(body, 'label') || str(body, 'name'),
+        notes: str(body, 'notes'),
+      }),
+    })
+  }
+  if ((method === 'PATCH' || method === 'PUT') && id) {
+    if (body.released !== true) {
+      return botJson(
+        { error: 'Release the date with released set to true.' },
+        400,
+      )
+    }
+    return botJson({ external: await releaseExternalDate(intId(id)) })
+  }
+  if (method === 'DELETE') {
+    return botJson(
+      { error: 'Release the date. A released date stays released.' },
+      405,
+    )
+  }
+  return botJson({ error: 'That action is not on the desk.' }, 405)
 }
 
 async function leadResource(

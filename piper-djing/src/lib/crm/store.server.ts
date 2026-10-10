@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { query } from '../db.server.ts'
+import { query, usesEdgeBook } from '../db.server.ts'
 import {
   assertBookableDate,
   assertBookableNames,
@@ -21,6 +21,8 @@ import {
 } from './booking-rules.ts'
 import { longDate } from './dates.ts'
 import { isPackageId, PACKAGE_BUTTON_COPY, packageName } from './defaults.ts'
+import { asExternalKind } from './external-dates.ts'
+import type { ExternalDate } from './external-dates.ts'
 import type { PackageId } from './defaults.ts'
 import { DESK_OWNER_EMAIL } from './desk-owner.ts'
 import { HOME_BASE } from './home-base.ts'
@@ -322,6 +324,7 @@ async function dateTakenByOthers(
   day: string,
   exceptId: number | null,
 ): Promise<boolean> {
+  if (await externalDateActive(day, null)) return true
   const rows = await bookingRows()
   const others = rows.filter((row) => row.id !== exceptId).map(toState)
   return dateIsTaken(others, day)
@@ -748,6 +751,118 @@ export async function dateOpen(day: string): Promise<boolean> {
   if (await dateTakenByOthers(day, null)) return false
   const legacy = await askLegacyDate(day)
   return legacy !== 'taken'
+}
+
+type ExternalRow = {
+  id: number
+  event_date: string
+  kind: string
+  company: string
+  label: string
+  notes: string
+  released: unknown
+}
+
+async function ensureExternalDates(): Promise<void> {
+  const definition = usesEdgeBook()
+    ? `id integer PRIMARY KEY AUTOINCREMENT,
+      event_date text NOT NULL,
+      kind text NOT NULL,
+      company text NOT NULL,
+      label text NOT NULL DEFAULT '',
+      notes text NOT NULL DEFAULT '',
+      released integer NOT NULL DEFAULT 0`
+    : `id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      event_date text NOT NULL,
+      kind text NOT NULL,
+      company text NOT NULL,
+      label text NOT NULL DEFAULT '',
+      notes text NOT NULL DEFAULT '',
+      released integer NOT NULL DEFAULT 0`
+  await query(`CREATE TABLE IF NOT EXISTS external_dates (${definition})`)
+}
+
+function toExternal(row: ExternalRow): ExternalDate {
+  return {
+    id: whole(row.id, 'External date'),
+    eventDate: row.event_date,
+    kind: asExternalKind(row.kind),
+    company: row.company,
+    label: row.label,
+    notes: row.notes,
+    released: flag(row.released),
+  }
+}
+
+async function externalDateActive(
+  day: string,
+  exceptId: number | null,
+): Promise<boolean> {
+  await ensureExternalDates()
+  const rows = await query<{ id: number }>(
+    'SELECT id FROM external_dates WHERE event_date = $1 AND released = 0',
+    [day],
+  )
+  return rows.some((row) => row.id !== exceptId)
+}
+
+async function externalRow(id: number): Promise<ExternalDate> {
+  await ensureExternalDates()
+  const rows = await query<ExternalRow>(
+    'SELECT * FROM external_dates WHERE id = $1',
+    [id],
+  )
+  const row = rows[0]
+  if (!row) throw new Error('That date is not on the book.')
+  return toExternal(row)
+}
+
+export async function listExternalDates(): Promise<ExternalDate[]> {
+  await ensureExternalDates()
+  const rows = await query<ExternalRow>(
+    'SELECT * FROM external_dates ORDER BY event_date, id',
+  )
+  return rows.map(toExternal)
+}
+
+export async function bookExternalDate(input: {
+  eventDate: string
+  kind: string
+  company: string
+  label: string
+  notes: string
+}): Promise<ExternalDate> {
+  const eventDate = input.eventDate.trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    throw new Error('Choose a date.')
+  }
+  if (isBlockedDate(eventDate, null)) {
+    throw new Error('20 February 2027 is not booked.')
+  }
+  const kind = asExternalKind(input.kind)
+  const company = text(input.company, 80, 'The company')
+  const label = optional(input.label, 80)
+  const notes = optional(input.notes, 500)
+  if (!(await dateOpen(eventDate))) {
+    throw new Error('That date is already held.')
+  }
+  const inserted = await query<{ id: number }>(
+    `INSERT INTO external_dates (event_date, kind, company, label, notes, released)
+     VALUES ($1, $2, $3, $4, $5, 0) RETURNING id`,
+    [eventDate, kind, company, label, notes],
+  )
+  const id = inserted[0]?.id
+  if (id == null) throw new Error('That date was not saved.')
+  return externalRow(whole(id, 'External date'))
+}
+
+export async function releaseExternalDate(id: number): Promise<ExternalDate> {
+  const current = await externalRow(id)
+  if (current.released) return current
+  await query('UPDATE external_dates SET released = 1 WHERE id = $1', [
+    current.id,
+  ])
+  return { ...current, released: true }
 }
 
 export type BookingPatch = {

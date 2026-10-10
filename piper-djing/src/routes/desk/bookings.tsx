@@ -18,13 +18,17 @@ import {
   statusTone,
 } from '../../components/desk-ui.tsx'
 import { isPackageId } from '../../lib/crm/defaults.ts'
+import { externalKindLabel } from '../../lib/crm/external-dates.ts'
+import type { ExternalDate } from '../../lib/crm/external-dates.ts'
 import type { PackageId } from '../../lib/crm/defaults.ts'
 import { longDate } from '../../lib/crm/dates.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
 import {
   addBooking,
+  addExternalDate,
   changeStatus,
   getBookings,
+  releaseExternal,
   markSent,
   markVoid,
   recordPayment,
@@ -57,7 +61,7 @@ export const Route = createFileRoute('/desk/bookings')({
 
 function BookingsPage() {
   const bookings = Route.useLoaderData()
-  const { payments, packages } = deskRoute.useLoaderData()
+  const { payments, packages, externalDates } = deskRoute.useLoaderData()
   const [filter, setFilter] = useState<(typeof FILTERS)[number][1]>('all')
   const [samples, setSamples] = useState(true)
   const pool = samples
@@ -81,6 +85,7 @@ function BookingsPage() {
         </label>
       </div>
       <NewBooking packages={packages} />
+      <ExternalDates dates={externalDates} />
       <div
         role="tablist"
         aria-label="Status"
@@ -256,6 +261,177 @@ function NewBooking({
           </button>
         </div>
       </form>
+    </section>
+  )
+}
+
+function ExternalDates({ dates }: { dates: ExternalDate[] }) {
+  const add = useServerFn(addExternalDate)
+  const release = useServerFn(releaseExternal)
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const active = dates.filter((row) => !row.released)
+  const released = dates.filter((row) => row.released)
+
+  return (
+    <section className={deskCard}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span className="flex items-center gap-3 font-display text-xl font-bold">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-neon text-white">
+            {open ? (
+              <X className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            )}
+          </span>
+          External date
+        </span>
+      </button>
+      <p className="mt-3 text-sm text-white/65">
+        A wedding or other event you play for another company. The date is
+        booked. There is no invoice.
+      </p>
+      <form
+        className={open ? 'mt-5 grid gap-4' : 'hidden'}
+        onSubmit={(event) => {
+          event.preventDefault()
+          const formElement = event.currentTarget
+          const form = new FormData(formElement)
+          void add({
+            data: {
+              eventDate: String(form.get('eventDate') ?? ''),
+              kind: String(form.get('kind') ?? ''),
+              company: String(form.get('company') ?? ''),
+              label: String(form.get('label') ?? ''),
+              notes: String(form.get('notes') ?? ''),
+            },
+          }).then(async (result) => {
+            if (!result.ok) {
+              setNotice(null)
+              setError(result.error)
+              return
+            }
+            setError(null)
+            setNotice('Booked. The date is taken.')
+            setOpen(false)
+            formElement.reset()
+            await router.invalidate()
+          })
+        }}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm">
+            Date
+            <input
+              name="eventDate"
+              type="date"
+              required
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            What it is
+            <select
+              name="kind"
+              defaultValue="wedding"
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            >
+              <option value="wedding">Wedding</option>
+              <option value="event">Event</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Company
+            <input
+              name="company"
+              required
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Who or what
+            <input
+              name="label"
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+        </div>
+        <label className="grid gap-1 text-sm">
+          Note
+          <textarea
+            name="notes"
+            maxLength={500}
+            rows={2}
+            className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
+        </label>
+        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        <button type="submit" className={deskPrimary}>
+          Book this date
+        </button>
+      </form>
+      {notice ? <p className="mt-4 text-sm text-white">{notice}</p> : null}
+      {dates.length === 0 ? (
+        <p className="mt-4 text-sm text-white/65">No external dates yet.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-white/10">
+          {[...active, ...released].map((row) => (
+            <li
+              key={row.id}
+              className="flex flex-wrap items-center justify-between gap-3 py-3"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  {row.company}
+                  {row.label ? ` · ${row.label}` : ''}
+                </p>
+                <p className="text-sm text-white/65">
+                  {longDate(row.eventDate)} · {externalKindLabel(row.kind)}
+                  {row.notes ? ` · ${row.notes}` : ''}
+                </p>
+                {row.released ? (
+                  <p className="text-sm text-white/55">
+                    A released date stays released.
+                  </p>
+                ) : null}
+              </div>
+              {row.released ? (
+                <Chip tone="gray">released</Chip>
+              ) : (
+                <button
+                  type="button"
+                  className={deskGhost}
+                  onClick={() => {
+                    void release({ data: { id: row.id } }).then(
+                      async (result) => {
+                        if (!result.ok) {
+                          setNotice(null)
+                          setError(result.error)
+                          return
+                        }
+                        setError(null)
+                        setNotice('Released. A released date stays released.')
+                        await router.invalidate()
+                      },
+                    )
+                  }}
+                >
+                  Release
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

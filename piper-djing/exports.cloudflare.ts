@@ -109,6 +109,15 @@ const EDGE_SCHEMA = [
     detail text NOT NULL DEFAULT '',
     created_at text NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS external_dates (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    event_date text NOT NULL,
+    kind text NOT NULL,
+    company text NOT NULL,
+    label text NOT NULL DEFAULT '',
+    notes text NOT NULL DEFAULT '',
+    released integer NOT NULL DEFAULT 0
+  )`,
 ]
 
 export class Book extends DurableObject {

@@ -14,8 +14,11 @@ import {
   addQuestion,
   coupleBySlug,
   saveCouplePlanning,
+  bookExternalDate,
   createBooking,
   countedTotal,
+  listExternalDates,
+  releaseExternalDate,
   getTerms,
   inviteBot,
   invoiceBySlug,
@@ -78,9 +81,50 @@ export const getOverview = createServerFn({ method: 'GET' }).handler(
           !booking.sample &&
           (booking.status === 'hold' || booking.status === 'booked'),
       ),
+      external: (await listExternalDates()).filter((row) => !row.released),
     }
   },
 )
+
+export const getExternalDates = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return listExternalDates()
+  },
+)
+
+export const addExternalDate = createServerFn({ method: 'POST' })
+  .validator(
+    (data: {
+      eventDate: string
+      kind: string
+      company: string
+      label: string
+      notes: string
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, external: await bookExternalDate(data) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const releaseExternal = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        external: await releaseExternalDate(data.id),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const getBookings = createServerFn({ method: 'GET' }).handler(
   async () => {

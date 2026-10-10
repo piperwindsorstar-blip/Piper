@@ -3,6 +3,7 @@ import { DeskShell } from '../../components/desk-shell.tsx'
 import { requireDeskPage } from '../../lib/auth/server.ts'
 import {
   getBots,
+  getExternalDates,
   getLeads,
   getMedia,
   getOverview,
@@ -22,6 +23,7 @@ export const Route = createFileRoute('/desk')({
       overview,
       payments,
       leads,
+      externalDates,
       questions,
       media,
       partners,
@@ -32,6 +34,7 @@ export const Route = createFileRoute('/desk')({
       getOverview(),
       getPayments(),
       getLeads(),
+      getExternalDates(),
       getQuestions(),
       getMedia(),
       getPartners(),
@@ -44,6 +47,7 @@ export const Route = createFileRoute('/desk')({
       bookings: payments.bookings,
       payments: payments.payments,
       leads,
+      externalDates,
       questions,
       media,
       partners,
