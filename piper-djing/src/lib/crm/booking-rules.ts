@@ -235,6 +235,28 @@ export function markInvoiceSent(
   return bookIfCovered(next, sent, ceremonyCents)
 }
 
+export function invoiceControls(status: string | null): {
+  send: boolean
+  canVoid: boolean
+  blocked: string | null
+} {
+  if (status == null) {
+    return {
+      send: false,
+      canVoid: false,
+      blocked: 'That booking has no invoice.',
+    }
+  }
+  if (status === 'void') {
+    return {
+      send: false,
+      canVoid: false,
+      blocked: 'A void invoice stays void.',
+    }
+  }
+  return { send: true, canVoid: true, blocked: null }
+}
+
 export function voidInvoice(
   booking: BookingState,
   invoice: InvoiceState,

@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
-  type BookingState,
-  type InvoiceState,
   cancelBooking,
   countedCents,
   dateIsTaken,
   figuresFor,
   invoiceBalance,
+  invoiceControls,
   markInvoiceSent,
   matchCustom,
   recordMoney,
   releaseBooking,
   voidInvoice,
 } from './booking-rules.ts'
+import type { BookingState, InvoiceState } from './booking-rules.ts'
 
 const base = (): BookingState => ({
   partnerOne: 'Alex',
@@ -70,47 +70,79 @@ describe('custom weddings', () => {
 
 describe('status', () => {
   it('starts a hold when a sent invoice has a venue and a street', () => {
-    const result = markInvoiceSent(base(), draft(), new Date('2027-01-15T15:00:00.000Z'))
+    const result = markInvoiceSent(
+      base(),
+      draft(),
+      new Date('2027-01-15T15:00:00.000Z'),
+    )
     assert.equal(result.booking.status, 'hold')
     assert.equal(result.booking.holdStartedOn, '2027-01-15')
     assert.equal(result.newlyBooked, false)
   })
 
   it('does not hold without a street', () => {
-    const result = markInvoiceSent({ ...base(), venueStreet: '' }, draft(), new Date('2027-01-15T15:00:00.000Z'))
+    const result = markInvoiceSent(
+      { ...base(), venueStreet: '' },
+      draft(),
+      new Date('2027-01-15T15:00:00.000Z'),
+    )
     assert.equal(result.booking.status, 'open')
   })
 
   it('books only when a sent invoice is above $0 and the deposit is cleared', () => {
-    const held = markInvoiceSent(base(), draft(), new Date('2027-01-15T15:00:00.000Z'))
+    const held = markInvoiceSent(
+      base(),
+      draft(),
+      new Date('2027-01-15T15:00:00.000Z'),
+    )
     const paid = recordMoney(held.booking, held.invoice, 50000)
     assert.equal(paid.booking.status, 'booked')
     assert.equal(paid.newlyBooked, true)
   })
 
   it('does not book a $0 total or a $0 deposit', () => {
-    const held = markInvoiceSent(base(), { ...draft(), totalCents: 0, depositCents: 0 }, new Date('2027-01-15T15:00:00.000Z'))
+    const held = markInvoiceSent(
+      base(),
+      { ...draft(), totalCents: 0, depositCents: 0 },
+      new Date('2027-01-15T15:00:00.000Z'),
+    )
     const paid = recordMoney(held.booking, held.invoice, 50000)
     assert.equal(paid.booking.status, 'hold')
     assert.equal(paid.newlyBooked, false)
   })
 
   it('does not set newlyBooked on a date that is already booked', () => {
-    const booked = { ...base(), status: 'booked' as const, holdStartedOn: '2027-01-01' }
-    const again = recordMoney(booked, { ...draft(), status: 'sent', receivedCents: 50000 }, 1000)
+    const booked = {
+      ...base(),
+      status: 'booked' as const,
+      holdStartedOn: '2027-01-01',
+    }
+    const again = recordMoney(
+      booked,
+      { ...draft(), status: 'sent', receivedCents: 50000 },
+      1000,
+    )
     assert.equal(again.newlyBooked, false)
     assert.equal(again.booking.status, 'booked')
   })
 
   it('does not unbook when money is refunded', () => {
     const booked = { ...base(), status: 'booked' as const }
-    const refunded = recordMoney(booked, { ...draft(), status: 'sent', receivedCents: 50000 }, -50000)
+    const refunded = recordMoney(
+      booked,
+      { ...draft(), status: 'sent', receivedCents: 50000 },
+      -50000,
+    )
     assert.equal(refunded.booking.status, 'booked')
     assert.equal(refunded.invoice.receivedCents, 0)
   })
 
   it('gives a void invoice a zero balance and keeps what was received', () => {
-    const voided = voidInvoice(base(), { ...draft(), status: 'sent', receivedCents: 20000 })
+    const voided = voidInvoice(base(), {
+      ...draft(),
+      status: 'sent',
+      receivedCents: 20000,
+    })
     assert.equal(invoiceBalance(voided.invoice), 0)
     assert.equal(voided.invoice.receivedCents, 20000)
     assert.equal(voided.booking.status, 'open')
@@ -125,8 +157,16 @@ describe('status', () => {
 describe('the public date check', () => {
   it('treats a live hold and a booking as taken', () => {
     const today = '2027-01-20'
-    const hold: BookingState = { ...base(), status: 'hold', holdStartedOn: '2027-01-10' }
-    const booked: BookingState = { ...base(), status: 'booked', eventDate: '2027-09-01' }
+    const hold: BookingState = {
+      ...base(),
+      status: 'hold',
+      holdStartedOn: '2027-01-10',
+    }
+    const booked: BookingState = {
+      ...base(),
+      status: 'booked',
+      eventDate: '2027-09-01',
+    }
     assert.equal(dateIsTaken([hold], '2027-08-14', today), true)
     assert.equal(dateIsTaken([booked], '2027-09-01', today), true)
   })
@@ -143,7 +183,24 @@ describe('the public date check', () => {
     assert.equal(dateIsTaken([releasedStag], '2027-08-14', '2027-01-20'), true)
   })
 
+  it('offers send and void only while an invoice is still live', () => {
+    assert.deepEqual(invoiceControls(null), {
+      send: false,
+      canVoid: false,
+      blocked: 'That booking has no invoice.',
+    })
+    assert.equal(invoiceControls('void').blocked, 'A void invoice stays void.')
+    assert.equal(invoiceControls('void').send, false)
+    assert.equal(invoiceControls('draft').send, true)
+    assert.equal(invoiceControls('draft').canVoid, true)
+    assert.equal(invoiceControls('sent').canVoid, true)
+    assert.equal(invoiceControls('sent').blocked, null)
+  })
+
   it('leaves samples out of the totals', () => {
-    assert.equal(countedCents([{ ...base(), sample: true, totalCents: 999 }, base()]), 235000)
+    assert.equal(
+      countedCents([{ ...base(), sample: true, totalCents: 999 }, base()]),
+      235000,
+    )
   })
 })

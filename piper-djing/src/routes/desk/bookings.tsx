@@ -32,6 +32,8 @@ import {
   sendBookingMail,
   sendInvoiceMail,
 } from '../../lib/crm/desk.functions.ts'
+import { invoiceControls } from '../../lib/crm/booking-rules.ts'
+import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
 import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
@@ -354,6 +356,8 @@ function BookingCard({
     booking.status === 'hold' && booking.holdLastDay
       ? daysUntil(todayInToronto(), booking.holdLastDay)
       : null
+  const controls = invoiceControls(booking.invoice?.status ?? null)
+  const canMail = hasCoupleAddress(booking.email)
 
   return (
     <article
@@ -512,73 +516,102 @@ function BookingCard({
           </button>
         </form>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={deskPrimary}
-            onClick={() => {
-              void sent({ data: { id: booking.id } }).then(async (result) => {
-                if (!result.ok) {
-                  setError(result.error)
-                  return
-                }
-                setError(null)
-                setNotice(
-                  result.newlyBooked
-                    ? 'The deposit cleared. The date is booked.'
-                    : 'The invoice is sent.',
-                )
-                await router.invalidate()
-              })
-            }}
-          >
-            Mark the invoice sent
-          </button>
-          <button
-            type="button"
-            className={deskDanger}
-            onClick={() => {
-              void voided({ data: { id: booking.id } }).then(async (result) => {
-                if (!result.ok) {
-                  setError(result.error)
-                  return
-                }
-                setNotice('The invoice is void. The balance is zero.')
-                await router.invalidate()
-              })
-            }}
-          >
-            Void the invoice
-          </button>
-          <button
-            type="button"
-            className={deskGhost}
-            onClick={() => {
-              void mailBooking({ data: { id: booking.id } }).then(
-                async (result) => {
-                  if (!result.ok) {
-                    setError(result.error)
-                    return
-                  }
-                  setError(null)
-                  setNotice(
-                    result.delivered
-                      ? `The booking email is on its way to ${booking.email}.`
-                      : result.detail,
-                  )
-                  await router.invalidate()
-                },
-              )
-            }}
-          >
-            Email the booking
-          </button>
-          {booking.invoice ? (
+          {controls.send ? (
+            <button
+              type="button"
+              className={deskPrimary}
+              onClick={() => {
+                void sent({ data: { id: booking.id } })
+                  .then(async (result) => {
+                    if (!result.ok) {
+                      setError(result.error)
+                      return
+                    }
+                    setError(null)
+                    setNotice(
+                      result.newlyBooked
+                        ? 'The deposit cleared. The date is booked.'
+                        : 'The invoice is sent.',
+                    )
+                    await router.invalidate()
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
+              }}
+            >
+              Mark the invoice sent
+            </button>
+          ) : null}
+          {controls.canVoid ? (
+            <button
+              type="button"
+              className={deskDanger}
+              onClick={() => {
+                void voided({ data: { id: booking.id } })
+                  .then(async (result) => {
+                    if (!result.ok) {
+                      setError(result.error)
+                      return
+                    }
+                    setError(null)
+                    setNotice('The invoice is void. The balance is zero.')
+                    await router.invalidate()
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
+              }}
+            >
+              Void the invoice
+            </button>
+          ) : null}
+          {canMail ? (
             <button
               type="button"
               className={deskGhost}
               onClick={() => {
-                void mailInvoice({ data: { id: booking.id } }).then(
-                  async (result) => {
+                void mailBooking({ data: { id: booking.id } })
+                  .then(async (result) => {
+                    if (!result.ok) {
+                      setError(result.error)
+                      return
+                    }
+                    setError(null)
+                    setNotice(
+                      result.delivered
+                        ? `The booking email is on its way to ${booking.email}.`
+                        : result.detail,
+                    )
+                    await router.invalidate()
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
+              }}
+            >
+              Email the booking
+            </button>
+          ) : null}
+          {booking.invoice && canMail ? (
+            <button
+              type="button"
+              className={deskGhost}
+              onClick={() => {
+                void mailInvoice({ data: { id: booking.id } })
+                  .then(async (result) => {
                     if (!result.ok) {
                       setError(result.error)
                       return
@@ -590,14 +623,30 @@ function BookingCard({
                         : result.detail,
                     )
                     await router.invalidate()
-                  },
-                )
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
               }}
             >
               Email the invoice
             </button>
           ) : null}
         </div>
+        {controls.blocked ? (
+          <p className="text-sm text-white/85">{controls.blocked}</p>
+        ) : null}
+        {!canMail ? (
+          <p className="text-sm text-rose-300">
+            This booking has no email address.
+          </p>
+        ) : null}
+        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
         <div className="grid gap-5 md:grid-cols-2">
           <form
             className="rounded-xl border border-white/10 bg-ink-950 p-4"
@@ -723,8 +772,6 @@ function BookingCard({
             ) : null}
           </form>
         </div>
-        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
-        {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       </div>
     </article>
   )

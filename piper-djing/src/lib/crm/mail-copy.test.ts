@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { bookingLetter, coupleAddress, invoiceLetter, type LetterBooking } from './mail-copy.ts'
+import {
+  bookingLetter,
+  coupleAddress,
+  hasCoupleAddress,
+  invoiceLetter,
+} from './mail-copy.ts'
+import type { LetterBooking } from './mail-copy.ts'
 
 const url = (path: string) => `https://piperpweddingdj.services${path}`
 
@@ -38,6 +44,8 @@ describe('couple emails', () => {
     assert.throws(() => coupleAddress(''), /no email address/)
     assert.throws(() => coupleAddress('not-an-email'), /no email address/)
     assert.equal(coupleAddress('  mara@example.com '), 'mara@example.com')
+    assert.equal(hasCoupleAddress(''), false)
+    assert.equal(hasCoupleAddress('mara@example.com'), true)
   })
 
   it('writes a booking letter without streets or the home base', () => {
@@ -51,9 +59,15 @@ describe('couple emails', () => {
     assert.match(letter.text, /The Barn/)
     assert.match(letter.text, /\$2,350\.00/)
     assert.match(letter.text, /\$500\.00/)
-    assert.match(letter.text, /https:\/\/piperpweddingdj\.services\/c\/mara-quinn/)
+    assert.match(
+      letter.text,
+      /https:\/\/piperpweddingdj\.services\/c\/mara-quinn/,
+    )
     assert.match(letter.text, /planning form is on that page/)
-    assert.match(letter.text, /https:\/\/piperpweddingdj\.services\/p\/inv-mara/)
+    assert.match(
+      letter.text,
+      /https:\/\/piperpweddingdj\.services\/p\/inv-mara/,
+    )
     assert.doesNotMatch(letter.text, /Chapel/)
     assert.doesNotMatch(letter.text, /Mill Road/)
     assert.doesNotMatch(letter.text, /Butcher/)
@@ -61,18 +75,21 @@ describe('couple emails', () => {
   })
 
   it('writes an invoice letter from the invoice figures', () => {
-    const letter = invoiceLetter({
-      ...sample,
-      sample: false,
-      invoice: {
-        slug: 'inv-mara',
-        status: 'void',
-        totalCents: 165000,
-        depositCents: 50000,
-        receivedCents: 10000,
-        balanceCents: 0,
+    const letter = invoiceLetter(
+      {
+        ...sample,
+        sample: false,
+        invoice: {
+          slug: 'inv-mara',
+          status: 'void',
+          totalCents: 165000,
+          depositCents: 50000,
+          receivedCents: 10000,
+          balanceCents: 0,
+        },
       },
-    }, url)
+      url,
+    )
     assert.equal(letter.subject, 'Your invoice from Piper DJing')
     assert.match(letter.text, /void/)
     assert.match(letter.text, /\$1,650\.00/)
@@ -84,6 +101,9 @@ describe('couple emails', () => {
   })
 
   it('refuses an invoice letter when there is no invoice', () => {
-    assert.throws(() => invoiceLetter({ ...sample, invoice: null }, url), /no invoice/)
+    assert.throws(
+      () => invoiceLetter({ ...sample, invoice: null }, url),
+      /no invoice/,
+    )
   })
 })

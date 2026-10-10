@@ -50,9 +50,13 @@ const STATUS_LABEL: Record<string, string> = {
   void: 'Void',
 }
 
+export function hasCoupleAddress(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+}
+
 export function coupleAddress(email: string): string {
   const trimmed = email.trim()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+  if (!hasCoupleAddress(trimmed)) {
     throw new Error('This booking has no email address.')
   }
   return trimmed
