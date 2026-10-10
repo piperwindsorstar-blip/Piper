@@ -1,6 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { DeskTitle, deskCard } from '../../components/desk-ui.tsx'
-import { getSettings } from '../../lib/crm/desk.functions.ts'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
+import { getSettings, saveSettings } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/settings')({
@@ -11,22 +13,47 @@ export const Route = createFileRoute('/desk/settings')({
 
 function SettingsPage() {
   const settings = Route.useLoaderData()
+  const save = useServerFn(saveSettings)
+  const router = useRouter()
+  const [notice, setNotice] = useState<string | null>(null)
 
   return (
     <div className="grid gap-5">
       <DeskTitle kicker="Settings" title="Settings" />
-      <section className={deskCard}>
-        <dl className="divide-y divide-white/10 text-sm">
-          <div className="flex flex-wrap justify-between gap-3 py-3">
-            <dt className="text-white/65">Desk owner</dt>
-            <dd className="font-semibold">{settings.email}</dd>
-          </div>
-          <div className="flex flex-wrap justify-between gap-3 py-3">
-            <dt className="text-white/65">Home base for travel</dt>
-            <dd className="font-semibold">{settings.homeBase}</dd>
-          </div>
-        </dl>
-      </section>
+      <form
+        className={`${deskCard} grid gap-3`}
+        onSubmit={(event) => {
+          event.preventDefault()
+          const form = new FormData(event.currentTarget)
+          void save({
+            data: {
+              email: String(form.get('email') ?? ''),
+              homeBase: String(form.get('homeBase') ?? ''),
+            },
+          }).then(async (result) => {
+            setNotice(result.ok ? 'Saved.' : result.error)
+            if (result.ok) await router.invalidate()
+          })
+        }}
+      >
+        <label className="field">
+          Desk owner
+          <input
+            name="email"
+            type="email"
+            required
+            defaultValue={settings.email}
+          />
+        </label>
+        <label className="field">
+          Home base for travel
+          <input name="homeBase" required defaultValue={settings.homeBase} />
+        </label>
+        <button type="submit" className={`${deskPrimary} w-fit`}>
+          Save
+        </button>
+        {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
+      </form>
       <section className={deskCard}>
         <p className="text-sm leading-relaxed text-white/85">
           Travel is calculated from kilometres. The first 20 kilometres are

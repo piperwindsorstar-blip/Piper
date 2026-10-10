@@ -107,12 +107,20 @@ export function nameWords(value: string): string[] {
     .filter((word) => word && word !== 'and')
 }
 
-export function isRejectedName(partnerOne: string, partnerTwo: string): boolean {
+export function isRejectedName(
+  partnerOne: string,
+  partnerTwo: string,
+): boolean {
   const words = nameWords(`${partnerOne} ${partnerTwo}`)
-  return BLOCKED_NAMES.some((blocked) => blocked.every((word) => words.includes(word)))
+  return BLOCKED_NAMES.some((blocked) =>
+    blocked.every((word) => words.includes(word)),
+  )
 }
 
-export function isBlockedDate(eventDate: string, stagDate: string | null): boolean {
+export function isBlockedDate(
+  eventDate: string,
+  stagDate: string | null,
+): boolean {
   return eventDate === BLOCKED_DATE || stagDate === BLOCKED_DATE
 }
 
@@ -122,27 +130,32 @@ export function requiredDeposit(input: {
   invoiceDepositCents: number
 }): number {
   if (input.packageId === 'ceremony') return CEREMONY_DEPOSIT_CENTS
-  if (input.packageId === 'full' && input.withStag) return FULL_PLUS_STAG_DEPOSIT_CENTS
+  if (input.packageId === 'full' && input.withStag)
+    return FULL_PLUS_STAG_DEPOSIT_CENTS
   return input.invoiceDepositCents
 }
 
-export function quote(input: {
-  packageId: PackageId
-  withStag: boolean
-  uplights: number
-  venueKm: number[]
-}): { totalCents: number; depositCents: number } {
+export function quote(
+  input: {
+    packageId: PackageId
+    withStag: boolean
+    uplights: number
+    venueKm: number[]
+  },
+  prices: Record<PackageId, number> = PACKAGE_CENTS,
+): { totalCents: number; depositCents: number } {
   if (input.withStag && input.packageId !== 'full') {
     throw new Error('A stag is added to the full wedding day.')
   }
   const packageCents =
     input.packageId === 'full' && input.withStag
-      ? PACKAGE_CENTS.full + PACKAGE_CENTS.stag
-      : PACKAGE_CENTS[input.packageId]
-  const totalCents = packageCents + uplightCents(input.uplights) + travelForVenues(input.venueKm)
+      ? prices.full + prices.stag
+      : prices[input.packageId]
+  const totalCents =
+    packageCents + uplightCents(input.uplights) + travelForVenues(input.venueKm)
   const depositCents =
     input.packageId === 'ceremony'
-      ? CEREMONY_DEPOSIT_CENTS
+      ? prices.ceremony
       : input.packageId === 'full' && input.withStag
         ? FULL_PLUS_STAG_DEPOSIT_CENTS
         : deposit30(totalCents)

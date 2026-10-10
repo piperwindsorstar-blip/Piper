@@ -1,5 +1,6 @@
 import type { PackageId } from './defaults.ts'
 import {
+  CEREMONY_DEPOSIT_CENTS,
   holdCovers,
   isBlockedDate,
   isRejectedName,
@@ -126,7 +127,10 @@ export function matchCustom(
   )
 }
 
-export function figuresFor(input: WeddingInput): {
+export function figuresFor(
+  input: WeddingInput,
+  prices?: Record<PackageId, number>,
+): {
   totalCents: number
   depositCents: number
 } {
@@ -141,7 +145,7 @@ export function figuresFor(input: WeddingInput): {
       depositCents: custom.depositClearedCents,
     }
   }
-  return quote(input)
+  return quote(input, prices)
 }
 
 export function assertBookableNames(
@@ -176,15 +180,19 @@ export type Transition = {
 function bookIfCovered(
   booking: BookingState,
   invoice: InvoiceState,
+  ceremonyCents = CEREMONY_DEPOSIT_CENTS,
 ): Transition {
   if (booking.status === 'booked') {
     return { booking, invoice, newlyBooked: false }
   }
-  const required = requiredDeposit({
-    packageId: booking.packageId,
-    withStag: booking.withStag,
-    invoiceDepositCents: invoice.depositCents,
-  })
+  const required =
+    booking.packageId === 'ceremony'
+      ? Math.max(ceremonyCents, invoice.depositCents)
+      : requiredDeposit({
+          packageId: booking.packageId,
+          withStag: booking.withStag,
+          invoiceDepositCents: invoice.depositCents,
+        })
   const covered =
     invoice.status === 'sent' &&
     invoice.totalCents > 0 &&
@@ -209,6 +217,7 @@ export function markInvoiceSent(
   booking: BookingState,
   invoice: InvoiceState,
   now = new Date(),
+  ceremonyCents = CEREMONY_DEPOSIT_CENTS,
 ): Transition {
   if (invoice.status === 'void') {
     return { booking, invoice, newlyBooked: false }
@@ -223,7 +232,7 @@ export function markInvoiceSent(
   ) {
     next = { ...booking, status: 'hold', holdStartedOn: today }
   }
-  return bookIfCovered(next, sent)
+  return bookIfCovered(next, sent, ceremonyCents)
 }
 
 export function voidInvoice(
@@ -242,9 +251,10 @@ export function recordMoney(
   booking: BookingState,
   invoice: InvoiceState,
   cents: number,
+  ceremonyCents = CEREMONY_DEPOSIT_CENTS,
 ): Transition {
   const receivedCents = Math.max(0, invoice.receivedCents + cents)
-  return bookIfCovered(booking, { ...invoice, receivedCents })
+  return bookIfCovered(booking, { ...invoice, receivedCents }, ceremonyCents)
 }
 
 export function releaseBooking(

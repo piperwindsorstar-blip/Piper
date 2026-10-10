@@ -29,6 +29,15 @@ export async function deskLeadsResponse(
 export async function legacyAllows(
   token: string,
 ): Promise<'yes' | 'no' | 'unknown'> {
+  const verdict = await legacyRole(token)
+  if (verdict === 'reader' || verdict === 'writer' || verdict === 'ceo')
+    return 'yes'
+  return verdict
+}
+
+export async function legacyRole(
+  token: string,
+): Promise<'yes' | 'no' | 'unknown' | 'reader' | 'writer' | 'ceo'> {
   try {
     const response = await fetch(`https://${LEGACY_HOST}/api/bots/v1/glance`, {
       headers: {
@@ -37,10 +46,30 @@ export async function legacyAllows(
       },
       redirect: 'manual',
     })
-    return legacyVerdict(response.status, response.headers.get('content-type'))
+    const verdict = legacyVerdict(
+      response.status,
+      response.headers.get('content-type'),
+    )
+    if (verdict !== 'yes') return verdict
+    const body: unknown = await response.json().catch(() => null)
+    return roleFromGlance(body) ?? 'yes'
   } catch {
     return 'unknown'
   }
+}
+
+function roleFromGlance(body: unknown): 'reader' | 'writer' | 'ceo' | null {
+  if (!body || typeof body !== 'object') return null
+  const record = body as Record<string, unknown>
+  const nested =
+    record.bot && typeof record.bot === 'object'
+      ? (record.bot as Record<string, unknown>).role
+      : null
+  for (const candidate of [record.role, nested]) {
+    if (candidate === 'reader' || candidate === 'writer' || candidate === 'ceo')
+      return candidate
+  }
+  return null
 }
 
 function bearer(request: Request): string {

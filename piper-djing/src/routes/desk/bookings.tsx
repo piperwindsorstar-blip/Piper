@@ -17,7 +17,8 @@ import {
   invoiceTone,
   statusTone,
 } from '../../components/desk-ui.tsx'
-import { isPackageId, PACKAGE_BUTTON_COPY } from '../../lib/crm/defaults.ts'
+import { isPackageId } from '../../lib/crm/defaults.ts'
+import type { PackageId } from '../../lib/crm/defaults.ts'
 import { longDate } from '../../lib/crm/dates.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
 import {
@@ -34,7 +35,7 @@ import {
 import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
-import { quote } from '../../lib/piper/rules.ts'
+import { PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
 
 const deskRoute = getRouteApi('/desk')
 
@@ -54,7 +55,7 @@ export const Route = createFileRoute('/desk/bookings')({
 
 function BookingsPage() {
   const bookings = Route.useLoaderData()
-  const { payments } = deskRoute.useLoaderData()
+  const { payments, packages } = deskRoute.useLoaderData()
   const [filter, setFilter] = useState<(typeof FILTERS)[number][1]>('all')
   const [samples, setSamples] = useState(true)
   const pool = samples
@@ -77,7 +78,7 @@ function BookingsPage() {
           Show test samples
         </label>
       </div>
-      <NewBooking />
+      <NewBooking packages={packages} />
       <div
         role="tablist"
         aria-label="Status"
@@ -117,6 +118,7 @@ function BookingsPage() {
           <BookingCard
             key={booking.id}
             booking={booking}
+            packages={packages}
             payments={payments.filter(
               (payment) => payment.bookingId === booking.id,
             )}
@@ -127,14 +129,22 @@ function BookingsPage() {
   )
 }
 
-function NewBooking() {
+function NewBooking({
+  packages,
+}: {
+  packages: { id: string; name: string; cents: number }[]
+}) {
   const add = useServerFn(addBooking)
   const router = useRouter()
+  const prices = priceRecord(packages)
   const [error, setError] = useState<string | null>(null)
   const [packageId, setPackageId] = useState('full')
   const [open, setOpen] = useState(false)
   const [preview, setPreview] = useState(() =>
-    quote({ packageId: 'full', withStag: false, uplights: 0, venueKm: [] }),
+    quote(
+      { packageId: 'full', withStag: false, uplights: 0, venueKm: [] },
+      prices,
+    ),
   )
 
   return (
@@ -159,7 +169,7 @@ function NewBooking() {
       <form
         className={open ? 'mt-5 grid gap-4' : 'hidden'}
         onChange={(event) => {
-          const next = liveQuote(event.currentTarget)
+          const next = liveQuote(event.currentTarget, prices)
           if (next) setPreview(next)
         }}
         onSubmit={(event) => {
@@ -196,18 +206,25 @@ function NewBooking() {
             formElement.reset()
             setPackageId('full')
             setPreview(
-              quote({
-                packageId: 'full',
-                withStag: false,
-                uplights: 0,
-                venueKm: [],
-              }),
+              quote(
+                {
+                  packageId: 'full',
+                  withStag: false,
+                  uplights: 0,
+                  venueKm: [],
+                },
+                prices,
+              ),
             )
             await router.invalidate()
           })
         }}
       >
-        <BookingFields packageId={packageId} onPackage={setPackageId} />
+        <BookingFields
+          packageId={packageId}
+          onPackage={setPackageId}
+          packages={packages}
+        />
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/10 bg-ink-950 p-4">
           <div className="flex gap-8">
@@ -241,7 +258,17 @@ function NewBooking() {
   )
 }
 
-function liveQuote(form: HTMLFormElement) {
+function priceRecord(
+  packages: { id: string; cents: number }[],
+): Record<PackageId, number> {
+  const prices: Record<PackageId, number> = { ...PACKAGE_CENTS }
+  for (const item of packages) {
+    if (isPackageId(item.id)) prices[item.id] = item.cents
+  }
+  return prices
+}
+
+function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
   const data = new FormData(form)
   const packageId = String(data.get('packageId') ?? 'full')
   if (!isPackageId(packageId)) return null
@@ -251,12 +278,15 @@ function liveQuote(form: HTMLFormElement) {
     (km) => Number.isFinite(km) && km >= 0,
   )
   try {
-    return quote({
-      packageId,
-      withStag: packageId === 'full' && data.get('withStag') === 'on',
-      uplights,
-      venueKm,
-    })
+    return quote(
+      {
+        packageId,
+        withStag: packageId === 'full' && data.get('withStag') === 'on',
+        uplights,
+        venueKm,
+      },
+      prices,
+    )
   } catch {
     return null
   }
@@ -265,7 +295,9 @@ function liveQuote(form: HTMLFormElement) {
 function BookingCard({
   booking,
   payments,
+  packages,
 }: {
+  packages: { id: string; name: string }[]
   booking: {
     id: number
     slug: string
@@ -448,6 +480,7 @@ function BookingCard({
           <BookingFields
             packageId={packageId}
             onPackage={setPackageId}
+            packages={packages}
             columns={3}
             defaults={{
               partnerOne: booking.partnerOne,
@@ -707,11 +740,13 @@ function kilometres(form: FormData): number[] {
 function BookingFields({
   packageId,
   onPackage,
+  packages,
   defaults,
   columns = 2,
 }: {
   packageId: string
   onPackage: (value: string) => void
+  packages: { id: string; name: string }[]
   columns?: 2 | 3
   defaults?: {
     partnerOne: string
@@ -769,7 +804,7 @@ function BookingFields({
           value={packageId}
           onChange={(event) => onPackage(event.target.value)}
         >
-          {PACKAGE_BUTTON_COPY.map((item) => (
+          {packages.map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
             </option>

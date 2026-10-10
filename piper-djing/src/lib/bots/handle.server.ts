@@ -1,28 +1,49 @@
-import { PACKAGE_BUTTON_COPY } from '../crm/defaults.ts'
 import { emailBooking, emailInvoice, listEmails } from '../crm/mail.server.ts'
-import { PACKAGE_CENTS } from '../piper/rules.ts'
 import {
   addMedia,
+  addPartner,
   addPayment,
   addQuestion,
+  addReview,
   botFromToken,
   createBooking,
   createInquiry,
+  deskProfile,
   getTerms,
+  inviteBot,
   listBots,
   listBookings,
   listLeads,
   listMedia,
+  listPackageOffers,
+  listPartners,
   listPayments,
   listQuestions,
+  listReviews,
+  removeBot,
+  removeLead,
+  removeMedia,
+  removePartner,
+  removePayment,
+  removeQuestion,
+  removeReview,
+  saveDeskProfile,
   sendInvoice,
   setBookingStatus,
+  setReviewShown,
   updateBooking,
+  updateBot,
+  updateLead,
+  updateMedia,
+  updatePackageOffer,
+  updatePartner,
+  updatePayment,
+  updateQuestion,
+  updateReview,
   updateTerms,
   voidBookingInvoice,
-  type BookingView,
-  type BotRole,
 } from '../crm/store.server.ts'
+import type { BookingView, BotRole } from '../crm/store.server.ts'
 
 type Bot = { id: number; name: string; role: BotRole }
 
@@ -56,6 +77,10 @@ function canWrite(role: BotRole): boolean {
   return role === 'writer' || role === 'ceo'
 }
 
+function canManage(role: BotRole): boolean {
+  return role === 'ceo'
+}
+
 export async function handleBot(request: Request): Promise<Response> {
   const auth = await actor(request)
   if (!isBot(auth)) return auth
@@ -81,7 +106,7 @@ export async function handleBot(request: Request): Promise<Response> {
     return Response.json({ error: 'This bot can read.' }, { status: 403 })
   }
   try {
-    return await writeAction(body)
+    return await writeAction(auth.role, body)
   } catch (error) {
     return jsonError(error)
   }
@@ -109,14 +134,13 @@ async function readResource(resource: string): Promise<Response> {
     case 'leads':
       return Response.json({ leads: await listLeads() })
     case 'packages':
-      return Response.json({
-        packages: PACKAGE_BUTTON_COPY.map((item) => ({
-          id: item.id,
-          name: item.name,
-          detail: item.detail,
-          cents: PACKAGE_CENTS[item.id],
-        })),
-      })
+      return Response.json({ packages: await listPackageOffers() })
+    case 'partners':
+      return Response.json({ partners: await listPartners() })
+    case 'reviews':
+      return Response.json({ reviews: await listReviews() })
+    case 'settings':
+      return Response.json({ settings: await deskProfile() })
     case 'terms':
       return Response.json({ terms: await getTerms() })
     case 'questions':
@@ -159,7 +183,10 @@ function idOf(body: Record<string, unknown>): number {
   return id
 }
 
-async function writeAction(body: Record<string, unknown>): Promise<Response> {
+async function writeAction(
+  role: BotRole,
+  body: Record<string, unknown>,
+): Promise<Response> {
   switch (body.action) {
     case 'create_lead': {
       const result = await createInquiry({
@@ -281,6 +308,159 @@ async function writeAction(body: Record<string, unknown>): Promise<Response> {
     case 'add_media':
       await addMedia(str(body, 'title'), str(body, 'url'))
       return Response.json({ media: await listMedia() })
+    case 'update_question':
+      return Response.json({
+        question: await updateQuestion(num(body, 'id'), str(body, 'prompt')),
+      })
+    case 'delete_question':
+      await removeQuestion(num(body, 'id'))
+      return Response.json({ questions: await listQuestions() })
+    case 'update_media':
+      return Response.json({
+        media: await updateMedia(
+          num(body, 'id'),
+          str(body, 'title'),
+          str(body, 'url'),
+        ),
+      })
+    case 'delete_media':
+      await removeMedia(num(body, 'id'))
+      return Response.json({ media: await listMedia() })
+    case 'update_lead':
+      return Response.json({
+        lead: await updateLead({
+          id: num(body, 'id'),
+          partnerOne: str(body, 'partnerOne'),
+          partnerTwo: str(body, 'partnerTwo'),
+          email: str(body, 'email'),
+          phone: str(body, 'phone'),
+          eventDate: str(body, 'eventDate'),
+          packageId: str(body, 'packageId'),
+          withStag: bool(body, 'withStag'),
+          stagDate: str(body, 'stagDate') || null,
+          message: str(body, 'message'),
+        }),
+      })
+    case 'delete_lead':
+      await removeLead(num(body, 'id'))
+      return Response.json({ leads: await listLeads() })
+    case 'update_package':
+      return Response.json({
+        package: await updatePackageOffer({
+          id: str(body, 'id'),
+          name: str(body, 'name'),
+          detail: str(body, 'detail'),
+          cents: num(body, 'cents'),
+        }),
+      })
+    case 'add_partner':
+      return Response.json({
+        partner: await addPartner({
+          name: str(body, 'name'),
+          href: str(body, 'href'),
+          logo: str(body, 'logo'),
+        }),
+      })
+    case 'update_partner':
+      return Response.json({
+        partner: await updatePartner({
+          id: num(body, 'id'),
+          name: str(body, 'name'),
+          href: str(body, 'href'),
+          logo: str(body, 'logo'),
+        }),
+      })
+    case 'delete_partner':
+      await removePartner(num(body, 'id'))
+      return Response.json({ partners: await listPartners() })
+    case 'add_review':
+      return Response.json({
+        review: await addReview({
+          quote: str(body, 'quote'),
+          names: str(body, 'names'),
+          eventType: str(body, 'eventType'),
+          town: str(body, 'town'),
+          date: str(body, 'date'),
+          source: str(body, 'source'),
+          show: bool(body, 'show'),
+        }),
+      })
+    case 'update_review':
+      return Response.json({
+        review: await updateReview(num(body, 'id'), {
+          quote: str(body, 'quote'),
+          names: str(body, 'names'),
+          eventType: str(body, 'eventType'),
+          town: str(body, 'town'),
+          date: str(body, 'date'),
+          source: str(body, 'source'),
+          show: bool(body, 'show'),
+        }),
+      })
+    case 'show_review':
+      return Response.json({
+        review: await setReviewShown(num(body, 'id'), bool(body, 'show')),
+      })
+    case 'delete_review':
+      await removeReview(num(body, 'id'))
+      return Response.json({ reviews: await listReviews() })
+    case 'update_payment':
+      return Response.json({
+        payment: await updatePayment(
+          num(body, 'id'),
+          num(body, 'cents'),
+          str(body, 'note'),
+        ),
+      })
+    case 'delete_payment':
+      await removePayment(num(body, 'id'))
+      return Response.json({ payments: await listPayments() })
+    case 'update_settings':
+      if (!canManage(role)) {
+        return Response.json(
+          { error: 'The Ceo bot changes settings.' },
+          { status: 403 },
+        )
+      }
+      return Response.json({
+        settings: await saveDeskProfile({
+          email: str(body, 'email'),
+          homeBase: str(body, 'homeBase'),
+        }),
+      })
+    case 'update_bot':
+      if (!canManage(role)) {
+        return Response.json(
+          { error: 'The Ceo bot changes invites.' },
+          { status: 403 },
+        )
+      }
+      return Response.json({
+        bot: await updateBot(
+          num(body, 'id'),
+          str(body, 'name'),
+          str(body, 'role'),
+        ),
+      })
+    case 'delete_bot':
+      if (!canManage(role)) {
+        return Response.json(
+          { error: 'The Ceo bot changes invites.' },
+          { status: 403 },
+        )
+      }
+      await removeBot(num(body, 'id'))
+      return Response.json({ bots: await listBots() })
+    case 'invite_bot':
+      if (!canManage(role)) {
+        return Response.json(
+          { error: 'The Ceo bot changes invites.' },
+          { status: 403 },
+        )
+      }
+      return Response.json(
+        await inviteBot(str(body, 'name'), str(body, 'role')),
+      )
     case 'email_booking':
       return Response.json(await emailBooking(idOf(body)))
     case 'email_invoice':

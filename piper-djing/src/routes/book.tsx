@@ -5,21 +5,21 @@ import { DateDraftProvider } from '../components/weddings/date-draft.tsx'
 import { Header } from '../components/weddings/header.tsx'
 import { SiteFooter } from '../components/weddings/site-footer.tsx'
 import { EVENT_TYPES } from '../lib/crm/date-request.ts'
-import { sendInquiry } from '../lib/crm/public.functions.ts'
+import { publicPackagePrice } from '../lib/crm/packages.ts'
+import { getPublicSite, sendInquiry } from '../lib/crm/public.functions.ts'
+import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
 import { publicHead } from '../lib/seo.ts'
+import type { PackageId } from '../lib/crm/defaults.ts'
 
 const FONTS =
   'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap'
 
-const PACKAGES = [
-  { id: 'full', label: 'The Main Event (Full Wedding Day, $1,650)' },
-  { id: 'reception', label: 'The After Party (Reception Only, $1,550)' },
-  { id: 'stag', label: 'The Pre-Party (Stag and Doe, $700)' },
-  {
-    id: 'ceremony',
-    label: 'The Aisle (Ceremony Only, $350 paid in full)',
-  },
-] as const
+const PACKAGE_TITLES: Record<PackageId, string> = {
+  full: 'The Main Event (Full Wedding Day',
+  reception: 'The After Party (Reception Only',
+  stag: 'The Pre-Party (Stag and Doe',
+  ceremony: 'The Aisle (Ceremony Only',
+}
 
 export const Route = createFileRoute('/book')({
   validateSearch: (
@@ -51,6 +51,7 @@ export const Route = createFileRoute('/book')({
       meta: [...head.meta, { name: 'theme-color', content: '#FFFFFF' }],
     }
   },
+  loader: () => getPublicSite(),
   component: BookPage,
 })
 
@@ -64,8 +65,19 @@ const PACKAGE_FOR_EVENT: Record<string, string> = {
 }
 
 function BookPage() {
+  const { packages } = Route.useLoaderData()
   const { date: requestedDate = '', event: requestedEvent = '' } =
     Route.useSearch()
+  const packageChoices = (
+    ['full', 'reception', 'stag', 'ceremony'] as const
+  ).map((id) => {
+    const cents =
+      packages.find((item) => item.id === id)?.cents ?? PACKAGE_CENTS[id]
+    return {
+      id,
+      label: `${PACKAGE_TITLES[id]}, ${publicPackagePrice(id, cents)})`,
+    }
+  })
   const send = useServerFn(sendInquiry)
   const [packageId, setPackageId] = useState(
     () => PACKAGE_FOR_EVENT[requestedEvent] ?? 'full',
@@ -181,7 +193,7 @@ function BookPage() {
                     if (event.target.value !== 'full') setWithStag(false)
                   }}
                 >
-                  {PACKAGES.map((item) => (
+                  {packageChoices.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
                     </option>

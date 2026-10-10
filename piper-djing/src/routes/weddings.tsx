@@ -42,6 +42,6 @@ export const Route = createFileRoute('/weddings')({
 })
 
 function Weddings() {
-  const { reviews } = Route.useLoaderData()
-  return <WeddingsPage reviews={reviews} />
+  const { reviews, packages } = Route.useLoaderData()
+  return <WeddingsPage reviews={reviews} packages={packages} />
 }

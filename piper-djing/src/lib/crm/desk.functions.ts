@@ -1,17 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireDesk } from '../auth/session.server.ts'
 import { usesEdgeBook } from '../db.server.ts'
-import { DESK_OWNER_EMAIL } from './desk-owner.ts'
-import { HOME_BASE } from './home-base.ts'
 import {
   emailBooking,
   emailInvoice,
   listEmails,
   mailStatus,
 } from './mail.server.ts'
-import { PACKAGE_CENTS } from '../piper/rules.ts'
 import type { ReviewDraft } from './reviews.ts'
-import { PACKAGE_BUTTON_COPY } from './defaults.ts'
 import {
   addMedia,
   addPayment,
@@ -44,6 +40,21 @@ import {
   updateReview,
   updateTerms,
   voidBookingInvoice,
+  listPackageOffers,
+  updatePackageOffer,
+  updateQuestion,
+  removeQuestion,
+  updateMedia,
+  removeMedia,
+  updateLead,
+  removeLead,
+  updatePartner,
+  updatePayment,
+  removePayment,
+  deskProfile,
+  saveDeskProfile,
+  updateBot,
+  removeBot,
 } from './store.server.ts'
 import type { BookingPatch } from './store.server.ts'
 
@@ -104,14 +115,22 @@ export const getLeads = createServerFn({ method: 'GET' }).handler(async () => {
 export const getPackages = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireDesk()
-    return PACKAGE_BUTTON_COPY.map((item) => ({
-      id: item.id,
-      name: item.name,
-      detail: item.detail,
-      cents: PACKAGE_CENTS[item.id],
-    }))
+    return listPackageOffers()
   },
 )
+
+export const savePackage = createServerFn({ method: 'POST' })
+  .validator(
+    (data: { id: string; name: string; detail: string; cents: number }) => data,
+  )
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, package: await updatePackageOffer(data) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const getTermsPage = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -179,8 +198,7 @@ export const getSettings = createServerFn({ method: 'GET' }).handler(
     await requireDesk()
     const mail = mailStatus()
     return {
-      email: DESK_OWNER_EMAIL,
-      homeBase: HOME_BASE,
+      ...(await deskProfile()),
       localBook: !process.env.DATABASE_URL && !usesEdgeBook(),
       mailReady: mail.ready,
       mailFrom: mail.from,
@@ -189,6 +207,17 @@ export const getSettings = createServerFn({ method: 'GET' }).handler(
     }
   },
 )
+
+export const saveSettings = createServerFn({ method: 'POST' })
+  .validator((data: { email: string; homeBase: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, ...(await saveDeskProfile(data)) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const saveKindWords = createServerFn({ method: 'POST' })
   .validator((data: { on: boolean }) => data)
@@ -369,12 +398,171 @@ export const saveQuestion = createServerFn({ method: 'POST' })
     }
   })
 
+export const editQuestion = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; prompt: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        question: await updateQuestion(data.id, data.prompt),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteQuestion = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeQuestion(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
 export const saveMedia = createServerFn({ method: 'POST' })
   .validator((data: { title: string; url: string }) => data)
   .handler(async ({ data }) => {
     await requireDesk()
     try {
       await addMedia(data.title, data.url)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const editMedia = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; title: string; url: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        media: await updateMedia(data.id, data.title, data.url),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteMedia = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeMedia(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const saveLead = createServerFn({ method: 'POST' })
+  .validator(
+    (data: {
+      id: number
+      partnerOne: string
+      partnerTwo: string
+      email: string
+      phone: string
+      eventDate: string
+      packageId: string
+      withStag: boolean
+      stagDate: string
+      message: string
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        lead: await updateLead({
+          ...data,
+          stagDate: data.stagDate || null,
+        }),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteLead = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeLead(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const editPartner = createServerFn({ method: 'POST' })
+  .validator(
+    (data: { id: number; name: string; href: string; logo: string }) => data,
+  )
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, partner: await updatePartner(data) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const editPayment = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; cents: number; note: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        payment: await updatePayment(data.id, data.cents, data.note),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deletePayment = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removePayment(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const editBot = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; name: string; role: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        bot: await updateBot(data.id, data.name, data.role),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteBot = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeBot(data.id)
       return { ok: true as const }
     } catch (error) {
       return fail(error)

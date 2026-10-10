@@ -52,7 +52,15 @@ export function privateHead(title: string) {
   }
 }
 
-export function professionalServiceJsonLd(): string {
+export function professionalServiceJsonLd(
+  offers?: { name: string; cents: number }[],
+): string {
+  const priced =
+    offers ??
+    PACKAGE_BUTTON_COPY.map((item) => ({
+      name: item.name,
+      cents: PACKAGE_CENTS[item.id],
+    }))
   return JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'ProfessionalService',
@@ -84,10 +92,10 @@ export function professionalServiceJsonLd(): string {
     ],
     serviceType: 'Wedding DJ',
     sameAs: [INSTAGRAM_URL],
-    offers: PACKAGE_BUTTON_COPY.map((item) => ({
+    offers: priced.map((item) => ({
       '@type': 'Offer',
       name: item.name,
-      price: (PACKAGE_CENTS[item.id] / 100).toFixed(2),
+      price: (item.cents / 100).toFixed(2),
       priceCurrency: 'CAD',
     })),
   })

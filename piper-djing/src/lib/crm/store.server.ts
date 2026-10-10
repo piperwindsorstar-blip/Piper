@@ -20,7 +20,11 @@ import {
   type InvoiceState,
 } from './booking-rules.ts'
 import { longDate } from './dates.ts'
-import { isPackageId, packageName, type PackageId } from './defaults.ts'
+import { isPackageId, PACKAGE_BUTTON_COPY, packageName } from './defaults.ts'
+import type { PackageId } from './defaults.ts'
+import { DESK_OWNER_EMAIL } from './desk-owner.ts'
+import { HOME_BASE } from './home-base.ts'
+import type { PackageOffer } from './packages.ts'
 import {
   parsePlanning,
   planningFromUnknown,
@@ -35,7 +39,7 @@ import type {
   ReviewView,
 } from './reviews.ts'
 import { askLegacyDate } from '../legacy-book.server.ts'
-import { holdLastDay, isBlockedDate } from '../piper/rules.ts'
+import { holdLastDay, isBlockedDate, PACKAGE_CENTS } from '../piper/rules.ts'
 
 export type { ReviewView }
 
@@ -546,18 +550,25 @@ export async function listBookings(): Promise<BookingView[]> {
   const rows = await bookingRows()
   const invoices = await query<InvoiceRow>('SELECT * FROM invoices')
   const byBooking = new Map(invoices.map((row) => [row.booking_id, row]))
-  return rows.map((row) => toView(row, byBooking.get(row.id) ?? null))
+  const offers = await listPackageOffers()
+  return rows.map((row) =>
+    namedView(toView(row, byBooking.get(row.id) ?? null), offers),
+  )
 }
 
 export async function createBooking(input: BookingInput): Promise<BookingView> {
   const next = normalize(input)
   guardIdentity(next.partnerOne, next.partnerTwo, next.eventDate, next.stagDate)
   await ensureDateFree(next.eventDate, next.stagDate, false, null)
-  const figures = figuresFor({
-    ...next,
-    venueName: next.venueName,
-    venueStreet: next.venueStreet,
-  })
+  const prices = await packagePriceMap()
+  const figures = figuresFor(
+    {
+      ...next,
+      venueName: next.venueName,
+      venueStreet: next.venueStreet,
+    },
+    prices,
+  )
   const bookingSlug = slug()
   const invoiceSlug = slug()
   const inserted = await query<{ id: number }>(
@@ -598,7 +609,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
     [invoiceSlug, id, figures.totalCents, figures.depositCents],
   )
   const row = await bookingRow(id)
-  return toView(row, await invoiceFor(id))
+  return present(toView(row, await invoiceFor(id)))
 }
 
 export type InquiryInput = {
@@ -743,21 +754,25 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     state.stagReleased,
     current.id,
   )
+  const prices = await packagePriceMap()
   const figures = locked
     ? { totalCents: state.totalCents, depositCents: state.depositCents }
-    : figuresFor({
-        partnerOne: next.partnerOne,
-        partnerTwo: next.partnerTwo,
-        eventDate: next.eventDate,
-        stagDate: next.stagDate,
-        packageId: next.packageId,
-        withStag: next.withStag,
-        uplights: next.uplights,
-        venueKm: next.venueKm,
-        venueName: next.venueName,
-        venueStreet: next.venueStreet,
-        sample: next.sample,
-      })
+    : figuresFor(
+        {
+          partnerOne: next.partnerOne,
+          partnerTwo: next.partnerTwo,
+          eventDate: next.eventDate,
+          stagDate: next.stagDate,
+          packageId: next.packageId,
+          withStag: next.withStag,
+          uplights: next.uplights,
+          venueKm: next.venueKm,
+          venueName: next.venueName,
+          venueStreet: next.venueStreet,
+          sample: next.sample,
+        },
+        prices,
+      )
   await query(
     `UPDATE bookings SET
       partner_one = $1, partner_two = $2, email = $3, phone = $4, event_date = $5, stag_date = $6,
@@ -796,10 +811,12 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
       depositCents: figures.depositCents,
     }
     const refreshed = toState(await bookingRow(current.id))
-    const transition = recordMoney(refreshed, updated, 0)
+    const transition = recordMoney(refreshed, updated, 0, prices.ceremony)
     await saveBooking(current.id, transition.booking, transition.invoice)
   }
-  return toView(await bookingRow(current.id), await invoiceFor(current.id))
+  return present(
+    toView(await bookingRow(current.id), await invoiceFor(current.id)),
+  )
 }
 
 export async function setBookingStatus(
@@ -823,7 +840,7 @@ export async function setBookingStatus(
       invoiceRow ? transition.invoice : null,
     )
   }
-  return toView(await bookingRow(id), await invoiceFor(id))
+  return present(toView(await bookingRow(id), await invoiceFor(id)))
 }
 
 function emptyInvoice(state: BookingState): InvoiceState {
@@ -844,7 +861,13 @@ export async function sendInvoice(
   if (invoiceRow.status === 'void')
     throw new Error('A void invoice stays void.')
   const state = toState(row)
-  const transition = markInvoiceSent(state, toInvoice(invoiceRow))
+  const prices = await packagePriceMap()
+  const transition = markInvoiceSent(
+    state,
+    toInvoice(invoiceRow),
+    new Date(),
+    prices.ceremony,
+  )
   const enteringHold =
     state.status === 'open' && transition.booking.status !== 'open'
   const enteringBooked = transition.newlyBooked
@@ -858,7 +881,9 @@ export async function sendInvoice(
   }
   await saveBooking(bookingId, transition.booking, transition.invoice)
   return {
-    view: toView(await bookingRow(bookingId), await invoiceFor(bookingId)),
+    view: await present(
+      toView(await bookingRow(bookingId), await invoiceFor(bookingId)),
+    ),
     newlyBooked: transition.newlyBooked,
   }
 }
@@ -871,7 +896,9 @@ export async function voidBookingInvoice(
   if (!invoiceRow) throw new Error('That booking has no invoice.')
   const transition = voidInvoice(toState(row), toInvoice(invoiceRow))
   await saveBooking(bookingId, transition.booking, transition.invoice)
-  return toView(await bookingRow(bookingId), await invoiceFor(bookingId))
+  return present(
+    toView(await bookingRow(bookingId), await invoiceFor(bookingId)),
+  )
 }
 
 export async function addPayment(
@@ -887,7 +914,8 @@ export async function addPayment(
   if (invoiceRow.status === 'void')
     throw new Error('A void invoice does not take a payment.')
   const before = toInvoice(invoiceRow)
-  const transition = recordMoney(toState(row), before, cents)
+  const prices = await packagePriceMap()
+  const transition = recordMoney(toState(row), before, cents, prices.ceremony)
   if (transition.newlyBooked) {
     const state = toState(row)
     await ensureDateFree(
@@ -906,7 +934,9 @@ export async function addPayment(
   }
   await saveBooking(bookingId, transition.booking, transition.invoice)
   return {
-    view: toView(await bookingRow(bookingId), await invoiceFor(bookingId)),
+    view: await present(
+      toView(await bookingRow(bookingId), await invoiceFor(bookingId)),
+    ),
     newlyBooked: transition.newlyBooked,
   }
 }
@@ -928,6 +958,7 @@ async function addLeadColumn(name: string, definition: string): Promise<void> {
 
 export async function listLeads(): Promise<LeadView[]> {
   await ensureLeadColumns()
+  const offers = await listPackageOffers()
   const rows = await query<{
     id: number
     partner_one: string
@@ -948,13 +979,78 @@ export async function listLeads(): Promise<LeadView[]> {
     phone: row.phone,
     eventDate: row.event_date,
     packageId: row.package_id,
-    packageName: isPackageId(row.package_id)
-      ? packageName(row.package_id)
-      : row.package_id,
+    packageName: offerName(offers, row.package_id),
     withStag: flag(row.with_stag),
     stagDate: row.stag_date,
     message: row.message,
   }))
+}
+
+export type LeadPatch = {
+  id: number
+  partnerOne: string
+  partnerTwo: string
+  email: string
+  phone: string
+  eventDate: string
+  packageId: string
+  withStag: boolean
+  stagDate: string | null
+  message: string
+}
+
+export async function updateLead(input: LeadPatch): Promise<LeadView> {
+  const id = positiveId(input.id, 'That inquiry is not on the desk.')
+  await ensureLeadColumns()
+  const existing = (await listLeads()).find((lead) => lead.id === id)
+  if (!existing) throw new Error('That inquiry is not on the desk.')
+  const email = text(input.email, 120, 'Email')
+  if (!email.includes('@')) throw new Error('Enter an email address.')
+  const partnerOne = text(input.partnerOne, 80, 'The first name')
+  const partnerTwo = text(input.partnerTwo, 80, 'The second name')
+  const packageId = asPackage(input.packageId)
+  if (input.withStag && packageId !== 'full') {
+    throw new Error('A stag is added to the full wedding day.')
+  }
+  if (input.withStag && !input.stagDate) {
+    throw new Error('A stag needs its own date.')
+  }
+  const eventDate = input.eventDate.trim()
+  if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    throw new Error('Choose a date.')
+  }
+  const stagDate = input.withStag ? input.stagDate : null
+  await query(
+    `UPDATE leads SET
+      partner_one = $1, partner_two = $2, email = $3, phone = $4, event_date = $5,
+      package_id = $6, with_stag = $7, stag_date = $8, message = $9
+     WHERE id = $10`,
+    [
+      partnerOne,
+      partnerTwo,
+      email,
+      optional(input.phone, 40),
+      eventDate || null,
+      packageId,
+      input.withStag ? 1 : 0,
+      stagDate,
+      optional(input.message, 2000),
+      id,
+    ],
+  )
+  const saved = (await listLeads()).find((lead) => lead.id === id)
+  if (!saved) throw new Error('That inquiry is not on the desk.')
+  return saved
+}
+
+export async function removeLead(id: number): Promise<void> {
+  const leadId = positiveId(id, 'That inquiry is not on the desk.')
+  await ensureLeadColumns()
+  const rows = await query<{ id: number }>(
+    'DELETE FROM leads WHERE id = $1 RETURNING id',
+    [leadId],
+  )
+  if (!rows[0]) throw new Error('That inquiry is not on the desk.')
 }
 
 export async function listPayments(): Promise<PaymentView[]> {
@@ -984,6 +1080,90 @@ export async function listPayments(): Promise<PaymentView[]> {
   }))
 }
 
+async function paymentRow(id: number): Promise<{
+  id: number
+  invoiceId: number
+  bookingId: number
+  cents: number
+}> {
+  const paymentId = positiveId(id, 'That payment is not on the book.')
+  const rows = await query<{
+    id: number
+    invoice_id: number
+    booking_id: number
+    cents: unknown
+  }>(
+    `SELECT payments.id, payments.invoice_id, invoices.booking_id, payments.cents
+     FROM payments
+     JOIN invoices ON invoices.id = payments.invoice_id
+     WHERE payments.id = $1`,
+    [paymentId],
+  )
+  if (rows.length === 0) throw new Error('That payment is not on the book.')
+  const row = rows[0]
+  return {
+    id: whole(row.id, 'Payment'),
+    invoiceId: whole(row.invoice_id, 'Invoice'),
+    bookingId: whole(row.booking_id, 'Booking'),
+    cents: whole(row.cents, 'Payment'),
+  }
+}
+
+/** A payment edit can book a date. It never unbooks one. */
+async function syncPaymentLedger(bookingId: number): Promise<void> {
+  const invoiceRow = await invoiceFor(bookingId)
+  if (!invoiceRow) return
+  const sums = await query<{ total: unknown }>(
+    'SELECT COALESCE(SUM(cents), 0) AS total FROM payments WHERE invoice_id = $1',
+    [invoiceRow.id],
+  )
+  const received = Math.max(0, whole(sums[0]?.total ?? 0, 'Payment'))
+  const before = toInvoice(invoiceRow)
+  const booking = toState(await bookingRow(bookingId))
+  if (received >= before.receivedCents) {
+    const prices = await packagePriceMap()
+    const transition = recordMoney(
+      booking,
+      before,
+      received - before.receivedCents,
+      prices.ceremony,
+    )
+    await saveBooking(bookingId, transition.booking, transition.invoice)
+    return
+  }
+  await query('UPDATE invoices SET received_cents = $1 WHERE id = $2', [
+    received,
+    invoiceRow.id,
+  ])
+}
+
+export async function updatePayment(
+  id: number,
+  cents: number,
+  note: string,
+): Promise<PaymentView> {
+  if (!Number.isInteger(cents) || cents === 0)
+    throw new Error('Enter an amount.')
+  const current = await paymentRow(id)
+  await query('UPDATE payments SET cents = $1, note = $2 WHERE id = $3', [
+    cents,
+    optional(note, 200),
+    current.id,
+  ])
+  await syncPaymentLedger(current.bookingId)
+  const saved = (await listPayments()).find(
+    (payment) => payment.id === current.id,
+  )
+  if (!saved) throw new Error('That payment is not on the book.')
+  return saved
+}
+
+export async function removePayment(id: number): Promise<void> {
+  const current = await paymentRow(id)
+  await query('DELETE FROM payments WHERE id = $1', [current.id])
+  await syncPaymentLedger(current.bookingId)
+}
+
 async function ensureSite(): Promise<void> {
   await query(
     `CREATE TABLE IF NOT EXISTS site (
@@ -1011,7 +1191,60 @@ export async function setKindWords(on: boolean): Promise<boolean> {
   return kindWordsOn()
 }
 
-async function addReviewColumn(name: string, definition: string): Promise<void> {
+async function ensureProfileColumns(): Promise<void> {
+  await ensureSite()
+  await addSiteColumn('owner_email', 'text')
+  await addSiteColumn('home_base', 'text')
+}
+
+async function addSiteColumn(name: string, definition: string): Promise<void> {
+  try {
+    await query(`ALTER TABLE site ADD COLUMN ${name} ${definition}`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/duplicate column|already exists/i.test(message)) return
+    throw error
+  }
+}
+
+export async function deskProfile(): Promise<{
+  email: string
+  homeBase: string
+}> {
+  await ensureProfileColumns()
+  const rows = await query<{
+    owner_email: string | null
+    home_base: string | null
+  }>('SELECT owner_email, home_base FROM site WHERE id = 1')
+  if (rows.length === 0) {
+    return { email: DESK_OWNER_EMAIL, homeBase: HOME_BASE }
+  }
+  const row = rows[0]
+  return {
+    email: (row.owner_email ?? '').trim() || DESK_OWNER_EMAIL,
+    homeBase: (row.home_base ?? '').trim() || HOME_BASE,
+  }
+}
+
+export async function saveDeskProfile(input: {
+  email: string
+  homeBase: string
+}): Promise<{ email: string; homeBase: string }> {
+  await ensureProfileColumns()
+  const email = text(input.email, 120, 'The desk email')
+  if (!email.includes('@')) throw new Error('Enter an email address.')
+  const homeBase = text(input.homeBase, 120, 'The home base')
+  await query('UPDATE site SET owner_email = $1, home_base = $2 WHERE id = 1', [
+    email,
+    homeBase,
+  ])
+  return deskProfile()
+}
+
+async function addReviewColumn(
+  name: string,
+  definition: string,
+): Promise<void> {
   try {
     await query(`ALTER TABLE reviews ADD COLUMN ${name} ${definition}`)
   } catch (error) {
@@ -1235,9 +1468,13 @@ export async function listQuestions(): Promise<
 
 export async function addQuestion(prompt: string): Promise<void> {
   const next = text(prompt, 500, 'The question')
+  const rows = await query<{ sort: number }>(
+    'SELECT COALESCE(MAX(sort), 0) + 1 AS sort FROM questions',
+  )
+  const sort = rows.length === 0 ? 1 : whole(rows[0].sort, 'Question')
   await query('INSERT INTO questions (prompt, sort) VALUES ($1, $2)', [
     next,
-    Date.now(),
+    sort,
   ])
 }
 
@@ -1256,6 +1493,160 @@ export async function addMedia(title: string, url: string): Promise<void> {
     nextTitle,
     nextUrl,
   ])
+}
+
+export async function updateQuestion(
+  id: number,
+  prompt: string,
+): Promise<{ id: number; prompt: string }> {
+  const questionId = positiveId(id, 'That question is not on the desk.')
+  const next = text(prompt, 500, 'The question')
+  const rows = await query<{ id: number; prompt: string }>(
+    'UPDATE questions SET prompt = $1 WHERE id = $2 RETURNING id, prompt',
+    [next, questionId],
+  )
+  if (rows.length === 0) throw new Error('That question is not on the desk.')
+  const saved = rows[0]
+  return { id: whole(saved.id, 'Question'), prompt: saved.prompt }
+}
+
+export async function removeQuestion(id: number): Promise<void> {
+  const questionId = positiveId(id, 'That question is not on the desk.')
+  const rows = await query<{ id: number }>(
+    'DELETE FROM questions WHERE id = $1 RETURNING id',
+    [questionId],
+  )
+  if (!rows[0]) throw new Error('That question is not on the desk.')
+}
+
+export async function updateMedia(
+  id: number,
+  title: string,
+  url: string,
+): Promise<{ id: number; title: string; url: string }> {
+  const mediaId = positiveId(id, 'That link is not on the desk.')
+  const nextTitle = text(title, 120, 'A title')
+  const nextUrl = text(url, 500, 'A link')
+  const rows = await query<{ id: number; title: string; url: string }>(
+    'UPDATE media SET title = $1, url = $2 WHERE id = $3 RETURNING id, title, url',
+    [nextTitle, nextUrl, mediaId],
+  )
+  if (rows.length === 0) throw new Error('That link is not on the desk.')
+  const saved = rows[0]
+  return { id: whole(saved.id, 'Media'), title: saved.title, url: saved.url }
+}
+
+export async function removeMedia(id: number): Promise<void> {
+  const mediaId = positiveId(id, 'That link is not on the desk.')
+  const rows = await query<{ id: number }>(
+    'DELETE FROM media WHERE id = $1 RETURNING id',
+    [mediaId],
+  )
+  if (!rows[0]) throw new Error('That link is not on the desk.')
+}
+
+const PACKAGE_ORDER: PackageId[] = ['full', 'reception', 'stag', 'ceremony']
+
+async function ensurePackageOffers(): Promise<void> {
+  await query(
+    `CREATE TABLE IF NOT EXISTS package_offers (
+      id text PRIMARY KEY,
+      name text NOT NULL,
+      detail text NOT NULL,
+      cents integer NOT NULL
+    )`,
+  )
+  for (const item of PACKAGE_BUTTON_COPY) {
+    await query(
+      `INSERT INTO package_offers (id, name, detail, cents)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO NOTHING`,
+      [item.id, item.name, item.detail, PACKAGE_CENTS[item.id]],
+    )
+  }
+}
+
+export async function listPackageOffers(): Promise<PackageOffer[]> {
+  await ensurePackageOffers()
+  const rows = await query<{
+    id: string
+    name: string
+    detail: string
+    cents: unknown
+  }>('SELECT id, name, detail, cents FROM package_offers')
+  const byId = new Map(rows.map((row) => [row.id, row]))
+  return PACKAGE_ORDER.map((id) => {
+    const row = byId.get(id)
+    const copy = PACKAGE_BUTTON_COPY.find((item) => item.id === id)
+    return {
+      id,
+      name: row?.name || copy?.name || id,
+      detail: row?.detail || copy?.detail || '',
+      cents: row ? whole(row.cents, 'Price') : PACKAGE_CENTS[id],
+    }
+  })
+}
+
+export async function packagePriceMap(): Promise<Record<PackageId, number>> {
+  const offers = await listPackageOffers()
+  const price = (id: PackageId) => {
+    const offer = offers.find((item) => item.id === id)
+    return offer ? offer.cents : PACKAGE_CENTS[id]
+  }
+  return {
+    full: price('full'),
+    reception: price('reception'),
+    stag: price('stag'),
+    ceremony: price('ceremony'),
+  }
+}
+
+export async function updatePackageOffer(input: {
+  id: string
+  name: string
+  detail: string
+  cents: number
+}): Promise<PackageOffer> {
+  if (!isPackageId(input.id)) throw new Error('Choose a package.')
+  const name = text(input.name, 80, 'The package name')
+  const detail = text(input.detail, 2000, 'The package detail')
+  if (
+    !Number.isInteger(input.cents) ||
+    input.cents < 0 ||
+    input.cents > 10_000_000
+  ) {
+    throw new Error('Enter a price in cents.')
+  }
+  await ensurePackageOffers()
+  const rows = await query<{ id: string }>(
+    `UPDATE package_offers SET name = $1, detail = $2, cents = $3
+     WHERE id = $4 RETURNING id`,
+    [name, detail, input.cents, input.id],
+  )
+  if (!rows[0]) throw new Error('Choose a package.')
+  const saved = (await listPackageOffers()).find((item) => item.id === input.id)
+  if (!saved) throw new Error('Choose a package.')
+  return saved
+}
+
+function offerName(offers: PackageOffer[], id: string): string {
+  return (
+    offers.find((item) => item.id === id)?.name ??
+    (isPackageId(id) ? packageName(id) : id)
+  )
+}
+
+function namedView(view: BookingView, offers: PackageOffer[]): BookingView {
+  return { ...view, packageName: offerName(offers, view.packageId) }
+}
+
+async function present(view: BookingView): Promise<BookingView> {
+  return namedView(view, await listPackageOffers())
+}
+
+function positiveId(id: number, missing: string): number {
+  if (!Number.isInteger(id) || id < 1) throw new Error(missing)
+  return id
 }
 
 const PARTNER_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp'])
@@ -1367,6 +1758,36 @@ export async function removePartner(id: number): Promise<void> {
   await query('DELETE FROM partners WHERE id = $1', [id])
 }
 
+export async function updatePartner(input: {
+  id: number
+  name: string
+  href: string
+  logo?: string
+}): Promise<PartnerView> {
+  const id = positiveId(input.id, 'That brand is not on the page.')
+  await ensurePartners()
+  const current = (await listPartners()).find((partner) => partner.id === id)
+  if (!current) throw new Error('That brand is not on the page.')
+  const name = text(input.name, 80, 'A brand name')
+  const href = partnerWebsite(input.href)
+  const replacement = input.logo?.trim() ? partnerLogoData(input.logo) : null
+  if (replacement) {
+    await query(
+      'UPDATE partners SET name = $1, href = $2, mime = $3, logo = $4 WHERE id = $5',
+      [name, href, replacement.mime, replacement.logo, id],
+    )
+  } else {
+    await query('UPDATE partners SET name = $1, href = $2 WHERE id = $3', [
+      name,
+      href,
+      id,
+    ])
+  }
+  const saved = (await listPartners()).find((partner) => partner.id === id)
+  if (!saved) throw new Error('That brand is not on the page.')
+  return saved
+}
+
 export async function listBots(): Promise<
   { id: number; name: string; role: BotRole }[]
 > {
@@ -1383,6 +1804,31 @@ export async function listBots(): Promise<
 function asRole(value: string): BotRole {
   if (value === 'reader' || value === 'writer' || value === 'ceo') return value
   throw new Error('That role is not on an invite.')
+}
+
+export async function updateBot(
+  id: number,
+  name: string,
+  role: string,
+): Promise<{ id: number; name: string; role: BotRole }> {
+  const botId = positiveId(id, 'That bot is not on the desk.')
+  const nextName = text(name, 80, 'A name')
+  const nextRole = asRole(role)
+  const rows = await query<{ id: number }>(
+    'UPDATE bots SET name = $1, role = $2 WHERE id = $3 RETURNING id',
+    [nextName, nextRole, botId],
+  )
+  if (!rows[0]) throw new Error('That bot is not on the desk.')
+  return { id: botId, name: nextName, role: nextRole }
+}
+
+export async function removeBot(id: number): Promise<void> {
+  const botId = positiveId(id, 'That bot is not on the desk.')
+  const rows = await query<{ id: number }>(
+    'DELETE FROM bots WHERE id = $1 RETURNING id',
+    [botId],
+  )
+  if (!rows[0]) throw new Error('That bot is not on the desk.')
 }
 
 export async function inviteBot(
@@ -1431,7 +1877,7 @@ export async function coupleBySlug(slugValue: string) {
   )
   const row = rows[0]
   if (!row) return null
-  const view = toView(row, await invoiceFor(row.id))
+  const view = await present(toView(row, await invoiceFor(row.id)))
   const planning = parsePlanning(row.planning, planningSeed(row))
   return {
     partnerOne: view.partnerOne,

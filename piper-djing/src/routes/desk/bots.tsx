@@ -5,9 +5,15 @@ import {
   Chip,
   DeskTitle,
   deskCard,
+  deskDanger,
   deskPrimary,
 } from '../../components/desk-ui.tsx'
-import { getBots, saveBot } from '../../lib/crm/desk.functions.ts'
+import {
+  deleteBot,
+  editBot,
+  getBots,
+  saveBot,
+} from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/bots')({
@@ -27,8 +33,10 @@ function BotsPage() {
     <div className="grid gap-5">
       <DeskTitle kicker="Bots" title="Bots">
         <p className="mt-1 max-w-prose text-sm text-white/65">
-          Every bot can read. A writer or the Ceo bot can change the book, send
-          mail, and edit the one terms document. The token is shown once.
+          Every bot can read. A writer or the Ceo bot can change the book, the
+          packages, the questions, the media, the reviews, the partners, and the
+          one terms document. The Ceo bot can also change invites and settings.
+          The token is shown once.
         </p>
       </DeskTitle>
       <form
@@ -88,25 +96,80 @@ function BotsPage() {
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
       <ul className="grid gap-2">
         {bots.map((bot) => (
-          <li
-            key={bot.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-ink-900 px-4 py-3 text-sm"
-          >
-            <span className="font-semibold">{bot.name}</span>
-            <Chip
-              tone={
-                bot.role === 'ceo'
-                  ? 'pink'
-                  : bot.role === 'writer'
-                    ? 'amber'
-                    : 'gray'
-              }
-            >
-              {bot.role === 'ceo' ? 'Ceo' : bot.role}
-            </Chip>
-          </li>
+          <BotCard key={bot.id} bot={bot} />
         ))}
       </ul>
     </div>
+  )
+}
+
+function BotCard({ bot }: { bot: { id: number; name: string; role: string } }) {
+  const save = useServerFn(editBot)
+  const remove = useServerFn(deleteBot)
+  const router = useRouter()
+  const [notice, setNotice] = useState<string | null>(null)
+
+  return (
+    <li className="rounded-xl border border-white/10 bg-ink-900 px-4 py-3">
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          const form = new FormData(event.currentTarget)
+          void save({
+            data: {
+              id: bot.id,
+              name: String(form.get('name') ?? ''),
+              role: String(form.get('role') ?? ''),
+            },
+          }).then(async (result) => {
+            setNotice(result.ok ? 'Saved.' : result.error)
+            if (result.ok) await router.invalidate()
+          })
+        }}
+      >
+        <label className="field">
+          Name
+          <input name="name" required defaultValue={bot.name} />
+        </label>
+        <label className="field">
+          Role
+          <select name="role" defaultValue={bot.role}>
+            <option value="reader">Reader</option>
+            <option value="writer">Writer</option>
+            <option value="ceo">Ceo</option>
+          </select>
+        </label>
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <Chip
+            tone={
+              bot.role === 'ceo'
+                ? 'pink'
+                : bot.role === 'writer'
+                  ? 'amber'
+                  : 'gray'
+            }
+          >
+            {bot.role === 'ceo' ? 'Ceo' : bot.role}
+          </Chip>
+          <button type="submit" className={deskPrimary}>
+            Save
+          </button>
+          <button
+            type="button"
+            className={deskDanger}
+            onClick={() => {
+              void remove({ data: { id: bot.id } }).then(async (result) => {
+                setNotice(result.ok ? 'Removed.' : result.error)
+                if (result.ok) await router.invalidate()
+              })
+            }}
+          >
+            Remove
+          </button>
+        </div>
+      </form>
+      {notice ? <p className="mt-3 text-sm text-white/85">{notice}</p> : null}
+    </li>
   )
 }

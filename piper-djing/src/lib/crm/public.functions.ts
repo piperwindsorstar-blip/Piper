@@ -7,6 +7,7 @@ import {
   dateOpen,
   ensureSavedWeddings,
   homepageReviews,
+  listPackageOffers,
   listPartners,
 } from './store.server.ts'
 
@@ -16,6 +17,7 @@ export const getPublicSite = createServerFn({ method: 'GET' }).handler(
     return {
       reviews: await homepageReviews(),
       partners: await listPartners(),
+      packages: await listPackageOffers(),
     }
   },
 )
@@ -80,9 +82,12 @@ export const sendInquiry = createServerFn({ method: 'POST' })
       stagDate: data.stagDate || null,
     })
     if (!result.ok) return result
-    const packageLabel = isPackageId(data.packageId)
-      ? packageName(data.packageId)
-      : data.packageId
+    const offers = await listPackageOffers()
+    const packageLabel =
+      offers.find((item) => item.id === data.packageId)?.name ??
+      (isPackageId(data.packageId)
+        ? packageName(data.packageId)
+        : data.packageId)
     const stag = data.withStag
       ? `Yes${data.stagDate ? `, ${data.stagDate}` : ''}`
       : 'No'
