@@ -21,6 +21,8 @@ import {
   listQuestions,
   listReviews,
   removeBot,
+  removeBooking,
+  removeExternalDate,
   removeLead,
   removeMedia,
   removePartner,
@@ -300,6 +302,12 @@ async function writeAction(
       return Response.json({
         booking: await setBookingStatus(idOf(body), 'release-stag'),
       })
+    case 'delete_booking':
+      await removeBooking(idOf(body))
+      return Response.json({ ok: true })
+    case 'delete_external':
+      await removeExternalDate(num(body, 'id'))
+      return Response.json({ ok: true })
     case 'update_terms':
       return Response.json({ terms: await updateTerms(str(body, 'body')) })
     case 'add_question':

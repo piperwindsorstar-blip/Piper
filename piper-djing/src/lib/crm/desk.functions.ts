@@ -19,6 +19,8 @@ import {
   countedTotal,
   listExternalDates,
   releaseExternalDate,
+  removeExternalDate,
+  removeBooking,
   getTerms,
   inviteBot,
   invoiceBySlug,
@@ -127,6 +129,30 @@ export const releaseExternal = createServerFn({ method: 'POST' })
         ok: true as const,
         external: await releaseExternalDate(data.id),
       }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteExternal = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeExternalDate(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteBooking = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeBooking(data.id)
+      return { ok: true as const }
     } catch (error) {
       return fail(error)
     }

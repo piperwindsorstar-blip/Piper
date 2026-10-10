@@ -31,6 +31,8 @@ import {
   addBooking,
   addExternalDate,
   changeStatus,
+  deleteBooking,
+  deleteExternal,
   getBookings,
   releaseExternal,
   markSent,
@@ -78,7 +80,12 @@ function BookingsPage() {
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <DeskTitle kicker="Bookings" title="Bookings" />
+        <DeskTitle kicker="Bookings" title="Bookings">
+          <p className="mt-1 text-sm text-white/65">
+            Delete removes the booking, the invoice, and the payments. The date
+            opens. An inquiry stays until you delete it on the leads page.
+          </p>
+        </DeskTitle>
         <label className="flex items-center gap-2 text-sm text-white/65">
           <input
             type="checkbox"
@@ -272,10 +279,12 @@ function NewBooking({
 function ExternalDates({ dates }: { dates: ExternalDate[] }) {
   const add = useServerFn(addExternalDate)
   const release = useServerFn(releaseExternal)
+  const remove = useServerFn(deleteExternal)
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
   const active = dates.filter((row) => !row.released)
   const released = dates.filter((row) => row.released)
 
@@ -467,30 +476,72 @@ function ExternalDates({ dates }: { dates: ExternalDate[] }) {
                   </p>
                 ) : null}
               </div>
-              {row.released ? (
-                <Chip tone="gray">released</Chip>
-              ) : (
-                <button
-                  type="button"
-                  className={deskGhost}
-                  onClick={() => {
-                    void release({ data: { id: row.id } }).then(
-                      async (result) => {
-                        if (!result.ok) {
-                          setNotice(null)
-                          setError(result.error)
-                          return
-                        }
-                        setError(null)
-                        setNotice('Released. A released date stays released.')
-                        await router.invalidate()
-                      },
-                    )
-                  }}
-                >
-                  Release
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {row.released ? (
+                  <Chip tone="gray">released</Chip>
+                ) : (
+                  <button
+                    type="button"
+                    className={deskGhost}
+                    onClick={() => {
+                      void release({ data: { id: row.id } }).then(
+                        async (result) => {
+                          if (!result.ok) {
+                            setNotice(null)
+                            setError(result.error)
+                            return
+                          }
+                          setError(null)
+                          setNotice('Released. A released date stays released.')
+                          await router.invalidate()
+                        },
+                      )
+                    }}
+                  >
+                    Release
+                  </button>
+                )}
+                {confirmId === row.id ? (
+                  <>
+                    <button
+                      type="button"
+                      className={deskDanger}
+                      onClick={() => {
+                        void remove({ data: { id: row.id } }).then(
+                          async (result) => {
+                            if (!result.ok) {
+                              setNotice(null)
+                              setError(result.error)
+                              return
+                            }
+                            setConfirmId(null)
+                            setError(null)
+                            setNotice('Deleted. The date is open.')
+                            await router.invalidate()
+                          },
+                        )
+                      }}
+                    >
+                      Delete this date
+                    </button>
+                    <button
+                      type="button"
+                      className={deskGhost}
+                      onClick={() => setConfirmId(null)}
+                    >
+                      Keep it
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className={deskDanger}
+                    onClick={() => setConfirmId(row.id)}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -584,9 +635,11 @@ function BookingCard({
   const pay = useServerFn(recordPayment)
   const mailBooking = useServerFn(sendBookingMail)
   const mailInvoice = useServerFn(sendInvoiceMail)
+  const remove = useServerFn(deleteBooking)
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [packageId, setPackageId] = useState(booking.packageId)
   const [open, setOpen] = useState(false)
   const [action, setAction] = useState('release')
@@ -1010,6 +1063,52 @@ function BookingCard({
               </ul>
             ) : null}
           </form>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-ink-950 p-4">
+          <p className="font-semibold">Delete this booking</p>
+          <p className="mt-1 text-sm text-white/65">
+            The booking, invoice, and payments are removed. The date opens. An
+            inquiry with the same names stays until you delete it on the leads
+            page.
+          </p>
+          {confirmDelete ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={deskDanger}
+                onClick={() => {
+                  void remove({ data: { id: booking.id } }).then(
+                    async (result) => {
+                      if (!result.ok) {
+                        setError(result.error)
+                        return
+                      }
+                      setError(null)
+                      setNotice('Deleted. The date is open.')
+                      await router.invalidate()
+                    },
+                  )
+                }}
+              >
+                Delete this booking
+              </button>
+              <button
+                type="button"
+                className={deskGhost}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Keep it
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={`mt-3 ${deskDanger}`}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete
+            </button>
+          )}
         </div>
       </div>
     </article>

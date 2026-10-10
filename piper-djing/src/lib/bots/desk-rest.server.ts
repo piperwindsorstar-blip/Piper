@@ -25,6 +25,8 @@ import {
   listQuestions,
   listReviews,
   releaseExternalDate,
+  removeExternalDate,
+  removeBooking,
   removeBot,
   removeLead,
   removeMedia,
@@ -242,11 +244,9 @@ async function externals(
     }
     return botJson({ external: await releaseExternalDate(intId(id)) })
   }
-  if (method === 'DELETE') {
-    return botJson(
-      { error: 'Release the date. A released date stays released.' },
-      405,
-    )
+  if (method === 'DELETE' && id) {
+    await removeExternalDate(intId(id))
+    return botJson({ ok: true })
   }
   return botJson({ error: 'That action is not on the desk.' }, 405)
 }
@@ -423,8 +423,9 @@ async function bookingResource(
       ),
     })
   }
-  if (method === 'DELETE') {
-    return botJson({ error: 'Cancel instead of delete.' }, 400)
+  if (method === 'DELETE' && id) {
+    await removeBooking(intId(id))
+    return botJson({ ok: true })
   }
   return botJson({ error: 'That action is not on the desk.' }, 405)
 }

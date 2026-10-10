@@ -5,6 +5,7 @@ import {
   DeskTitle,
   deskCard,
   deskDanger,
+  deskGhost,
   deskPrimary,
 } from '../../components/desk-ui.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
@@ -26,8 +27,8 @@ function LeadsPage() {
     <div className="grid gap-5">
       <DeskTitle kicker="Leads" title="Leads">
         <p className="mt-1 text-sm text-white/65">
-          Saving a lead does not change its booking. Deleting a lead leaves the
-          booking.
+          Saving an inquiry does not change its booking. Delete removes the
+          inquiry only. Delete the booking on the book to open the date.
         </p>
       </DeskTitle>
       {leads.length === 0 ? (
@@ -64,6 +65,7 @@ function LeadCard({
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
   const [withStag, setWithStag] = useState(lead.withStag)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
     <form
@@ -167,18 +169,38 @@ function LeadCard({
         <button type="submit" className={deskPrimary}>
           Save
         </button>
-        <button
-          type="button"
-          className={deskDanger}
-          onClick={() => {
-            void remove({ data: { id: lead.id } }).then(async (result) => {
-              setNotice(result.ok ? 'Deleted.' : result.error)
-              if (result.ok) await router.invalidate()
-            })
-          }}
-        >
-          Delete
-        </button>
+        {confirmDelete ? (
+          <>
+            <button
+              type="button"
+              className={deskDanger}
+              onClick={() => {
+                void remove({ data: { id: lead.id } }).then(async (result) => {
+                  setNotice(result.ok ? 'Deleted.' : result.error)
+                  if (result.ok) await router.invalidate()
+                  else setConfirmDelete(false)
+                })
+              }}
+            >
+              Delete this inquiry
+            </button>
+            <button
+              type="button"
+              className={deskGhost}
+              onClick={() => setConfirmDelete(false)}
+            >
+              Keep it
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className={deskDanger}
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete
+          </button>
+        )}
       </div>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
     </form>

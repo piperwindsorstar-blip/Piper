@@ -23,7 +23,9 @@ describe('desk usage', () => {
     assert.doesNotMatch(text, /prices stay locked/)
     assert.match(text, /CJ and Laura 2027-03-12 total 100000 deposit 30000/)
     assert.match(text, /These four packages stay/)
-    assert.match(text, /Cancel a booking instead of deleting it/)
+    assert.match(text, /DELETE \/api\/bots\/v1\/bookings/)
+    assert.match(text, /DELETE \/api\/bots\/v1\/externals/)
+    assert.doesNotMatch(text, /instead of deleting it/)
   })
 
   it('sends owner mail to the saved desk address', () => {

@@ -213,18 +213,6 @@ describe('external dates', { skip: liveBook }, () => {
     assert.equal(body.external.venueStreet, '8 Dock Street')
     assert.equal(body.external.released, false)
     assert.equal(await dateOpen('2028-12-01'), false)
-    const removed = await deskBotResponse(
-      new Request(
-        `http://localhost/api/bots/v1/externals/${body.external.id}`,
-        {
-          method: 'DELETE',
-          headers: { authorization: `Bearer ${writer.token}` },
-        },
-      ),
-      async () => 'no',
-    )
-    assert.equal(removed.status, 405)
-    assert.equal(await dateOpen('2028-12-01'), false)
     const released = await deskBotResponse(
       new Request(
         `http://localhost/api/bots/v1/externals/${body.external.id}`,
@@ -247,5 +235,21 @@ describe('external dates', { skip: liveBook }, () => {
     assert.equal(await dateOpen('2028-12-01'), true)
     const stayed = await releaseExternalDate(body.external.id)
     assert.equal(stayed.released, true)
+    const removed = await deskBotResponse(
+      new Request(
+        `http://localhost/api/bots/v1/externals/${body.external.id}`,
+        {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${writer.token}` },
+        },
+      ),
+      async () => 'no',
+    )
+    assert.equal(removed.status, 200)
+    assert.equal(
+      (await listExternalDates()).some((row) => row.id === body.external.id),
+      false,
+    )
+    assert.equal(await dateOpen('2028-12-01'), true)
   })
 })

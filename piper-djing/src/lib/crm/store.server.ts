@@ -9,7 +9,6 @@ import {
   figuresFor,
   invoiceBalance,
   markInvoiceSent,
-  CUSTOM_WEDDINGS,
   matchCustom,
   recordMoney,
   releaseBooking,
@@ -330,7 +329,7 @@ async function dateTakenByOthers(
   return dateIsTaken(others, day)
 }
 
-function guardIdentity(
+async function guardIdentity(
   partnerOne: string,
   partnerTwo: string,
   eventDate: string,
@@ -338,9 +337,10 @@ function guardIdentity(
 ) {
   assertBookableNames(partnerOne, partnerTwo)
   assertBookableDate(eventDate, stagDate)
-  if (matchCustom(partnerOne, partnerTwo, eventDate)) {
-    throw new Error('That wedding is already on the book.')
-  }
+  const saved = savedWeddingFor(partnerOne, partnerTwo, eventDate)
+  if (!saved) return
+  if (await isSavedWeddingDismissed(saved)) return
+  throw new Error('That wedding is already on the book.')
 }
 
 export type BookingInput = {
@@ -511,9 +511,10 @@ async function ensureSavedInvoice(
   )
 }
 
-/** Copies the four booked weddings onto this book once. Later visits leave them as they are. */
+/** Copies the four booked weddings onto this book once. A deleted one stays deleted. */
 export async function ensureSavedWeddings(): Promise<void> {
   for (const wedding of SAVED_WEDDINGS) {
+    if (await isSavedWeddingDismissed(wedding)) continue
     let id = await savedWeddingId(wedding)
     if (id == null) {
       const inserted = await query<{ id: number }>(
@@ -568,7 +569,12 @@ export async function listBookings(): Promise<BookingView[]> {
 
 export async function createBooking(input: BookingInput): Promise<BookingView> {
   const next = normalize(input)
-  guardIdentity(next.partnerOne, next.partnerTwo, next.eventDate, next.stagDate)
+  await guardIdentity(
+    next.partnerOne,
+    next.partnerTwo,
+    next.eventDate,
+    next.stagDate,
+  )
   await ensureDateFree(next.eventDate, next.stagDate, false, null)
   const prices = await packagePriceMap()
   const figures = figuresFor(
@@ -677,7 +683,7 @@ export async function createInquiry(
     if (!email.includes('@')) throw new Error('Enter an email address.')
     const partnerOne = text(input.partnerOne, 80, 'The first name')
     const partnerTwo = text(input.partnerTwo, 80, 'The second name')
-    guardIdentity(
+    await guardIdentity(
       partnerOne,
       partnerTwo,
       input.eventDate,
@@ -747,10 +753,71 @@ export async function createInquiry(
 export async function dateOpen(day: string): Promise<boolean> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Choose a date.')
   if (isBlockedDate(day, null)) return false
-  if (CUSTOM_WEDDINGS.some((wedding) => wedding.date === day)) return false
+  for (const wedding of SAVED_WEDDINGS) {
+    if (wedding.date !== day) continue
+    if (!(await isSavedWeddingDismissed(wedding))) return false
+  }
   if (await dateTakenByOthers(day, null)) return false
   const legacy = await askLegacyDate(day)
   return legacy !== 'taken'
+}
+
+function savedNames(partnerOne: string, partnerTwo: string): [string, string] {
+  const names = [
+    partnerOne.trim().toLowerCase(),
+    partnerTwo.trim().toLowerCase(),
+  ]
+  names.sort()
+  return [names[0] ?? '', names[1] ?? '']
+}
+
+function savedWeddingFor(
+  partnerOne: string,
+  partnerTwo: string,
+  eventDate: string,
+): (typeof SAVED_WEDDINGS)[number] | null {
+  if (!matchCustom(partnerOne, partnerTwo, eventDate)) return null
+  return SAVED_WEDDINGS.find((wedding) => wedding.date === eventDate) ?? null
+}
+
+async function ensureDismissedWeddings(): Promise<void> {
+  await query(
+    `CREATE TABLE IF NOT EXISTS dismissed_weddings (
+      event_date text NOT NULL,
+      partner_one text NOT NULL,
+      partner_two text NOT NULL,
+      PRIMARY KEY (event_date, partner_one, partner_two)
+    )`,
+  )
+}
+
+async function isSavedWeddingDismissed(
+  wedding: (typeof SAVED_WEDDINGS)[number],
+): Promise<boolean> {
+  await ensureDismissedWeddings()
+  const [one, two] = savedNames(wedding.partnerOne, wedding.partnerTwo)
+  const rows = await query<{ event_date: string }>(
+    `SELECT event_date FROM dismissed_weddings
+     WHERE event_date = $1 AND partner_one = $2 AND partner_two = $3`,
+    [wedding.date, one, two],
+  )
+  return rows.length > 0
+}
+
+async function dismissSavedWedding(
+  wedding: (typeof SAVED_WEDDINGS)[number],
+): Promise<void> {
+  await ensureDismissedWeddings()
+  const [one, two] = savedNames(wedding.partnerOne, wedding.partnerTwo)
+  await query(
+    `INSERT INTO dismissed_weddings (event_date, partner_one, partner_two)
+     SELECT $1, $2, $3
+     WHERE NOT EXISTS (
+       SELECT 1 FROM dismissed_weddings
+       WHERE event_date = $1 AND partner_one = $2 AND partner_two = $3
+     )`,
+    [wedding.date, one, two],
+  )
 }
 
 type ExternalRow = {
@@ -925,6 +992,42 @@ export async function releaseExternalDate(id: number): Promise<ExternalDate> {
   return { ...current, released: true }
 }
 
+export async function removeExternalDate(id: number): Promise<void> {
+  const current = await externalRow(id)
+  const removed = await query<{ id: number }>(
+    'DELETE FROM external_dates WHERE id = $1 RETURNING id',
+    [current.id],
+  )
+  if (!removed[0]) throw new Error('That date is not on the book.')
+}
+
+export async function removeBooking(id: number): Promise<void> {
+  const row = await bookingRow(id)
+  const state = toState(row)
+  const saved = savedWeddingFor(
+    state.partnerOne,
+    state.partnerTwo,
+    state.eventDate,
+  )
+  if (saved) await dismissSavedWedding(saved)
+  const invoice = await invoiceFor(row.id)
+  if (invoice) {
+    await query('DELETE FROM payments WHERE invoice_id = $1', [invoice.id])
+    await query('DELETE FROM invoices WHERE id = $1', [invoice.id])
+  }
+  try {
+    await query('DELETE FROM emails WHERE booking_id = $1', [row.id])
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!/no such table|does not exist/i.test(message)) throw error
+  }
+  const removed = await query<{ id: number }>(
+    'DELETE FROM bookings WHERE id = $1 RETURNING id',
+    [row.id],
+  )
+  if (!removed[0]) throw new Error('That booking is not on the book.')
+}
+
 export type BookingPatch = {
   id: number
   partnerOne: string
@@ -958,7 +1061,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     assertBookableNames(next.partnerOne, next.partnerTwo)
     assertBookableDate(next.eventDate, next.stagDate)
   } else {
-    guardIdentity(
+    await guardIdentity(
       next.partnerOne,
       next.partnerTwo,
       next.eventDate,
