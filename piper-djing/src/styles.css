@@ -210,6 +210,14 @@ textarea {
   }
 }
 
+html:has(.desk) {
+  scroll-padding-bottom: 13rem;
+}
+
+.desk :is(a, button, input, select, textarea, summary) {
+  scroll-margin-bottom: 13rem;
+}
+
 .desk {
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
