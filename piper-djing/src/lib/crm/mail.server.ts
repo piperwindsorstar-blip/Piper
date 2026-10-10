@@ -9,7 +9,7 @@ import {
   type LetterBooking,
 } from './mail-copy.ts'
 import { publicUrl } from './safe-origin.ts'
-import { listBookings, type BookingView } from './store.server.ts'
+import { deskProfile, listBookings, type BookingView } from './store.server.ts'
 
 export type MailResult = {
   delivered: boolean
@@ -170,8 +170,14 @@ async function deliverAndRemember(
   return result
 }
 
+export function ownerAddress(saved: string): string {
+  const next = saved.trim()
+  return next || PUBLIC_EMAIL
+}
+
 export async function emailOwner(letter: Letter): Promise<MailResult> {
-  return deliver(PUBLIC_EMAIL, letter)
+  const profile = await deskProfile()
+  return deliver(ownerAddress(profile.email), letter)
 }
 
 async function deliver(to: string, letter: Letter): Promise<MailResult> {

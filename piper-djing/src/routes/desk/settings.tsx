@@ -64,8 +64,8 @@ function SettingsPage() {
       <section className={deskCard}>
         <p className="text-sm leading-relaxed text-white/85">
           {settings.mailReady
-            ? `Email uses the PiperPWeddingDJ@gmail.com inbox. Messages go out as ${settings.mailFrom}.`
-            : `Email uses the PiperPWeddingDJ@gmail.com inbox. Messages are written as ${settings.mailFrom}. They are not sent until that inbox has its Gmail app password.`}
+            ? `Owner messages go to ${settings.email}. They are sent from the PiperPWeddingDJ@gmail.com inbox as ${settings.mailFrom}.`
+            : `Owner messages go to ${settings.email}. They are written as ${settings.mailFrom}. They are not sent until the PiperPWeddingDJ@gmail.com inbox has its Gmail app password.`}
         </p>
         {settings.localBook ? (
           <p className="mt-3 text-sm text-white/65">
