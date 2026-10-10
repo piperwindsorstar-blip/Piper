@@ -17,6 +17,7 @@ import {
   listBots,
   listBookings,
   listExternalDates,
+  listVenues,
   listLeads,
   listMedia,
   listPackageOffers,
@@ -27,6 +28,7 @@ import {
   releaseExternalDate,
   removeExternalDate,
   removeBooking,
+  removeVenue,
   removeBot,
   removeLead,
   removeMedia,
@@ -35,6 +37,7 @@ import {
   removeQuestion,
   removeReview,
   saveDeskProfile,
+  saveVenue,
   sendInvoice,
   setReviewShown,
   updateBooking,
@@ -194,11 +197,54 @@ async function route(
       return botJson({ emails: await listEmails() })
     case 'externals':
       return externals(method, target.id, body)
+    case 'venues':
+      return venues(method, target.id, body)
     case 'settings':
       return settings(method, body, role)
     default:
       return botJson({ error: 'That resource is not on the desk.' }, 404)
   }
+}
+
+async function venues(
+  method: string,
+  id: string | null,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  if (method === 'GET' && !id) return botJson({ venues: await listVenues() })
+  if (method === 'GET') {
+    const row = (await listVenues()).find((item) => item.id === intId(id))
+    if (!row) return botJson({ error: 'That venue is not saved.' }, 404)
+    return botJson({ venue: row })
+  }
+  if (method === 'POST' && !id) {
+    return botJson({
+      venue: await saveVenue(
+        str(body, 'name') || str(body, 'venue'),
+        str(body, 'street') || str(body, 'venueStreet') || str(body, 'address'),
+      ),
+    })
+  }
+  if ((method === 'PATCH' || method === 'PUT') && id) {
+    const current = (await listVenues()).find((item) => item.id === intId(id))
+    if (!current) return botJson({ error: 'That venue is not saved.' }, 404)
+    const street =
+      body.street === undefined &&
+      body.venueStreet === undefined &&
+      body.address === undefined
+        ? current.street
+        : str(body, 'street') ||
+          str(body, 'venueStreet') ||
+          str(body, 'address')
+    return botJson({
+      venue: await saveVenue(str(body, 'name') || current.name, street),
+    })
+  }
+  if (method === 'DELETE' && id) {
+    await removeVenue(intId(id))
+    return botJson({ ok: true })
+  }
+  return botJson({ error: 'That action is not on the desk.' }, 405)
 }
 
 async function externals(

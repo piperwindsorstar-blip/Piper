@@ -18,9 +18,12 @@ import {
   createBooking,
   countedTotal,
   listExternalDates,
+  listVenues,
   releaseExternalDate,
   removeExternalDate,
   removeBooking,
+  removeVenue,
+  saveVenue,
   getTerms,
   inviteBot,
   invoiceBySlug,
@@ -152,6 +155,37 @@ export const deleteBooking = createServerFn({ method: 'POST' })
     await requireDesk()
     try {
       await removeBooking(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const getVenues = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireDesk()
+  return listVenues()
+})
+
+export const addVenue = createServerFn({ method: 'POST' })
+  .validator((data: { name: string; street: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        venue: await saveVenue(data.name, data.street),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const deleteVenue = createServerFn({ method: 'POST' })
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await removeVenue(data.id)
       return { ok: true as const }
     } catch (error) {
       return fail(error)

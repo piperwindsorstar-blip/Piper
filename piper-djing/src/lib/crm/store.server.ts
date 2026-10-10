@@ -22,6 +22,7 @@ import { longDate } from './dates.ts'
 import { isPackageId, PACKAGE_BUTTON_COPY, packageName } from './defaults.ts'
 import { asExternalKind } from './external-dates.ts'
 import type { ExternalDate } from './external-dates.ts'
+import type { SavedVenue } from './venues.ts'
 import type { PackageId } from './defaults.ts'
 import { DESK_OWNER_EMAIL } from './desk-owner.ts'
 import { HOME_BASE } from './home-base.ts'
@@ -567,6 +568,179 @@ export async function listBookings(): Promise<BookingView[]> {
   )
 }
 
+async function ensureVenues(): Promise<void> {
+  const definition = usesEdgeBook()
+    ? `id integer PRIMARY KEY AUTOINCREMENT,
+      name text NOT NULL,
+      street text NOT NULL DEFAULT ''`
+    : `id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name text NOT NULL,
+      street text NOT NULL DEFAULT ''`
+  await query(`CREATE TABLE IF NOT EXISTS venues (${definition})`)
+  await query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS venues_name_key ON venues (lower(name))',
+  )
+  await query(
+    `CREATE TABLE IF NOT EXISTS hidden_venues (
+      name text PRIMARY KEY
+    )`,
+  )
+}
+
+async function venueRow(name: string): Promise<SavedVenue | null> {
+  await ensureVenues()
+  const rows = await query<{ id: number; name: string; street: string }>(
+    'SELECT id, name, street FROM venues WHERE lower(name) = lower($1)',
+    [name.trim()],
+  )
+  const row = rows[0]
+  if (!row) return null
+  return { id: whole(row.id, 'Venue'), name: row.name, street: row.street }
+}
+
+async function venueHidden(name: string): Promise<boolean> {
+  await ensureVenues()
+  const rows = await query<{ name: string }>(
+    'SELECT name FROM hidden_venues WHERE name = $1',
+    [name.trim().toLowerCase()],
+  )
+  return rows.length > 0
+}
+
+async function showVenue(name: string): Promise<void> {
+  await ensureVenues()
+  await query('DELETE FROM hidden_venues WHERE name = $1', [
+    name.trim().toLowerCase(),
+  ])
+}
+
+async function seedVenue(name: string, street: string): Promise<void> {
+  const cleanName = optional(name, 160)
+  if (!cleanName || (await venueHidden(cleanName))) return
+  const cleanStreet = optional(street, 160)
+  const existing = await venueRow(cleanName)
+  if (!existing) {
+    await query('INSERT INTO venues (name, street) VALUES ($1, $2)', [
+      cleanName,
+      cleanStreet,
+    ])
+    return
+  }
+  if (!existing.street && cleanStreet) {
+    await query('UPDATE venues SET street = $1 WHERE id = $2', [
+      cleanStreet,
+      existing.id,
+    ])
+  }
+}
+
+async function rememberVenue(name: string, street: string): Promise<void> {
+  const cleanName = optional(name, 160)
+  if (!cleanName) return
+  const cleanStreet = optional(street, 160)
+  await showVenue(cleanName)
+  const existing = await venueRow(cleanName)
+  if (!existing) {
+    await query('INSERT INTO venues (name, street) VALUES ($1, $2)', [
+      cleanName,
+      cleanStreet,
+    ])
+    return
+  }
+  if (!cleanStreet || existing.street === cleanStreet) return
+  await query('UPDATE venues SET name = $1, street = $2 WHERE id = $3', [
+    cleanName,
+    cleanStreet,
+    existing.id,
+  ])
+}
+
+async function seedKnownVenues(): Promise<void> {
+  await ensureVenues()
+  const bookings = await query<{
+    venue_name: string
+    venue_street: string
+    venue_two_name: string
+    venue_two_street: string
+  }>(
+    'SELECT venue_name, venue_street, venue_two_name, venue_two_street FROM bookings',
+  )
+  for (const row of bookings) {
+    await seedVenue(row.venue_name, row.venue_street)
+    await seedVenue(row.venue_two_name, row.venue_two_street)
+  }
+  await ensureExternalDates()
+  const externals = await query<{
+    venue_name: string
+    venue_street: string
+    venue_two_name: string
+    venue_two_street: string
+  }>(
+    'SELECT venue_name, venue_street, venue_two_name, venue_two_street FROM external_dates',
+  )
+  for (const row of externals) {
+    await seedVenue(row.venue_name, row.venue_street)
+    await seedVenue(row.venue_two_name, row.venue_two_street)
+  }
+  for (const wedding of SAVED_WEDDINGS) {
+    await seedVenue(wedding.venueName, '')
+  }
+}
+
+export async function listVenues(): Promise<SavedVenue[]> {
+  await seedKnownVenues()
+  const rows = await query<{ id: number; name: string; street: string }>(
+    'SELECT id, name, street FROM venues ORDER BY lower(name), id',
+  )
+  return rows.map((row) => ({
+    id: whole(row.id, 'Venue'),
+    name: row.name,
+    street: row.street,
+  }))
+}
+
+export async function saveVenue(
+  name: string,
+  street: string,
+): Promise<SavedVenue> {
+  const cleanName = text(name, 160, 'The venue name')
+  const cleanStreet = optional(street, 160)
+  await showVenue(cleanName)
+  const existing = await venueRow(cleanName)
+  if (existing) {
+    await query('UPDATE venues SET name = $1, street = $2 WHERE id = $3', [
+      cleanName,
+      cleanStreet,
+      existing.id,
+    ])
+    return { id: existing.id, name: cleanName, street: cleanStreet }
+  }
+  const inserted = await query<{ id: number }>(
+    'INSERT INTO venues (name, street) VALUES ($1, $2) RETURNING id',
+    [cleanName, cleanStreet],
+  )
+  const id = inserted[0]?.id
+  if (id == null) throw new Error('That venue was not saved.')
+  return { id: whole(id, 'Venue'), name: cleanName, street: cleanStreet }
+}
+
+export async function removeVenue(id: number): Promise<void> {
+  const venueId = positiveId(id, 'That venue is not saved.')
+  await ensureVenues()
+  const rows = await query<{ name: string }>(
+    'DELETE FROM venues WHERE id = $1 RETURNING name',
+    [venueId],
+  )
+  const name = rows[0]?.name
+  if (!name) throw new Error('That venue is not saved.')
+  await query(
+    `INSERT INTO hidden_venues (name)
+     SELECT $1
+     WHERE NOT EXISTS (SELECT 1 FROM hidden_venues WHERE name = $1)`,
+    [name.trim().toLowerCase()],
+  )
+}
+
 export async function createBooking(input: BookingInput): Promise<BookingView> {
   const next = normalize(input)
   await guardIdentity(
@@ -624,6 +798,8 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
      VALUES ($1, $2, 'draft', $3, $4, 0)`,
     [invoiceSlug, id, figures.totalCents, figures.depositCents],
   )
+  await rememberVenue(next.venueName, next.venueStreet)
+  await rememberVenue(next.venueTwoName, next.venueTwoStreet)
   const row = await bookingRow(id)
   return present(toView(row, await invoiceFor(id)))
 }
@@ -980,6 +1156,8 @@ export async function bookExternalDate(input: {
   )
   const id = inserted[0]?.id
   if (id == null) throw new Error('That date was not saved.')
+  await rememberVenue(venueName, venueStreet)
+  await rememberVenue(venueTwoName, venueTwoStreet)
   return externalRow(whole(id, 'External date'))
 }
 
@@ -1134,6 +1312,8 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     const transition = recordMoney(refreshed, updated, 0, prices.ceremony)
     await saveBooking(current.id, transition.booking, transition.invoice)
   }
+  await rememberVenue(next.venueName, next.venueStreet)
+  await rememberVenue(next.venueTwoName, next.venueTwoStreet)
   return present(
     toView(await bookingRow(current.id), await invoiceFor(current.id)),
   )

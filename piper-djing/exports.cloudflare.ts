@@ -109,6 +109,15 @@ const EDGE_SCHEMA = [
     detail text NOT NULL DEFAULT '',
     created_at text NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS venues (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    name text NOT NULL,
+    street text NOT NULL DEFAULT ''
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS venues_name_key ON venues (lower(name))`,
+  `CREATE TABLE IF NOT EXISTS hidden_venues (
+    name text PRIMARY KEY
+  )`,
   `CREATE TABLE IF NOT EXISTS external_dates (
     id integer PRIMARY KEY AUTOINCREMENT,
     event_date text NOT NULL,

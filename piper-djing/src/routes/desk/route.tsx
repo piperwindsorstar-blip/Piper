@@ -12,6 +12,7 @@ import {
   getPackages,
   getQuestions,
   getReviews,
+  getVenues,
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
@@ -30,6 +31,7 @@ export const Route = createFileRoute('/desk')({
       reviews,
       bots,
       packages,
+      venues,
     ] = await Promise.all([
       getOverview(),
       getPayments(),
@@ -41,6 +43,7 @@ export const Route = createFileRoute('/desk')({
       getReviews(),
       getBots(),
       getPackages(),
+      getVenues(),
     ])
     return {
       overview,
@@ -54,6 +57,7 @@ export const Route = createFileRoute('/desk')({
       reviews,
       bots,
       packages,
+      venues,
     }
   },
   component: DeskLayout,

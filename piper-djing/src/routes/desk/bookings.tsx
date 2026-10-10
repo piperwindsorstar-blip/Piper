@@ -24,15 +24,19 @@ import {
   externalVenues,
 } from '../../lib/crm/external-dates.ts'
 import type { ExternalDate } from '../../lib/crm/external-dates.ts'
+import { matchingVenue } from '../../lib/crm/venues.ts'
+import type { SavedVenue } from '../../lib/crm/venues.ts'
 import type { PackageId } from '../../lib/crm/defaults.ts'
 import { longDate } from '../../lib/crm/dates.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
 import {
   addBooking,
   addExternalDate,
+  addVenue,
   changeStatus,
   deleteBooking,
   deleteExternal,
+  deleteVenue,
   getBookings,
   releaseExternal,
   markSent,
@@ -67,7 +71,8 @@ export const Route = createFileRoute('/desk/bookings')({
 
 function BookingsPage() {
   const bookings = Route.useLoaderData()
-  const { payments, packages, externalDates } = deskRoute.useLoaderData()
+  const { payments, packages, externalDates, venues } =
+    deskRoute.useLoaderData()
   const [filter, setFilter] = useState<(typeof FILTERS)[number][1]>('all')
   const [samples, setSamples] = useState(true)
   const pool = samples
@@ -95,8 +100,9 @@ function BookingsPage() {
           Show test samples
         </label>
       </div>
-      <NewBooking packages={packages} />
-      <ExternalDates dates={externalDates} />
+      <NewBooking packages={packages} venues={venues} />
+      <ExternalDates dates={externalDates} venues={venues} />
+      <SavedVenues venues={venues} />
       <div
         role="tablist"
         aria-label="Status"
@@ -137,6 +143,7 @@ function BookingsPage() {
             key={booking.id}
             booking={booking}
             packages={packages}
+            venues={venues}
             payments={payments.filter(
               (payment) => payment.bookingId === booking.id,
             )}
@@ -149,8 +156,10 @@ function BookingsPage() {
 
 function NewBooking({
   packages,
+  venues,
 }: {
   packages: { id: string; name: string; cents: number }[]
+  venues: SavedVenue[]
 }) {
   const add = useServerFn(addBooking)
   const router = useRouter()
@@ -158,6 +167,7 @@ function NewBooking({
   const [error, setError] = useState<string | null>(null)
   const [packageId, setPackageId] = useState('full')
   const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(0)
   const [preview, setPreview] = useState(() =>
     quote(
       { packageId: 'full', withStag: false, uplights: 0, venueKm: [] },
@@ -222,6 +232,7 @@ function NewBooking({
             setError(null)
             setOpen(false)
             formElement.reset()
+            setDraft((value) => value + 1)
             setPackageId('full')
             setPreview(
               quote(
@@ -239,9 +250,11 @@ function NewBooking({
         }}
       >
         <BookingFields
+          key={draft}
           packageId={packageId}
           onPackage={setPackageId}
           packages={packages}
+          venues={venues}
         />
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/10 bg-ink-950 p-4">
@@ -276,12 +289,19 @@ function NewBooking({
   )
 }
 
-function ExternalDates({ dates }: { dates: ExternalDate[] }) {
+function ExternalDates({
+  dates,
+  venues,
+}: {
+  dates: ExternalDate[]
+  venues: SavedVenue[]
+}) {
   const add = useServerFn(addExternalDate)
   const release = useServerFn(releaseExternal)
   const remove = useServerFn(deleteExternal)
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<number | null>(null)
@@ -341,6 +361,7 @@ function ExternalDates({ dates }: { dates: ExternalDate[] }) {
             setNotice('Booked. The date is taken.')
             setOpen(false)
             formElement.reset()
+            setDraft((value) => value + 1)
             await router.invalidate()
           })
         }}
@@ -399,38 +420,23 @@ function ExternalDates({ dates }: { dates: ExternalDate[] }) {
               className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Venue name
-            <input
-              name="venueName"
-              maxLength={160}
-              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
-            />
-          </label>
-          <label className="grid gap-1 text-sm">
-            Venue address
-            <input
-              name="venueStreet"
-              maxLength={160}
-              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
-            />
-          </label>
-          <label className="grid gap-1 text-sm">
-            Second venue name
-            <input
-              name="venueTwoName"
-              maxLength={160}
-              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
-            />
-          </label>
-          <label className="grid gap-1 text-sm">
-            Second venue address
-            <input
-              name="venueTwoStreet"
-              maxLength={160}
-              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
-            />
-          </label>
+          <VenuePair
+            key={draft}
+            venues={venues}
+            chooseLabel="Choose a venue"
+            nameLabel="Venue name"
+            streetLabel="Venue address"
+            nameField="venueName"
+            streetField="venueStreet"
+            secondChooseLabel="Choose a second venue"
+            secondNameLabel="Second venue name"
+            secondStreetLabel="Second venue address"
+            secondNameField="venueTwoName"
+            secondStreetField="venueTwoStreet"
+            span="sm:col-span-2"
+            labelClass="grid gap-1 text-sm"
+            inputClass="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
         </div>
         <label className="grid gap-1 text-sm">
           Note
@@ -550,6 +556,114 @@ function ExternalDates({ dates }: { dates: ExternalDate[] }) {
   )
 }
 
+function SavedVenues({ venues }: { venues: SavedVenue[] }) {
+  const add = useServerFn(addVenue)
+  const remove = useServerFn(deleteVenue)
+  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  return (
+    <section className={deskCard}>
+      <h2 className="font-display text-xl font-bold">Saved venues</h2>
+      <p className="mt-3 text-sm text-white/65">
+        Every venue on the book is kept here. Pick one on a booking or an
+        external date and the address fills in. Saving the same name updates the
+        address. Delete removes it from this list until that name is saved
+        again.
+      </p>
+      <form
+        className="mt-5 grid gap-4 sm:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          const formElement = event.currentTarget
+          const form = new FormData(formElement)
+          void add({
+            data: {
+              name: String(form.get('name') ?? ''),
+              street: String(form.get('street') ?? ''),
+            },
+          }).then(async (result) => {
+            if (!result.ok) {
+              setNotice(null)
+              setError(result.error)
+              return
+            }
+            setError(null)
+            setNotice('Saved. That venue is on the list.')
+            formElement.reset()
+            await router.invalidate()
+          })
+        }}
+      >
+        <label className="grid gap-1 text-sm">
+          Venue name
+          <input
+            name="name"
+            required
+            maxLength={160}
+            className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Venue address
+          <input
+            name="street"
+            maxLength={160}
+            className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
+        </label>
+        <div className="sm:col-span-2">
+          <button type="submit" className={deskPrimary}>
+            Save venue
+          </button>
+        </div>
+      </form>
+      {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+      {notice ? <p className="mt-4 text-sm text-white">{notice}</p> : null}
+      {venues.length === 0 ? (
+        <p className="mt-4 text-sm text-white/65">No venues yet.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-white/10">
+          {venues.map((venue) => (
+            <li
+              key={venue.id}
+              className="flex flex-wrap items-center justify-between gap-3 py-3"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold">{venue.name}</p>
+                <p className="text-sm text-white/65">
+                  {venue.street || 'No address yet'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className={deskDanger}
+                onClick={() => {
+                  void remove({ data: { id: venue.id } }).then(
+                    async (result) => {
+                      if (!result.ok) {
+                        setNotice(null)
+                        setError(result.error)
+                        return
+                      }
+                      setError(null)
+                      setNotice('Removed from the list.')
+                      await router.invalidate()
+                    },
+                  )
+                }}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 function priceRecord(
   packages: { id: string; cents: number }[],
 ): Record<PackageId, number> {
@@ -588,8 +702,10 @@ function BookingCard({
   booking,
   payments,
   packages,
+  venues,
 }: {
   packages: { id: string; name: string }[]
+  venues: SavedVenue[]
   booking: {
     id: number
     slug: string
@@ -777,6 +893,7 @@ function BookingCard({
             packageId={packageId}
             onPackage={setPackageId}
             packages={packages}
+            venues={venues}
             columns={3}
             defaults={{
               partnerOne: booking.partnerOne,
@@ -1115,6 +1232,161 @@ function BookingCard({
   )
 }
 
+function VenuePair({
+  venues,
+  chooseLabel,
+  nameLabel,
+  streetLabel,
+  nameField,
+  streetField,
+  defaultName = '',
+  defaultStreet = '',
+  secondChooseLabel,
+  secondNameLabel,
+  secondStreetLabel,
+  secondNameField,
+  secondStreetField,
+  defaultSecondName = '',
+  defaultSecondStreet = '',
+  span,
+  labelClass,
+  inputClass,
+}: {
+  venues: SavedVenue[]
+  chooseLabel: string
+  nameLabel: string
+  streetLabel: string
+  nameField: string
+  streetField: string
+  defaultName?: string
+  defaultStreet?: string
+  secondChooseLabel: string
+  secondNameLabel: string
+  secondStreetLabel: string
+  secondNameField: string
+  secondStreetField: string
+  defaultSecondName?: string
+  defaultSecondStreet?: string
+  span: string
+  labelClass: string
+  inputClass?: string
+}) {
+  return (
+    <>
+      <VenueFields
+        venues={venues}
+        chooseLabel={chooseLabel}
+        nameLabel={nameLabel}
+        streetLabel={streetLabel}
+        nameField={nameField}
+        streetField={streetField}
+        defaultName={defaultName}
+        defaultStreet={defaultStreet}
+        span={span}
+        labelClass={labelClass}
+        inputClass={inputClass}
+      />
+      <VenueFields
+        venues={venues}
+        chooseLabel={secondChooseLabel}
+        nameLabel={secondNameLabel}
+        streetLabel={secondStreetLabel}
+        nameField={secondNameField}
+        streetField={secondStreetField}
+        defaultName={defaultSecondName}
+        defaultStreet={defaultSecondStreet}
+        span={span}
+        labelClass={labelClass}
+        inputClass={inputClass}
+      />
+    </>
+  )
+}
+
+function VenueFields({
+  venues,
+  chooseLabel,
+  nameLabel,
+  streetLabel,
+  nameField,
+  streetField,
+  defaultName,
+  defaultStreet,
+  span,
+  labelClass,
+  inputClass,
+}: {
+  venues: SavedVenue[]
+  chooseLabel: string
+  nameLabel: string
+  streetLabel: string
+  nameField: string
+  streetField: string
+  defaultName: string
+  defaultStreet: string
+  span: string
+  labelClass: string
+  inputClass?: string
+}) {
+  const [name, setName] = useState(defaultName)
+  const [street, setStreet] = useState(defaultStreet)
+  const picked = matchingVenue(venues, name)
+
+  return (
+    <>
+      {venues.length > 0 ? (
+        <label className={`${labelClass} ${span}`}>
+          {chooseLabel}
+          <select
+            className={inputClass}
+            value={picked ? String(picked.id) : ''}
+            onChange={(event) => {
+              const venue = venues.find(
+                (item) => String(item.id) === event.target.value,
+              )
+              if (!venue) return
+              setName(venue.name)
+              setStreet(venue.street)
+            }}
+          >
+            <option value="">Pick a saved venue</option>
+            {venues.map((venue) => (
+              <option key={venue.id} value={venue.id}>
+                {venue.street ? `${venue.name} — ${venue.street}` : venue.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      <label className={labelClass}>
+        {nameLabel}
+        <input
+          name={nameField}
+          maxLength={160}
+          className={inputClass}
+          value={name}
+          onChange={(event) => {
+            const next = event.target.value
+            setName(next)
+            const match = matchingVenue(venues, next)
+            if (match) setStreet(match.street)
+          }}
+        />
+      </label>
+      <label className={labelClass}>
+        {streetLabel}
+        <input
+          name={streetField}
+          maxLength={160}
+          className={inputClass}
+          value={street}
+          onChange={(event) => setStreet(event.target.value)}
+        />
+      </label>
+    </>
+  )
+}
+
 function kilometres(form: FormData): number[] {
   return ['kmOne', 'kmTwo']
     .map((name) => String(form.get(name) ?? '').trim())
@@ -1126,12 +1398,14 @@ function BookingFields({
   packageId,
   onPackage,
   packages,
+  venues,
   defaults,
   columns = 2,
 }: {
   packageId: string
   onPackage: (value: string) => void
   packages: { id: string; name: string }[]
+  venues: SavedVenue[]
   columns?: 2 | 3
   defaults?: {
     partnerOne: string
@@ -1243,22 +1517,25 @@ function BookingFields({
           defaultValue={defaults?.kmTwo}
         />
       </label>
-      <label className="field">
-        Venue name
-        <input name="venueName" defaultValue={defaults?.venueName} />
-      </label>
-      <label className="field">
-        Venue street
-        <input name="venueStreet" defaultValue={defaults?.venueStreet} />
-      </label>
-      <label className="field">
-        Second venue name
-        <input name="venueTwoName" defaultValue={defaults?.venueTwoName} />
-      </label>
-      <label className="field">
-        Second venue street
-        <input name="venueTwoStreet" defaultValue={defaults?.venueTwoStreet} />
-      </label>
+      <VenuePair
+        venues={venues}
+        chooseLabel="Choose a venue"
+        nameLabel="Venue name"
+        streetLabel="Venue street"
+        nameField="venueName"
+        streetField="venueStreet"
+        defaultName={defaults?.venueName}
+        defaultStreet={defaults?.venueStreet}
+        secondChooseLabel="Choose a second venue"
+        secondNameLabel="Second venue name"
+        secondStreetLabel="Second venue street"
+        secondNameField="venueTwoName"
+        secondStreetField="venueTwoStreet"
+        defaultSecondName={defaults?.venueTwoName}
+        defaultSecondStreet={defaults?.venueTwoStreet}
+        span={span}
+        labelClass="field"
+      />
       <label className={`field ${span}`}>
         Notes
         <textarea name="notes" rows={3} defaultValue={defaults?.notes} />

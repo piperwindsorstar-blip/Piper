@@ -12,6 +12,7 @@ const RESOURCES = [
   'bots',
   'emails',
   'externals',
+  'venues',
   'settings',
 ] as const
 

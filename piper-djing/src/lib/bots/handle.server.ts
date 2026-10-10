@@ -14,6 +14,7 @@ import {
   listBots,
   listBookings,
   listLeads,
+  listVenues,
   listMedia,
   listPackageOffers,
   listPartners,
@@ -24,12 +25,14 @@ import {
   removeBooking,
   removeExternalDate,
   removeLead,
+  removeVenue,
   removeMedia,
   removePartner,
   removePayment,
   removeQuestion,
   removeReview,
   saveDeskProfile,
+  saveVenue,
   sendInvoice,
   setBookingStatus,
   setReviewShown,
@@ -153,6 +156,8 @@ async function readResource(resource: string): Promise<Response> {
       return Response.json({ bots: await listBots() })
     case 'emails':
       return Response.json({ emails: await listEmails() })
+    case 'venues':
+      return Response.json({ venues: await listVenues() })
     default:
       return Response.json(
         { error: 'That resource is not on the desk.' },
@@ -308,6 +313,13 @@ async function writeAction(
     case 'delete_external':
       await removeExternalDate(num(body, 'id'))
       return Response.json({ ok: true })
+    case 'save_venue':
+      return Response.json({
+        venue: await saveVenue(str(body, 'name'), str(body, 'street')),
+      })
+    case 'delete_venue':
+      await removeVenue(num(body, 'id'))
+      return Response.json({ venues: await listVenues() })
     case 'update_terms':
       return Response.json({ terms: await updateTerms(str(body, 'body')) })
     case 'add_question':

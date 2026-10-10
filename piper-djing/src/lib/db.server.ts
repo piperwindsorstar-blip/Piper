@@ -121,6 +121,15 @@ CREATE TABLE emails (
   detail text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE venues (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name text NOT NULL,
+  street text NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX venues_name_key ON venues (lower(name));
+CREATE TABLE hidden_venues (
+  name text PRIMARY KEY
+);
 CREATE TABLE external_dates (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   event_date text NOT NULL,
