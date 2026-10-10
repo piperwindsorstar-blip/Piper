@@ -6,6 +6,8 @@ export const PHOTOS = {
 }
 
 /** Set this to a portrait path to replace the labeled placeholder. */
+export const LOGO_SRC = '/photos/logo-inverted.png'
+export const LOGO_ALT = 'DJ Piper P'
 export const PORTRAIT_SRC = '/photos/dj-piper-at-the-booth.jpg'
 export const PORTRAIT_ALT = 'DJ Piper P at the booth.'
 

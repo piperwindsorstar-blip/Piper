@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { LINKS, NAV } from './content.ts'
+import { LINKS, LOGO_ALT, LOGO_SRC, NAV } from './content.ts'
 
 export function Header() {
   return (
@@ -10,9 +10,10 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5">
         <Link
           to="/"
-          className="font-display text-xl font-extrabold tracking-tight"
+          aria-label={LOGO_ALT}
+          className="inline-flex shrink-0 rounded-xl bg-ivory p-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hot"
         >
-          DJ PIPER <span className="text-neon text-glow">P</span>
+          <img src={LOGO_SRC} alt="" className="h-12 w-auto sm:h-14" />
         </Link>
         <nav className="hidden gap-8 text-sm text-white/65 md:flex">
           {NAV.map((item) => (

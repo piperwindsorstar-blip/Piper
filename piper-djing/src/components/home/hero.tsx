@@ -1,4 +1,4 @@
-import { LINKS, PHOTOS } from './content.ts'
+import { LINKS, LOGO_ALT, LOGO_SRC, PHOTOS } from './content.ts'
 import { SpinningBadge } from './spinning-badge.tsx'
 import { ButtonGhost, ButtonPrimary, Eyebrow } from './ui.tsx'
 
@@ -13,8 +13,17 @@ export function Hero() {
       />
       <div className="absolute inset-0 -z-10 bg-linear-to-t from-ink-950 via-ink-950/40 to-ink-950/20" />
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(50%_50%_at_20%_60%,rgba(255,0,127,0.18),transparent)]" />
-      <div className="mx-auto max-w-7xl px-5 pt-20 pb-24 md:pt-36 md:pb-32">
-        <Eyebrow>Wedding & events DJ · Brantford, Ontario</Eyebrow>
+      <div className="mx-auto max-w-7xl px-5 pt-10 pb-24 md:pt-16 md:pb-32">
+        <img
+          src={LOGO_SRC}
+          alt={LOGO_ALT}
+          width={919}
+          height={636}
+          className="h-36 w-auto rounded-2xl bg-ivory p-2 sm:h-44"
+        />
+        <Eyebrow className="mt-8">
+          Wedding & events DJ · Brantford, Ontario
+        </Eyebrow>
         <h1 className="mt-6 max-w-full font-display text-[clamp(3.4rem,13vw,11rem)] font-extrabold leading-[0.88] tracking-tight text-balance">
           Hi, I’m <br />
           <span className="text-neon text-glow">Piper P.</span>
