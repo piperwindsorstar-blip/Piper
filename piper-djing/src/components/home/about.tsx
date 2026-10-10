@@ -9,40 +9,27 @@ export function About() {
       id="about"
       className="mx-auto grid max-w-7xl scroll-mt-24 items-center gap-14 px-5 py-24 lg:grid-cols-[0.9fr_1.1fr]"
     >
-      <div className="relative">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-neon/30 bg-ink-800 shadow-[0_0_60px_rgba(255,0,127,0.18)]">
-          <img
-            src={portrait ? PORTRAIT_SRC : PHOTOS.phones}
-            alt={portrait ? PORTRAIT_ALT : ''}
-            className={`absolute inset-0 h-full w-full object-cover ${portrait ? '' : 'opacity-70'}`}
-            loading="lazy"
-            sizes="(min-width: 1024px) 40vw, 90vw"
-          />
-          {portrait ? null : (
-            <>
-              <div className="absolute inset-0 bg-linear-to-t from-ink-950 via-transparent to-neon/10" />
-              <div className="absolute inset-0 grid place-items-center">
-                <div className="rounded-2xl border border-dashed border-white/40 bg-black/50 px-6 py-5 text-center backdrop-blur">
-                  <Icon n="user" className="mx-auto mb-2 h-8 w-8 text-hot" />
-                  <p className="font-mono text-xs tracking-widest text-white/80 uppercase">
-                    Portrait of Piper goes here
-                  </p>
-                </div>
+      <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-neon/30 bg-ink-800 shadow-[0_0_60px_rgba(255,0,127,0.18)]">
+        <img
+          src={portrait ? PORTRAIT_SRC : PHOTOS.phones}
+          alt={portrait ? PORTRAIT_ALT : ''}
+          className={`absolute inset-0 h-full w-full object-cover ${portrait ? '' : 'opacity-70'}`}
+          loading="lazy"
+          sizes="(min-width: 1024px) 40vw, 90vw"
+        />
+        {portrait ? null : (
+          <>
+            <div className="absolute inset-0 bg-linear-to-t from-ink-950 via-transparent to-neon/10" />
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="rounded-2xl border border-dashed border-white/40 bg-black/50 px-6 py-5 text-center backdrop-blur">
+                <Icon n="user" className="mx-auto mb-2 h-8 w-8 text-hot" />
+                <p className="font-mono text-xs tracking-widest text-white/80 uppercase">
+                  Portrait of Piper goes here
+                </p>
               </div>
-            </>
-          )}
-        </div>
-        <div className="absolute -bottom-6 -right-2 rotate-3 rounded-2xl border border-white/15 bg-ink-900/95 px-5 py-4 shadow-xl backdrop-blur md:-right-8">
-          <p className="font-mono text-[10px] tracking-widest text-hot uppercase">
-            Community DJ
-          </p>
-          <p className="mt-1 font-display text-lg font-bold">
-            Charity & Private Events
-          </p>
-          <p className="text-sm text-white/55">
-            Running With The Bulls · Tillsonburg
-          </p>
-        </div>
+            </div>
+          </>
+        )}
       </div>
       <div>
         <Eyebrow>About</Eyebrow>
