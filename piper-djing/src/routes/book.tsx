@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { DateCalendarDialog } from '../components/weddings/date-calendar.tsx'
 import { DateDraftProvider } from '../components/weddings/date-draft.tsx'
 import { Header } from '../components/weddings/header.tsx'
 import { SiteFooter } from '../components/weddings/site-footer.tsx'
@@ -82,6 +83,10 @@ function BookPage() {
   const [packageId, setPackageId] = useState(
     () => PACKAGE_FOR_EVENT[requestedEvent] ?? 'full',
   )
+  useEffect(() => {
+    const next = PACKAGE_FOR_EVENT[requestedEvent]
+    if (next) setPackageId(next)
+  }, [requestedEvent])
   const [withStag, setWithStag] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -90,6 +95,7 @@ function BookPage() {
     <DateDraftProvider>
       <div className="weddings min-h-screen overflow-x-clip bg-paper font-sans text-ink">
         <Header sectionBase="/weddings" />
+        <DateCalendarDialog />
         <main className="mx-auto w-full max-w-xl px-5 py-16">
           <p className="font-mono text-xs tracking-[0.22em] text-violet uppercase">
             Weddings
@@ -175,6 +181,7 @@ function BookPage() {
               <label className="text-sm font-medium">
                 Wedding date
                 <input
+                  key={requestedDate}
                   name="eventDate"
                   type="date"
                   required

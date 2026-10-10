@@ -1,6 +1,7 @@
 import type { PackageOffer } from '../../lib/crm/packages.ts'
 import type { PublicReview } from '../../lib/crm/reviews.ts'
 import { AreaMarquee } from './area-marquee.tsx'
+import { DateCalendarDialog } from './date-calendar.tsx'
 import { DateDraftProvider } from './date-draft.tsx'
 import { Faq } from './faq.tsx'
 import { FinalCta } from './final-cta.tsx'
@@ -39,6 +40,7 @@ export function WeddingsPage({
           dangerouslySetInnerHTML={{ __html: weddingLocalBusinessJsonLd() }}
         />
         <Header />
+        <DateCalendarDialog />
         <main>
           <Hero />
           <TrustBar />

@@ -51,3 +51,37 @@ export function dateCheckAnswer(open: boolean): string {
     ? 'Yes, your date is available.'
     : 'No, your date is not available.'
 }
+
+export type CalendarCell = {
+  date: string
+  inMonth: boolean
+}
+
+/** Sunday-first weeks for one month. `monthIndex` is 0 for January. */
+export function calendarWeeks(
+  year: number,
+  monthIndex: number,
+): CalendarCell[][] {
+  const firstWeekday = new Date(Date.UTC(year, monthIndex, 1)).getUTCDay()
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate()
+  const cells: CalendarCell[] = []
+  for (let index = 0; index < firstWeekday; index += 1) {
+    const date = new Date(Date.UTC(year, monthIndex, index - firstWeekday + 1))
+    cells.push({ date: date.toISOString().slice(0, 10), inMonth: false })
+  }
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(Date.UTC(year, monthIndex, day))
+    cells.push({ date: date.toISOString().slice(0, 10), inMonth: true })
+  }
+  let next = 1
+  while (cells.length % 7 !== 0) {
+    const date = new Date(Date.UTC(year, monthIndex + 1, next))
+    cells.push({ date: date.toISOString().slice(0, 10), inMonth: false })
+    next += 1
+  }
+  const weeks: CalendarCell[][] = []
+  for (let index = 0; index < cells.length; index += 7) {
+    weeks.push(cells.slice(index, index + 7))
+  }
+  return weeks
+}

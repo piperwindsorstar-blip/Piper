@@ -7,7 +7,7 @@ export function Header({
 }: {
   sectionBase?: '' | '/weddings'
 }) {
-  const { date } = useDateDraft()
+  const { openCalendar } = useDateDraft()
   return (
     <header
       className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur-md"
@@ -31,13 +31,13 @@ export function Header({
             </a>
           ))}
         </nav>
-        <Link
-          to="/book"
-          search={date ? { date } : {}}
+        <button
+          type="button"
+          onClick={openCalendar}
           className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-neon"
         >
           Check Dates
-        </Link>
+        </button>
       </div>
     </header>
   )

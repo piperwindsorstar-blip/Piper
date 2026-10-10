@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useDateDraft } from './date-draft.tsx'
 import { Icon } from './icon.tsx'
@@ -32,11 +31,11 @@ export function ButtonPrimary({
   children: ReactNode
   className?: string
 }) {
-  const { date } = useDateDraft()
+  const { openCalendar } = useDateDraft()
   return (
-    <Link
-      to="/book"
-      search={date ? { date } : {}}
+    <button
+      type="button"
+      onClick={openCalendar}
       className={`${primaryClass} ${className}`}
     >
       {children}
@@ -44,7 +43,7 @@ export function ButtonPrimary({
         n="arrow"
         className="h-4 w-4 transition group-hover:translate-x-1"
       />
-    </Link>
+    </button>
   )
 }
 
