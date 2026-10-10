@@ -17,9 +17,9 @@ export function Hero() {
         <img
           src={LOGO_SRC}
           alt={LOGO_ALT}
-          width={919}
-          height={636}
-          className="h-36 w-auto rounded-2xl bg-ivory p-2 sm:h-44"
+          width={819}
+          height={562}
+          className="h-36 w-auto sm:h-48"
         />
         <Eyebrow className="mt-8">
           Wedding & events DJ · Brantford, Ontario

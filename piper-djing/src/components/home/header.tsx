@@ -11,7 +11,7 @@ export function Header() {
         <Link
           to="/"
           aria-label={LOGO_ALT}
-          className="inline-flex shrink-0 rounded-xl bg-ivory p-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hot"
+          className="inline-flex shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hot"
         >
           <img src={LOGO_SRC} alt="" className="h-12 w-auto sm:h-14" />
         </Link>
