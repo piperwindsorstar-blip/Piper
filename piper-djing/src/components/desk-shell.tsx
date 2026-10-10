@@ -30,7 +30,12 @@ import {
   onTheBook,
   upcomingMonths,
 } from '../lib/desk-console.ts'
-import type { ConsoleBooking, ConsoleLead, ConsoleReview, Led } from '../lib/desk-console.ts'
+import type {
+  ConsoleBooking,
+  ConsoleLead,
+  ConsoleReview,
+  Led,
+} from '../lib/desk-console.ts'
 
 const ICONS = {
   home: House,
@@ -198,11 +203,14 @@ export function DeskShell({
             const empty = counts.booked + counts.held + counts.lead === 0
             const label = `${month.name} ${month.year}: ${counts.booked} booked, ${counts.held} held, ${counts.lead} lead`
             return (
-              <Link
+              <button
                 key={month.key}
-                to="/desk/bookings"
+                type="button"
                 title={label}
                 aria-label={label}
+                onClick={() => {
+                  void router.navigate({ to: '/desk/bookings' })
+                }}
                 className="flex h-full min-w-0 flex-1 flex-col justify-end"
               >
                 <span className="flex h-full w-full flex-col justify-end overflow-hidden">
@@ -228,7 +236,7 @@ export function DeskShell({
                     <span className="h-1 w-full rounded-full bg-white/15" />
                   ) : null}
                 </span>
-              </Link>
+              </button>
             )
           })}
         </div>
@@ -244,11 +252,17 @@ export function DeskShell({
         </div>
         <p className="mt-1.5 flex gap-4 text-[11px] text-white/65">
           <span>
-            <span className="mr-1 inline-block h-2 w-2 bg-neon" aria-hidden="true" />
+            <span
+              className="mr-1 inline-block h-2 w-2 bg-neon"
+              aria-hidden="true"
+            />
             Booked
           </span>
           <span>
-            <span className="mr-1 inline-block h-2 w-2 bg-amber-300/80" aria-hidden="true" />
+            <span
+              className="mr-1 inline-block h-2 w-2 bg-amber-300/80"
+              aria-hidden="true"
+            />
             Held
           </span>
           <span>
@@ -305,6 +319,7 @@ export function DeskShell({
                 <Link
                   key={channel.name}
                   to={channel.to}
+                  activeOptions={{ exact: true }}
                   aria-current={on ? 'page' : undefined}
                   aria-label={
                     meter.badge > 0
@@ -317,7 +332,9 @@ export function DeskShell({
                       : 'border-white/10 hover:border-white/30'
                   }`}
                 >
-                  <span className={`h-1.5 w-1.5 rounded-full ${LED[meter.led]}`} />
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${LED[meter.led]}`}
+                  />
                   <span
                     className="flex h-12 w-3 flex-col-reverse gap-[2px] rounded-sm bg-black/50 p-[2px] sm:h-14"
                     aria-hidden="true"
