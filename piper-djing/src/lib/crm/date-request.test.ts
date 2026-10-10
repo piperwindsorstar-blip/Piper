@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { parseDateRequest } from './date-request.ts'
+import { heldDateNotice, parseDateRequest } from './date-request.ts'
 
 const today = '2026-10-09'
 
@@ -47,6 +47,11 @@ describe('date request', () => {
       ).ok,
       false,
     )
+  })
+
+  it('keeps a held date on the checker and lets an open date continue', () => {
+    assert.equal(heldDateNotice(false), 'That date is already held.')
+    assert.equal(heldDateNotice(true), null)
   })
 
   it('stays quiet when the honeypot is filled', () => {

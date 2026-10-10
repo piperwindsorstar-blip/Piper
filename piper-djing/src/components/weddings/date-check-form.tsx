@@ -1,20 +1,26 @@
 import { useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useServerFn } from '@tanstack/react-start'
+import { useRef, useState } from 'react'
 import {
   EVENT_TYPES,
+  heldDateNotice,
   parseDateRequest,
   todayInToronto,
 } from '../../lib/crm/date-request.ts'
+import { checkDate } from '../../lib/crm/public.functions.ts'
 import { LINKS } from './content.ts'
 import { useDateDraft } from './date-draft.tsx'
 import { Icon } from './icon.tsx'
 
 export function DateCheckForm() {
   const router = useRouter()
+  const check = useServerFn(checkDate)
   const { date, setDate } = useDateDraft()
   const [eventType, setEventType] = useState('Wedding')
   const [company, setCompany] = useState('')
+  const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const ticket = useRef(0)
   const field =
     'mt-2 w-full rounded-lg border border-line bg-mist px-4 py-3 text-ink focus:border-violet focus:bg-paper focus:outline-none'
 
@@ -22,6 +28,7 @@ export function DateCheckForm() {
     <form
       id="check-dates"
       className="relative rounded-2xl border border-ink bg-paper p-7 shadow-[8px_8px_0_0_#EEE8FF]"
+      aria-busy={pending}
       onSubmit={(event) => {
         event.preventDefault()
         const parsed = parseDateRequest(
@@ -33,11 +40,31 @@ export function DateCheckForm() {
           return
         }
         if (parsed.silent) return
+        const current = ++ticket.current
         setError(null)
-        void router.navigate({
-          to: '/book',
-          search: { date: parsed.date, event: parsed.eventType },
-        })
+        setPending(true)
+        void check({ data: { date: parsed.date } })
+          .then((answer) => {
+            if (current !== ticket.current) return
+            const held = heldDateNotice(answer.open)
+            if (held) {
+              setError(held)
+              return
+            }
+            void router.navigate({
+              to: '/book',
+              search: { date: parsed.date, event: parsed.eventType },
+            })
+          })
+          .catch(() => {
+            if (current !== ticket.current) return
+            setError(
+              'That date could not be checked. Email PiperPWeddingDJ@gmail.com and Piper will write back.',
+            )
+          })
+          .finally(() => {
+            if (current === ticket.current) setPending(false)
+          })
       }}
     >
       <p className="font-mono text-xs tracking-[0.2em] text-violet uppercase">
@@ -91,9 +118,10 @@ export function DateCheckForm() {
       />
       <button
         type="submit"
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-neon py-4 font-bold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)] transition hover:bg-hot"
+        disabled={pending}
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-neon py-4 font-bold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)] transition hover:bg-hot disabled:opacity-60"
       >
-        Check Wedding Dates
+        {pending ? 'Checking the date' : 'Check Wedding Dates'}
         <Icon n="arrow" className="h-4 w-4" />
       </button>
       {error ? (

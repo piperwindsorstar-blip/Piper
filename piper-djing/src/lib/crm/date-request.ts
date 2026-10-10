@@ -45,3 +45,7 @@ export function parseDateRequest(
   if (!eventType) return { ok: false, error: 'Choose an event type.' }
   return { ok: true, silent: false, date, eventType }
 }
+
+export function heldDateNotice(open: boolean): string | null {
+  return open ? null : 'That date is already held.'
+}
