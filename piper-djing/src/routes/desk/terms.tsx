@@ -1,11 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
 import { getTermsPage, saveTerms } from '../../lib/crm/desk.functions.ts'
-import { privateHead } from '../../lib/seo.ts'
+import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/terms')({
-  head: () => privateHead('Terms · Piper DJing'),
+  head: () => deskHead('Terms · Piper DJing'),
   loader: () => getTermsPage(),
   component: TermsPage,
 })
@@ -18,7 +19,7 @@ function TermsPage() {
 
   return (
     <form
-      className="grid gap-4"
+      className="grid gap-5"
       onSubmit={(event) => {
         event.preventDefault()
         const body = String(new FormData(event.currentTarget).get('body') ?? '')
@@ -28,13 +29,27 @@ function TermsPage() {
         })
       }}
     >
-      <h1 className="font-display text-4xl tracking-tight">Terms</h1>
-      <p className="text-sm text-muted">One document. Change it here. Do not add a second.</p>
-      <textarea name="body" rows={16} defaultValue={data.body} className="field w-full" />
-      <button type="submit" className="min-h-11 w-fit rounded-full bg-ink px-5 text-sm text-ivory">
-        Save the terms
-      </button>
-      {notice ? <p className="text-sm">{notice}</p> : null}
+      <DeskTitle kicker="Terms" title="Terms">
+        <p className="mt-1 text-sm text-white/65">
+          One document. Change it here. Do not add a second.
+        </p>
+      </DeskTitle>
+      <div className={deskCard}>
+        <label htmlFor="terms" className="sr-only">
+          Terms
+        </label>
+        <textarea
+          id="terms"
+          name="body"
+          rows={16}
+          defaultValue={data.body}
+          className="leading-relaxed"
+        />
+        <button type="submit" className={`${deskPrimary} mt-4`}>
+          Save the terms
+        </button>
+      </div>
+      {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
     </form>
   )
 }

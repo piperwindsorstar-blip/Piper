@@ -1,11 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
 import { getMedia, saveMedia } from '../../lib/crm/desk.functions.ts'
-import { privateHead } from '../../lib/seo.ts'
+import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/media')({
-  head: () => privateHead('Media · Piper DJing'),
+  head: () => deskHead('Media · Piper DJing'),
   loader: () => getMedia(),
   component: MediaPage,
 })
@@ -17,15 +18,18 @@ function MediaPage() {
   const [notice, setNotice] = useState<string | null>(null)
 
   return (
-    <div className="grid gap-6">
-      <h1 className="font-display text-4xl tracking-tight">Media</h1>
+    <div className="grid gap-5">
+      <DeskTitle kicker="Media" title="Media" />
       <form
-        className="grid gap-3"
+        className={`${deskCard} grid gap-3`}
         onSubmit={(event) => {
           event.preventDefault()
           const form = new FormData(event.currentTarget)
           void save({
-            data: { title: String(form.get('title') ?? ''), url: String(form.get('url') ?? '') },
+            data: {
+              title: String(form.get('title') ?? ''),
+              url: String(form.get('url') ?? ''),
+            },
           }).then(async (result) => {
             setNotice(result.ok ? 'Added.' : result.error)
             if (result.ok) {
@@ -43,15 +47,23 @@ function MediaPage() {
           Link
           <input name="url" required placeholder="https://" />
         </label>
-        <button type="submit" className="min-h-11 w-fit rounded-full bg-ink px-5 text-sm text-ivory">
+        <button type="submit" className={`${deskPrimary} w-fit`}>
           Add the link
         </button>
       </form>
-      {notice ? <p className="text-sm">{notice}</p> : null}
-      <ul className="grid gap-3">
+      {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
+      <ul className="grid gap-2">
         {media.map((item) => (
-          <li key={item.id}>
-            <a href={item.url} className="text-ink underline" target="_blank" rel="noopener noreferrer">
+          <li
+            key={item.id}
+            className="rounded-xl border border-white/10 bg-ink-900 px-4 py-3"
+          >
+            <a
+              href={item.url}
+              className="font-semibold text-hot underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {item.title}
             </a>
           </li>

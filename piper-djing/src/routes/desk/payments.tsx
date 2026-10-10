@@ -1,12 +1,18 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+import {
+  DeskTitle,
+  deskCard,
+  deskGhost,
+  deskPrimary,
+} from '../../components/desk-ui.tsx'
 import { getPayments, recordPayment } from '../../lib/crm/desk.functions.ts'
+import { deskHead } from '../../lib/desk-head.ts'
 import { cad, dollarsToCents } from '../../lib/crm/money.ts'
-import { privateHead } from '../../lib/seo.ts'
 
 export const Route = createFileRoute('/desk/payments')({
-  head: () => privateHead('Payments · Piper DJing'),
+  head: () => deskHead('Payments · Piper DJing'),
   loader: () => getPayments(),
   component: PaymentsPage,
 })
@@ -18,14 +24,17 @@ function PaymentsPage() {
   const [notice, setNotice] = useState<string | null>(null)
 
   return (
-    <div className="grid gap-6">
-      <h1 className="font-display text-4xl tracking-tight">Payments</h1>
-      {notice ? <p className="text-sm">{notice}</p> : null}
+    <div className="grid gap-5">
+      <DeskTitle kicker="Payments" title="Payments" />
+      {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       <form
-        className="grid gap-3 rounded-card border border-line bg-ivory px-5 py-5 sm:grid-cols-2"
+        className={`${deskCard} grid gap-3 sm:grid-cols-2`}
         onSubmit={(event) => {
           event.preventDefault()
-          const submitter = event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null
+          const submitter =
+            event.nativeEvent instanceof SubmitEvent
+              ? event.nativeEvent.submitter
+              : null
           const form = new FormData(event.currentTarget, submitter)
           const refund = form.get('kind') === 'refund'
           try {
@@ -47,7 +56,9 @@ function PaymentsPage() {
               if (result.ok) await router.invalidate()
             })
           } catch (error) {
-            setNotice(error instanceof Error ? error.message : 'Enter an amount.')
+            setNotice(
+              error instanceof Error ? error.message : 'Enter an amount.',
+            )
           }
         }}
       >
@@ -67,23 +78,32 @@ function PaymentsPage() {
         </label>
         <label className="field">
           Amount
-          <input name="amount" inputMode="decimal" required placeholder="500.00" />
+          <input
+            name="amount"
+            inputMode="decimal"
+            required
+            placeholder="500.00"
+          />
         </label>
         <label className="field">
           Note
           <input name="note" />
         </label>
-        <button name="kind" value="payment" className="min-h-11 rounded-full bg-ink px-4 text-sm text-ivory">
+        <button name="kind" value="payment" className={deskPrimary}>
           Record payment
         </button>
-        <button name="kind" value="refund" className="min-h-11 rounded-full border border-ink px-4 text-sm">
+        <button name="kind" value="refund" className={deskGhost}>
           Record refund
         </button>
       </form>
       <ul className="grid gap-3">
         {data.payments.map((payment) => (
-          <li key={payment.id} className="rounded-2xl border border-line px-4 py-3 text-sm">
-            {payment.names} · {cad(payment.cents)}
+          <li
+            key={payment.id}
+            className="rounded-2xl border border-white/10 bg-ink-900 px-4 py-3 text-sm text-white/85"
+          >
+            {payment.names} ·{' '}
+            <span className="tabular-nums">{cad(payment.cents)}</span>
             {payment.note ? ` · ${payment.note}` : ''}
           </li>
         ))}

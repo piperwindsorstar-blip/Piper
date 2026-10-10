@@ -1,15 +1,16 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
 import {
   deletePartner,
   getPartners,
   savePartner,
 } from '../../lib/crm/desk.functions.ts'
-import { privateHead } from '../../lib/seo.ts'
+import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/partners')({
-  head: () => privateHead('Partners · Piper DJing'),
+  head: () => deskHead('Partners · Piper DJing'),
   loader: () => getPartners(),
   component: PartnersPage,
 })
@@ -39,14 +40,15 @@ function PartnersPage() {
   const [notice, setNotice] = useState<string | null>(null)
 
   return (
-    <div className="grid max-w-xl gap-6">
-      <h1 className="font-display text-4xl tracking-tight">Partner brands</h1>
-      <p className="text-sm text-muted">
-        Each logo is a small link on the wedding page. Four fit across a phone. Add
-        or remove them here.
-      </p>
+    <div className="grid gap-5">
+      <DeskTitle kicker="Partners" title="Partner brands">
+        <p className="mt-1 text-sm text-white/65">
+          Each logo is a small link on the wedding page. Four fit across a
+          phone. Add or remove them here.
+        </p>
+      </DeskTitle>
       <form
-        className="grid gap-3"
+        className={`${deskCard} grid gap-3`}
         onSubmit={(event) => {
           event.preventDefault()
           const form = event.currentTarget
@@ -62,7 +64,6 @@ function PartnersPage() {
           void readLogo(logo)
             .then((data) => save({ data: { name, href, logo: data } }))
             .then(async (result) => {
-              if (!result) return
               setNotice(result.ok ? 'Added.' : result.error)
               if (result.ok) {
                 form.reset()
@@ -95,46 +96,43 @@ function PartnersPage() {
             required
           />
         </label>
-        <button
-          type="submit"
-          className="min-h-11 w-fit rounded-full bg-ink px-5 text-sm text-ivory"
-        >
+        <button type="submit" className={`${deskPrimary} w-fit`}>
           Add the brand
         </button>
       </form>
-      {notice ? <p className="text-sm">{notice}</p> : null}
+      {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       {partners.length === 0 ? (
-        <p className="text-sm text-muted">
+        <p className="rounded-xl border border-dashed border-white/15 p-8 text-center text-sm text-white/65">
           No partner brands yet. The wedding page section stays hidden.
         </p>
       ) : (
-        <ul className="grid gap-3">
+        <ul className="grid gap-2">
           {partners.map((partner) => (
             <li
               key={partner.id}
-              className="flex items-center gap-4 rounded-card border border-line bg-ivory px-4 py-3"
+              className="flex items-center gap-4 rounded-xl border border-white/10 bg-ink-900 px-4 py-3"
             >
               <img
                 src={partner.src}
                 alt=""
-                className="size-14 rounded-2xl border border-line bg-paper object-contain p-1"
+                className="size-14 rounded-2xl border border-white/10 bg-ink-950 object-contain p-1"
               />
               <div className="min-w-0 flex-1">
-                <p className="font-display text-xl tracking-tight">
+                <p className="font-display text-xl font-bold tracking-tight">
                   {partner.name}
                 </p>
                 <a
                   href={partner.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block truncate text-sm text-muted underline"
+                  className="block truncate text-sm text-hot underline"
                 >
                   {partner.href}
                 </a>
               </div>
               <button
                 type="button"
-                className="min-h-11 shrink-0 text-sm text-danger"
+                className="min-h-11 shrink-0 text-sm font-semibold text-rose-300"
                 onClick={() => {
                   void remove({ data: { id: partner.id } }).then(
                     async (result) => {

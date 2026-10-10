@@ -210,12 +210,73 @@ textarea {
   }
 }
 
+.desk {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  background: #0d0d0d;
+  color: #f5f2f4;
+  font-family: var(--font-sans);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+.desk :focus-visible {
+  outline: 2px solid #ff1493;
+  outline-offset: 2px;
+}
+
+.desk .field {
+  color: rgb(255 255 255 / 0.65);
+}
+
+.desk input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.desk select,
+.desk textarea {
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 0.5rem;
+  background: #0d0d0d;
+  color: #fff;
+  padding: 0.625rem 0.75rem;
+}
+
+.desk input:not([type='checkbox']):not([type='radio']):not([type='file']):focus,
+.desk select:focus,
+.desk textarea:focus {
+  border-color: #ff007f;
+}
+
+.desk input[type='date'],
+.desk input[type='datetime-local'] {
+  color-scheme: dark;
+}
+
+.desk input[type='checkbox'],
+.desk input[type='radio'] {
+  accent-color: #ff007f;
+}
+
+.desk input[type='file'] {
+  color: rgb(255 255 255 / 0.85);
+}
+
+.desk .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.desk .no-scrollbar {
+  scrollbar-width: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home .marquee,
   .weddings .marquee,
   .spin-slow,
-  .pulse-glow {
+  .pulse-glow,
+  .desk .desk-motion {
     animation: none;
+    transition: none;
   }
 
   html {

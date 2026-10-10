@@ -2,6 +2,12 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import {
+  DeskTitle,
+  ShowSwitch,
+  deskCard,
+  deskPrimary,
+} from '../../components/desk-ui.tsx'
+import {
   deleteReview,
   editReview,
   getReviews,
@@ -10,10 +16,10 @@ import {
 } from '../../lib/crm/desk.functions.ts'
 import { REVIEW_SOURCES, reviewSourceLabel } from '../../lib/crm/reviews.ts'
 import type { ReviewDraft, ReviewView } from '../../lib/crm/reviews.ts'
-import { privateHead } from '../../lib/seo.ts'
+import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/reviews')({
-  head: () => privateHead('Reviews · Piper DJing'),
+  head: () => deskHead('Reviews · Piper DJing'),
   loader: () => getReviews(),
   component: ReviewsPage,
 })
@@ -104,7 +110,7 @@ function SavedReview({ review }: { review: ReviewView }) {
   const [shown, setShown] = useState(review.show)
 
   return (
-    <li className="grid gap-3 rounded-card border border-line bg-ivory px-4 py-4">
+    <li className="grid gap-3 rounded-2xl border border-white/10 bg-ink-900 p-5">
       <form
         className="grid gap-3"
         onSubmit={(event) => {
@@ -122,45 +128,35 @@ function SavedReview({ review }: { review: ReviewView }) {
         }}
       >
         <ReviewFields review={review} />
-        <label className="flex items-center gap-3 text-sm">
-          <input
-            name="show"
-            type="checkbox"
-            className="size-5"
-            checked={shown}
-            onChange={(event) => {
-              const show = event.target.checked
-              setShown(show)
-              void toggle({ data: { id: review.id, show } }).then(
-                async (result) => {
-                  if (!result.ok) {
-                    setShown(!show)
-                    setNotice(result.error)
-                    return
-                  }
-                  setShown(result.review.show)
-                  setNotice(
-                    result.review.show
-                      ? 'This review is on the site.'
-                      : 'This review is hidden.',
-                  )
-                  await router.invalidate()
-                },
-              )
-            }}
-          />
-          Show on site
-        </label>
+        <ShowSwitch
+          checked={shown}
+          onChange={(show) => {
+            setShown(show)
+            void toggle({ data: { id: review.id, show } }).then(
+              async (result) => {
+                if (!result.ok) {
+                  setShown(!show)
+                  setNotice(result.error)
+                  return
+                }
+                setShown(result.review.show)
+                setNotice(
+                  result.review.show
+                    ? 'This review is on the site.'
+                    : 'This review is hidden.',
+                )
+                await router.invalidate()
+              },
+            )
+          }}
+        />
         <div className="flex flex-wrap gap-3">
-          <button
-            type="submit"
-            className="min-h-11 rounded-full bg-ink px-5 text-sm text-ivory"
-          >
+          <button type="submit" className={deskPrimary}>
             Save
           </button>
           <button
             type="button"
-            className="min-h-11 text-sm text-danger"
+            className="min-h-11 text-sm font-semibold text-rose-300"
             onClick={() => {
               void remove({ data: { id: review.id } }).then(async (result) => {
                 setNotice(result.ok ? 'Review deleted.' : result.error)
@@ -172,7 +168,7 @@ function SavedReview({ review }: { review: ReviewView }) {
           </button>
         </div>
       </form>
-      {notice ? <p className="text-sm">{notice}</p> : null}
+      {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
     </li>
   )
 }
@@ -182,18 +178,18 @@ function ReviewsPage() {
   const add = useServerFn(saveReview)
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
+  const [show, setShow] = useState(false)
 
   return (
-    <div className="grid max-w-2xl gap-6">
-      <div>
-        <h1 className="font-display text-4xl tracking-tight">Reviews</h1>
-        <p className="mt-3 text-sm text-ink-soft">
+    <div className="grid gap-5">
+      <DeskTitle kicker="Reviews" title="Reviews">
+        <p className="mt-1 text-sm text-white/65">
           Reviews switched on appear on the home page and the weddings page,
           newest first. Nothing is shown until you switch it on.
         </p>
-      </div>
+      </DeskTitle>
       <form
-        className="grid gap-3 rounded-card border border-line bg-ivory px-4 py-4"
+        className={`${deskCard} grid gap-3`}
         onSubmit={(event) => {
           event.preventDefault()
           const form = event.currentTarget
@@ -201,29 +197,24 @@ function ReviewsPage() {
             setNotice(result.ok ? 'Review added.' : result.error)
             if (result.ok) {
               form.reset()
+              setShow(false)
               await router.invalidate()
             }
           })
         }}
       >
-        <h2 className="font-display text-2xl">Add a review</h2>
+        <h2 className="font-display text-xl font-bold">Add a review</h2>
         <ReviewFields />
-        <label className="flex items-center gap-3 text-sm">
-          <input name="show" type="checkbox" className="size-5" />
-          Show on site
-        </label>
-        <button
-          type="submit"
-          className="min-h-11 w-fit rounded-full bg-ink px-5 text-sm text-ivory"
-        >
+        <ShowSwitch checked={show} onChange={setShow} />
+        <button type="submit" className={`${deskPrimary} w-fit`}>
           Add the review
         </button>
       </form>
-      {notice ? <p className="text-sm">{notice}</p> : null}
+      {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       {reviews.length === 0 ? (
-        <p className="text-sm text-muted">No reviews yet.</p>
+        <p className="text-sm text-white/65">No reviews yet.</p>
       ) : (
-        <ul className="grid gap-4">
+        <ul className="grid gap-3">
           {reviews.map((review) => (
             <SavedReview key={review.id} review={review} />
           ))}
