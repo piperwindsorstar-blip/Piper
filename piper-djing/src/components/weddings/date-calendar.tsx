@@ -135,129 +135,133 @@ export function DateCalendarDialog() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 px-4 py-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/40">
       <button
         type="button"
         aria-label="Close the calendar"
-        className="absolute inset-0 cursor-default"
+        className="fixed inset-0 cursor-default"
         onClick={closeCalendar}
       />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="date-calendar-title"
-        tabIndex={-1}
-        className="relative w-full max-w-sm rounded-2xl border border-ink bg-paper p-5 shadow-[8px_8px_0_0_#EEE8FF] outline-none"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h2
-            id="date-calendar-title"
-            className="font-display text-2xl font-bold"
-          >
-            Pick a date
-          </h2>
-          <button
-            type="button"
-            onClick={closeCalendar}
-            className="rounded-lg px-2 py-1 text-sm font-semibold text-soft hover:text-ink"
-          >
-            Close
-          </button>
-        </div>
-        <label
-          htmlFor="calendar-event"
-          className="mt-4 block text-xs font-bold tracking-widest text-soft uppercase"
+      <div className="flex min-h-full items-start justify-center px-4 py-6 sm:items-center">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="date-calendar-title"
+          tabIndex={-1}
+          className="relative w-full max-w-sm rounded-2xl border border-ink bg-paper p-5 shadow-[8px_8px_0_0_#EEE8FF] outline-none"
         >
-          Event type
-        </label>
-        <select
-          id="calendar-event"
-          value={eventType}
-          onChange={(event) => {
-            const next = EVENT_TYPES.find((item) => item === event.target.value)
-            if (next) setEventType(next)
-          }}
-          className="mt-2 w-full rounded-lg border border-line bg-mist px-4 py-3 text-ink focus:border-violet focus:bg-paper focus:outline-none"
-        >
-          {EVENT_TYPES.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            aria-label="Previous month"
-            disabled={cursorMonth <= currentMonth}
-            onClick={() => shiftMonth(-1)}
-            className="rounded-lg border border-line px-3 py-2 text-sm font-semibold disabled:opacity-40"
+          <div className="flex items-start justify-between gap-3">
+            <h2
+              id="date-calendar-title"
+              className="font-display text-2xl font-bold"
+            >
+              Pick a date
+            </h2>
+            <button
+              type="button"
+              onClick={closeCalendar}
+              className="rounded-lg px-2 py-1 text-sm font-semibold text-soft hover:text-ink"
+            >
+              Close
+            </button>
+          </div>
+          <label
+            htmlFor="calendar-event"
+            className="mt-4 block text-xs font-bold tracking-widest text-soft uppercase"
           >
-            Prev
-          </button>
-          <p className="font-display text-lg font-bold">{title}</p>
-          <button
-            type="button"
-            aria-label="Next month"
-            onClick={() => shiftMonth(1)}
-            className="rounded-lg border border-line px-3 py-2 text-sm font-semibold"
+            Event type
+          </label>
+          <select
+            id="calendar-event"
+            value={eventType}
+            onChange={(event) => {
+              const next = EVENT_TYPES.find(
+                (item) => item === event.target.value,
+              )
+              if (next) setEventType(next)
+            }}
+            className="mt-2 w-full rounded-lg border border-line bg-mist px-4 py-3 text-ink focus:border-violet focus:bg-paper focus:outline-none"
           >
-            Next
-          </button>
+            {EVENT_TYPES.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              aria-label="Previous month"
+              disabled={cursorMonth <= currentMonth}
+              onClick={() => shiftMonth(-1)}
+              className="rounded-lg border border-line px-3 py-2 text-sm font-semibold disabled:opacity-40"
+            >
+              Prev
+            </button>
+            <p className="font-display text-lg font-bold">{title}</p>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={() => shiftMonth(1)}
+              className="rounded-lg border border-line px-3 py-2 text-sm font-semibold"
+            >
+              Next
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] font-bold tracking-wide text-soft uppercase">
+            {WEEKDAYS.map((day) => (
+              <span key={day} aria-hidden="true">
+                {day.slice(0, 1)}
+              </span>
+            ))}
+          </div>
+          <div className="mt-1 grid gap-1">
+            {weeks.map((week) => (
+              <div key={week[0]?.date} className="grid grid-cols-7 gap-1">
+                {week.map((cell) => {
+                  const past = cell.date < today
+                  const selected = cell.date === date
+                  return (
+                    <button
+                      key={cell.date}
+                      type="button"
+                      disabled={past || pending}
+                      aria-label={longDate(cell.date)}
+                      aria-pressed={selected}
+                      onClick={() => pick(cell.date)}
+                      className={`grid h-10 place-items-center rounded-lg text-sm font-semibold ${
+                        selected
+                          ? 'bg-neon text-white'
+                          : cell.inMonth
+                            ? 'text-ink hover:bg-blush'
+                            : 'text-soft hover:bg-blush'
+                      } disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent`}
+                    >
+                      {Number(cell.date.slice(8, 10))}
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+          {pending ? (
+            <p className="mt-4 text-center text-sm text-soft">
+              Checking the date
+            </p>
+          ) : null}
+          {message ? (
+            <p
+              role="status"
+              className="mt-4 text-center font-display text-xl font-bold text-balance"
+            >
+              {message}
+            </p>
+          ) : null}
+          {error ? (
+            <p role="alert" className="mt-3 text-center text-sm font-medium">
+              {error}
+            </p>
+          ) : null}
         </div>
-        <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] font-bold tracking-wide text-soft uppercase">
-          {WEEKDAYS.map((day) => (
-            <span key={day} aria-hidden="true">
-              {day.slice(0, 1)}
-            </span>
-          ))}
-        </div>
-        <div className="mt-1 grid gap-1">
-          {weeks.map((week) => (
-            <div key={week[0]?.date} className="grid grid-cols-7 gap-1">
-              {week.map((cell) => {
-                const past = cell.date < today
-                const selected = cell.date === date
-                return (
-                  <button
-                    key={cell.date}
-                    type="button"
-                    disabled={past || pending}
-                    aria-label={longDate(cell.date)}
-                    aria-pressed={selected}
-                    onClick={() => pick(cell.date)}
-                    className={`grid h-10 place-items-center rounded-lg text-sm font-semibold ${
-                      selected
-                        ? 'bg-neon text-white'
-                        : cell.inMonth
-                          ? 'text-ink hover:bg-blush'
-                          : 'text-soft hover:bg-blush'
-                    } disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent`}
-                  >
-                    {Number(cell.date.slice(8, 10))}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-        {pending ? (
-          <p className="mt-4 text-center text-sm text-soft">
-            Checking the date
-          </p>
-        ) : null}
-        {message ? (
-          <p
-            role="status"
-            className="mt-4 text-center font-display text-xl font-bold text-balance"
-          >
-            {message}
-          </p>
-        ) : null}
-        {error ? (
-          <p role="alert" className="mt-3 text-center text-sm font-medium">
-            {error}
-          </p>
-        ) : null}
       </div>
     </div>
   )
