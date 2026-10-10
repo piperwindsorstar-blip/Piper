@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { DateDraftProvider } from '../components/weddings/date-draft.tsx'
 import { Header } from '../components/weddings/header.tsx'
 import { SiteFooter } from '../components/weddings/site-footer.tsx'
+import { EVENT_TYPES } from '../lib/crm/date-request.ts'
 import { sendInquiry } from '../lib/crm/public.functions.ts'
 import { publicHead } from '../lib/seo.ts'
 
@@ -21,12 +22,23 @@ const PACKAGES = [
 ] as const
 
 export const Route = createFileRoute('/book')({
-  validateSearch: (search: Record<string, unknown>): { date?: string } => {
-    const raw = search.date
-    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      return { date: raw }
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { date?: string; event?: string } => {
+    const found: { date?: string; event?: string } = {}
+    if (
+      typeof search.date === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(search.date)
+    ) {
+      found.date = search.date
     }
-    return {}
+    if (
+      typeof search.event === 'string' &&
+      (EVENT_TYPES as readonly string[]).includes(search.event)
+    ) {
+      found.event = search.event
+    }
+    return found
   },
   head: () => {
     const head = publicHead({
@@ -45,10 +57,19 @@ export const Route = createFileRoute('/book')({
 const field =
   'mt-2 w-full rounded-lg border border-line bg-mist px-4 py-3 text-ink focus:border-violet focus:bg-paper focus:outline-none'
 
+const PACKAGE_FOR_EVENT: Record<string, string> = {
+  Wedding: 'full',
+  'Stag and doe': 'stag',
+  'Ceremony only': 'ceremony',
+}
+
 function BookPage() {
-  const { date: requestedDate = '' } = Route.useSearch()
+  const { date: requestedDate = '', event: requestedEvent = '' } =
+    Route.useSearch()
   const send = useServerFn(sendInquiry)
-  const [packageId, setPackageId] = useState('full')
+  const [packageId, setPackageId] = useState(
+    () => PACKAGE_FOR_EVENT[requestedEvent] ?? 'full',
+  )
   const [withStag, setWithStag] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -89,18 +110,22 @@ function BookPage() {
                     stagDate: String(form.get('stagDate') ?? ''),
                     message: String(form.get('message') ?? ''),
                   },
-                }).then((result) => {
-                  if (!result.ok) {
-                    setMessage(result.error)
-                    return
-                  }
-                  setDone(true)
-                  setMessage(
-                    result.unavailable
-                      ? 'That date is already held. Piper has your note.'
-                      : 'Thank you. Piper will write back.',
-                  )
                 })
+                  .then((result) => {
+                    if (!result.ok) {
+                      setMessage(result.error)
+                      return
+                    }
+                    setDone(true)
+                    setMessage(
+                      result.unavailable
+                        ? 'That date is already held. Piper has your note.'
+                        : 'Thank you. Piper will write back.',
+                    )
+                  })
+                  .catch(() => {
+                    setMessage('That inquiry was not saved.')
+                  })
               }}
             >
               <label className="text-sm font-medium">
@@ -194,7 +219,16 @@ function BookPage() {
               ) : null}
               <label className="text-sm font-medium">
                 Note
-                <textarea name="message" rows={4} className={field} />
+                <textarea
+                  name="message"
+                  rows={4}
+                  className={field}
+                  defaultValue={
+                    requestedEvent && !(requestedEvent in PACKAGE_FOR_EVENT)
+                      ? requestedEvent
+                      : ''
+                  }
+                />
               </label>
               {message ? (
                 <p className="text-sm text-danger">{message}</p>

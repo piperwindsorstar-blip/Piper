@@ -63,6 +63,8 @@ CREATE TABLE leads (
   phone text NOT NULL DEFAULT '',
   event_date text,
   package_id text NOT NULL,
+  with_stag integer NOT NULL DEFAULT 0,
+  stag_date text,
   message text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now()
 );

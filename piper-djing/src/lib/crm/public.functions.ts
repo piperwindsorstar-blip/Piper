@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { isPackageId, packageName } from './defaults.ts'
 import { parseDateRequest, todayInToronto } from './date-request.ts'
 import { emailOwner } from './mail.server.ts'
 import {
@@ -74,8 +75,32 @@ export const sendInquiry = createServerFn({ method: 'POST' })
     }) => data,
   )
   .handler(async ({ data }) => {
-    return createInquiry({
+    const result = await createInquiry({
       ...data,
       stagDate: data.stagDate || null,
     })
+    if (!result.ok) return result
+    const packageLabel = isPackageId(data.packageId)
+      ? packageName(data.packageId)
+      : data.packageId
+    const stag = data.withStag
+      ? `Yes${data.stagDate ? `, ${data.stagDate}` : ''}`
+      : 'No'
+    try {
+      await emailOwner({
+        subject: `Inquiry from ${data.partnerOne.trim()} and ${data.partnerTwo.trim()}`,
+        text: [
+          `${data.partnerOne.trim()} and ${data.partnerTwo.trim()}`,
+          data.email.trim(),
+          data.phone.trim(),
+          `Wedding date: ${data.eventDate}`,
+          `Package: ${packageLabel}`,
+          `Stag and doe: ${stag}`,
+          `Note: ${data.message.trim()}`,
+        ].join('\n'),
+      })
+    } catch {
+      // The lead is already saved. Mail trouble must not hide the inquiry.
+    }
+    return result
   })

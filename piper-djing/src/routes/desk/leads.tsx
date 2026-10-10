@@ -16,7 +16,10 @@ function LeadsPage() {
       <h1 className="font-display text-4xl tracking-tight">Leads</h1>
       {leads.length === 0 ? <p>No inquiries yet.</p> : null}
       {leads.map((lead) => (
-        <article key={lead.id} className="rounded-card border border-line bg-ivory px-5 py-5">
+        <article
+          key={lead.id}
+          className="rounded-card border border-line bg-ivory px-5 py-5"
+        >
           <h2 className="font-display text-2xl">
             {lead.partnerOne} and {lead.partnerTwo}
           </h2>
@@ -25,7 +28,15 @@ function LeadsPage() {
             {lead.phone ? ` · ${lead.phone}` : ''} · {lead.packageName}
             {lead.eventDate ? ` · ${longDate(lead.eventDate)}` : ''}
           </p>
-          {lead.message ? <p className="mt-3 text-sm text-ink-soft">{lead.message}</p> : null}
+          {lead.withStag ? (
+            <p className="mt-1 text-sm text-muted">
+              Add a stag and doe on its own date
+              {lead.stagDate ? ` · ${longDate(lead.stagDate)}` : ''}
+            </p>
+          ) : null}
+          {lead.message ? (
+            <p className="mt-3 text-sm text-ink-soft">{lead.message}</p>
+          ) : null}
         </article>
       ))}
     </div>

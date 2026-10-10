@@ -56,6 +56,8 @@ const EDGE_SCHEMA = [
     phone text NOT NULL DEFAULT '',
     event_date text,
     package_id text NOT NULL,
+    with_stag integer NOT NULL DEFAULT 0,
+    stag_date text,
     message text NOT NULL DEFAULT '',
     created_at text NOT NULL DEFAULT (datetime('now'))
   )`,
@@ -147,6 +149,18 @@ export class Book extends DurableObject {
         'INSERT INTO terms (id, body) VALUES (1, ?)',
         TERMS_BODY,
       )
+    }
+    const leadColumns = this.ctx.storage.sql
+      .exec('PRAGMA table_info(leads)')
+      .toArray()
+    const leadNames = new Set(leadColumns.map((column) => column.name))
+    if (!leadNames.has('with_stag')) {
+      this.ctx.storage.sql.exec(
+        'ALTER TABLE leads ADD COLUMN with_stag integer NOT NULL DEFAULT 0',
+      )
+    }
+    if (!leadNames.has('stag_date')) {
+      this.ctx.storage.sql.exec('ALTER TABLE leads ADD COLUMN stag_date text')
     }
     const site = this.ctx.storage.sql.exec('SELECT id FROM site').toArray()
     if (site.length === 0) {

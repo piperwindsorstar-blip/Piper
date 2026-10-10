@@ -89,6 +89,8 @@ export type LeadView = {
   eventDate: string | null
   packageId: string
   packageName: string
+  withStag: boolean
+  stagDate: string | null
   message: string
 }
 
@@ -636,29 +638,10 @@ export async function createInquiry(
     const unavailable =
       (await dateTakenByOthers(input.eventDate, null)) ||
       (stagDate != null && (await dateTakenByOthers(stagDate, null)))
-    if (!unavailable) {
-      await createBooking({
-        partnerOne,
-        partnerTwo,
-        email,
-        phone: input.phone,
-        eventDate: input.eventDate,
-        stagDate,
-        packageId,
-        withStag: input.withStag,
-        uplights: 0,
-        venueKm: [],
-        venueName: '',
-        venueStreet: '',
-        venueTwoName: '',
-        venueTwoStreet: '',
-        sample: false,
-        notes: message,
-      })
-    }
+    await ensureLeadColumns()
     await query(
-      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, message)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [
         partnerOne,
         partnerTwo,
@@ -666,9 +649,35 @@ export async function createInquiry(
         optional(input.phone, 40),
         input.eventDate,
         packageId,
+        input.withStag ? 1 : 0,
+        stagDate,
         message,
       ],
     )
+    if (!unavailable) {
+      try {
+        await createBooking({
+          partnerOne,
+          partnerTwo,
+          email,
+          phone: input.phone,
+          eventDate: input.eventDate,
+          stagDate,
+          packageId,
+          withStag: input.withStag,
+          uplights: 0,
+          venueKm: [],
+          venueName: '',
+          venueStreet: '',
+          venueTwoName: '',
+          venueTwoStreet: '',
+          sample: false,
+          notes: message,
+        })
+      } catch {
+        // The lead is already saved. A booking problem must not hide the inquiry.
+      }
+    }
     return { ok: true, unavailable }
   } catch (error) {
     return {
@@ -902,7 +911,23 @@ export async function addPayment(
   }
 }
 
+async function ensureLeadColumns(): Promise<void> {
+  await addLeadColumn('with_stag', 'integer NOT NULL DEFAULT 0')
+  await addLeadColumn('stag_date', 'text')
+}
+
+async function addLeadColumn(name: string, definition: string): Promise<void> {
+  try {
+    await query(`ALTER TABLE leads ADD COLUMN ${name} ${definition}`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/duplicate column|already exists/i.test(message)) return
+    throw error
+  }
+}
+
 export async function listLeads(): Promise<LeadView[]> {
+  await ensureLeadColumns()
   const rows = await query<{
     id: number
     partner_one: string
@@ -911,6 +936,8 @@ export async function listLeads(): Promise<LeadView[]> {
     phone: string
     event_date: string | null
     package_id: string
+    with_stag: unknown
+    stag_date: string | null
     message: string
   }>('SELECT * FROM leads ORDER BY id DESC')
   return rows.map((row) => ({
@@ -924,6 +951,8 @@ export async function listLeads(): Promise<LeadView[]> {
     packageName: isPackageId(row.package_id)
       ? packageName(row.package_id)
       : row.package_id,
+    withStag: flag(row.with_stag),
+    stagDate: row.stag_date,
     message: row.message,
   }))
 }
