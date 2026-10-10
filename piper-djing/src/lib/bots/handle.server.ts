@@ -33,6 +33,7 @@ import {
   removeReview,
   saveDeskProfile,
   saveVenue,
+  updateVenue,
   sendInvoice,
   setBookingStatus,
   setReviewShown,
@@ -316,6 +317,14 @@ async function writeAction(
     case 'save_venue':
       return Response.json({
         venue: await saveVenue(str(body, 'name'), str(body, 'street')),
+      })
+    case 'update_venue':
+      return Response.json({
+        venue: await updateVenue(
+          num(body, 'id'),
+          str(body, 'name'),
+          str(body, 'street'),
+        ),
       })
     case 'delete_venue':
       await removeVenue(num(body, 'id'))

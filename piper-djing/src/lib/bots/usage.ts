@@ -73,7 +73,7 @@ export function usageDocument(packages: UsagePackage[]) {
         'POST /api/bots/v1/bots with {name, role}. PATCH or DELETE /api/bots/v1/bots/{id}. CEO only. role is reader, writer, or ceo.',
       emails: 'GET only. Emails are a record of what was sent.',
       venues:
-        'POST /api/bots/v1/venues with {name, street} saves a venue. The same name updates the address. DELETE /api/bots/v1/venues/{id} removes it from the list until that name is saved again. A booking or an external date also saves its venues. Choosing a saved venue fills its address.',
+        'POST /api/bots/v1/venues with {name, street} saves a venue. PATCH /api/bots/v1/venues/{id} with {name, street} edits that venue. The same name updates the address. An empty street clears it. DELETE /api/bots/v1/venues/{id} removes it from the list until that name is saved again. A booking or an external date also saves its venues. Choosing a saved venue fills its address.',
       idempotency:
         'Send Idempotency-Key on writes. A repeat returns the first result.',
     },

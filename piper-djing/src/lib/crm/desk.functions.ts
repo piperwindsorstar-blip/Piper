@@ -24,6 +24,7 @@ import {
   removeBooking,
   removeVenue,
   saveVenue,
+  updateVenue,
   getTerms,
   inviteBot,
   invoiceBySlug,
@@ -174,6 +175,20 @@ export const addVenue = createServerFn({ method: 'POST' })
       return {
         ok: true as const,
         venue: await saveVenue(data.name, data.street),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const editVenue = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; name: string; street: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        venue: await updateVenue(data.id, data.name, data.street),
       }
     } catch (error) {
       return fail(error)

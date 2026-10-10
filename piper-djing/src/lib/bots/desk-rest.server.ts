@@ -38,6 +38,7 @@ import {
   removeReview,
   saveDeskProfile,
   saveVenue,
+  updateVenue,
   sendInvoice,
   setReviewShown,
   updateBooking,
@@ -228,16 +229,22 @@ async function venues(
   if ((method === 'PATCH' || method === 'PUT') && id) {
     const current = (await listVenues()).find((item) => item.id === intId(id))
     if (!current) return botJson({ error: 'That venue is not saved.' }, 404)
+    const name =
+      body.name === undefined && body.venue === undefined
+        ? current.name
+        : str(body, 'name') || str(body, 'venue') || current.name
     const street =
       body.street === undefined &&
       body.venueStreet === undefined &&
       body.address === undefined
         ? current.street
-        : str(body, 'street') ||
-          str(body, 'venueStreet') ||
-          str(body, 'address')
+        : body.street !== undefined
+          ? str(body, 'street')
+          : body.venueStreet !== undefined
+            ? str(body, 'venueStreet')
+            : str(body, 'address')
     return botJson({
-      venue: await saveVenue(str(body, 'name') || current.name, street),
+      venue: await updateVenue(intId(id), name, street),
     })
   }
   if (method === 'DELETE' && id) {

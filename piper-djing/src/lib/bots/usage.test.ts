@@ -25,6 +25,7 @@ describe('desk usage', () => {
     assert.match(text, /These four packages stay/)
     assert.match(text, /DELETE \/api\/bots\/v1\/bookings/)
     assert.match(text, /DELETE \/api\/bots\/v1\/externals/)
+    assert.match(text, /PATCH \/api\/bots\/v1\/venues/)
     assert.match(text, /DELETE \/api\/bots\/v1\/venues/)
     assert.doesNotMatch(text, /instead of deleting it/)
   })

@@ -724,6 +724,42 @@ export async function saveVenue(
   return { id: whole(id, 'Venue'), name: cleanName, street: cleanStreet }
 }
 
+export async function updateVenue(
+  id: number,
+  name: string,
+  street: string,
+): Promise<SavedVenue> {
+  const venueId = positiveId(id, 'That venue is not saved.')
+  const cleanName = text(name, 160, 'The venue name')
+  const cleanStreet = optional(street, 160)
+  await ensureVenues()
+  const current = await query<{ id: number; name: string }>(
+    'SELECT id, name FROM venues WHERE id = $1',
+    [venueId],
+  )
+  const row = current[0]
+  if (!row) throw new Error('That venue is not saved.')
+  const other = await venueRow(cleanName)
+  if (other && other.id !== venueId) {
+    throw new Error('That venue is already saved.')
+  }
+  await showVenue(cleanName)
+  if (row.name.trim().toLowerCase() !== cleanName.toLowerCase()) {
+    await query(
+      `INSERT INTO hidden_venues (name)
+       SELECT $1
+       WHERE NOT EXISTS (SELECT 1 FROM hidden_venues WHERE name = $1)`,
+      [row.name.trim().toLowerCase()],
+    )
+  }
+  await query('UPDATE venues SET name = $1, street = $2 WHERE id = $3', [
+    cleanName,
+    cleanStreet,
+    venueId,
+  ])
+  return { id: venueId, name: cleanName, street: cleanStreet }
+}
+
 export async function removeVenue(id: number): Promise<void> {
   const venueId = positiveId(id, 'That venue is not saved.')
   await ensureVenues()

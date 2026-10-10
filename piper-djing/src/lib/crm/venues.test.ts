@@ -9,6 +9,7 @@ import {
   listVenues,
   removeVenue,
   saveVenue,
+  updateVenue,
 } from './store.server.ts'
 import { matchingVenue } from './venues.ts'
 
@@ -152,6 +153,82 @@ describe('saved venues', { skip: liveBook }, () => {
     assert.equal(
       (await listVenues()).some((venue) => venue.id === back.id),
       true,
+    )
+  })
+
+  it('edits one venue and keeps a renamed name from coming back', async () => {
+    setLegacyDateReader(async () => 'open')
+    await createBooking({
+      ...booking,
+      partnerOne: 'Gina',
+      partnerTwo: 'Hal',
+      email: 'gina@example.com',
+      eventDate: '2029-06-11',
+      venueName: 'Old Hall',
+      venueStreet: '1 Old Road',
+    })
+    const saved = (await listVenues()).find(
+      (venue) => venue.name === 'Old Hall',
+    )
+    assert.ok(saved)
+    const edited = await updateVenue(saved.id, 'New Hall', '9 New Road')
+    assert.equal(edited.id, saved.id)
+    assert.equal(edited.name, 'New Hall')
+    assert.equal(edited.street, '9 New Road')
+    const listed = await listVenues()
+    assert.equal(
+      listed.some((venue) => venue.name === 'Old Hall'),
+      false,
+    )
+    assert.equal(
+      listed.find((venue) => venue.id === saved.id)?.street,
+      '9 New Road',
+    )
+    const cleared = await updateVenue(saved.id, 'New Hall', '')
+    assert.equal(cleared.street, '')
+    await saveVenue('Taken Hall', '2 Taken Road')
+    await assert.rejects(
+      () => updateVenue(saved.id, 'Taken Hall', '1 Road'),
+      /already saved/,
+    )
+  })
+
+  it('lets a writer edit a venue by its id', async () => {
+    const writer = await inviteBot('Venue Editor', 'writer')
+    const created = await deskBotResponse(
+      new Request('http://localhost/api/bots/v1/venues', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${writer.token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ name: 'Edit Hall', street: '1 Edit Lane' }),
+      }),
+      async () => 'no',
+    )
+    assert.equal(created.status, 200)
+    const body = (await created.json()) as { venue: { id: number } }
+    const edited = await deskBotResponse(
+      new Request(`http://localhost/api/bots/v1/venues/${body.venue.id}`, {
+        method: 'PATCH',
+        headers: {
+          authorization: `Bearer ${writer.token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ street: '4 Edit Lane' }),
+      }),
+      async () => 'no',
+    )
+    assert.equal(edited.status, 200)
+    const next = (await edited.json()) as {
+      venue: { id: number; name: string; street: string }
+    }
+    assert.equal(next.venue.id, body.venue.id)
+    assert.equal(next.venue.name, 'Edit Hall')
+    assert.equal(next.venue.street, '4 Edit Lane')
+    assert.equal(
+      (await listVenues()).filter((venue) => venue.name === 'Edit Hall').length,
+      1,
     )
   })
 

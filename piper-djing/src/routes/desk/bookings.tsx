@@ -34,6 +34,7 @@ import {
   addExternalDate,
   addVenue,
   changeStatus,
+  editVenue,
   deleteBooking,
   deleteExternal,
   deleteVenue,
@@ -556,9 +557,114 @@ function ExternalDates({
   )
 }
 
+function VenueRow({
+  venue,
+  onError,
+  onNotice,
+}: {
+  venue: SavedVenue
+  onError: (message: string | null) => void
+  onNotice: (message: string | null) => void
+}) {
+  const edit = useServerFn(editVenue)
+  const remove = useServerFn(deleteVenue)
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <li className="py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold">{venue.name}</p>
+          <p className="text-sm text-white/65">
+            {venue.street || 'No address yet'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={deskGhost}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? 'Close' : 'Edit'}
+          </button>
+          <button
+            type="button"
+            className={deskDanger}
+            onClick={() => {
+              void remove({ data: { id: venue.id } }).then(async (result) => {
+                if (!result.ok) {
+                  onNotice(null)
+                  onError(result.error)
+                  return
+                }
+                onError(null)
+                onNotice('Removed from the list.')
+                await router.invalidate()
+              })
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      {open ? (
+        <form
+          className="mt-3 grid gap-3 sm:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const form = new FormData(event.currentTarget)
+            void edit({
+              data: {
+                id: venue.id,
+                name: String(form.get('name') ?? ''),
+                street: String(form.get('street') ?? ''),
+              },
+            }).then(async (result) => {
+              if (!result.ok) {
+                onNotice(null)
+                onError(result.error)
+                return
+              }
+              onError(null)
+              onNotice('Saved. That venue is updated.')
+              setOpen(false)
+              await router.invalidate()
+            })
+          }}
+        >
+          <label className="grid gap-1 text-sm">
+            Venue name
+            <input
+              name="name"
+              required
+              maxLength={160}
+              defaultValue={venue.name}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Venue address
+            <input
+              name="street"
+              maxLength={160}
+              defaultValue={venue.street}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <div className="sm:col-span-2">
+            <button type="submit" className={deskPrimary}>
+              Save changes
+            </button>
+          </div>
+        </form>
+      ) : null}
+    </li>
+  )
+}
+
 function SavedVenues({ venues }: { venues: SavedVenue[] }) {
   const add = useServerFn(addVenue)
-  const remove = useServerFn(deleteVenue)
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -568,9 +674,9 @@ function SavedVenues({ venues }: { venues: SavedVenue[] }) {
       <h2 className="font-display text-xl font-bold">Saved venues</h2>
       <p className="mt-3 text-sm text-white/65">
         Every venue on the book is kept here. Pick one on a booking or an
-        external date and the address fills in. Saving the same name updates the
-        address. Delete removes it from this list until that name is saved
-        again.
+        external date and the address fills in. Edit changes the name and the
+        address. Saving the same name updates the address. Delete removes it
+        from this list until that name is saved again.
       </p>
       <form
         className="mt-5 grid gap-4 sm:grid-cols-2"
@@ -626,37 +732,12 @@ function SavedVenues({ venues }: { venues: SavedVenue[] }) {
       ) : (
         <ul className="mt-4 divide-y divide-white/10">
           {venues.map((venue) => (
-            <li
+            <VenueRow
               key={venue.id}
-              className="flex flex-wrap items-center justify-between gap-3 py-3"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold">{venue.name}</p>
-                <p className="text-sm text-white/65">
-                  {venue.street || 'No address yet'}
-                </p>
-              </div>
-              <button
-                type="button"
-                className={deskDanger}
-                onClick={() => {
-                  void remove({ data: { id: venue.id } }).then(
-                    async (result) => {
-                      if (!result.ok) {
-                        setNotice(null)
-                        setError(result.error)
-                        return
-                      }
-                      setError(null)
-                      setNotice('Removed from the list.')
-                      await router.invalidate()
-                    },
-                  )
-                }}
-              >
-                Delete
-              </button>
-            </li>
+              venue={venue}
+              onError={setError}
+              onNotice={setNotice}
+            />
           ))}
         </ul>
       )}
