@@ -12,6 +12,8 @@ import {
   relayMissingAsset,
   unknownServerFn,
 } from './lib/legacy-book.server.ts'
+import { deskLeadsResponse } from './lib/bots/desk-leads.server.ts'
+import { isDeskLeadList } from './lib/bots/desk-leads.ts'
 import { LEGACY_HOST, legacyLocation } from './lib/legacy-host.ts'
 import { applySecurityHeaders, httpsRedirectTarget } from './lib/security.ts'
 
@@ -56,6 +58,9 @@ const legacyHost = createMiddleware().server(async ({ next, request }) => {
     (await pageIsLocal(action))
   ) {
     return finish(await next())
+  }
+  if (isDeskLeadList(url.pathname, request.method)) {
+    return finish(await deskLeadsResponse(request))
   }
   return finish(await proxyLegacyBook(request))
 })
