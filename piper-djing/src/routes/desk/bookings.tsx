@@ -201,6 +201,7 @@ function NewBooking({
         onChange={(event) => {
           const next = liveQuote(event.currentTarget, prices)
           if (next) setPreview(next)
+          setError(null)
         }}
         onSubmit={(event) => {
           event.preventDefault()
@@ -977,6 +978,7 @@ function BookingCard({
         <form
           key={formKey}
           className="grid gap-3"
+          onChange={() => setError(null)}
           onSubmit={(event) => {
             event.preventDefault()
             const form = new FormData(event.currentTarget)
