@@ -30,6 +30,12 @@ export function Hero() {
               and genuinely cares how your night feels.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="#check-a-date"
+                className="group inline-flex items-center justify-center gap-2 rounded-full bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_0_28px_rgba(255,0,127,0.45)] transition hover:bg-hot hover:shadow-[0_0_44px_rgba(255,20,147,0.7)]"
+              >
+                Check a date
+              </a>
               <ButtonPrimary to={LINKS.weddings}>
                 Explore Weddings
               </ButtonPrimary>

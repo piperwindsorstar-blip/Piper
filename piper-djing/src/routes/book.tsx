@@ -5,9 +5,12 @@ import { DateCalendarDialog } from '../components/weddings/date-calendar.tsx'
 import { DateDraftProvider } from '../components/weddings/date-draft.tsx'
 import { Header } from '../components/weddings/header.tsx'
 import { SiteFooter } from '../components/weddings/site-footer.tsx'
-import { EVENT_TYPES } from '../lib/crm/date-request.ts'
 import { publicPackagePrice } from '../lib/crm/packages.ts'
-import { getPublicSite, sendInquiry } from '../lib/crm/public.functions.ts'
+import {
+  getPublicSite,
+  sendEventInquiry,
+  sendInquiry,
+} from '../lib/crm/public.functions.ts'
 import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
 import { publicHead } from '../lib/seo.ts'
 import type { PackageId } from '../lib/crm/defaults.ts'
@@ -33,11 +36,11 @@ export const Route = createFileRoute('/book')({
     ) {
       found.date = search.date
     }
-    if (
-      typeof search.event === 'string' &&
-      (EVENT_TYPES as readonly string[]).includes(search.event)
-    ) {
-      found.event = search.event
+    if (typeof search.event === 'string') {
+      const event = search.event.trim()
+      if (event.length > 0 && event.length <= 80 && !/[\r\n]/.test(event)) {
+        found.event = event
+      }
     }
     return found
   },
@@ -65,6 +68,14 @@ const PACKAGE_FOR_EVENT: Record<string, string> = {
   'Ceremony only': 'ceremony',
 }
 
+const WEDDING_INQUIRY = new Set([
+  '',
+  'Wedding',
+  'Stag and doe',
+  'Ceremony only',
+  'Anniversary',
+])
+
 function BookPage() {
   const { packages } = Route.useLoaderData()
   const { date: requestedDate = '', event: requestedEvent = '' } =
@@ -80,6 +91,8 @@ function BookPage() {
     }
   })
   const send = useServerFn(sendInquiry)
+  const sendEvent = useServerFn(sendEventInquiry)
+  const general = !WEDDING_INQUIRY.has(requestedEvent)
   const [packageId, setPackageId] = useState(
     () => PACKAGE_FOR_EVENT[requestedEvent] ?? 'full',
   )
@@ -98,7 +111,7 @@ function BookPage() {
         <DateCalendarDialog />
         <main className="mx-auto w-full max-w-xl px-5 py-16">
           <p className="font-mono text-xs tracking-[0.22em] text-violet uppercase">
-            Weddings
+            {general ? 'Events' : 'Weddings'}
           </p>
           <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-balance md:text-5xl">
             Book me
@@ -110,6 +123,95 @@ function BookPage() {
             <p className="mt-10 font-display text-3xl font-bold tracking-tight">
               {message}
             </p>
+          ) : general ? (
+            <form
+              className="mt-10 grid gap-4 rounded-2xl border border-ink bg-paper p-7 shadow-[8px_8px_0_0_#EEE8FF]"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const form = new FormData(event.currentTarget)
+                void sendEvent({
+                  data: {
+                    name: String(form.get('name') ?? ''),
+                    email: String(form.get('email') ?? ''),
+                    phone: String(form.get('phone') ?? ''),
+                    eventDate: String(form.get('eventDate') ?? ''),
+                    event: requestedEvent,
+                    message: String(form.get('message') ?? ''),
+                  },
+                })
+                  .then((result) => {
+                    if (!result.ok) {
+                      setMessage(result.error)
+                      return
+                    }
+                    setDone(true)
+                    setMessage(
+                      result.unavailable
+                        ? 'That date is already held. Piper has your note.'
+                        : 'Thank you. Piper will write back.',
+                    )
+                  })
+                  .catch(() => {
+                    setMessage('That inquiry was not saved.')
+                  })
+              }}
+            >
+              <p className="font-display text-2xl font-bold">
+                {requestedEvent}
+              </p>
+              <label className="text-sm font-medium">
+                Your name
+                <input
+                  name="name"
+                  required
+                  autoComplete="name"
+                  className={field}
+                />
+              </label>
+              <label className="text-sm font-medium">
+                Email
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  className={field}
+                />
+              </label>
+              <label className="text-sm font-medium">
+                Phone
+                <input
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  className={field}
+                />
+              </label>
+              <label className="text-sm font-medium">
+                Date
+                <input
+                  key={requestedDate}
+                  name="eventDate"
+                  type="date"
+                  required
+                  defaultValue={requestedDate}
+                  className={field}
+                />
+              </label>
+              <label className="text-sm font-medium">
+                Note
+                <textarea name="message" rows={4} className={field} />
+              </label>
+              {message ? (
+                <p className="text-sm text-danger">{message}</p>
+              ) : null}
+              <button
+                type="submit"
+                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)] transition hover:bg-hot"
+              >
+                Send the inquiry
+              </button>
+            </form>
           ) : (
             <form
               className="mt-10 grid gap-4 rounded-2xl border border-ink bg-paper p-7 shadow-[8px_8px_0_0_#EEE8FF]"

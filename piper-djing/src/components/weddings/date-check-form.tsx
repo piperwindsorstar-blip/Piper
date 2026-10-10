@@ -1,5 +1,5 @@
 import { longDate } from '../../lib/crm/dates.ts'
-import { EVENT_TYPES } from '../../lib/crm/date-request.ts'
+import { WEDDING_EVENT_TYPES } from '../../lib/crm/date-request.ts'
 import { LINKS } from './content.ts'
 import { useDateDraft } from './date-draft.tsx'
 import { Icon } from './icon.tsx'
@@ -49,12 +49,14 @@ export function DateCheckForm() {
         id="w-type"
         value={eventType}
         onChange={(event) => {
-          const next = EVENT_TYPES.find((item) => item === event.target.value)
+          const next = WEDDING_EVENT_TYPES.find(
+            (item) => item === event.target.value,
+          )
           if (next) setEventType(next)
         }}
         className={field}
       >
-        {EVENT_TYPES.map((item) => (
+        {WEDDING_EVENT_TYPES.map((item) => (
           <option key={item}>{item}</option>
         ))}
       </select>

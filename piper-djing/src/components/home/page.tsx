@@ -1,6 +1,7 @@
 import type { PublicReview } from '../../lib/crm/reviews.ts'
 import { homeLocalBusinessJsonLd, personJsonLd } from '../../lib/seo.ts'
 import { About } from './about.tsx'
+import { DateChecker } from './date-checker.tsx'
 import { EventCards } from './event-cards.tsx'
 import { FinalCta } from './final-cta.tsx'
 import { Header } from './header.tsx'
@@ -26,6 +27,7 @@ export function HomePage({ reviews }: { reviews: PublicReview[] }) {
       <Header />
       <main>
         <Hero />
+        <DateChecker />
         <Marquee />
         <About />
         <PromiseTabs />

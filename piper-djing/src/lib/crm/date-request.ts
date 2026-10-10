@@ -1,13 +1,19 @@
-export const EVENT_TYPES = [
+export const WEDDING_EVENT_TYPES = [
   'Wedding',
   'Stag and doe',
   'Ceremony only',
-  'Engagement party',
   'Anniversary',
-  'Private party',
 ] as const
 
-export type EventType = (typeof EVENT_TYPES)[number]
+export const HOME_EVENT_TYPES = [
+  ...WEDDING_EVENT_TYPES,
+  'Birthday party',
+  'Christmas party',
+] as const
+
+export const CUSTOM_EVENT = 'Something else'
+
+export type EventType = (typeof WEDDING_EVENT_TYPES)[number]
 
 export type DateRequestInput = {
   date: string
@@ -29,10 +35,13 @@ export function todayInToronto(now = new Date()): string {
   }).format(now)
 }
 
-export function parseDateRequest(
-  input: DateRequestInput,
+export function parseCheckedEvent(
+  input: DateRequestInput & { custom: string; allowed: readonly string[] },
   today: string,
-): DateRequest {
+):
+  | { ok: true; silent: true }
+  | { ok: true; silent: false; date: string; event: string }
+  | { ok: false; error: string } {
   if (input.company.trim()) return { ok: true, silent: true }
   const date = input.date.trim()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -41,9 +50,35 @@ export function parseDateRequest(
   if (date < today) {
     return { ok: false, error: 'Choose a date from today on.' }
   }
-  const eventType = EVENT_TYPES.find((item) => item === input.eventType)
-  if (!eventType) return { ok: false, error: 'Choose an event type.' }
-  return { ok: true, silent: false, date, eventType }
+  if (input.eventType === CUSTOM_EVENT) {
+    const custom = input.custom.trim()
+    if (!custom) return { ok: false, error: 'Tell Piper what the event is.' }
+    if (custom.length > 80) {
+      return { ok: false, error: 'That event name is too long.' }
+    }
+    return { ok: true, silent: false, date, event: custom }
+  }
+  if (!input.allowed.includes(input.eventType)) {
+    return { ok: false, error: 'Choose an event type.' }
+  }
+  return { ok: true, silent: false, date, event: input.eventType }
+}
+
+export function parseDateRequest(
+  input: DateRequestInput,
+  today: string,
+): DateRequest {
+  const parsed = parseCheckedEvent(
+    { ...input, custom: '', allowed: WEDDING_EVENT_TYPES },
+    today,
+  )
+  if (!parsed.ok || parsed.silent) return parsed
+  return {
+    ok: true,
+    silent: false,
+    date: parsed.date,
+    eventType: parsed.event as EventType,
+  }
 }
 
 export function dateCheckAnswer(open: boolean): string {

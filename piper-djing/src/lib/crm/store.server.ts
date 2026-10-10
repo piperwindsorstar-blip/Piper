@@ -171,6 +171,13 @@ function asPackage(value: string): PackageId {
   return value
 }
 
+function leadPackage(value: string): string {
+  const label = value.trim()
+  if (isPackageId(label)) return label
+  if (!label || label.length > 80) throw new Error('Choose a package.')
+  return label
+}
+
 function asStatus(value: string): BookingState['status'] {
   if (!STATUSES.has(value)) throw new Error('That status is not on the book.')
   return value as BookingState['status']
@@ -624,6 +631,41 @@ export type InquiryInput = {
   message: string
 }
 
+export async function createEventInquiry(input: {
+  name: string
+  email: string
+  phone: string
+  eventDate: string
+  event: string
+  message: string
+}): Promise<{ ok: true; unavailable: boolean } | { ok: false; error: string }> {
+  try {
+    const email = text(input.email, 120, 'Email')
+    if (!email.includes('@')) throw new Error('Enter an email address.')
+    const name = text(input.name, 80, 'Your name')
+    const event = text(input.event, 80, 'The event')
+    const eventDate = input.eventDate.trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+      throw new Error('Choose a date.')
+    }
+    const message = optional(input.message, 2000)
+    const unavailable = await dateTakenByOthers(eventDate, null)
+    await ensureLeadColumns()
+    await query(
+      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message)
+       VALUES ($1,$2,$3,$4,$5,$6,0,NULL,$7)`,
+      [name, '', email, optional(input.phone, 40), eventDate, event, message],
+    )
+    return { ok: true, unavailable }
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : 'That inquiry was not saved.',
+    }
+  }
+}
+
 export async function createInquiry(
   input: InquiryInput,
 ): Promise<{ ok: true; unavailable: boolean } | { ok: false; error: string }> {
@@ -1007,8 +1049,8 @@ export async function updateLead(input: LeadPatch): Promise<LeadView> {
   const email = text(input.email, 120, 'Email')
   if (!email.includes('@')) throw new Error('Enter an email address.')
   const partnerOne = text(input.partnerOne, 80, 'The first name')
-  const partnerTwo = text(input.partnerTwo, 80, 'The second name')
-  const packageId = asPackage(input.packageId)
+  const partnerTwo = optional(input.partnerTwo, 80)
+  const packageId = leadPackage(input.packageId)
   if (input.withStag && packageId !== 'full') {
     throw new Error('A stag is added to the full wedding day.')
   }

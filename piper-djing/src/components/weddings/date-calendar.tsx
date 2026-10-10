@@ -3,7 +3,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { useEffect, useRef, useState } from 'react'
 import { longDate } from '../../lib/crm/dates.ts'
 import {
-  EVENT_TYPES,
+  WEDDING_EVENT_TYPES,
   calendarWeeks,
   dateCheckAnswer,
   parseDateRequest,
@@ -176,14 +176,14 @@ export function DateCalendarDialog() {
             id="calendar-event"
             value={eventType}
             onChange={(event) => {
-              const next = EVENT_TYPES.find(
+              const next = WEDDING_EVENT_TYPES.find(
                 (item) => item === event.target.value,
               )
               if (next) setEventType(next)
             }}
             className="mt-2 w-full rounded-lg border border-line bg-mist px-4 py-3 text-ink focus:border-violet focus:bg-paper focus:outline-none"
           >
-            {EVENT_TYPES.map((item) => (
+            {WEDDING_EVENT_TYPES.map((item) => (
               <option key={item}>{item}</option>
             ))}
           </select>

@@ -22,6 +22,12 @@ export function FinalCta() {
         just a real conversation with a DJ who cares.
       </p>
       <div className="mt-9 flex flex-col justify-center gap-3 px-5 sm:flex-row">
+        <a
+          href="#check-a-date"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_0_28px_rgba(255,0,127,0.45)] transition hover:bg-hot"
+        >
+          Check a date
+        </a>
         <ButtonPrimary to={LINKS.weddings}>Explore Weddings</ButtonPrimary>
         <ButtonGhost to={LINKS.book}>Plan Your Event</ButtonGhost>
       </div>

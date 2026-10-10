@@ -3,6 +3,7 @@ import { isPackageId, packageName } from './defaults.ts'
 import { parseDateRequest, todayInToronto } from './date-request.ts'
 import { emailOwner } from './mail.server.ts'
 import {
+  createEventInquiry,
   createInquiry,
   dateOpen,
   ensureSavedWeddings,
@@ -60,6 +61,38 @@ export const sendDateRequest = createServerFn({ method: 'POST' })
       }
     }
     return { ok: true as const }
+  })
+
+export const sendEventInquiry = createServerFn({ method: 'POST' })
+  .validator(
+    (data: {
+      name: string
+      email: string
+      phone: string
+      eventDate: string
+      event: string
+      message: string
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const result = await createEventInquiry(data)
+    if (!result.ok) return result
+    try {
+      await emailOwner({
+        subject: `Inquiry from ${data.name.trim()}`,
+        text: [
+          data.name.trim(),
+          data.email.trim(),
+          data.phone.trim(),
+          `Event: ${data.event.trim()}`,
+          `Date: ${data.eventDate}`,
+          `Note: ${data.message.trim()}`,
+        ].join('\n'),
+      })
+    } catch {
+      // The lead is already saved. Mail trouble must not hide the inquiry.
+    }
+    return result
   })
 
 export const sendInquiry = createServerFn({ method: 'POST' })

@@ -92,7 +92,9 @@ function LeadCard({
       }}
     >
       <h2 className="font-display text-xl font-bold">
-        {lead.partnerOne} and {lead.partnerTwo}
+        {lead.partnerTwo
+          ? `${lead.partnerOne} and ${lead.partnerTwo}`
+          : lead.partnerOne}
         {lead.eventDate ? (
           <span className="mt-1 block text-sm font-normal text-white/65">
             {longDate(lead.eventDate)}
@@ -106,7 +108,7 @@ function LeadCard({
         </label>
         <label className="field">
           Second partner
-          <input name="partnerTwo" required defaultValue={lead.partnerTwo} />
+          <input name="partnerTwo" defaultValue={lead.partnerTwo} />
         </label>
         <label className="field">
           Email

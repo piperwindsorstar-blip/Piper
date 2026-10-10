@@ -25,12 +25,20 @@ export function Header() {
             </a>
           ))}
         </nav>
-        <Link
-          to={LINKS.weddings}
-          className="rounded-full border border-hot/60 px-5 py-2 text-sm font-semibold transition hover:bg-neon hover:shadow-[0_0_24px_rgba(255,0,127,.5)]"
-        >
-          Weddings
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="#check-a-date"
+            className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-white transition hover:bg-hot"
+          >
+            Check a date
+          </a>
+          <Link
+            to={LINKS.weddings}
+            className="hidden rounded-full border border-hot/60 px-5 py-2 text-sm font-semibold transition hover:bg-neon hover:shadow-[0_0_24px_rgba(255,0,127,.5)] sm:inline-flex"
+          >
+            Weddings
+          </Link>
+        </div>
       </div>
     </header>
   )
