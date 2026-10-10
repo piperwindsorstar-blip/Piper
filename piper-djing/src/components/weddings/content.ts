@@ -8,6 +8,9 @@ export const LINKS = {
   email: PUBLIC_EMAIL,
 } as const
 
+export const LOGO_SRC = '/photos/logo-inverted.png'
+export const LOGO_ALT = 'DJ Piper P'
+
 export const PHOTOS = {
   mixer: '/photos/brand/brand-mixer.jpg',
   phones: '/photos/brand/brand-phones.jpg',
