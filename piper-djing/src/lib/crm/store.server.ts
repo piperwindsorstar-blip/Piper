@@ -543,27 +543,6 @@ export async function ensureSavedWeddings(): Promise<void> {
     if (id == null) continue
     await ensureSavedInvoice(id, wedding)
   }
-  await bookCobiAndCameron()
-}
-
-/** The released Cobi and Cameron date goes back on the book once. */
-async function bookCobiAndCameron(): Promise<void> {
-  const wedding = SAVED_WEDDINGS.find((item) => item.date === '2027-07-17')
-  if (!wedding) return
-  const id = await savedWeddingId(wedding)
-  if (id == null) return
-  const rows = await query<{ status: string }>(
-    'SELECT status FROM bookings WHERE id = $1',
-    [id],
-  )
-  if (rows.length === 0 || rows[0].status !== 'released') return
-  await query(`UPDATE bookings SET status = 'booked' WHERE id = $1`, [id])
-  await query(
-    `UPDATE invoices
-     SET status = 'sent', total_cents = $2, deposit_cents = $3, received_cents = $3
-     WHERE booking_id = $1 AND status = 'void'`,
-    [id, wedding.totalCents, wedding.depositClearedCents],
-  )
 }
 
 export async function listBookings(): Promise<BookingView[]> {
