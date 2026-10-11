@@ -9,7 +9,7 @@ import {
   songsOf,
   textValue,
 } from './questions.ts'
-import type { Question, SectionId } from './questions.ts'
+import type { MasterMap, Question, SectionId } from './questions.ts'
 
 export type SectionProgress = {
   id: SectionId
@@ -47,18 +47,20 @@ export function questionAnswered(
 export function visibleQuestions(
   planning: Planning,
   section?: SectionId,
+  master: MasterMap = {},
 ): Question[] {
   const source = section
-    ? sectionQuestions(planning, section)
-    : allQuestions(planning)
+    ? sectionQuestions(planning, section, master)
+    : allQuestions(planning, master)
   return source.filter((question) => isVisible(planning, question))
 }
 
 export function sectionProgress(
   planning: Planning,
   section: SectionId,
+  master: MasterMap = {},
 ): SectionProgress {
-  const questions = visibleQuestions(planning, section)
+  const questions = visibleQuestions(planning, section, master)
   return {
     id: section,
     answered: questions.filter((question) =>
@@ -68,12 +70,15 @@ export function sectionProgress(
   }
 }
 
-export function overallProgress(planning: Planning): {
+export function overallProgress(
+  planning: Planning,
+  master: MasterMap = {},
+): {
   answered: number
   total: number
   percent: number
 } {
-  const questions = visibleQuestions(planning)
+  const questions = visibleQuestions(planning, undefined, master)
   const answered = questions.filter((question) =>
     questionAnswered(planning, question),
   ).length
@@ -85,15 +90,22 @@ export function overallProgress(planning: Planning): {
   }
 }
 
-export function sectionPercent(planning: Planning, section: SectionId): number {
-  const progress = sectionProgress(planning, section)
+export function sectionPercent(
+  planning: Planning,
+  section: SectionId,
+  master: MasterMap = {},
+): number {
+  const progress = sectionProgress(planning, section, master)
   if (progress.total === 0) return 0
   return Math.round((progress.answered / progress.total) * 100)
 }
 
-export function firstUnanswered(planning: Planning): Question | null {
+export function firstUnanswered(
+  planning: Planning,
+  master: MasterMap = {},
+): Question | null {
   for (const section of SECTION_ORDER) {
-    const next = visibleQuestions(planning, section).find(
+    const next = visibleQuestions(planning, section, master).find(
       (question) => !questionAnswered(planning, question),
     )
     if (next) return next
@@ -105,8 +117,9 @@ export function stepFrom(
   planning: Planning,
   question: Question,
   direction: 1 | -1,
+  master: MasterMap = {},
 ): Question | null {
-  const visible = visibleQuestions(planning)
+  const visible = visibleQuestions(planning, undefined, master)
   const index = visible.findIndex((item) => item.id === question.id)
   if (index < 0) return visible[0] ?? null
   return visible[index + direction] ?? null

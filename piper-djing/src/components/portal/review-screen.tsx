@@ -22,10 +22,10 @@ import { MobileQuestionBar, PortalColumns } from './portal-chrome.tsx'
 import { usePortal } from './portal-state.tsx'
 
 export function ReviewScreen() {
-  const { planning, locked, markLocked } = usePortal()
+  const { page, planning, locked, markLocked } = usePortal()
   const send = useServerFn(sendPortalPlan)
   const ask = useServerFn(requestPortalChange)
-  const progress = overallProgress(planning)
+  const progress = overallProgress(planning, page.master)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const [asked, setAsked] = useState(false)
@@ -56,8 +56,8 @@ export function ReviewScreen() {
       </p>
       <div className="mt-8 grid gap-6">
         {SECTION_ORDER.map((section) => {
-          const counts = sectionProgress(planning, section)
-          const open = sectionQuestions(planning, section).filter(
+          const counts = sectionProgress(planning, section, page.master)
+          const open = sectionQuestions(planning, section, page.master).filter(
             (question) =>
               isVisible(planning, question) &&
               !questionAnswered(planning, question),
@@ -168,12 +168,12 @@ export function ReviewScreen() {
 }
 
 function ReviewRail({ compact = false }: { compact?: boolean }) {
-  const { planning } = usePortal()
+  const { page, planning } = usePortal()
   const sections = compact ? SECTION_ORDER.slice(0, 3) : SECTION_ORDER
   return (
     <ol className="grid gap-2">
       {sections.map((section) => {
-        const counts = sectionProgress(planning, section)
+        const counts = sectionProgress(planning, section, page.master)
         return (
           <li key={section} className="text-sm">
             <span className="block font-bold">{SECTION_LABEL[section]}</span>

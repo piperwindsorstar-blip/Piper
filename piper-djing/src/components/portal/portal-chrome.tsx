@@ -29,7 +29,7 @@ export function useCloseSheet(): () => void {
 
 export function PortalChrome({ children }: { children: ReactNode }) {
   const { page, planning, saveState, savedLabel, saveError } = usePortal()
-  const progress = overallProgress(planning)
+  const progress = overallProgress(planning, page.master)
   const path = useRouterState({ select: (state) => state.location.pathname })
   const current = stepFor(path)
   return (
@@ -57,10 +57,11 @@ export function PortalChrome({ children }: { children: ReactNode }) {
       >
         <ol className="flex flex-wrap items-center gap-y-3">
           {STEPS.map((step, index) => {
-            const state = stepState(step.id, current, planning)
+            const state = stepState(step.id, current, planning, page.master)
             const lineDone =
               index > 0 &&
-              stepState(STEPS[index - 1].id, current, planning) === 'done'
+              stepState(STEPS[index - 1].id, current, planning, page.master) ===
+                'done'
             return (
               <li key={step.id} className="flex items-center">
                 {index > 0 ? (
@@ -150,14 +151,15 @@ function stepState(
   id: (typeof STEPS)[number]['id'],
   current: StepId,
   planning: ReturnType<typeof usePortal>['planning'],
+  master: ReturnType<typeof usePortal>['page']['master'],
 ): 'done' | 'current' | 'upcoming' {
   if (current === 'review') {
     if (id === 'overview') return 'done'
-    return sectionPercent(planning, id) === 100 ? 'done' : 'upcoming'
+    return sectionPercent(planning, id, master) === 100 ? 'done' : 'upcoming'
   }
   if (id === current) return 'current'
   if (id === 'overview') return 'done'
-  return sectionPercent(planning, id) === 100 ? 'done' : 'upcoming'
+  return sectionPercent(planning, id, master) === 100 ? 'done' : 'upcoming'
 }
 
 export function PortalColumns({
@@ -296,8 +298,8 @@ export function MobileQuestionBar({
   total: number
   current: StepId
 }) {
-  const { planning } = usePortal()
-  const progress = overallProgress(planning)
+  const { page, planning } = usePortal()
+  const progress = overallProgress(planning, page.master)
   return (
     <div className="mb-6 min-[1024px]:hidden">
       <div className="flex items-center justify-between gap-3 text-sm">
@@ -324,7 +326,9 @@ export function MobileQuestionBar({
           >
             <span
               className="block h-full bg-[var(--pink)]"
-              style={{ width: segmentWidth(id, current, planning) }}
+              style={{
+                width: segmentWidth(id, current, planning, page.master),
+              }}
             />
           </span>
         ))}
@@ -337,17 +341,19 @@ function segmentWidth(
   id: (typeof BAR_SEGMENTS)[number],
   current: StepId,
   planning: ReturnType<typeof usePortal>['planning'],
+  master: ReturnType<typeof usePortal>['page']['master'],
 ): string {
   if (id === current) return '50%'
   if (id === 'overview') return '100%'
-  return sectionPercent(planning, id) === 100 ? '100%' : '0%'
+  return sectionPercent(planning, id, master) === 100 ? '100%' : '0%'
 }
 
 export function sectionCounts(
   planning: ReturnType<typeof usePortal>['planning'],
   section: SectionId,
+  master: ReturnType<typeof usePortal>['page']['master'] = {},
 ) {
-  return sectionProgress(planning, section)
+  return sectionProgress(planning, section, master)
 }
 
 function CheckIcon() {

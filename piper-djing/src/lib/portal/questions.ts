@@ -32,7 +32,21 @@ export type Question = {
   djNote?: string
   djReplies?: Record<string, string>
   timelineIndex?: number
+  hiddenByMaster?: boolean
 }
+
+export type MasterPatch = {
+  label?: string
+  helper?: string
+  rail?: string
+  djNote?: string
+  hidden?: boolean
+  chips?: string[]
+  options?: ChoiceOption[]
+  replies?: Record<string, string>
+}
+
+export type MasterMap = Record<string, MasterPatch>
 
 const YES_NOT_SURE: ChoiceOption[] = [
   { value: 'Yes', hint: "It's booked" },
@@ -462,34 +476,67 @@ export function questionSearch(search: Record<string, unknown>): {
   return { q }
 }
 
-export function timelineQuestions(planning: Planning): Question[] {
-  return planning.timeline.map((row, index) => ({
-    id: `timeline-${index}`,
-    section: 'timeline' as const,
-    subsection: row.section,
-    group: row.section,
-    type: 'song' as const,
-    label: songTitle(row.label.trim() || row.activity),
-    helper: 'Search for it or paste a YouTube, Spotify or SoundCloud link.',
-    rail: row.label.trim() || row.activity,
-    timelineIndex: index,
-  }))
+export function applyMaster(question: Question, master: MasterMap): Question {
+  if (!Object.hasOwn(master, question.id)) return question
+  const patch = master[question.id]
+  const next: Question = { ...question }
+  if (patch.hidden) next.hiddenByMaster = true
+  if (patch.label) next.label = patch.label
+  if (patch.helper !== undefined) next.helper = patch.helper || undefined
+  if (patch.rail) next.rail = patch.rail
+  if (patch.djNote !== undefined) next.djNote = patch.djNote || undefined
+  if (patch.chips) next.chips = patch.chips
+  if (patch.options) next.options = patch.options
+  if (patch.replies)
+    next.djReplies = { ...question.djReplies, ...patch.replies }
+  return next
+}
+
+export function timelineQuestions(
+  planning: Planning,
+  master: MasterMap = {},
+): Question[] {
+  return planning.timeline.map((row, index) => {
+    const renamed = row.label.trim()
+    const base = applyMaster(
+      {
+        id: `timeline-${index}`,
+        section: 'timeline' as const,
+        subsection: row.section,
+        group: row.section,
+        type: 'song' as const,
+        label: songTitle(row.activity),
+        helper: 'Search for it or paste a YouTube, Spotify or SoundCloud link.',
+        rail: row.activity,
+        timelineIndex: index,
+      },
+      master,
+    )
+    if (!renamed) return base
+    return { ...base, label: songTitle(renamed), rail: renamed }
+  })
 }
 
 export function sectionQuestions(
   planning: Planning,
   section: SectionId,
+  master: MasterMap = {},
 ): Question[] {
-  if (section === 'timeline') return timelineQuestions(planning)
-  return QUESTIONS.filter((question) => question.section === section)
+  if (section === 'timeline') return timelineQuestions(planning, master)
+  return QUESTIONS.filter((question) => question.section === section).map(
+    (question) => applyMaster(question, master),
+  )
 }
 
-export function allQuestions(planning: Planning): Question[] {
+export function allQuestions(
+  planning: Planning,
+  master: MasterMap = {},
+): Question[] {
   return [
-    ...sectionQuestions(planning, 'details'),
-    ...sectionQuestions(planning, 'music'),
-    ...sectionQuestions(planning, 'appearance'),
-    ...sectionQuestions(planning, 'timeline'),
+    ...sectionQuestions(planning, 'details', master),
+    ...sectionQuestions(planning, 'music', master),
+    ...sectionQuestions(planning, 'appearance', master),
+    ...sectionQuestions(planning, 'timeline', master),
   ]
 }
 
@@ -595,6 +642,7 @@ export function momentLabel(planning: Planning, index: number): string {
 }
 
 export function isVisible(planning: Planning, question: Question): boolean {
+  if (question.hiddenByMaster) return false
   if (question.timelineIndex === undefined) return true
   const row = itemAt(planning.timeline, question.timelineIndex)
   return row?.hidden !== true

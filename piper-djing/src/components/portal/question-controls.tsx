@@ -20,7 +20,8 @@ export function QuestionControl({ question }: { question: Question }) {
   const disabled = portal.locked
   if (question.type === 'choice')
     return <Choice question={question} disabled={disabled} />
-  if (question.type === 'chips') return <Chips disabled={disabled} />
+  if (question.type === 'chips')
+    return <Chips disabled={disabled} chips={question.chips} />
   if (question.type === 'song')
     return <Song question={question} disabled={disabled} />
   if (question.type === 'list' && question.id === 'appearances') {
@@ -183,11 +184,11 @@ function Choice({
   )
 }
 
-function Chips({ disabled }: { disabled: boolean }) {
+function Chips({ disabled, chips }: { disabled: boolean; chips?: string[] }) {
   const { planning, editChips, editText } = usePortal()
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState('')
-  const options = [
+  const presets = chips ?? [
     'Throwbacks',
     'Country',
     'Top 40',
@@ -198,21 +199,10 @@ function Chips({ disabled }: { disabled: boolean }) {
     'Hip hop',
     'Chill dinner',
     'Full party',
-    ...planning.genreChips.filter(
-      (chip) =>
-        ![
-          'Throwbacks',
-          'Country',
-          'Top 40',
-          'R&B',
-          'Motown',
-          'Rock',
-          'Latin',
-          'Hip hop',
-          'Chill dinner',
-          'Full party',
-        ].includes(chip),
-    ),
+  ]
+  const options = [
+    ...presets,
+    ...planning.genreChips.filter((chip) => !presets.includes(chip)),
   ]
   function toggle(chip: string) {
     const next = planning.genreChips.includes(chip)

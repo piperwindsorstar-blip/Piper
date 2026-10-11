@@ -2,8 +2,10 @@ import { createServerFn } from '@tanstack/react-start'
 import { emailOwner } from '../crm/mail.server.ts'
 import { torontoToday } from '../piper/rules.ts'
 import {
+  coupleByPasscode,
   coupleBySlug,
   lockCouplePlan,
+  readPortalMaster,
   saveCouplePlanning,
 } from '../crm/store.server.ts'
 import { isPlanLocked } from '../crm/planning.ts'
@@ -31,8 +33,23 @@ export const getPortal = createServerFn({ method: 'GET' }).handler(async () => {
     slug,
     today,
     locked: isPlanLocked(page.planning, today),
+    master: await readPortalMaster(),
   }
 })
+
+export const openPortalPasscode = createServerFn({ method: 'POST' })
+  .validator((data: { passcode: string }) => data)
+  .handler(async ({ data }) => {
+    const slug = await coupleByPasscode(data.passcode)
+    if (!slug) {
+      return {
+        ok: false as const,
+        error: 'That passcode does not match a plan.',
+      }
+    }
+    rememberCoupleSlug(slug)
+    return { ok: true as const }
+  })
 
 export const savePortal = createServerFn({ method: 'POST' })
   .validator((data: { planning: unknown }) => data)
@@ -59,7 +76,7 @@ export const sendPortalPlan = createServerFn({ method: 'POST' }).handler(
     if (isPlanLocked(page.planning, torontoToday())) {
       return { ok: false as const, error: 'This plan is already locked.' }
     }
-    const progress = overallProgress(page.planning)
+    const progress = overallProgress(page.planning, await readPortalMaster())
     const mailed = await emailOwner(
       planLetter({
         partnerOne: page.partnerOne,

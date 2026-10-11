@@ -1,5 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireDesk } from '../auth/session.server.ts'
+import { masterFromDrafts } from '../portal/master.ts'
+import type { ChoiceOption } from '../portal/questions.ts'
 import { usesEdgeBook } from '../db.server.ts'
 import {
   emailBooking,
@@ -13,8 +15,13 @@ import {
   addPayment,
   addQuestion,
   coupleBySlug,
+  couplePortalForDesk,
+  listCouplePortals,
+  saveCouplePasscode,
   saveCouplePlanning,
+  saveDeskPlanning,
   savePortalDeskFields,
+  savePortalMaster,
   bookExternalDate,
   createBooking,
   countedTotal,
@@ -411,8 +418,12 @@ export const getCouple = createServerFn({ method: 'POST' })
 
 export const savePortalDesk = createServerFn({ method: 'POST' })
   .validator(
-    (data: { slug: string; arrivalTime: string; dueDate: string; unlock: boolean }) =>
-      data,
+    (data: {
+      slug: string
+      arrivalTime: string
+      dueDate: string
+      unlock: boolean
+    }) => data,
   )
   .handler(async ({ data }) => {
     await requireDesk()
@@ -729,6 +740,72 @@ export const sendInvoiceMail = createServerFn({ method: 'POST' })
     await requireDesk()
     try {
       return { ok: true as const, ...(await emailInvoice(data.id)) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+type MasterDraftInput = {
+  id: string
+  label: string
+  helper: string
+  rail: string
+  djNote: string
+  hidden: boolean
+  chips: string
+  options: ChoiceOption[]
+  replies: { value: string; text: string }[]
+}
+
+export const getPortalDesk = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return listCouplePortals()
+  },
+)
+
+export const savePortalMasterDesk = createServerFn({ method: 'POST' })
+  .validator((data: { drafts: MasterDraftInput[] }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      const master = await savePortalMaster(masterFromDrafts(data.drafts))
+      return { ok: true as const, master }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const saveCouplePasscodeDesk = createServerFn({ method: 'POST' })
+  .validator((data: { slug: string; passcode: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        passcode: await saveCouplePasscode(data.slug, data.passcode),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const getCouplePortalDesk = createServerFn({ method: 'POST' })
+  .validator((data: { slug: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    return couplePortalForDesk(data.slug)
+  })
+
+export const saveDeskPlan = createServerFn({ method: 'POST' })
+  .validator((data: { slug: string; planning: unknown }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        planning: await saveDeskPlanning(data.slug, data.planning),
+      }
     } catch (error) {
       return fail(error)
     }

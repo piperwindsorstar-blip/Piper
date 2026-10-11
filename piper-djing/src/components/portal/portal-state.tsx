@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { savePortal } from '../../lib/portal/portal.functions.ts'
+import type { MasterMap } from '../../lib/portal/questions.ts'
 import { TIMELINE } from '../../lib/crm/planning.ts'
 import type {
   Planning,
@@ -21,7 +22,12 @@ export type PortalPage = {
   today: string
   locked: boolean
   planning: Planning
+  master: MasterMap
 }
+
+type PlanSave = (
+  planning: Planning,
+) => Promise<{ ok: true; planning: Planning } | { ok: false; error: string }>
 
 type PortalState = {
   page: PortalPage
@@ -44,11 +50,15 @@ const PortalContext = createContext<PortalState | null>(null)
 export function PortalProvider({
   page,
   children,
+  saver,
 }: {
   page: PortalPage
   children: ReactNode
+  saver?: PlanSave
 }) {
   const save = useServerFn(savePortal)
+  const saverRef = useRef(saver)
+  saverRef.current = saver
   const [planning, setPlanning] = useState(page.planning)
   const [locked, setLocked] = useState(page.locked)
   const [saveState, setSaveState] = useState<PortalState['saveState']>('idle')
@@ -68,7 +78,11 @@ export function PortalProvider({
     const snapshot = planning
     const timer = window.setTimeout(() => {
       setSaveState('saving')
-      void save({ data: { planning: snapshot } }).then(async (result) => {
+      const persist = saverRef.current
+      const run = persist
+        ? persist(snapshot)
+        : save({ data: { planning: snapshot } })
+      void run.then(async (result) => {
         if (latest.current !== snapshot) return
         if (!result.ok) {
           setSaveState('error')
@@ -76,7 +90,9 @@ export function PortalProvider({
           if (/locked/i.test(result.error)) return
           await new Promise((resolve) => window.setTimeout(resolve, 2000))
           if (latest.current !== snapshot) return
-          const again = await save({ data: { planning: snapshot } })
+          const again = persist
+            ? await persist(snapshot)
+            : await save({ data: { planning: snapshot } })
           if (latest.current !== snapshot || !again.ok) {
             if (latest.current === snapshot && !again.ok) {
               setSaveState('error')

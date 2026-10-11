@@ -21,7 +21,8 @@ import { QuestionControl } from './question-controls.tsx'
 import { QuestionRail, neighbourIds } from './rail.tsx'
 
 export function SectionFlow({ section }: { section: SectionId }) {
-  const { planning, locked } = usePortal()
+  const { page, planning, locked } = usePortal()
+  const master = page.master
   const navigate = useNavigate()
   const q = useRouterState({
     select: (state) => {
@@ -29,7 +30,7 @@ export function SectionFlow({ section }: { section: SectionId }) {
       return typeof search.q === 'string' ? search.q : ''
     },
   })
-  const questions = sectionQuestions(planning, section)
+  const questions = sectionQuestions(planning, section, master)
   const visible = questions.filter((question) => isVisible(planning, question))
   const matched = questions.find((question) => question.id === q)
   const current = matched ?? itemAt(visible, 0)
@@ -37,7 +38,7 @@ export function SectionFlow({ section }: { section: SectionId }) {
     ? visible.findIndex((question) => question.id === current.id)
     : -1
   const currentId = current?.id
-  const counts = sectionCounts(planning, section)
+  const counts = sectionCounts(planning, section, master)
 
   useEffect(() => {
     if (!currentId) return
@@ -48,11 +49,11 @@ export function SectionFlow({ section }: { section: SectionId }) {
   if (!current) return null
   const question = current
 
-  const upcoming = stepFrom(planning, question, 1)
+  const upcoming = stepFrom(planning, question, 1, master)
   const nextLabel = upcoming ? upcoming.rail : 'review'
 
   function go(direction: 1 | -1) {
-    const next = stepFrom(planning, question, direction)
+    const next = stepFrom(planning, question, direction, master)
     if (!next) {
       void navigate({ to: direction === 1 ? '/portal/review' : '/portal' })
       return
@@ -76,7 +77,7 @@ export function SectionFlow({ section }: { section: SectionId }) {
   }
 
   const line = djLine(planning, question)
-  const ids = neighbourIds(planning, section, question.id)
+  const ids = neighbourIds(planning, section, question.id, master)
 
   return (
     <PortalColumns

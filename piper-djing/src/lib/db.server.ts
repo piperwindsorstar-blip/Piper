@@ -38,7 +38,8 @@ CREATE TABLE bookings (
   hold_started_on text,
   stag_released boolean NOT NULL DEFAULT false,
   notes text NOT NULL DEFAULT '',
-  planning text NOT NULL DEFAULT ''
+  planning text NOT NULL DEFAULT '',
+  portal_passcode text NOT NULL DEFAULT ''
 );
 CREATE TABLE invoices (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -75,7 +76,8 @@ CREATE TABLE terms (
 );
 CREATE TABLE site (
   id integer PRIMARY KEY CHECK (id = 1),
-  kind_words integer NOT NULL DEFAULT 0
+  kind_words integer NOT NULL DEFAULT 0,
+  portal_master text
 );
 CREATE TABLE partners (
   id integer PRIMARY KEY,

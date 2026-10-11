@@ -1,8 +1,13 @@
-import { Outlet, createFileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
+import { useState } from 'react'
+import { useServerFn } from '@tanstack/react-start'
 import { PortalChrome } from '../../components/portal/portal-chrome.tsx'
 import { PortalProvider } from '../../components/portal/portal-state.tsx'
 import type { PortalPage } from '../../components/portal/portal-state.tsx'
-import { getPortal } from '../../lib/portal/portal.functions.ts'
+import {
+  getPortal,
+  openPortalPasscode,
+} from '../../lib/portal/portal.functions.ts'
 import { privateHead } from '../../lib/seo.ts'
 
 const FONTS =
@@ -22,15 +27,7 @@ export const Route = createFileRoute('/portal')({
 
 function PortalLayout() {
   const page = Route.useLoaderData()
-  if (!page) {
-    return (
-      <main className="portal px-6 py-24">
-        <h1 className="portal-display text-4xl">
-          This page opens from the link Piper sent you.
-        </h1>
-      </main>
-    )
-  }
+  if (!page) return <PasscodeGate />
   return (
     <PortalProvider page={toPage(page)}>
       <PortalChrome>
@@ -54,5 +51,58 @@ function toPage(
     today: page.today,
     locked: page.locked,
     planning: page.planning,
+    master: page.master,
   }
+}
+
+function PasscodeGate() {
+  const open = useServerFn(openPortalPasscode)
+  const router = useRouter()
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <main className="portal px-6 py-24">
+      <h1 className="portal-display text-[32px] leading-[1.02] min-[1024px]:text-5xl">
+        This page opens from the link Piper sent you.
+      </h1>
+      <form
+        className="mt-8 max-w-md"
+        onSubmit={(event) => {
+          event.preventDefault()
+          setBusy(true)
+          setError('')
+          void open({ data: { passcode: code } }).then(async (result) => {
+            if (!result.ok) {
+              setError(result.error)
+              setBusy(false)
+              return
+            }
+            await router.invalidate()
+          })
+        }}
+      >
+        <label className="grid gap-2 text-sm text-[var(--text-muted)]">
+          Have a passcode from Piper?
+          <input
+            className="portal-input"
+            value={code}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => setCode(event.target.value)}
+          />
+        </label>
+        <button
+          type="submit"
+          className="mt-4 min-h-[54px] w-full rounded-full bg-[var(--pink)] text-base font-bold text-[#0d0d0d]"
+          disabled={busy || code.trim() === ''}
+        >
+          Open the plan
+        </button>
+        {error ? (
+          <p className="mt-3 text-sm text-[var(--pink-soft)]">{error}</p>
+        ) : null}
+      </form>
+    </main>
+  )
 }

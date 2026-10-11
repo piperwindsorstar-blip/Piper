@@ -20,10 +20,10 @@ export function QuestionRail({
   currentId: string
   ids?: string[]
 }) {
-  const { planning } = usePortal()
+  const { page, planning } = usePortal()
   const close = useCloseSheet()
-  const questions = sectionQuestions(planning, section).filter((question) =>
-    ids ? ids.includes(question.id) : true,
+  const questions = sectionQuestions(planning, section, page.master).filter(
+    (question) => (ids ? ids.includes(question.id) : true),
   )
   const groups: string[] = []
   for (const question of questions) {
@@ -116,9 +116,10 @@ export function neighbourIds(
   planning: Planning,
   section: SectionId,
   currentId: string,
+  master: Parameters<typeof sectionQuestions>[2] = {},
 ): string[] {
-  const visible = sectionQuestions(planning, section).filter((question) =>
-    isVisible(planning, question),
+  const visible = sectionQuestions(planning, section, master).filter(
+    (question) => isVisible(planning, question),
   )
   const index = visible.findIndex((question) => question.id === currentId)
   const start = Math.max(0, (index < 0 ? 0 : index) - 1)

@@ -51,6 +51,7 @@ const ICONS = {
   users: Users,
   cpu: Cpu,
   sliders: SlidersHorizontal,
+  lock: Lock,
 } as const
 
 const BANKS = [
@@ -61,6 +62,7 @@ const BANKS = [
       { name: 'Overview', to: '/desk', icon: 'home' },
       { name: 'Leads', to: '/desk/leads', icon: 'mail' },
       { name: 'Bookings', to: '/desk/bookings', icon: 'calendar' },
+      { name: 'Portals', to: '/desk/portals', icon: 'lock' },
       { name: 'Invoices', to: '/desk/invoices', icon: 'file' },
       { name: 'Payments', to: '/desk/payments', icon: 'wallet' },
     ],
@@ -114,6 +116,8 @@ export type DeskConsoleData = {
 
 function activePath(pathname: string, to: string) {
   if (to === '/desk') return pathname === '/desk' || pathname === '/desk/'
+  if (to === '/desk/portals')
+    return pathname === '/desk/portals' || pathname.startsWith('/desk/portals/')
   return pathname === to
 }
 

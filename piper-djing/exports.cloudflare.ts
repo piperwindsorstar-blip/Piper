@@ -31,7 +31,8 @@ const EDGE_SCHEMA = [
     hold_started_on text,
     stag_released integer NOT NULL DEFAULT 0,
     notes text NOT NULL DEFAULT '',
-    planning text NOT NULL DEFAULT ''
+    planning text NOT NULL DEFAULT '',
+    portal_passcode text NOT NULL DEFAULT ''
   )`,
   `CREATE TABLE IF NOT EXISTS invoices (
     id integer PRIMARY KEY AUTOINCREMENT,
@@ -68,7 +69,8 @@ const EDGE_SCHEMA = [
   )`,
   `CREATE TABLE IF NOT EXISTS site (
     id integer PRIMARY KEY CHECK (id = 1),
-    kind_words integer NOT NULL DEFAULT 0
+    kind_words integer NOT NULL DEFAULT 0,
+    portal_master text
   )`,
   `CREATE TABLE IF NOT EXISTS partners (
     id integer PRIMARY KEY,

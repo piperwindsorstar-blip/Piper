@@ -42,6 +42,9 @@ import type {
   ReviewSource,
   ReviewView,
 } from './reviews.ts'
+import { masterDrafts, parseMaster } from '../portal/master.ts'
+import type { MasterMap } from '../portal/questions.ts'
+import { overallProgress } from '../portal/progress.ts'
 import { askLegacyDate } from '../legacy-book.server.ts'
 import {
   holdLastDay,
@@ -2536,6 +2539,184 @@ export async function savePortalDeskFields(
     dueDate: /^\d{4}-\d{2}-\d{2}$/.test(fields.dueDate) ? fields.dueDate : '',
     planLocked: fields.unlock ? false : existing.planLocked,
   }
+  await query('UPDATE bookings SET planning = $1 WHERE id = $2', [
+    JSON.stringify(planning),
+    row.id,
+  ])
+  return planning
+}
+
+const PASSCODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+async function ensurePortalColumns(): Promise<void> {
+  await ensureSite()
+  await addSiteColumn('portal_master', 'text')
+  try {
+    await query(
+      `ALTER TABLE bookings ADD COLUMN portal_passcode text NOT NULL DEFAULT ''`,
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!/duplicate column|already exists/i.test(message)) throw error
+  }
+}
+
+function makePasscode(): string {
+  const bytes = randomBytes(6)
+  let code = ''
+  for (let index = 0; index < 6; index += 1) {
+    code += PASSCODE_ALPHABET[bytes[index] % PASSCODE_ALPHABET.length]
+  }
+  return code
+}
+
+function unusedPasscode(taken: Set<string>): string {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const code = makePasscode()
+    if (!taken.has(code)) return code
+  }
+  throw new Error('Could not make a passcode.')
+}
+
+export async function readPortalMaster(): Promise<MasterMap> {
+  await ensurePortalColumns()
+  const rows = await query<{ portal_master: string | null }>(
+    'SELECT portal_master FROM site WHERE id = 1',
+  )
+  return parseMaster(rows[0]?.portal_master ?? '')
+}
+
+export async function savePortalMaster(value: unknown): Promise<MasterMap> {
+  await ensurePortalColumns()
+  const master = parseMaster(value)
+  await query('UPDATE site SET portal_master = $1 WHERE id = 1', [
+    JSON.stringify(master),
+  ])
+  return master
+}
+
+export async function listCouplePortals() {
+  await ensurePlanningColumn()
+  await ensurePortalColumns()
+  const master = await readPortalMaster()
+  const rows = await query<
+    BookingRow & { planning?: string; portal_passcode?: string }
+  >('SELECT * FROM bookings ORDER BY event_date, id')
+  const taken = new Set(
+    rows
+      .map((row) => (row.portal_passcode ?? '').trim().toUpperCase())
+      .filter(Boolean),
+  )
+  const today = torontoToday()
+  const portals = []
+  for (const row of rows) {
+    let passcode = (row.portal_passcode ?? '').trim().toUpperCase()
+    if (!passcode) {
+      passcode = unusedPasscode(taken)
+      taken.add(passcode)
+      await query('UPDATE bookings SET portal_passcode = $1 WHERE id = $2', [
+        passcode,
+        row.id,
+      ])
+    }
+    const planning = parsePlanning(row.planning, planningSeed(row)).planning
+    const progress = overallProgress(planning, master)
+    portals.push({
+      slug: row.slug,
+      partnerOne: row.partner_one,
+      partnerTwo: row.partner_two,
+      eventDate: row.event_date,
+      sample: flag(row.sample),
+      status: row.status,
+      passcode,
+      percent: progress.percent,
+      answered: progress.answered,
+      total: progress.total,
+      locked: isPlanLocked(planning, today),
+    })
+  }
+  portals.sort(
+    (left, right) =>
+      Number(left.sample) - Number(right.sample) ||
+      left.eventDate.localeCompare(right.eventDate),
+  )
+  return { portals, drafts: masterDrafts(master), master }
+}
+
+export async function saveCouplePasscode(
+  slugValue: string,
+  code: string,
+): Promise<string> {
+  await ensurePortalColumns()
+  const passcode = code.trim().toUpperCase()
+  if (!/^[A-Z0-9]{4,12}$/.test(passcode)) {
+    throw new Error('Use 4 to 12 letters or numbers.')
+  }
+  const rows = await query<{ id: number }>(
+    'SELECT id FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  if (rows.length === 0) throw new Error('That page was not found.')
+  const row = rows[0]
+  const clash = await query<{ id: number }>(
+    'SELECT id FROM bookings WHERE upper(portal_passcode) = $1 AND id <> $2',
+    [passcode, row.id],
+  )
+  if (clash.length > 0) throw new Error('That passcode is already in use.')
+  await query('UPDATE bookings SET portal_passcode = $1 WHERE id = $2', [
+    passcode,
+    row.id,
+  ])
+  return passcode
+}
+
+export async function coupleByPasscode(code: string): Promise<string | null> {
+  await ensurePortalColumns()
+  const passcode = code.trim().toUpperCase()
+  if (!/^[A-Z0-9]{4,12}$/.test(passcode)) return null
+  const rows = await query<{ slug: string }>(
+    'SELECT slug FROM bookings WHERE upper(portal_passcode) = $1',
+    [passcode],
+  )
+  return rows[0]?.slug ?? null
+}
+
+export async function couplePortalForDesk(slugValue: string) {
+  const page = await coupleBySlug(slugValue)
+  if (!page) return null
+  await ensurePortalColumns()
+  const rows = await query<{ portal_passcode?: string }>(
+    'SELECT portal_passcode FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  const master = await readPortalMaster()
+  const today = torontoToday()
+  return {
+    ...page,
+    slug: slugValue,
+    passcode: (rows[0]?.portal_passcode ?? '').trim().toUpperCase(),
+    master,
+    today,
+    locked: isPlanLocked(page.planning, today),
+  }
+}
+
+export async function saveDeskPlanning(
+  slugValue: string,
+  value: unknown,
+): Promise<Planning> {
+  await ensurePlanningColumn()
+  const rows = await query<BookingRow & { planning?: string }>(
+    'SELECT * FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  if (rows.length === 0) throw new Error('That page was not found.')
+  const row = rows[0]
+  const existing = parsePlanning(row.planning, planningSeed(row)).planning
+  const planning = mergeCoupleSave(
+    existing,
+    planningFromUnknown(value, planningSeed(row)),
+  )
   await query('UPDATE bookings SET planning = $1 WHERE id = $2', [
     JSON.stringify(planning),
     row.id,

@@ -28,8 +28,8 @@ import { usePortal } from './portal-state.tsx'
 
 export function OverviewScreen() {
   const { page, planning, locked } = usePortal()
-  const progress = overallProgress(planning)
-  const next = firstUnanswered(planning)
+  const progress = overallProgress(planning, page.master)
+  const next = firstUnanswered(planning, page.master)
   const finish = planning.dueDate || shiftIso(page.eventDate, -5)
   const days = daysUntil(page.today, page.eventDate)
   const venue = planning.venueName.trim() || page.venueName.trim() || 'Venue'
@@ -128,14 +128,15 @@ function PlanRail({
   compact?: boolean
 }) {
   const { page, planning } = usePortal()
+  const master = page.master
   const close = useCloseSheet()
   const sections = compact ? compactSections(current) : SECTION_ORDER
   return (
     <div className="grid gap-5">
       <ol className="grid gap-1">
         {sections.map((section) => {
-          const progress = sectionProgress(planning, section)
-          const open = sectionQuestions(planning, section).filter(
+          const progress = sectionProgress(planning, section, master)
+          const open = sectionQuestions(planning, section, master).filter(
             (question) =>
               isVisible(planning, question) &&
               !questionAnswered(planning, question),
@@ -143,7 +144,7 @@ function PlanRail({
           const firstOpen = itemAt(open, 0)
           const target =
             firstOpen ??
-            sectionQuestions(planning, section).find((question) =>
+            sectionQuestions(planning, section, master).find((question) =>
               isVisible(planning, question),
             )
           const active = section === current

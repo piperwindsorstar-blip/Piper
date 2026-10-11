@@ -39,6 +39,8 @@ import { Route as PortalMusicRouteImport } from './routes/portal/music'
 import { Route as PortalReviewRouteImport } from './routes/portal/review'
 import { Route as PortalTimelineRouteImport } from './routes/portal/timeline'
 import { Route as ApiBotsV1RouteImport } from './routes/api/bots/v1'
+import { Route as DeskPortalsIndexRouteImport } from './routes/desk/portals/index'
+import { Route as DeskPortalsSlugRouteImport } from './routes/desk/portals/$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -190,6 +192,16 @@ const ApiBotsV1Route = ApiBotsV1RouteImport.update({
   path: '/api/bots/v1',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeskPortalsIndexRoute = DeskPortalsIndexRouteImport.update({
+  id: '/portals/',
+  path: '/portals/',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
+const DeskPortalsSlugRoute = DeskPortalsSlugRouteImport.update({
+  id: '/portals/$slug',
+  path: '/portals/$slug',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -222,6 +234,8 @@ export interface FileRoutesByFullPath {
   '/desk/': typeof DeskIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/desk/portals/$slug': typeof DeskPortalsSlugRoute
+  '/desk/portals/': typeof DeskPortalsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -252,6 +266,8 @@ export interface FileRoutesByTo {
   '/desk': typeof DeskIndexRoute
   '/portal': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/desk/portals/$slug': typeof DeskPortalsSlugRoute
+  '/desk/portals': typeof DeskPortalsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -285,6 +301,8 @@ export interface FileRoutesById {
   '/desk/': typeof DeskIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/desk/portals/$slug': typeof DeskPortalsSlugRoute
+  '/desk/portals/': typeof DeskPortalsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -319,6 +337,8 @@ export interface FileRouteTypes {
     | '/desk/'
     | '/portal/'
     | '/api/bots/v1'
+    | '/desk/portals/$slug'
+    | '/desk/portals/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -349,6 +369,8 @@ export interface FileRouteTypes {
     | '/desk'
     | '/portal'
     | '/api/bots/v1'
+    | '/desk/portals/$slug'
+    | '/desk/portals'
   id:
     | '__root__'
     | '/'
@@ -381,6 +403,8 @@ export interface FileRouteTypes {
     | '/desk/'
     | '/portal/'
     | '/api/bots/v1'
+    | '/desk/portals/$slug'
+    | '/desk/portals/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -609,6 +633,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBotsV1RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/desk/portals/': {
+      id: '/desk/portals/'
+      path: '/portals'
+      fullPath: '/desk/portals/'
+      preLoaderRoute: typeof DeskPortalsIndexRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
+    '/desk/portals/$slug': {
+      id: '/desk/portals/$slug'
+      path: '/portals/$slug'
+      fullPath: '/desk/portals/$slug'
+      preLoaderRoute: typeof DeskPortalsSlugRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
   }
 }
 
@@ -626,6 +664,8 @@ interface DeskRouteRouteChildren {
   DeskSettingsRoute: typeof DeskSettingsRoute
   DeskTermsRoute: typeof DeskTermsRoute
   DeskIndexRoute: typeof DeskIndexRoute
+  DeskPortalsSlugRoute: typeof DeskPortalsSlugRoute
+  DeskPortalsIndexRoute: typeof DeskPortalsIndexRoute
 }
 
 const DeskRouteRouteChildren: DeskRouteRouteChildren = {
@@ -642,6 +682,8 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskSettingsRoute: DeskSettingsRoute,
   DeskTermsRoute: DeskTermsRoute,
   DeskIndexRoute: DeskIndexRoute,
+  DeskPortalsSlugRoute: DeskPortalsSlugRoute,
+  DeskPortalsIndexRoute: DeskPortalsIndexRoute,
 }
 
 const DeskRouteRouteWithChildren = DeskRouteRoute._addFileChildren(
