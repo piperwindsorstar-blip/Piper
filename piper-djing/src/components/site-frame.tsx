@@ -44,6 +44,12 @@ export function SiteHeader({
           >
             Weddings
           </Link>
+          <Link
+            to="/rsvp"
+            className={`inline-flex min-h-11 items-center px-3 text-sm ${ring}`}
+          >
+            RSVP
+          </Link>
           {onDate ? (
             <>
               <button

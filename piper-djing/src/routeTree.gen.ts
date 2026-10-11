@@ -29,6 +29,7 @@ import { Route as DeskPartnersRouteImport } from './routes/desk/partners'
 import { Route as DeskPaymentsRouteImport } from './routes/desk/payments'
 import { Route as DeskQuestionsRouteImport } from './routes/desk/questions'
 import { Route as DeskReviewsRouteImport } from './routes/desk/reviews'
+import { Route as DeskRsvpRouteImport } from './routes/desk/rsvp'
 import { Route as DeskSettingsRouteImport } from './routes/desk/settings'
 import { Route as DeskTermsRouteImport } from './routes/desk/terms'
 import { Route as PSlugRouteImport } from './routes/p/$slug'
@@ -39,11 +40,26 @@ import { Route as PortalMusicRouteImport } from './routes/portal/music'
 import { Route as PortalPlanRouteImport } from './routes/portal/plan'
 import { Route as PortalReviewRouteImport } from './routes/portal/review'
 import { Route as PortalTimelineRouteImport } from './routes/portal/timeline'
+import { Route as RsvpIndexRouteImport } from './routes/rsvp/index'
+import { Route as RsvpManageRouteRouteImport } from './routes/rsvp/manage/route'
+import { Route as RsvpSignInRouteImport } from './routes/rsvp/sign-in'
 import { Route as ShareTokenRouteImport } from './routes/share/$token'
 import { Route as ApiBotsV1RouteImport } from './routes/api/bots/v1'
 import { Route as DeskPortalsIndexRouteImport } from './routes/desk/portals/index'
+import { Route as RsvpSlugIndexRouteImport } from './routes/rsvp/$slug/index'
+import { Route as RsvpSlugFindRouteImport } from './routes/rsvp/$slug/find'
+import { Route as RsvpManageIndexRouteImport } from './routes/rsvp/manage/index'
+import { Route as RsvpManageEventsRouteImport } from './routes/rsvp/manage/events'
+import { Route as RsvpManageExportsRouteImport } from './routes/rsvp/manage/exports'
+import { Route as RsvpManageGuestsRouteImport } from './routes/rsvp/manage/guests'
+import { Route as RsvpManageSettingsRouteImport } from './routes/rsvp/manage/settings'
+import { Route as RsvpManageSongsRouteImport } from './routes/rsvp/manage/songs'
+import { Route as RsvpOpenTokenRouteImport } from './routes/rsvp/open/$token'
 import { Route as DeskPortalsSlugIndexRouteImport } from './routes/desk/portals/$slug/index'
 import { Route as DeskPortalsSlugPlanRouteImport } from './routes/desk/portals/$slug/plan'
+import { Route as RsvpSlugPTokenIndexRouteImport } from './routes/rsvp/$slug/p/$token/index'
+import { Route as RsvpSlugPTokenDoneRouteImport } from './routes/rsvp/$slug/p/$token/done'
+import { Route as RsvpSlugPTokenReviewRouteImport } from './routes/rsvp/$slug/p/$token/review'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -145,6 +161,11 @@ const DeskReviewsRoute = DeskReviewsRouteImport.update({
   path: '/reviews',
   getParentRoute: () => DeskRouteRoute,
 } as any)
+const DeskRsvpRoute = DeskRsvpRouteImport.update({
+  id: '/rsvp',
+  path: '/rsvp',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
 const DeskSettingsRoute = DeskSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -195,6 +216,21 @@ const PortalTimelineRoute = PortalTimelineRouteImport.update({
   path: '/timeline',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const RsvpIndexRoute = RsvpIndexRouteImport.update({
+  id: '/rsvp/',
+  path: '/rsvp/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RsvpManageRouteRoute = RsvpManageRouteRouteImport.update({
+  id: '/rsvp/manage',
+  path: '/rsvp/manage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RsvpSignInRoute = RsvpSignInRouteImport.update({
+  id: '/rsvp/sign-in',
+  path: '/rsvp/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShareTokenRoute = ShareTokenRouteImport.update({
   id: '/share/$token',
   path: '/share/$token',
@@ -210,6 +246,51 @@ const DeskPortalsIndexRoute = DeskPortalsIndexRouteImport.update({
   path: '/portals/',
   getParentRoute: () => DeskRouteRoute,
 } as any)
+const RsvpSlugIndexRoute = RsvpSlugIndexRouteImport.update({
+  id: '/rsvp/$slug/',
+  path: '/rsvp/$slug/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RsvpSlugFindRoute = RsvpSlugFindRouteImport.update({
+  id: '/rsvp/$slug/find',
+  path: '/rsvp/$slug/find',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RsvpManageIndexRoute = RsvpManageIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpManageEventsRoute = RsvpManageEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpManageExportsRoute = RsvpManageExportsRouteImport.update({
+  id: '/exports',
+  path: '/exports',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpManageGuestsRoute = RsvpManageGuestsRouteImport.update({
+  id: '/guests',
+  path: '/guests',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpManageSettingsRoute = RsvpManageSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpManageSongsRoute = RsvpManageSongsRouteImport.update({
+  id: '/songs',
+  path: '/songs',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpOpenTokenRoute = RsvpOpenTokenRouteImport.update({
+  id: '/rsvp/open/$token',
+  path: '/rsvp/open/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeskPortalsSlugIndexRoute = DeskPortalsSlugIndexRouteImport.update({
   id: '/portals/$slug/',
   path: '/portals/$slug/',
@@ -219,6 +300,21 @@ const DeskPortalsSlugPlanRoute = DeskPortalsSlugPlanRouteImport.update({
   id: '/portals/$slug/plan',
   path: '/portals/$slug/plan',
   getParentRoute: () => DeskRouteRoute,
+} as any)
+const RsvpSlugPTokenIndexRoute = RsvpSlugPTokenIndexRouteImport.update({
+  id: '/rsvp/$slug/p/$token/',
+  path: '/rsvp/$slug/p/$token/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RsvpSlugPTokenDoneRoute = RsvpSlugPTokenDoneRouteImport.update({
+  id: '/rsvp/$slug/p/$token/done',
+  path: '/rsvp/$slug/p/$token/done',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RsvpSlugPTokenReviewRoute = RsvpSlugPTokenReviewRouteImport.update({
+  id: '/rsvp/$slug/p/$token/review',
+  path: '/rsvp/$slug/p/$token/review',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -230,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/weddings': typeof WeddingsRoute
+  '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/desk/bookings': typeof DeskBookingsRoute
   '/desk/bots': typeof DeskBotsRoute
@@ -241,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
+  '/desk/rsvp': typeof DeskRsvpRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -250,13 +348,27 @@ export interface FileRoutesByFullPath {
   '/portal/plan': typeof PortalPlanRoute
   '/portal/review': typeof PortalReviewRoute
   '/portal/timeline': typeof PortalTimelineRoute
+  '/rsvp/sign-in': typeof RsvpSignInRoute
   '/share/$token': typeof ShareTokenRoute
   '/desk/': typeof DeskIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/rsvp/': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/rsvp/$slug/find': typeof RsvpSlugFindRoute
+  '/rsvp/manage/events': typeof RsvpManageEventsRoute
+  '/rsvp/manage/exports': typeof RsvpManageExportsRoute
+  '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
+  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
+  '/rsvp/manage/songs': typeof RsvpManageSongsRoute
+  '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
+  '/rsvp/$slug/': typeof RsvpSlugIndexRoute
+  '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
+  '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
+  '/rsvp/$slug/p/$token/review': typeof RsvpSlugPTokenReviewRoute
+  '/rsvp/$slug/p/$token/': typeof RsvpSlugPTokenIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -276,6 +388,7 @@ export interface FileRoutesByTo {
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
+  '/desk/rsvp': typeof DeskRsvpRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -285,13 +398,27 @@ export interface FileRoutesByTo {
   '/portal/plan': typeof PortalPlanRoute
   '/portal/review': typeof PortalReviewRoute
   '/portal/timeline': typeof PortalTimelineRoute
+  '/rsvp/sign-in': typeof RsvpSignInRoute
   '/share/$token': typeof ShareTokenRoute
   '/desk': typeof DeskIndexRoute
   '/portal': typeof PortalIndexRoute
+  '/rsvp': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/rsvp/$slug/find': typeof RsvpSlugFindRoute
+  '/rsvp/manage/events': typeof RsvpManageEventsRoute
+  '/rsvp/manage/exports': typeof RsvpManageExportsRoute
+  '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
+  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
+  '/rsvp/manage/songs': typeof RsvpManageSongsRoute
+  '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals': typeof DeskPortalsIndexRoute
+  '/rsvp/$slug': typeof RsvpSlugIndexRoute
+  '/rsvp/manage': typeof RsvpManageIndexRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug': typeof DeskPortalsSlugIndexRoute
+  '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
+  '/rsvp/$slug/p/$token/review': typeof RsvpSlugPTokenReviewRoute
+  '/rsvp/$slug/p/$token': typeof RsvpSlugPTokenIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -303,6 +430,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/weddings': typeof WeddingsRoute
+  '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/desk/bookings': typeof DeskBookingsRoute
   '/desk/bots': typeof DeskBotsRoute
@@ -314,6 +442,7 @@ export interface FileRoutesById {
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
+  '/desk/rsvp': typeof DeskRsvpRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -323,13 +452,27 @@ export interface FileRoutesById {
   '/portal/plan': typeof PortalPlanRoute
   '/portal/review': typeof PortalReviewRoute
   '/portal/timeline': typeof PortalTimelineRoute
+  '/rsvp/sign-in': typeof RsvpSignInRoute
   '/share/$token': typeof ShareTokenRoute
   '/desk/': typeof DeskIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/rsvp/': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/rsvp/$slug/find': typeof RsvpSlugFindRoute
+  '/rsvp/manage/events': typeof RsvpManageEventsRoute
+  '/rsvp/manage/exports': typeof RsvpManageExportsRoute
+  '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
+  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
+  '/rsvp/manage/songs': typeof RsvpManageSongsRoute
+  '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
+  '/rsvp/$slug/': typeof RsvpSlugIndexRoute
+  '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
+  '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
+  '/rsvp/$slug/p/$token/review': typeof RsvpSlugPTokenReviewRoute
+  '/rsvp/$slug/p/$token/': typeof RsvpSlugPTokenIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -342,6 +485,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/weddings'
+    | '/rsvp/manage'
     | '/c/$slug'
     | '/desk/bookings'
     | '/desk/bots'
@@ -353,6 +497,7 @@ export interface FileRouteTypes {
     | '/desk/payments'
     | '/desk/questions'
     | '/desk/reviews'
+    | '/desk/rsvp'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -362,13 +507,27 @@ export interface FileRouteTypes {
     | '/portal/plan'
     | '/portal/review'
     | '/portal/timeline'
+    | '/rsvp/sign-in'
     | '/share/$token'
     | '/desk/'
     | '/portal/'
+    | '/rsvp/'
     | '/api/bots/v1'
+    | '/rsvp/$slug/find'
+    | '/rsvp/manage/events'
+    | '/rsvp/manage/exports'
+    | '/rsvp/manage/guests'
+    | '/rsvp/manage/settings'
+    | '/rsvp/manage/songs'
+    | '/rsvp/open/$token'
     | '/desk/portals/'
+    | '/rsvp/$slug/'
+    | '/rsvp/manage/'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
+    | '/rsvp/$slug/p/$token/done'
+    | '/rsvp/$slug/p/$token/review'
+    | '/rsvp/$slug/p/$token/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -388,6 +547,7 @@ export interface FileRouteTypes {
     | '/desk/payments'
     | '/desk/questions'
     | '/desk/reviews'
+    | '/desk/rsvp'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -397,13 +557,27 @@ export interface FileRouteTypes {
     | '/portal/plan'
     | '/portal/review'
     | '/portal/timeline'
+    | '/rsvp/sign-in'
     | '/share/$token'
     | '/desk'
     | '/portal'
+    | '/rsvp'
     | '/api/bots/v1'
+    | '/rsvp/$slug/find'
+    | '/rsvp/manage/events'
+    | '/rsvp/manage/exports'
+    | '/rsvp/manage/guests'
+    | '/rsvp/manage/settings'
+    | '/rsvp/manage/songs'
+    | '/rsvp/open/$token'
     | '/desk/portals'
+    | '/rsvp/$slug'
+    | '/rsvp/manage'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug'
+    | '/rsvp/$slug/p/$token/done'
+    | '/rsvp/$slug/p/$token/review'
+    | '/rsvp/$slug/p/$token'
   id:
     | '__root__'
     | '/'
@@ -414,6 +588,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/weddings'
+    | '/rsvp/manage'
     | '/c/$slug'
     | '/desk/bookings'
     | '/desk/bots'
@@ -425,6 +600,7 @@ export interface FileRouteTypes {
     | '/desk/payments'
     | '/desk/questions'
     | '/desk/reviews'
+    | '/desk/rsvp'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -434,13 +610,27 @@ export interface FileRouteTypes {
     | '/portal/plan'
     | '/portal/review'
     | '/portal/timeline'
+    | '/rsvp/sign-in'
     | '/share/$token'
     | '/desk/'
     | '/portal/'
+    | '/rsvp/'
     | '/api/bots/v1'
+    | '/rsvp/$slug/find'
+    | '/rsvp/manage/events'
+    | '/rsvp/manage/exports'
+    | '/rsvp/manage/guests'
+    | '/rsvp/manage/settings'
+    | '/rsvp/manage/songs'
+    | '/rsvp/open/$token'
     | '/desk/portals/'
+    | '/rsvp/$slug/'
+    | '/rsvp/manage/'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
+    | '/rsvp/$slug/p/$token/done'
+    | '/rsvp/$slug/p/$token/review'
+    | '/rsvp/$slug/p/$token/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -452,10 +642,19 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   WeddingsRoute: typeof WeddingsRoute
+  RsvpManageRouteRoute: typeof RsvpManageRouteRouteWithChildren
   CSlugRoute: typeof CSlugRoute
   PSlugRoute: typeof PSlugRoute
+  RsvpSignInRoute: typeof RsvpSignInRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  RsvpIndexRoute: typeof RsvpIndexRoute
   ApiBotsV1Route: typeof ApiBotsV1Route
+  RsvpSlugFindRoute: typeof RsvpSlugFindRoute
+  RsvpOpenTokenRoute: typeof RsvpOpenTokenRoute
+  RsvpSlugIndexRoute: typeof RsvpSlugIndexRoute
+  RsvpSlugPTokenDoneRoute: typeof RsvpSlugPTokenDoneRoute
+  RsvpSlugPTokenReviewRoute: typeof RsvpSlugPTokenReviewRoute
+  RsvpSlugPTokenIndexRoute: typeof RsvpSlugPTokenIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -600,6 +799,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskReviewsRouteImport
       parentRoute: typeof DeskRouteRoute
     }
+    '/desk/rsvp': {
+      id: '/desk/rsvp'
+      path: '/rsvp'
+      fullPath: '/desk/rsvp'
+      preLoaderRoute: typeof DeskRsvpRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
     '/desk/settings': {
       id: '/desk/settings'
       path: '/settings'
@@ -670,6 +876,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalTimelineRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/rsvp/': {
+      id: '/rsvp/'
+      path: '/rsvp'
+      fullPath: '/rsvp/'
+      preLoaderRoute: typeof RsvpIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsvp/manage': {
+      id: '/rsvp/manage'
+      path: '/rsvp/manage'
+      fullPath: '/rsvp/manage'
+      preLoaderRoute: typeof RsvpManageRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsvp/sign-in': {
+      id: '/rsvp/sign-in'
+      path: '/rsvp/sign-in'
+      fullPath: '/rsvp/sign-in'
+      preLoaderRoute: typeof RsvpSignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/share/$token': {
       id: '/share/$token'
       path: '/share/$token'
@@ -691,6 +918,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskPortalsIndexRouteImport
       parentRoute: typeof DeskRouteRoute
     }
+    '/rsvp/$slug/': {
+      id: '/rsvp/$slug/'
+      path: '/rsvp/$slug'
+      fullPath: '/rsvp/$slug/'
+      preLoaderRoute: typeof RsvpSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsvp/$slug/find': {
+      id: '/rsvp/$slug/find'
+      path: '/rsvp/$slug/find'
+      fullPath: '/rsvp/$slug/find'
+      preLoaderRoute: typeof RsvpSlugFindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsvp/manage/': {
+      id: '/rsvp/manage/'
+      path: '/'
+      fullPath: '/rsvp/manage/'
+      preLoaderRoute: typeof RsvpManageIndexRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/manage/events': {
+      id: '/rsvp/manage/events'
+      path: '/events'
+      fullPath: '/rsvp/manage/events'
+      preLoaderRoute: typeof RsvpManageEventsRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/manage/exports': {
+      id: '/rsvp/manage/exports'
+      path: '/exports'
+      fullPath: '/rsvp/manage/exports'
+      preLoaderRoute: typeof RsvpManageExportsRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/manage/guests': {
+      id: '/rsvp/manage/guests'
+      path: '/guests'
+      fullPath: '/rsvp/manage/guests'
+      preLoaderRoute: typeof RsvpManageGuestsRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/manage/settings': {
+      id: '/rsvp/manage/settings'
+      path: '/settings'
+      fullPath: '/rsvp/manage/settings'
+      preLoaderRoute: typeof RsvpManageSettingsRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/manage/songs': {
+      id: '/rsvp/manage/songs'
+      path: '/songs'
+      fullPath: '/rsvp/manage/songs'
+      preLoaderRoute: typeof RsvpManageSongsRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/open/$token': {
+      id: '/rsvp/open/$token'
+      path: '/rsvp/open/$token'
+      fullPath: '/rsvp/open/$token'
+      preLoaderRoute: typeof RsvpOpenTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/desk/portals/$slug/': {
       id: '/desk/portals/$slug/'
       path: '/portals/$slug'
@@ -704,6 +994,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/desk/portals/$slug/plan'
       preLoaderRoute: typeof DeskPortalsSlugPlanRouteImport
       parentRoute: typeof DeskRouteRoute
+    }
+    '/rsvp/$slug/p/$token/': {
+      id: '/rsvp/$slug/p/$token/'
+      path: '/rsvp/$slug/p/$token'
+      fullPath: '/rsvp/$slug/p/$token/'
+      preLoaderRoute: typeof RsvpSlugPTokenIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsvp/$slug/p/$token/done': {
+      id: '/rsvp/$slug/p/$token/done'
+      path: '/rsvp/$slug/p/$token/done'
+      fullPath: '/rsvp/$slug/p/$token/done'
+      preLoaderRoute: typeof RsvpSlugPTokenDoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsvp/$slug/p/$token/review': {
+      id: '/rsvp/$slug/p/$token/review'
+      path: '/rsvp/$slug/p/$token/review'
+      fullPath: '/rsvp/$slug/p/$token/review'
+      preLoaderRoute: typeof RsvpSlugPTokenReviewRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -719,6 +1030,7 @@ interface DeskRouteRouteChildren {
   DeskPaymentsRoute: typeof DeskPaymentsRoute
   DeskQuestionsRoute: typeof DeskQuestionsRoute
   DeskReviewsRoute: typeof DeskReviewsRoute
+  DeskRsvpRoute: typeof DeskRsvpRoute
   DeskSettingsRoute: typeof DeskSettingsRoute
   DeskTermsRoute: typeof DeskTermsRoute
   DeskIndexRoute: typeof DeskIndexRoute
@@ -738,6 +1050,7 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskPaymentsRoute: DeskPaymentsRoute,
   DeskQuestionsRoute: DeskQuestionsRoute,
   DeskReviewsRoute: DeskReviewsRoute,
+  DeskRsvpRoute: DeskRsvpRoute,
   DeskSettingsRoute: DeskSettingsRoute,
   DeskTermsRoute: DeskTermsRoute,
   DeskIndexRoute: DeskIndexRoute,
@@ -774,6 +1087,28 @@ const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
   PortalRouteRouteChildren,
 )
 
+interface RsvpManageRouteRouteChildren {
+  RsvpManageEventsRoute: typeof RsvpManageEventsRoute
+  RsvpManageExportsRoute: typeof RsvpManageExportsRoute
+  RsvpManageGuestsRoute: typeof RsvpManageGuestsRoute
+  RsvpManageSettingsRoute: typeof RsvpManageSettingsRoute
+  RsvpManageSongsRoute: typeof RsvpManageSongsRoute
+  RsvpManageIndexRoute: typeof RsvpManageIndexRoute
+}
+
+const RsvpManageRouteRouteChildren: RsvpManageRouteRouteChildren = {
+  RsvpManageEventsRoute: RsvpManageEventsRoute,
+  RsvpManageExportsRoute: RsvpManageExportsRoute,
+  RsvpManageGuestsRoute: RsvpManageGuestsRoute,
+  RsvpManageSettingsRoute: RsvpManageSettingsRoute,
+  RsvpManageSongsRoute: RsvpManageSongsRoute,
+  RsvpManageIndexRoute: RsvpManageIndexRoute,
+}
+
+const RsvpManageRouteRouteWithChildren = RsvpManageRouteRoute._addFileChildren(
+  RsvpManageRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DeskRouteRoute: DeskRouteRouteWithChildren,
@@ -783,10 +1118,19 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   WeddingsRoute: WeddingsRoute,
+  RsvpManageRouteRoute: RsvpManageRouteRouteWithChildren,
   CSlugRoute: CSlugRoute,
   PSlugRoute: PSlugRoute,
+  RsvpSignInRoute: RsvpSignInRoute,
   ShareTokenRoute: ShareTokenRoute,
+  RsvpIndexRoute: RsvpIndexRoute,
   ApiBotsV1Route: ApiBotsV1Route,
+  RsvpSlugFindRoute: RsvpSlugFindRoute,
+  RsvpOpenTokenRoute: RsvpOpenTokenRoute,
+  RsvpSlugIndexRoute: RsvpSlugIndexRoute,
+  RsvpSlugPTokenDoneRoute: RsvpSlugPTokenDoneRoute,
+  RsvpSlugPTokenReviewRoute: RsvpSlugPTokenReviewRoute,
+  RsvpSlugPTokenIndexRoute: RsvpSlugPTokenIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

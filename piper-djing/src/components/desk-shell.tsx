@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Star,
   Users,
+  Ticket,
   Wallet,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -52,6 +53,7 @@ const ICONS = {
   cpu: Cpu,
   sliders: SlidersHorizontal,
   lock: Lock,
+  ticket: Ticket,
 } as const
 
 const BANKS = [
@@ -63,6 +65,7 @@ const BANKS = [
       { name: 'Leads', to: '/desk/leads', icon: 'mail' },
       { name: 'Bookings', to: '/desk/bookings', icon: 'calendar' },
       { name: 'Portals', to: '/desk/portals', icon: 'lock' },
+      { name: 'RSVP', to: '/desk/rsvp', icon: 'ticket' },
       { name: 'Invoices', to: '/desk/invoices', icon: 'file' },
       { name: 'Payments', to: '/desk/payments', icon: 'wallet' },
     ],

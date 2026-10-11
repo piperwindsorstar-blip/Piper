@@ -1,0 +1,570 @@
+import { Link, useRouter } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+import type { RsvpStatus } from '../../lib/rsvp/model.ts'
+import {
+  getRsvpCalendar,
+  saveHouseholdReply,
+} from '../../lib/rsvp/rsvp.functions.ts'
+import type { getHousehold } from '../../lib/rsvp/rsvp.functions.ts'
+import {
+  Field,
+  RsvpFrame,
+  RsvpHeader,
+  Steps,
+  downloadText,
+  rsvpButton,
+  rsvpField,
+  rsvpGhost,
+} from './shell.tsx'
+
+export type HouseholdData = NonNullable<
+  Awaited<ReturnType<typeof getHousehold>>
+>
+
+function tallyGuests(
+  events: { id: string }[],
+  guests: { replies: Record<string, RsvpStatus | undefined> }[],
+) {
+  let attending = 0
+  let declined = 0
+  for (const guest of guests) {
+    const coming = events.some(
+      (event) => guest.replies[event.id] === 'attending',
+    )
+    const no = events.some((event) => guest.replies[event.id] === 'declined')
+    if (coming) attending += 1
+    else if (no) declined += 1
+  }
+  return { attending, declined }
+}
+
+export function HouseholdForm({ data }: { data: HouseholdData }) {
+  const save = useServerFn(saveHouseholdReply)
+  const router = useRouter()
+  const [guests, setGuests] = useState(data.party.guests)
+  const email = data.party.email
+  const [removed, setRemoved] = useState<string[]>([])
+  const [addName, setAddName] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const visible = guests.filter((guest) => !removed.includes(guest.id))
+  const tally = tallyGuests(data.events, visible)
+  const plusLeft =
+    data.party.plusOneAllowed && !visible.some((guest) => guest.isPlusOne)
+
+  function patch(final: boolean) {
+    return {
+      data: {
+        slug: data.slug,
+        token: data.party.token,
+        email,
+        note: data.party.note,
+        final,
+        guests: visible.map((guest) => ({
+          id: guest.id,
+          replies: guest.replies,
+          meal: guest.meal,
+          dietary: guest.dietary,
+          dietaryNote: guest.dietaryNote,
+          song: guest.song,
+          plusOneName: guest.isPlusOne
+            ? `${guest.firstName} ${guest.lastName}`.trim()
+            : '',
+        })),
+        removePlusOneIds: removed,
+        addPlusOne: plusLeft && addName.trim() ? { name: addName } : null,
+      },
+    }
+  }
+
+  function setReply(id: string, eventId: string, status: RsvpStatus) {
+    setGuests((current) =>
+      current.map((guest) =>
+        guest.id === id
+          ? { ...guest, replies: { ...guest.replies, [eventId]: status } }
+          : guest,
+      ),
+    )
+  }
+
+  return (
+    <RsvpFrame>
+      <RsvpHeader step="Step 2 of 3" />
+      <Steps step={2} />
+      <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
+        REPLYING FOR
+      </p>
+      <h1 className="portal-display text-4xl">{data.party.name}</h1>
+      <div className="mt-6 grid gap-4">
+        {visible.map((guest) => {
+          const coming = data.events.some(
+            (event) => guest.replies[event.id] === 'attending',
+          )
+          const mealEvent = data.events.some(
+            (event) =>
+              event.asksMeal && guest.replies[event.id] === 'attending',
+          )
+          return (
+            <article
+              key={guest.id}
+              className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                {guest.isPlusOne ? (
+                  <input
+                    className={rsvpField}
+                    aria-label="Plus-one name"
+                    value={`${guest.firstName} ${guest.lastName}`.trim()}
+                    onChange={(event) => {
+                      const parts = event.target.value.trim().split(/\s+/)
+                      const firstName = parts[0] ?? ''
+                      const lastName = parts.slice(1).join(' ')
+                      setGuests((current) =>
+                        current.map((item) =>
+                          item.id === guest.id
+                            ? { ...item, firstName, lastName }
+                            : item,
+                        ),
+                      )
+                    }}
+                  />
+                ) : (
+                  <h2 className="text-xl font-semibold">
+                    {guest.firstName} {guest.lastName}
+                  </h2>
+                )}
+                {guest.isChild ? (
+                  <span className="rounded-full bg-amber-900/60 px-2 py-1 text-xs text-amber-200">
+                    Child
+                  </span>
+                ) : null}
+                {guest.isPlusOne ? (
+                  <span className="rounded-full bg-[var(--pink-tint)] px-2 py-1 text-xs text-[var(--pink-soft)]">
+                    Plus-one
+                  </span>
+                ) : null}
+              </div>
+              {data.events.map((event) => (
+                <fieldset key={event.id} className="mt-4">
+                  <legend className="text-sm text-[var(--text-muted)]">
+                    {event.name}
+                  </legend>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={guest.replies[event.id] === 'attending'}
+                      className={choiceClass(
+                        guest.replies[event.id] === 'attending',
+                      )}
+                      onClick={() => setReply(guest.id, event.id, 'attending')}
+                    >
+                      Attending
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={guest.replies[event.id] === 'declined'}
+                      className={choiceClass(
+                        guest.replies[event.id] === 'declined',
+                        true,
+                      )}
+                      onClick={() => setReply(guest.id, event.id, 'declined')}
+                    >
+                      Can&apos;t make it
+                    </button>
+                  </div>
+                </fieldset>
+              ))}
+              {mealEvent && !guest.isChild ? (
+                <Field id={`${guest.id}-meal`} label="Dinner">
+                  <select
+                    id={`${guest.id}-meal`}
+                    className={rsvpField}
+                    value={guest.meal}
+                    onChange={(event) =>
+                      setGuests((current) =>
+                        current.map((item) =>
+                          item.id === guest.id
+                            ? { ...item, meal: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="">Choose a meal</option>
+                    {data.meals.map((meal) => (
+                      <option key={meal} value={meal}>
+                        {meal}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              {coming ? (
+                <fieldset className="mt-4">
+                  <legend className="text-sm text-[var(--text-muted)]">
+                    Dietary needs
+                  </legend>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {data.dietary.map((diet) => {
+                      const on = guest.dietary.includes(diet)
+                      return (
+                        <button
+                          key={diet}
+                          type="button"
+                          aria-pressed={on}
+                          className={`min-h-11 rounded-full border px-3 text-sm ${on ? 'border-[var(--pink)] text-[var(--pink-soft)]' : 'border-[var(--border-strong)] text-[var(--text-muted)]'}`}
+                          onClick={() =>
+                            setGuests((current) =>
+                              current.map((item) =>
+                                item.id === guest.id
+                                  ? {
+                                      ...item,
+                                      dietary: on
+                                        ? item.dietary.filter(
+                                            (name) => name !== diet,
+                                          )
+                                        : [...item.dietary, diet],
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        >
+                          {diet}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <label
+                    className="mt-3 block text-sm text-[var(--text-muted)]"
+                    htmlFor={`${guest.id}-note`}
+                  >
+                    Anything else the caterer should know?
+                  </label>
+                  <textarea
+                    id={`${guest.id}-note`}
+                    className={`${rsvpField} mt-2 min-h-20 py-3`}
+                    value={guest.dietaryNote}
+                    onChange={(event) =>
+                      setGuests((current) =>
+                        current.map((item) =>
+                          item.id === guest.id
+                            ? { ...item, dietaryNote: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                </fieldset>
+              ) : null}
+              {coming && data.song ? (
+                <Field
+                  id={`${guest.id}-song`}
+                  label="What song gets you on the dance floor?"
+                >
+                  <input
+                    id={`${guest.id}-song`}
+                    className={rsvpField}
+                    placeholder="Song – Artist"
+                    value={guest.song}
+                    onChange={(event) =>
+                      setGuests((current) =>
+                        current.map((item) =>
+                          item.id === guest.id
+                            ? { ...item, song: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                </Field>
+              ) : null}
+              {guest.isPlusOne ? (
+                <button
+                  type="button"
+                  className="mt-3 min-h-11 text-sm text-[var(--pink-soft)]"
+                  onClick={() =>
+                    setRemoved((current) => [...current, guest.id])
+                  }
+                >
+                  Not bringing a guest? Remove plus-one
+                </button>
+              ) : null}
+            </article>
+          )
+        })}
+      </div>
+      {plusLeft ? (
+        <Field id="plus-one" label="Bring a guest">
+          <input
+            id="plus-one"
+            className={`${rsvpField} mt-2`}
+            placeholder="Their name"
+            value={addName}
+            onChange={(event) => setAddName(event.target.value)}
+          />
+        </Field>
+      ) : null}
+      {error ? (
+        <p className="mt-4 text-sm text-[var(--pink-soft)]" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <p className="mt-4 text-sm text-[var(--text-muted)]">
+        {tally.attending} attending · {tally.declined} can&apos;t make it
+      </p>
+      <button
+        type="button"
+        className={`${rsvpButton} mt-3`}
+        disabled={busy || data.locked}
+        onClick={() => {
+          setBusy(true)
+          setError('')
+          void save(patch(false)).then(async (result) => {
+            if (!result.ok) {
+              setError(result.error)
+              setBusy(false)
+              return
+            }
+            await router.navigate({
+              to: '/rsvp/$slug/p/$token/review',
+              params: { slug: data.slug, token: data.party.token },
+            })
+          })
+        }}
+      >
+        Review my RSVP →
+      </button>
+      {data.locked ? (
+        <p className="mt-3 text-sm text-[var(--text-muted)]">
+          Replies are closed.
+        </p>
+      ) : null}
+    </RsvpFrame>
+  )
+}
+
+function choiceClass(on: boolean, decline = false) {
+  if (!on) {
+    return 'min-h-11 rounded-2xl border border-[var(--border-strong)] text-sm text-[var(--text-muted)]'
+  }
+  if (decline) {
+    return 'min-h-11 rounded-2xl border border-rose-400 text-sm text-rose-200'
+  }
+  return 'min-h-11 rounded-2xl border border-emerald-400 text-sm text-emerald-200'
+}
+
+export function ReviewReply({ data }: { data: HouseholdData }) {
+  const save = useServerFn(saveHouseholdReply)
+  const router = useRouter()
+  const [email, setEmail] = useState(data.party.email)
+  const [note, setNote] = useState(data.party.note)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <RsvpFrame>
+      <RsvpHeader step="Step 3 of 3" />
+      <Steps step={3} />
+      <h1 className="portal-display text-4xl">Check your answers</h1>
+      <p className="mt-2 text-[var(--text-muted)]">
+        You can change these until {data.deadline || 'the deadline'}.
+      </p>
+      <div className="mt-6 grid gap-4">
+        {data.events.map((event) => (
+          <section
+            key={event.id}
+            className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
+                {event.name.toUpperCase()}
+              </h2>
+              <Link
+                to="/rsvp/$slug/p/$token"
+                params={{ slug: data.slug, token: data.party.token }}
+                className="min-h-11 text-sm text-[var(--pink-soft)]"
+              >
+                Edit
+              </Link>
+            </div>
+            <ul className="mt-3 grid gap-3">
+              {data.party.guests.map((guest) => (
+                <li
+                  key={guest.id}
+                  className="flex items-start justify-between gap-3"
+                >
+                  <span>
+                    <span className="block font-semibold">
+                      {guest.firstName} {guest.lastName}
+                      {guest.isPlusOne ? ' (plus-one)' : ''}
+                    </span>
+                    <span className="text-sm text-[var(--text-muted)]">
+                      {[guest.meal, ...guest.dietary, guest.song]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                  <span
+                    className={
+                      guest.replies[event.id] === 'declined'
+                        ? 'text-sm text-rose-300'
+                        : 'text-sm text-emerald-300'
+                    }
+                  >
+                    {guest.replies[event.id] === 'declined'
+                      ? "Can't make it"
+                      : guest.replies[event.id] === 'attending'
+                        ? 'Attending'
+                        : 'Not yet'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+      <form
+        className="mt-6 grid gap-4"
+        onSubmit={(event) => {
+          event.preventDefault()
+          setBusy(true)
+          setError('')
+          void save({
+            data: {
+              slug: data.slug,
+              token: data.party.token,
+              email,
+              note,
+              final: true,
+              guests: data.party.guests.map((guest) => ({
+                id: guest.id,
+                replies: guest.replies,
+                meal: guest.meal,
+                dietary: guest.dietary,
+                dietaryNote: guest.dietaryNote,
+                song: guest.song,
+                plusOneName: '',
+              })),
+              removePlusOneIds: [],
+              addPlusOne: null,
+            },
+          }).then(async (result) => {
+            if (!result.ok) {
+              setError(result.error)
+              setBusy(false)
+              return
+            }
+            await router.navigate({
+              to: '/rsvp/$slug/p/$token/done',
+              params: { slug: data.slug, token: data.party.token },
+              search: { sent: '1' },
+            })
+          })
+        }}
+      >
+        <Field id="confirm-email" label="Confirmation email">
+          <input
+            id="confirm-email"
+            type="email"
+            autoComplete="email"
+            className={rsvpField}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </Field>
+        <Field id="couple-note" label="Note to the couple (optional)">
+          <input
+            id="couple-note"
+            className={rsvpField}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </Field>
+        {error ? (
+          <p className="text-sm text-[var(--pink-soft)]" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button
+          className={rsvpButton}
+          type="submit"
+          disabled={busy || data.locked}
+        >
+          Send RSVP
+        </button>
+      </form>
+    </RsvpFrame>
+  )
+}
+
+export function ReplyDone({
+  data,
+  sent,
+}: {
+  data: HouseholdData
+  sent: boolean
+}) {
+  const calendar = useServerFn(getRsvpCalendar)
+  const tally = tallyGuests(data.events, data.party.guests)
+  const songs = data.party.guests.filter((guest) => guest.song).length
+  const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    [data.venue, data.address].filter(Boolean).join(', '),
+  )}`
+  return (
+    <RsvpFrame>
+      <RsvpHeader />
+      <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-emerald-400 text-2xl text-emerald-300">
+        ✓
+      </div>
+      <h1 className="portal-display mt-4 text-center text-4xl">
+        You&apos;re on the list!
+      </h1>
+      <p className="mt-3 text-center text-[var(--text-muted)]">
+        Thanks, {data.party.guests[0]?.firstName || 'there'}. {data.couple} will
+        see your reply right away.
+        {sent && data.party.email
+          ? ` A copy is on its way to ${data.party.email}.`
+          : ''}
+      </p>
+      <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <p className="text-lg font-semibold">{tally.attending} attending</p>
+        <p className="text-sm text-[var(--text-muted)]">
+          {tally.declined} can&apos;t make it
+          {songs > 0
+            ? ` · ${songs} song request${songs === 1 ? '' : 's'} for DJ Piper P`
+            : ''}
+        </p>
+      </section>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className={rsvpGhost}
+          onClick={() => {
+            void calendar({
+              data: { slug: data.slug, token: data.party.token },
+            }).then((body) => {
+              if (body) downloadText('wedding.ics', body, 'text/calendar')
+            })
+          }}
+        >
+          Add to calendar
+        </button>
+        <a className={rsvpGhost} href={maps}>
+          Directions
+        </a>
+      </div>
+      <Link
+        to="/rsvp/$slug/p/$token"
+        params={{ slug: data.slug, token: data.party.token }}
+        className={`${rsvpGhost} mt-2`}
+      >
+        Change my reply
+      </Link>
+      <p className="mt-4 text-center text-sm text-[var(--text-faint)]">
+        The email also has a private link to change your reply later — no
+        searching needed.
+      </p>
+    </RsvpFrame>
+  )
+}

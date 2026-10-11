@@ -150,6 +150,15 @@ CREATE TABLE external_dates (
   notes text NOT NULL DEFAULT '',
   released integer NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS rsvp_weddings (
+  slug text PRIMARY KEY,
+  email text NOT NULL DEFAULT '',
+  paid integer NOT NULL DEFAULT 0,
+  sample integer NOT NULL DEFAULT 0,
+  price_cents integer NOT NULL DEFAULT 3000,
+  body text NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS rsvp_weddings_email ON rsvp_weddings (lower(email));
 `
 
 type EdgeBook = {

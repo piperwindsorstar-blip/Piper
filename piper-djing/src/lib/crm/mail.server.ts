@@ -181,6 +181,14 @@ export async function emailOwner(letter: Letter): Promise<MailResult> {
   return deliver(ownerAddress(profile.email), letter)
 }
 
+/** Sends one letter. RSVP confirmation and reminders use this. */
+export async function emailLetter(
+  to: string,
+  letter: Letter,
+): Promise<MailResult> {
+  return deliver(to, letter)
+}
+
 async function deliver(to: string, letter: Letter): Promise<MailResult> {
   const smtp = smtpConfig()
   if (!smtp) {
