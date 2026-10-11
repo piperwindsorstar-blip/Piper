@@ -2449,12 +2449,16 @@ export async function botFromToken(
 }
 
 function planningSeed(row: BookingRow): PlanningSeed {
+  const ceremony = row.venue_street.trim()
+  const receptionStreet = row.venue_two_street.trim()
   return {
     coupleNames: `${row.partner_one} and ${row.partner_two}`,
     email: row.email,
     phone: row.phone,
     weddingDate: longDate(row.event_date),
     venueName: row.venue_name,
+    ceremonyAddress: ceremony,
+    receptionAddress: receptionStreet || ceremony,
   }
 }
 
@@ -2551,10 +2555,14 @@ const PASSCODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 async function ensurePortalColumns(): Promise<void> {
   await ensureSite()
   await addSiteColumn('portal_master', 'text')
+  await addBookingColumn('portal_passcode', `text NOT NULL DEFAULT ''`)
+  await addBookingColumn('portal_share', `text NOT NULL DEFAULT ''`)
+  await addBookingColumn('portal_share_on', `integer NOT NULL DEFAULT 0`)
+}
+
+async function addBookingColumn(name: string, type: string): Promise<void> {
   try {
-    await query(
-      `ALTER TABLE bookings ADD COLUMN portal_passcode text NOT NULL DEFAULT ''`,
-    )
+    await query(`ALTER TABLE bookings ADD COLUMN ${name} ${type}`)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (!/duplicate column|already exists/i.test(message)) throw error
@@ -2679,6 +2687,78 @@ export async function coupleByPasscode(code: string): Promise<string | null> {
     [passcode],
   )
   return rows[0]?.slug ?? null
+}
+
+function shareEnabled(value: unknown): boolean {
+  return value === true || value === 1 || value === '1'
+}
+
+export async function readCoupleShare(
+  slugValue: string,
+): Promise<{ token: string; on: boolean }> {
+  await ensurePortalColumns()
+  const rows = await query<{
+    portal_share?: string
+    portal_share_on?: unknown
+  }>('SELECT portal_share, portal_share_on FROM bookings WHERE slug = $1', [
+    slugValue,
+  ])
+  if (rows.length === 0) return { token: '', on: false }
+  const row = rows[0]
+  return {
+    token: (row.portal_share ?? '').trim(),
+    on: shareEnabled(row.portal_share_on),
+  }
+}
+
+export async function enableCoupleShare(slugValue: string): Promise<string> {
+  await ensurePortalColumns()
+  const rows = await query<{ id: number; portal_share?: string }>(
+    'SELECT id, portal_share FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  if (rows.length === 0) throw new Error('That page was not found.')
+  const row = rows[0]
+  let token = (row.portal_share ?? '').trim()
+  if (!/^[A-Za-z0-9_-]{16,80}$/.test(token)) {
+    token = randomBytes(24).toString('base64url')
+  }
+  await query(
+    'UPDATE bookings SET portal_share = $1, portal_share_on = 1 WHERE id = $2',
+    [token, row.id],
+  )
+  return token
+}
+
+export async function disableCoupleShare(slugValue: string): Promise<void> {
+  await ensurePortalColumns()
+  await query('UPDATE bookings SET portal_share_on = 0 WHERE slug = $1', [
+    slugValue,
+  ])
+}
+
+export async function planByShareToken(token: string) {
+  const clean = token.trim()
+  if (!/^[A-Za-z0-9_-]{16,80}$/.test(clean)) return null
+  await ensurePortalColumns()
+  const rows = await query<
+    BookingRow & { planning?: string; portal_share_on?: unknown }
+  >('SELECT * FROM bookings WHERE portal_share = $1', [clean])
+  if (rows.length === 0) return null
+  const row = rows[0]
+  if (!shareEnabled(row.portal_share_on)) return null
+  const view = await present(toView(row, await invoiceFor(row.id)))
+  const planning = parsePlanning(row.planning, planningSeed(row))
+  return {
+    partnerOne: view.partnerOne,
+    partnerTwo: view.partnerTwo,
+    eventDate: view.eventDate,
+    packageName: view.packageName,
+    venueName: view.venueName,
+    planning: planning.planning,
+    today: torontoToday(),
+    master: await readPortalMaster(),
+  }
 }
 
 export async function couplePortalForDesk(slugValue: string) {

@@ -32,7 +32,9 @@ const EDGE_SCHEMA = [
     stag_released integer NOT NULL DEFAULT 0,
     notes text NOT NULL DEFAULT '',
     planning text NOT NULL DEFAULT '',
-    portal_passcode text NOT NULL DEFAULT ''
+    portal_passcode text NOT NULL DEFAULT '',
+    portal_share text NOT NULL DEFAULT '',
+    portal_share_on integer NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS invoices (
     id integer PRIMARY KEY AUTOINCREMENT,

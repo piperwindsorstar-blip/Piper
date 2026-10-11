@@ -6,29 +6,29 @@ import {
   DeskTitle,
   deskGhost,
   deskPrimary,
-} from '../../../components/desk-ui.tsx'
-import { QuestionControl } from '../../../components/portal/question-controls.tsx'
+} from '../../../../components/desk-ui.tsx'
+import { QuestionControl } from '../../../../components/portal/question-controls.tsx'
 import {
   PortalProvider,
   usePortal,
-} from '../../../components/portal/portal-state.tsx'
-import type { PortalPage } from '../../../components/portal/portal-state.tsx'
-import { longDate } from '../../../lib/crm/dates.ts'
+} from '../../../../components/portal/portal-state.tsx'
+import type { PortalPage } from '../../../../components/portal/portal-state.tsx'
+import { longDate } from '../../../../lib/crm/dates.ts'
 import {
   getCouplePortalDesk,
   saveCouplePasscodeDesk,
   saveDeskPlan,
-} from '../../../lib/crm/desk.functions.ts'
-import { deskHead } from '../../../lib/desk-head.ts'
+} from '../../../../lib/crm/desk.functions.ts'
+import { deskHead } from '../../../../lib/desk-head.ts'
 import {
   SECTION_LABEL,
   SECTION_ORDER,
   itemAt,
   sectionQuestions,
-} from '../../../lib/portal/questions.ts'
-import type { SectionId } from '../../../lib/portal/questions.ts'
+} from '../../../../lib/portal/questions.ts'
+import type { SectionId } from '../../../../lib/portal/questions.ts'
 
-export const Route = createFileRoute('/desk/portals/$slug')({
+export const Route = createFileRoute('/desk/portals/$slug/')({
   head: () => deskHead('Couple portal · Piper DJing'),
   loader: async ({ params }) => {
     const page = await getCouplePortalDesk({ data: { slug: params.slug } })
@@ -76,6 +76,13 @@ function CouplePortalPage() {
         </Link>
         <Link to="/c/$slug" params={{ slug: page.slug }} className={deskGhost}>
           Open their link
+        </Link>
+        <Link
+          to="/desk/portals/$slug/plan"
+          params={{ slug: page.slug }}
+          className={deskGhost}
+        >
+          Our plan
         </Link>
       </div>
       <PortalProvider

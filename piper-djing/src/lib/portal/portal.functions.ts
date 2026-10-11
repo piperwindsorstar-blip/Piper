@@ -4,7 +4,11 @@ import { torontoToday } from '../piper/rules.ts'
 import {
   coupleByPasscode,
   coupleBySlug,
+  disableCoupleShare,
+  enableCoupleShare,
   lockCouplePlan,
+  planByShareToken,
+  readCoupleShare,
   readPortalMaster,
   saveCouplePlanning,
 } from '../crm/store.server.ts'
@@ -28,12 +32,15 @@ export const getPortal = createServerFn({ method: 'GET' }).handler(async () => {
   const page = await coupleBySlug(slug)
   if (!page) return null
   const today = torontoToday()
+  const share = await readCoupleShare(slug)
   return {
     ...page,
     slug,
     today,
     locked: isPlanLocked(page.planning, today),
     master: await readPortalMaster(),
+    shareToken: share.token,
+    shareOn: share.on,
   }
 })
 
@@ -94,6 +101,38 @@ export const sendPortalPlan = createServerFn({ method: 'POST' }).handler(
     return { ok: true as const, planning }
   },
 )
+
+export const sharePortalPlan = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const slug = coupleSlugFromCookie()
+    if (!slug)
+      return { ok: false as const, error: 'Open the link Piper sent you.' }
+    try {
+      const token = await enableCoupleShare(slug)
+      return { ok: true as const, token }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Could not share.'
+      return { ok: false as const, error: message }
+    }
+  },
+)
+
+export const stopPortalShare = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const slug = coupleSlugFromCookie()
+    if (!slug)
+      return { ok: false as const, error: 'Open the link Piper sent you.' }
+    await disableCoupleShare(slug)
+    return { ok: true as const }
+  },
+)
+
+export const getSharedPlan = createServerFn({ method: 'GET' })
+  .validator((data: { token: string }) => ({
+    token: typeof data.token === 'string' ? data.token.slice(0, 80) : '',
+  }))
+  .handler(async ({ data }) => planByShareToken(data.token))
 
 export const requestPortalChange = createServerFn({ method: 'POST' })
   .validator((data: { note: string }) => data)

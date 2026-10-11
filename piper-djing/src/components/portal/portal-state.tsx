@@ -3,7 +3,12 @@ import type { ReactNode } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { savePortal } from '../../lib/portal/portal.functions.ts'
 import type { MasterMap } from '../../lib/portal/questions.ts'
-import { TIMELINE } from '../../lib/crm/planning.ts'
+import {
+  addCustomMoment,
+  reorderMoments,
+  syncAppearanceSongs,
+  TIMELINE,
+} from '../../lib/crm/planning.ts'
 import type {
   Planning,
   AppearanceRow,
@@ -23,6 +28,8 @@ export type PortalPage = {
   locked: boolean
   planning: Planning
   master: MasterMap
+  shareToken?: string
+  shareOn?: boolean
 }
 
 type PlanSave = (
@@ -39,6 +46,10 @@ type PortalState = {
   editText: (id: string, value: string) => void
   editChips: (chips: string[]) => void
   editTimeline: (index: number, patch: Partial<TimelineRow>) => void
+  reorderTimeline: (section: string, fromId: string, toId: string) => void
+  addMoment: (section: string, name: string) => void
+  removeMoment: (id: string) => void
+  setEntranceSong: (mode: 'one' | 'each', song: SongItem) => void
   editAppearances: (rows: AppearanceRow[]) => void
   editSongs: (id: 'mustPlay' | 'doNotPlay', items: SongItem[]) => void
   editSameReception: (same: boolean) => void
@@ -134,14 +145,21 @@ export function PortalProvider({
       if (!(id in planning)) return
       const current = planning[id as keyof Planning]
       if (typeof current !== 'string') return
-      touch({ ...planning, [id]: text })
+      touch({
+        ...planning,
+        [id]: text,
+        fromInquiry: planning.fromInquiry.filter((field) => field !== id),
+      })
     },
     editChips: (chips) => touch({ ...planning, genreChips: chips }),
     editTimeline: (index, patch) => {
       const timeline = planning.timeline.slice()
+      if (index < 0 || index > timeline.length) return
       if (index === timeline.length) {
         if (timeline.length >= TIMELINE.length + 12) return
         timeline.push({
+          id: `custom-${timeline.length + 1}`,
+          presetKey: '',
           time: '',
           section: 'Reception',
           activity: 'Added moment',
@@ -151,17 +169,56 @@ export function PortalProvider({
           link: '',
           hidden: false,
           label: '',
+          people: '',
+          songFrom: '',
           ...patch,
         })
-      } else if (timeline[index]) {
-        timeline[index] = { ...timeline[index], ...patch }
       } else {
-        return
+        const current = timeline[index]
+        const linked =
+          patch.song !== undefined ||
+          patch.artist !== undefined ||
+          patch.link !== undefined
+        timeline[index] = {
+          ...current,
+          ...patch,
+          songFrom: linked ? '' : current.songFrom,
+        }
       }
       touch({ ...planning, timeline })
     },
+    reorderTimeline: (section, fromId, toId) =>
+      touch({
+        ...planning,
+        timeline: reorderMoments(planning.timeline, section, fromId, toId),
+      }),
+    addMoment: (section, name) =>
+      touch({
+        ...planning,
+        timeline: addCustomMoment(planning.timeline, section, name),
+      }),
+    removeMoment: (id) =>
+      touch({
+        ...planning,
+        timeline: planning.timeline.filter(
+          (row) => row.id !== id || row.presetKey !== '',
+        ),
+      }),
+    setEntranceSong: (mode, song) =>
+      touch(
+        syncAppearanceSongs({
+          ...planning,
+          entranceSongMode: mode,
+          entranceSong: song,
+        }),
+      ),
     editAppearances: (rows) =>
-      touch({ ...planning, appearances: rows.slice(0, 12) }),
+      touch(
+        syncAppearanceSongs({
+          ...planning,
+          appearances: rows.slice(0, 12),
+        }),
+      ),
     editSongs: (id, items) =>
       touch(
         id === 'mustPlay'
@@ -189,6 +246,9 @@ export function PortalProvider({
         receptionAddress: same
           ? planning.ceremonyAddress
           : planning.receptionAddress,
+        fromInquiry: planning.fromInquiry.filter(
+          (field) => field !== 'receptionAddress',
+        ),
       }),
     markLocked: (next) => {
       echo.current = true

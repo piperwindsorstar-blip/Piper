@@ -1,11 +1,22 @@
+import { DndContext, closestCenter } from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import type {
   AppearanceRole,
+  AppearanceRow,
   Planning,
   SongItem,
 } from '../../lib/crm/planning.ts'
 import { itemAt, linkPlatform, textValue } from '../../lib/portal/questions.ts'
 import type { Question } from '../../lib/portal/questions.ts'
+import { useListSensors } from './ordered-moments.tsx'
 import { usePortal } from './portal-state.tsx'
 
 const ROLES: Array<{ value: AppearanceRole; label: string }> = [
@@ -88,6 +99,7 @@ function Line({
         />
       </label>
       {question.type === 'url' ? <Platform value={value} /> : null}
+      <FromInquiry id={question.id} />
     </div>
   )
 }
@@ -127,6 +139,7 @@ function Lines({
           onChange={(event) => editText(question.id, event.target.value)}
         />
       </label>
+      <FromInquiry id={question.id} />
     </div>
   )
 }
@@ -282,7 +295,7 @@ function Song({
   question: Question
   disabled: boolean
 }) {
-  const { planning, editTimeline } = usePortal()
+  const { planning, editTimeline, removeMoment } = usePortal()
   const index = question.timelineIndex ?? 0
   const row = itemAt(planning.timeline, index)
   if (!row) return null
@@ -290,65 +303,94 @@ function Song({
   const picked = Boolean(
     row.song.trim() || row.artist.trim() || row.link.trim(),
   )
+  const linked = row.songFrom !== ''
+  const custom = row.presetKey === ''
   return (
     <div>
-      {/* TODO: connect a real song search API. Pasting a link works today. */}
-      <label className="block">
-        <span className="sr-only">Song or link</span>
-        <input
-          className="portal-input"
-          placeholder="Search a song or paste a link"
-          value={row.link}
-          disabled={disabled}
-          onChange={(event) =>
-            editTimeline(index, { link: event.target.value })
-          }
-        />
-      </label>
-      {row.link.trim() ? <Platform value={row.link} /> : null}
-      {picked ? (
-        <div className="mt-4 flex items-center gap-4 rounded-[18px] border-2 border-[var(--pink)] bg-[var(--pink-tint)] p-3">
-          <span className="grid h-[60px] w-[60px] shrink-0 place-items-center rounded-2xl bg-[#0d0d0d] text-[var(--pink)]">
-            <MusicIcon />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-bold">
-              {row.song.trim() || 'Song title'}
-            </span>
-            <span className="block truncate text-sm text-[var(--pink-soft)]">
-              {[row.artist.trim() || 'Artist', platform]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
-          </span>
-          <span className="text-sm text-[var(--pink-soft)]">Selected</span>
+      {linked ? (
+        <div className="rounded-[18px] border-2 border-[var(--pink)] bg-[var(--pink-tint)] p-4">
+          <p className="font-bold">{row.song.trim() || 'Song title'}</p>
+          <p className="text-sm text-[var(--pink-soft)]">
+            {[row.artist.trim() || 'Artist', platform]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+          <Link
+            to="/portal/appearance"
+            search={{ q: 'appearances' }}
+            hash={
+              row.songFrom === 'entrance'
+                ? 'entrance-song'
+                : `row-${row.songFrom}`
+            }
+            className="mt-3 inline-flex min-h-11 items-center text-sm text-[var(--pink-soft)] underline"
+          >
+            Song set in Order of appearance
+          </Link>
         </div>
-      ) : null}
+      ) : (
+        <>
+          {/* TODO: connect a real song search API. Pasting a link works today. */}
+          <label className="block">
+            <span className="sr-only">Song or link</span>
+            <input
+              className="portal-input"
+              placeholder="Search a song or paste a link"
+              value={row.link}
+              disabled={disabled}
+              onChange={(event) =>
+                editTimeline(index, { link: event.target.value })
+              }
+            />
+          </label>
+          {row.link.trim() ? <Platform value={row.link} /> : null}
+          {picked ? (
+            <div className="mt-4 flex items-center gap-4 rounded-[18px] border-2 border-[var(--pink)] bg-[var(--pink-tint)] p-3">
+              <span className="grid h-[60px] w-[60px] shrink-0 place-items-center rounded-2xl bg-[#0d0d0d] text-[var(--pink)]">
+                <MusicIcon />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-bold">
+                  {row.song.trim() || 'Song title'}
+                </span>
+                <span className="block truncate text-sm text-[var(--pink-soft)]">
+                  {[row.artist.trim() || 'Artist', platform]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </span>
+              <span className="text-sm text-[var(--pink-soft)]">Selected</span>
+            </div>
+          ) : null}
+          <div className="mt-4 grid gap-3 min-[1024px]:grid-cols-2">
+            <label>
+              <span className="sr-only">Song title</span>
+              <input
+                className="portal-input"
+                placeholder="Song title"
+                value={row.song}
+                disabled={disabled}
+                onChange={(event) =>
+                  editTimeline(index, { song: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              <span className="sr-only">Artist</span>
+              <input
+                className="portal-input"
+                placeholder="Artist"
+                value={row.artist}
+                disabled={disabled}
+                onChange={(event) =>
+                  editTimeline(index, { artist: event.target.value })
+                }
+              />
+            </label>
+          </div>
+        </>
+      )}
       <div className="mt-4 grid gap-3 min-[1024px]:grid-cols-2">
-        <label>
-          <span className="sr-only">Song title</span>
-          <input
-            className="portal-input"
-            placeholder="Song title"
-            value={row.song}
-            disabled={disabled}
-            onChange={(event) =>
-              editTimeline(index, { song: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          <span className="sr-only">Artist</span>
-          <input
-            className="portal-input"
-            placeholder="Artist"
-            value={row.artist}
-            disabled={disabled}
-            onChange={(event) =>
-              editTimeline(index, { artist: event.target.value })
-            }
-          />
-        </label>
         <label>
           <span className="sr-only">Time</span>
           <input
@@ -362,6 +404,18 @@ function Song({
           />
         </label>
         <label>
+          <span className="sr-only">People</span>
+          <input
+            className="portal-input"
+            placeholder="People"
+            value={row.people}
+            disabled={disabled}
+            onChange={(event) =>
+              editTimeline(index, { people: event.target.value })
+            }
+          />
+        </label>
+        <label className="min-[1024px]:col-span-2">
           <span className="sr-only">Notes</span>
           <input
             className="portal-input"
@@ -374,47 +428,40 @@ function Song({
           />
         </label>
       </div>
-      <label className="mt-4 block">
-        <span className="sr-only">Rename this moment</span>
-        <input
-          className="portal-input"
-          placeholder={`Rename this moment (${row.activity})`}
-          value={row.label}
-          disabled={disabled}
-          onChange={(event) =>
-            editTimeline(index, { label: event.target.value })
-          }
-        />
-      </label>
+      {linked ? null : (
+        <label className="mt-4 block">
+          <span className="sr-only">Rename this moment</span>
+          <input
+            className="portal-input"
+            placeholder={`Rename this moment (${row.activity})`}
+            value={row.label}
+            disabled={disabled}
+            onChange={(event) =>
+              editTimeline(index, { label: event.target.value })
+            }
+          />
+        </label>
+      )}
       <div className="mt-4 flex flex-wrap gap-3">
-        <button
-          type="button"
-          className="min-h-11 text-sm text-[var(--text-muted)] underline"
-          disabled={disabled}
-          onClick={() => editTimeline(index, { hidden: !row.hidden })}
-        >
-          {row.hidden ? 'Show this moment' : 'Hide this moment'}
-        </button>
-        <button
-          type="button"
-          className="min-h-11 text-sm text-[var(--text-muted)] underline"
-          disabled={disabled || planning.timeline.length >= 30}
-          onClick={() =>
-            editTimeline(planning.timeline.length, {
-              time: '',
-              section: row.section,
-              activity: 'Added moment',
-              song: '',
-              artist: '',
-              notes: '',
-              link: '',
-              hidden: false,
-              label: '',
-            })
-          }
-        >
-          Add a moment
-        </button>
+        {custom && !linked ? (
+          <button
+            type="button"
+            className="min-h-11 text-sm text-[var(--text-muted)] underline"
+            disabled={disabled}
+            onClick={() => removeMoment(row.id)}
+          >
+            Delete this moment
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="min-h-11 text-sm text-[var(--text-muted)] underline"
+            disabled={disabled}
+            onClick={() => editTimeline(index, { hidden: !row.hidden })}
+          >
+            {row.hidden ? 'Show this moment' : 'Not part of our day'}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -561,10 +608,19 @@ function SongList({
 }
 
 function Appearances({ disabled }: { disabled: boolean }) {
-  const { planning, editAppearances } = usePortal()
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const { planning, editAppearances, setEntranceSong } = usePortal()
+  const sensors = useListSensors()
   const rows = planning.appearances.filter(
-    (row) => row.names || row.people || row.when || row.notes || row.role,
+    (row) =>
+      row.names ||
+      row.people ||
+      row.when ||
+      row.notes ||
+      row.role ||
+      row.song ||
+      row.artist ||
+      row.link ||
+      row.walkUp,
   )
   const groups = [
     { role: 'entrance' as const, title: 'Grand entrance' },
@@ -576,182 +632,382 @@ function Appearances({ disabled }: { disabled: boolean }) {
   function update(next: Planning['appearances']) {
     editAppearances(next)
   }
+  function onDragEnd(event: DragEndEvent) {
+    const overId = event.over ? String(event.over.id) : ''
+    const activeId = String(event.active.id)
+    if (!overId || activeId === overId) return
+    const active = rows.find((row) => row.id === activeId)
+    const over = rows.find((row) => row.id === overId)
+    if (!active || !over || active.role !== over.role) return
+    update(reorderRole(rows, active.role, activeId, overId))
+  }
   return (
-    <div className="grid gap-6">
-      {groups.map((group) => {
-        const inGroup = rows
-          .map((row, index) => ({ row, index }))
-          .filter((item) => (item.row.role || '') === group.role)
-        if (group.role === '' && inGroup.length === 0) return null
-        return (
-          <section key={group.role || 'open'}>
-            <h3 className="text-[11px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
-              {group.title}
-            </h3>
-            <div className="mt-3 grid gap-3">
-              {inGroup.map(({ row, index }) => (
-                <article
-                  key={index}
-                  draggable={!disabled}
-                  onDragStart={() => setDragIndex(index)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={() => {
-                    if (dragIndex === null) return
-                    update(reorder(rows, dragIndex, index))
-                    setDragIndex(null)
-                  }}
-                  className="rounded-[18px] bg-[var(--field)] p-4"
-                >
-                  <div className="flex gap-3">
-                    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-[var(--pink)] text-sm font-bold text-[#0d0d0d]">
-                      {index + 1}
-                    </span>
-                    <div className="grid min-w-0 flex-1 gap-2">
-                      <input
-                        className="bg-transparent font-bold outline-none"
-                        aria-label="Names or group"
-                        value={row.names}
-                        disabled={disabled}
-                        placeholder="Names or group"
-                        onChange={(event) =>
-                          update(
-                            rows.map((item, itemIndex) =>
-                              itemIndex === index
-                                ? { ...item, names: event.target.value }
-                                : item,
-                            ),
-                          )
-                        }
-                      />
-                      <input
-                        className="bg-transparent text-sm text-[var(--text-muted)] outline-none"
-                        aria-label="People"
-                        value={row.people}
-                        disabled={disabled}
-                        placeholder="People"
-                        onChange={(event) =>
-                          update(
-                            rows.map((item, itemIndex) =>
-                              itemIndex === index
-                                ? { ...item, people: event.target.value }
-                                : item,
-                            ),
-                          )
-                        }
-                      />
-                      <input
-                        className="bg-transparent text-sm text-[var(--text-muted)] outline-none"
-                        aria-label="When it happens"
-                        value={row.when}
-                        disabled={disabled}
-                        placeholder="When it happens"
-                        onChange={(event) =>
-                          update(
-                            rows.map((item, itemIndex) =>
-                              itemIndex === index
-                                ? { ...item, when: event.target.value }
-                                : item,
-                            ),
-                          )
-                        }
-                      />
-                      <label className="text-sm text-[var(--text-muted)]">
-                        Role
-                        <select
-                          className="portal-input mt-1"
-                          aria-label="Role"
-                          value={row.role}
-                          disabled={disabled}
-                          onChange={(event) =>
-                            update(
-                              rows.map((item, itemIndex) =>
-                                itemIndex === index
-                                  ? {
-                                      ...item,
-                                      role: event.target
-                                        .value as AppearanceRole,
-                                    }
-                                  : item,
-                              ),
-                            )
-                          }
-                        >
-                          <option value="">Still to place</option>
-                          {ROLES.map((role) => (
-                            <option key={role.value} value={role.value}>
-                              {role.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="text-sm text-[var(--text-muted)]">
-                        Additional notes (MC instructions, games, special
-                        happenings, announcements)
-                        <textarea
-                          className="portal-input mt-1 min-h-20"
-                          value={row.notes}
-                          disabled={disabled}
-                          onChange={(event) =>
-                            update(
-                              rows.map((item, itemIndex) =>
-                                itemIndex === index
-                                  ? { ...item, notes: event.target.value }
-                                  : item,
-                              ),
-                            )
-                          }
-                        />
-                      </label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="min-h-11 text-sm"
-                          aria-label={`Move name ${index + 1} up`}
-                          disabled={disabled || index === 0}
-                          onClick={() => update(move(rows, index, -1))}
-                        >
-                          Up
-                        </button>
-                        <button
-                          type="button"
-                          className="min-h-11 text-sm"
-                          aria-label={`Move name ${index + 1} down`}
-                          disabled={disabled || index === rows.length - 1}
-                          onClick={() => update(move(rows, index, 1))}
-                        >
-                          Down
-                        </button>
-                      </div>
-                    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+    >
+      <div className="grid gap-6">
+        {groups.map((group) => {
+          const inGroup = rows.filter((row) => (row.role || '') === group.role)
+          if (group.role === '' && inGroup.length === 0) return null
+          return (
+            <section key={group.role || 'open'}>
+              <h3 className="text-[11px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
+                {group.title}
+              </h3>
+              {group.role === 'entrance' ? (
+                <div id="entrance-song" className="mt-3 grid gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-full px-4 text-sm ${
+                        planning.entranceSongMode === 'one'
+                          ? 'bg-[var(--pink)] font-bold text-[#0d0d0d]'
+                          : 'border border-[var(--border-strong)]'
+                      }`}
+                      aria-pressed={planning.entranceSongMode === 'one'}
+                      disabled={disabled}
+                      onClick={() =>
+                        setEntranceSong('one', planning.entranceSong)
+                      }
+                    >
+                      One song for the whole entrance
+                    </button>
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-full px-4 text-sm ${
+                        planning.entranceSongMode === 'each'
+                          ? 'bg-[var(--pink)] font-bold text-[#0d0d0d]'
+                          : 'border border-[var(--border-strong)]'
+                      }`}
+                      aria-pressed={planning.entranceSongMode === 'each'}
+                      disabled={disabled}
+                      onClick={() =>
+                        setEntranceSong('each', planning.entranceSong)
+                      }
+                    >
+                      A different song for each group
+                    </button>
                   </div>
-                </article>
-              ))}
-            </div>
-            {group.role ? (
-              <button
-                type="button"
-                className="mt-3 min-h-11 text-sm text-[var(--text-muted)]"
-                disabled={disabled || rows.length >= 12}
-                onClick={() =>
-                  update([
-                    ...rows,
-                    {
-                      names: '',
-                      people: '',
-                      when: '',
-                      notes: '',
-                      role: group.role,
-                    },
-                  ])
-                }
+                  {planning.entranceSongMode === 'one' ? (
+                    <SongBits
+                      labelPrefix="Entrance"
+                      song={planning.entranceSong}
+                      disabled={disabled}
+                      onChange={(song) => setEntranceSong('one', song)}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+              <SortableContext
+                items={inGroup.map((row) => row.id)}
+                strategy={verticalListSortingStrategy}
               >
-                + Add a name or group
-              </button>
-            ) : null}
-          </section>
-        )
-      })}
+                <div className="mt-3 grid gap-3">
+                  {inGroup.map((row, index) => (
+                    <SortableAppearance
+                      key={row.id}
+                      row={row}
+                      position={index + 1}
+                      disabled={disabled}
+                      first={index === 0}
+                      last={index === inGroup.length - 1}
+                      showSong={songForRole(row, planning.entranceSongMode)}
+                      onPatch={(patch) => update(patchRow(rows, row.id, patch))}
+                      onMove={(direction) => {
+                        const targetIndex = index + direction
+                        if (targetIndex < 0 || targetIndex >= inGroup.length)
+                          return
+                        const target = inGroup[targetIndex]
+                        update(reorderRole(rows, row.role, row.id, target.id))
+                      }}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+              {group.role ? (
+                <button
+                  type="button"
+                  className="mt-3 min-h-11 text-sm text-[var(--text-muted)]"
+                  disabled={disabled || rows.length >= 12}
+                  onClick={() =>
+                    update([
+                      ...rows,
+                      {
+                        id: `appearance-${Date.now().toString(36)}`,
+                        names: '',
+                        people: '',
+                        when: '',
+                        notes: '',
+                        role: group.role,
+                        song: '',
+                        artist: '',
+                        link: '',
+                        walkUp: false,
+                      },
+                    ])
+                  }
+                >
+                  + Add a name or group
+                </button>
+              ) : null}
+            </section>
+          )
+        })}
+      </div>
+    </DndContext>
+  )
+}
+
+function songForRole(row: AppearanceRow, mode: 'one' | 'each'): boolean {
+  if (row.role === 'dance' || row.role === 'other') return true
+  if (row.role === 'entrance') return mode === 'each'
+  if (row.role === 'speech') return row.walkUp
+  return false
+}
+
+function SortableAppearance({
+  row,
+  position,
+  disabled,
+  first,
+  last,
+  showSong,
+  onPatch,
+  onMove,
+}: {
+  row: AppearanceRow
+  position: number
+  disabled: boolean
+  first: boolean
+  last: boolean
+  showSong: boolean
+  onPatch: (patch: Partial<AppearanceRow>) => void
+  onMove: (direction: -1 | 1) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id, disabled })
+  return (
+    <article
+      ref={setNodeRef}
+      id={`row-${row.id}`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`rounded-[18px] bg-[var(--field)] p-4 ${isDragging ? 'z-10' : ''}`}
+    >
+      <div className="flex gap-3">
+        <button
+          type="button"
+          className="grid h-[34px] w-[34px] shrink-0 touch-none place-items-center text-[var(--text-faint)]"
+          aria-label={`Drag ${row.names || `name ${position}`}`}
+          disabled={disabled}
+          {...attributes}
+          {...listeners}
+        >
+          <GripDots />
+        </button>
+        <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-[var(--pink)] text-sm font-bold text-[#0d0d0d]">
+          {position}
+        </span>
+        <div className="grid min-w-0 flex-1 gap-2">
+          <input
+            className="bg-transparent font-bold outline-none"
+            aria-label={`Names or group ${position}`}
+            value={row.names}
+            disabled={disabled}
+            placeholder="Names or group"
+            onChange={(event) => onPatch({ names: event.target.value })}
+          />
+          <input
+            className="bg-transparent text-sm text-[var(--text-muted)] outline-none"
+            aria-label={`People ${position}`}
+            value={row.people}
+            disabled={disabled}
+            placeholder="People"
+            onChange={(event) => onPatch({ people: event.target.value })}
+          />
+          <input
+            className="bg-transparent text-sm text-[var(--text-muted)] outline-none"
+            aria-label={`When it happens ${position}`}
+            value={row.when}
+            disabled={disabled}
+            placeholder="When it happens"
+            onChange={(event) => onPatch({ when: event.target.value })}
+          />
+          <label className="text-sm text-[var(--text-muted)]">
+            Role
+            <select
+              className="portal-input mt-1"
+              aria-label={`Role ${position}`}
+              value={row.role}
+              disabled={disabled}
+              onChange={(event) =>
+                onPatch({ role: event.target.value as AppearanceRole })
+              }
+            >
+              <option value="">Still to place</option>
+              {ROLES.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {row.role === 'speech' ? (
+            <button
+              type="button"
+              className="min-h-11 text-left text-sm text-[var(--pink-soft)] underline"
+              disabled={disabled}
+              onClick={() =>
+                onPatch(
+                  row.walkUp
+                    ? { walkUp: false, song: '', artist: '', link: '' }
+                    : { walkUp: true },
+                )
+              }
+            >
+              {row.walkUp ? 'Hide walk-up song' : 'Walk-up song'}
+            </button>
+          ) : null}
+          {showSong ? (
+            <SongBits
+              labelPrefix={
+                row.role === 'speech'
+                  ? `Walk-up ${position}`
+                  : `Song ${position}`
+              }
+              song={{ song: row.song, artist: row.artist, link: row.link }}
+              disabled={disabled}
+              onChange={(song) => onPatch(song)}
+            />
+          ) : null}
+          <label className="text-sm text-[var(--text-muted)]">
+            Additional notes (MC instructions, games, special happenings,
+            announcements)
+            <textarea
+              className="portal-input mt-1 min-h-20"
+              aria-label={`MC notes ${position}`}
+              value={row.notes}
+              disabled={disabled}
+              onChange={(event) => onPatch({ notes: event.target.value })}
+            />
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="min-h-11 text-sm"
+              aria-label={`Move name ${position} up`}
+              disabled={disabled || first}
+              onClick={() => onMove(-1)}
+            >
+              Up
+            </button>
+            <button
+              type="button"
+              className="min-h-11 text-sm"
+              aria-label={`Move name ${position} down`}
+              disabled={disabled || last}
+              onClick={() => onMove(1)}
+            >
+              Down
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function SongBits({
+  song,
+  disabled,
+  onChange,
+  labelPrefix,
+}: {
+  song: SongItem
+  disabled: boolean
+  onChange: (song: SongItem) => void
+  labelPrefix: string
+}) {
+  return (
+    <div className="grid gap-2">
+      {/* TODO: connect a real song search API. Pasting a link works today. */}
+      <input
+        className="portal-input"
+        aria-label={`${labelPrefix} song or link`}
+        placeholder="Song or paste a link"
+        value={song.link}
+        disabled={disabled}
+        onChange={(event) => onChange({ ...song, link: event.target.value })}
+      />
+      <input
+        className="portal-input"
+        aria-label={`${labelPrefix} title`}
+        placeholder="Song title"
+        value={song.song}
+        disabled={disabled}
+        onChange={(event) => onChange({ ...song, song: event.target.value })}
+      />
+      <input
+        className="portal-input"
+        aria-label={`${labelPrefix} artist`}
+        placeholder="Artist"
+        value={song.artist}
+        disabled={disabled}
+        onChange={(event) => onChange({ ...song, artist: event.target.value })}
+      />
     </div>
+  )
+}
+
+function patchRow(
+  rows: AppearanceRow[],
+  id: string,
+  patch: Partial<AppearanceRow>,
+): AppearanceRow[] {
+  return rows.map((row) => (row.id === id ? { ...row, ...patch } : row))
+}
+
+function reorderRole(
+  rows: AppearanceRow[],
+  role: AppearanceRole,
+  fromId: string,
+  toId: string,
+): AppearanceRow[] {
+  const indexes: number[] = []
+  rows.forEach((row, index) => {
+    if (row.role === role) indexes.push(index)
+  })
+  const from = indexes.findIndex((index) => rows[index].id === fromId)
+  const to = indexes.findIndex((index) => rows[index].id === toId)
+  if (from < 0 || to < 0) return rows
+  const block = indexes.map((index) => rows[index])
+  const nextBlock = block.slice()
+  const [moved] = nextBlock.splice(from, 1)
+  nextBlock.splice(to, 0, moved)
+  const next = rows.slice()
+  indexes.forEach((index, cursor) => {
+    next[index] = nextBlock[cursor]
+  })
+  return next
+}
+
+function GripDots() {
+  return (
+    <svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true">
+      {[3, 9, 15].map((y) => (
+        <g key={y}>
+          <circle cx="4" cy={y} r="1.4" fill="currentColor" />
+          <circle cx="10" cy={y} r="1.4" fill="currentColor" />
+        </g>
+      ))}
+    </svg>
   )
 }
 
@@ -812,6 +1068,15 @@ function move<T>(items: T[], index: number, direction: -1 | 1): T[] {
 function isoOrBlank(question: Question, value: string): string {
   if (question.type !== 'date') return value
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ''
+}
+
+function FromInquiry({ id }: { id: string }) {
+  const { planning } = usePortal()
+  if (!planning.fromInquiry.includes(id)) return null
+  if (textValue(planning, id).trim() === '') return null
+  return (
+    <p className="mt-2 text-sm text-[var(--pink-soft)]">From your inquiry</p>
+  )
 }
 
 export { ROLES }

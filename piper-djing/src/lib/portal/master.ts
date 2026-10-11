@@ -11,6 +11,33 @@ import type {
 
 const KNOWN = new Set(QUESTIONS.map((question) => question.id))
 
+const LEGACY_TIMELINE = [
+  'moment-guest-arrival',
+  'moment-bridal-party',
+  'moment-bride-processional',
+  'moment-registry',
+  'moment-recessional',
+  'moment-cocktail-hour',
+  'moment-entrance-party',
+  'moment-entrance-couple',
+  'moment-first-dance',
+  'moment-dinner',
+  'moment-mother-son',
+  'moment-father-daughter',
+  '',
+  'moment-open-dance',
+  'moment-cake',
+  'moment-bouquet',
+  'moment-last-dance',
+  '',
+]
+
+function momentId(id: string): string {
+  const match = /^timeline-(\d+)$/.exec(id)
+  if (!match) return id
+  return LEGACY_TIMELINE[Number(match[1])] ?? ''
+}
+
 export type MasterDraft = {
   id: string
   section: SectionId
@@ -176,9 +203,10 @@ export function parseMaster(value: unknown): MasterMap {
   const record = asRecord(raw)
   if (!record) return {}
   return masterFromDrafts(
-    Object.entries(record).flatMap(([id, patch]) => {
+    Object.entries(record).flatMap(([rawId, patch]) => {
+      const id = momentId(rawId)
       const body = asRecord(patch)
-      if (!body || !KNOWN.has(id)) return []
+      if (!id || !body || !KNOWN.has(id)) return []
       const base = QUESTIONS.find((question) => question.id === id)
       if (!base) return []
       return [

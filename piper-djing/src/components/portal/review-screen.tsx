@@ -93,6 +93,12 @@ export function ReviewScreen() {
           )
         })}
       </div>
+      <Link
+        to="/portal/plan"
+        className="mt-8 inline-flex min-h-11 items-center text-sm text-[var(--pink-soft)] underline"
+      >
+        See our plan
+      </Link>
       <DjBubble
         text="Blank songs are fine. I'll pick something that fits."
         reserve

@@ -1,4 +1,4 @@
-import { TIMELINE } from '../crm/planning.ts'
+import { MOMENTS, TIMELINE } from '../crm/planning.ts'
 import type { Planning, SongItem } from '../crm/planning.ts'
 
 export type SectionId = 'details' | 'music' | 'appearance' | 'timeline'
@@ -200,14 +200,23 @@ const DETAIL_QUESTIONS: Question[] = [
     rail: 'MC',
   },
   {
-    id: 'mcContact',
+    id: 'mcToldFindDj',
     section: 'details',
     subsection: 'Wedding party',
     group: 'Wedding party',
-    type: 'text',
-    label: 'How do I reach your MC?',
-    helper: 'A phone number or email is plenty.',
-    rail: 'MC contact',
+    type: 'choice',
+    label: 'Have you told your MC to find the DJ at cocktail hour?',
+    options: [
+      { value: 'Yes, they know', hint: "We'll meet before dinner" },
+      { value: "Not yet, I'll tell them", hint: 'Cocktail hour' },
+    ],
+    djReplies: {
+      'Yes, they know':
+        "Perfect. We'll go over names and timing together before dinner.",
+      "Not yet, I'll tell them":
+        'No problem. Just let them know to come say hi at cocktail hour.',
+    },
+    rail: 'MC at cocktail hour',
   },
   {
     id: 'tableForDj',
@@ -422,7 +431,7 @@ const APPEARANCE_QUESTIONS: Question[] = [
 ]
 
 const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
-  id: `timeline-${index}`,
+  id: `moment-${MOMENTS[index]?.key ?? index}`,
   section: 'timeline' as const,
   subsection: row.section,
   group: row.section,
@@ -500,14 +509,14 @@ export function timelineQuestions(
     const renamed = row.label.trim()
     const base = applyMaster(
       {
-        id: `timeline-${index}`,
+        id: `moment-${row.presetKey || row.id}`,
         section: 'timeline' as const,
         subsection: row.section,
         group: row.section,
         type: 'song' as const,
-        label: songTitle(row.activity),
+        label: songTitle(row.label.trim() || row.activity),
         helper: 'Search for it or paste a YouTube, Spotify or SoundCloud link.',
-        rail: row.activity,
+        rail: row.label.trim() || row.activity,
         timelineIndex: index,
       },
       master,
@@ -588,8 +597,8 @@ export function textValue(planning: Planning, id: string): string {
       return planning.groomsmen
     case 'mc':
       return planning.mc
-    case 'mcContact':
-      return planning.mcContact
+    case 'mcToldFindDj':
+      return planning.mcToldFindDj
     case 'tableForDj':
       return planning.tableForDj
     case 'spaceForDj':

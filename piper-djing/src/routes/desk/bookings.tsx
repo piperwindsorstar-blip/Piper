@@ -963,6 +963,13 @@ function BookingCard({
           >
             Couple page
           </Link>
+          <Link
+            to="/desk/portals/$slug/plan"
+            params={{ slug: booking.slug }}
+            className="font-semibold text-hot hover:underline"
+          >
+            Our plan
+          </Link>
           <span className="text-white/65">
             Their planning form is on that page.
           </span>

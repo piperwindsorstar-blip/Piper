@@ -36,11 +36,14 @@ import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as PortalAppearanceRouteImport } from './routes/portal/appearance'
 import { Route as PortalDetailsRouteImport } from './routes/portal/details'
 import { Route as PortalMusicRouteImport } from './routes/portal/music'
+import { Route as PortalPlanRouteImport } from './routes/portal/plan'
 import { Route as PortalReviewRouteImport } from './routes/portal/review'
 import { Route as PortalTimelineRouteImport } from './routes/portal/timeline'
+import { Route as ShareTokenRouteImport } from './routes/share/$token'
 import { Route as ApiBotsV1RouteImport } from './routes/api/bots/v1'
 import { Route as DeskPortalsIndexRouteImport } from './routes/desk/portals/index'
-import { Route as DeskPortalsSlugRouteImport } from './routes/desk/portals/$slug'
+import { Route as DeskPortalsSlugIndexRouteImport } from './routes/desk/portals/$slug/index'
+import { Route as DeskPortalsSlugPlanRouteImport } from './routes/desk/portals/$slug/plan'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -177,6 +180,11 @@ const PortalMusicRoute = PortalMusicRouteImport.update({
   path: '/music',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const PortalPlanRoute = PortalPlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
 const PortalReviewRoute = PortalReviewRouteImport.update({
   id: '/review',
   path: '/review',
@@ -186,6 +194,11 @@ const PortalTimelineRoute = PortalTimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
   getParentRoute: () => PortalRouteRoute,
+} as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBotsV1Route = ApiBotsV1RouteImport.update({
   id: '/api/bots/v1',
@@ -197,9 +210,14 @@ const DeskPortalsIndexRoute = DeskPortalsIndexRouteImport.update({
   path: '/portals/',
   getParentRoute: () => DeskRouteRoute,
 } as any)
-const DeskPortalsSlugRoute = DeskPortalsSlugRouteImport.update({
-  id: '/portals/$slug',
-  path: '/portals/$slug',
+const DeskPortalsSlugIndexRoute = DeskPortalsSlugIndexRouteImport.update({
+  id: '/portals/$slug/',
+  path: '/portals/$slug/',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
+const DeskPortalsSlugPlanRoute = DeskPortalsSlugPlanRouteImport.update({
+  id: '/portals/$slug/plan',
+  path: '/portals/$slug/plan',
   getParentRoute: () => DeskRouteRoute,
 } as any)
 
@@ -229,13 +247,16 @@ export interface FileRoutesByFullPath {
   '/portal/appearance': typeof PortalAppearanceRoute
   '/portal/details': typeof PortalDetailsRoute
   '/portal/music': typeof PortalMusicRoute
+  '/portal/plan': typeof PortalPlanRoute
   '/portal/review': typeof PortalReviewRoute
   '/portal/timeline': typeof PortalTimelineRoute
+  '/share/$token': typeof ShareTokenRoute
   '/desk/': typeof DeskIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
-  '/desk/portals/$slug': typeof DeskPortalsSlugRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
+  '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
+  '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -261,13 +282,16 @@ export interface FileRoutesByTo {
   '/portal/appearance': typeof PortalAppearanceRoute
   '/portal/details': typeof PortalDetailsRoute
   '/portal/music': typeof PortalMusicRoute
+  '/portal/plan': typeof PortalPlanRoute
   '/portal/review': typeof PortalReviewRoute
   '/portal/timeline': typeof PortalTimelineRoute
+  '/share/$token': typeof ShareTokenRoute
   '/desk': typeof DeskIndexRoute
   '/portal': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
-  '/desk/portals/$slug': typeof DeskPortalsSlugRoute
   '/desk/portals': typeof DeskPortalsIndexRoute
+  '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
+  '/desk/portals/$slug': typeof DeskPortalsSlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -296,13 +320,16 @@ export interface FileRoutesById {
   '/portal/appearance': typeof PortalAppearanceRoute
   '/portal/details': typeof PortalDetailsRoute
   '/portal/music': typeof PortalMusicRoute
+  '/portal/plan': typeof PortalPlanRoute
   '/portal/review': typeof PortalReviewRoute
   '/portal/timeline': typeof PortalTimelineRoute
+  '/share/$token': typeof ShareTokenRoute
   '/desk/': typeof DeskIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
-  '/desk/portals/$slug': typeof DeskPortalsSlugRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
+  '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
+  '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -332,13 +359,16 @@ export interface FileRouteTypes {
     | '/portal/appearance'
     | '/portal/details'
     | '/portal/music'
+    | '/portal/plan'
     | '/portal/review'
     | '/portal/timeline'
+    | '/share/$token'
     | '/desk/'
     | '/portal/'
     | '/api/bots/v1'
-    | '/desk/portals/$slug'
     | '/desk/portals/'
+    | '/desk/portals/$slug/plan'
+    | '/desk/portals/$slug/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -364,13 +394,16 @@ export interface FileRouteTypes {
     | '/portal/appearance'
     | '/portal/details'
     | '/portal/music'
+    | '/portal/plan'
     | '/portal/review'
     | '/portal/timeline'
+    | '/share/$token'
     | '/desk'
     | '/portal'
     | '/api/bots/v1'
-    | '/desk/portals/$slug'
     | '/desk/portals'
+    | '/desk/portals/$slug/plan'
+    | '/desk/portals/$slug'
   id:
     | '__root__'
     | '/'
@@ -398,13 +431,16 @@ export interface FileRouteTypes {
     | '/portal/appearance'
     | '/portal/details'
     | '/portal/music'
+    | '/portal/plan'
     | '/portal/review'
     | '/portal/timeline'
+    | '/share/$token'
     | '/desk/'
     | '/portal/'
     | '/api/bots/v1'
-    | '/desk/portals/$slug'
     | '/desk/portals/'
+    | '/desk/portals/$slug/plan'
+    | '/desk/portals/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -418,6 +454,7 @@ export interface RootRouteChildren {
   WeddingsRoute: typeof WeddingsRoute
   CSlugRoute: typeof CSlugRoute
   PSlugRoute: typeof PSlugRoute
+  ShareTokenRoute: typeof ShareTokenRoute
   ApiBotsV1Route: typeof ApiBotsV1Route
 }
 
@@ -612,6 +649,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalMusicRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/portal/plan': {
+      id: '/portal/plan'
+      path: '/plan'
+      fullPath: '/portal/plan'
+      preLoaderRoute: typeof PortalPlanRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/portal/review': {
       id: '/portal/review'
       path: '/review'
@@ -625,6 +669,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/timeline'
       preLoaderRoute: typeof PortalTimelineRouteImport
       parentRoute: typeof PortalRouteRoute
+    }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/bots/v1': {
       id: '/api/bots/v1'
@@ -640,11 +691,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskPortalsIndexRouteImport
       parentRoute: typeof DeskRouteRoute
     }
-    '/desk/portals/$slug': {
-      id: '/desk/portals/$slug'
+    '/desk/portals/$slug/': {
+      id: '/desk/portals/$slug/'
       path: '/portals/$slug'
-      fullPath: '/desk/portals/$slug'
-      preLoaderRoute: typeof DeskPortalsSlugRouteImport
+      fullPath: '/desk/portals/$slug/'
+      preLoaderRoute: typeof DeskPortalsSlugIndexRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
+    '/desk/portals/$slug/plan': {
+      id: '/desk/portals/$slug/plan'
+      path: '/portals/$slug/plan'
+      fullPath: '/desk/portals/$slug/plan'
+      preLoaderRoute: typeof DeskPortalsSlugPlanRouteImport
       parentRoute: typeof DeskRouteRoute
     }
   }
@@ -664,8 +722,9 @@ interface DeskRouteRouteChildren {
   DeskSettingsRoute: typeof DeskSettingsRoute
   DeskTermsRoute: typeof DeskTermsRoute
   DeskIndexRoute: typeof DeskIndexRoute
-  DeskPortalsSlugRoute: typeof DeskPortalsSlugRoute
   DeskPortalsIndexRoute: typeof DeskPortalsIndexRoute
+  DeskPortalsSlugPlanRoute: typeof DeskPortalsSlugPlanRoute
+  DeskPortalsSlugIndexRoute: typeof DeskPortalsSlugIndexRoute
 }
 
 const DeskRouteRouteChildren: DeskRouteRouteChildren = {
@@ -682,8 +741,9 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskSettingsRoute: DeskSettingsRoute,
   DeskTermsRoute: DeskTermsRoute,
   DeskIndexRoute: DeskIndexRoute,
-  DeskPortalsSlugRoute: DeskPortalsSlugRoute,
   DeskPortalsIndexRoute: DeskPortalsIndexRoute,
+  DeskPortalsSlugPlanRoute: DeskPortalsSlugPlanRoute,
+  DeskPortalsSlugIndexRoute: DeskPortalsSlugIndexRoute,
 }
 
 const DeskRouteRouteWithChildren = DeskRouteRoute._addFileChildren(
@@ -694,6 +754,7 @@ interface PortalRouteRouteChildren {
   PortalAppearanceRoute: typeof PortalAppearanceRoute
   PortalDetailsRoute: typeof PortalDetailsRoute
   PortalMusicRoute: typeof PortalMusicRoute
+  PortalPlanRoute: typeof PortalPlanRoute
   PortalReviewRoute: typeof PortalReviewRoute
   PortalTimelineRoute: typeof PortalTimelineRoute
   PortalIndexRoute: typeof PortalIndexRoute
@@ -703,6 +764,7 @@ const PortalRouteRouteChildren: PortalRouteRouteChildren = {
   PortalAppearanceRoute: PortalAppearanceRoute,
   PortalDetailsRoute: PortalDetailsRoute,
   PortalMusicRoute: PortalMusicRoute,
+  PortalPlanRoute: PortalPlanRoute,
   PortalReviewRoute: PortalReviewRoute,
   PortalTimelineRoute: PortalTimelineRoute,
   PortalIndexRoute: PortalIndexRoute,
@@ -723,6 +785,7 @@ const rootRouteChildren: RootRouteChildren = {
   WeddingsRoute: WeddingsRoute,
   CSlugRoute: CSlugRoute,
   PSlugRoute: PSlugRoute,
+  ShareTokenRoute: ShareTokenRoute,
   ApiBotsV1Route: ApiBotsV1Route,
 }
 export const routeTree = rootRouteImport

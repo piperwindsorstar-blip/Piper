@@ -324,6 +324,113 @@ html:has(.desk) {
   opacity: 0.7;
 }
 
+.plan-page {
+  min-height: 100vh;
+  background: #ececee;
+  color: #161616;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.plan-display {
+  font-family: 'Inter Display', Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.plan-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.plan-pill-yes {
+  background: #ddf3e4;
+  color: #1b6b3a;
+}
+
+.plan-pill-unsure {
+  background: #fdebd3;
+  color: #8a4a06;
+}
+
+.plan-pill-no {
+  background: #eeeef1;
+  color: #5c5c66;
+}
+
+.plan-choice {
+  color: #8a8a94;
+  font-style: italic;
+}
+
+.plan-cards {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .plan-table {
+    display: none;
+  }
+
+  .plan-cards {
+    display: grid;
+  }
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 0.6in;
+  }
+
+  .plan-page {
+    background: white;
+  }
+
+  .no-print,
+  .portal > header,
+  .portal > nav,
+  .plan-screen-footer,
+  .plan-cards {
+    display: none !important;
+  }
+
+  .plan-table {
+    display: table !important;
+  }
+
+  .plan-sheet {
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
+    padding-bottom: 28px;
+  }
+
+  .plan-row,
+  .plan-card,
+  .plan-keep {
+    break-inside: avoid;
+  }
+
+  .plan-phase h3 {
+    break-after: avoid;
+  }
+
+  .plan-print-footer {
+    display: block;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    color: #444;
+    font-size: 11px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home .marquee,
   .weddings .marquee,

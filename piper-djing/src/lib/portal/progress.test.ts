@@ -38,7 +38,7 @@ describe('portal progress', () => {
         'bridesmaids',
         'groomsmen',
         'mc',
-        'mcContact',
+        'mcToldFindDj',
         'tableForDj',
         'spaceForDj',
         'outside',
@@ -64,7 +64,7 @@ describe('portal progress', () => {
         'specialPlaylists',
       ],
     )
-    assert.equal(sectionProgress(planning, 'timeline').total, 18)
+    assert.equal(sectionProgress(planning, 'timeline').total, 17)
     assert.equal(sectionProgress(planning, 'timeline').answered, 0)
     assert.equal(firstUnanswered(planning)?.id, 'weddingDate')
 
@@ -98,7 +98,7 @@ describe('portal progress', () => {
         index === 8 ? { ...row, hidden: true } : row,
       ),
     }
-    assert.equal(sectionProgress(hidden, 'timeline').total, 17)
+    assert.equal(sectionProgress(hidden, 'timeline').total, 16)
     assert.equal(sectionProgress(hidden, 'timeline').answered, 0)
     assert.equal(daysUntil('2026-10-11', '2026-10-16'), 5)
     assert.equal(daysUntil('2026-10-11', '2026-10-01'), 0)

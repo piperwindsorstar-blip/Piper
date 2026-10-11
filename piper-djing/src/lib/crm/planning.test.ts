@@ -18,7 +18,7 @@ import {
 const liveBook = Boolean(process.env.DATABASE_URL)
 
 describe('planning form', { skip: liveBook }, () => {
-  it('gives each couple a blank copy and keeps the venue street off it', async () => {
+  it('gives each couple a blank copy and fills the venue street from the booking', async () => {
     const booking = await createBooking({
       partnerOne: 'Nora',
       partnerTwo: 'Ellis',
@@ -43,13 +43,15 @@ describe('planning form', { skip: liveBook }, () => {
     assert.equal(page.planning.coupleNames, 'Nora and Ellis')
     assert.equal(page.planning.email, 'nora@example.com')
     assert.equal(page.planning.venueName, 'The Hall')
-    assert.equal(page.planning.ceremonyAddress, '')
+    assert.equal(page.planning.ceremonyAddress, '12 Chapel Lane')
+    assert.equal(page.planning.receptionAddress, '12 Chapel Lane')
+    assert.ok(page.planning.fromInquiry.includes('ceremonyAddress'))
     assert.equal(page.planning.timeline.length, TIMELINE.length)
     assert.equal(page.planning.timeline[0]?.activity, 'Guest arrival & seating')
     assert.equal(page.planning.timeline[4]?.activity, 'Recessional')
     assert.equal(page.planning.timeline[8]?.activity, 'First dance')
     const printed = JSON.stringify(page.planning)
-    assert.doesNotMatch(printed, /Chapel/)
+    assert.match(printed, /Chapel/)
     assert.doesNotMatch(printed, /Butcher/)
 
     const saved = await saveCouplePlanning(booking.slug, {

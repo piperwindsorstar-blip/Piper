@@ -8,6 +8,7 @@ import {
   sectionQuestions,
 } from '../../lib/portal/questions.ts'
 import type { SectionId } from '../../lib/portal/questions.ts'
+import { OrderedMoments } from './ordered-moments.tsx'
 import { useCloseSheet } from './portal-chrome.tsx'
 import { usePortal } from './portal-state.tsx'
 
@@ -36,64 +37,83 @@ export function QuestionRail({
           <h3 className="text-[11px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
             {group}
           </h3>
-          <ol className="mt-3 grid gap-1">
-            {questions
-              .filter((question) => question.group === group)
-              .map((question) => {
-                const current = question.id === currentId
-                const hidden =
-                  question.timelineIndex !== undefined &&
-                  planning.timeline[question.timelineIndex]?.hidden === true
-                const summary = hidden
-                  ? 'Hidden'
-                  : railSummary(planning, question)
-                const filled = hidden
-                  ? false
-                  : summary !== '' && summary !== 'Pick a song'
-                return (
-                  <li key={question.id}>
-                    <Link
-                      to={sectionPath(section)}
-                      search={{ q: question.id }}
-                      aria-current={current ? 'step' : undefined}
-                      onClick={() => close()}
-                      className={`flex gap-3 rounded-[18px] px-3 py-2 ${
-                        current
-                          ? 'border-[1.5px] border-[var(--pink)] bg-[var(--pink-tint)]'
-                          : 'border-[1.5px] border-transparent'
-                      }`}
-                    >
-                      <span
-                        className={`mt-1 h-3 w-3 shrink-0 rounded-full ${
+          {(group === 'Ceremony' || group === 'Reception') && !ids ? (
+            <OrderedMoments section={group} currentId={currentId} />
+          ) : (
+            <ol className="mt-3 grid gap-1">
+              {questions
+                .filter((question) => question.group === group)
+                .filter((question) => (ids ? ids.includes(question.id) : true))
+                .map((question) => {
+                  const current = question.id === currentId
+                  const row =
+                    question.timelineIndex === undefined
+                      ? undefined
+                      : itemAt(planning.timeline, question.timelineIndex)
+                  const summary = railSummary(planning, question)
+                  const filled = summary !== '' && summary !== 'Pick a song'
+                  const songHash =
+                    row?.songFrom === 'entrance'
+                      ? 'entrance-song'
+                      : row?.songFrom
+                        ? `row-${row.songFrom}`
+                        : ''
+                  return (
+                    <li key={question.id}>
+                      <div
+                        className={`flex gap-3 rounded-[18px] px-3 py-2 ${
                           current
-                            ? 'bg-[var(--pink)] shadow-[0_0_0_3px_var(--pink-tint)] ring-2 ring-[var(--pink)]'
-                            : filled
-                              ? 'bg-[var(--pink)]'
-                              : 'border border-[var(--border-strong)]'
+                            ? 'border-[1.5px] border-[var(--pink)] bg-[var(--pink-tint)]'
+                            : 'border-[1.5px] border-transparent'
                         }`}
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0">
+                      >
                         <span
-                          className={`block text-sm ${filled || current ? 'text-white' : 'text-[var(--text-muted)]'}`}
-                        >
-                          {railTitle(
-                            question.timelineIndex,
-                            planning,
-                            question.rail,
-                          )}
+                          className={`mt-1 h-3 w-3 shrink-0 rounded-full ${
+                            current
+                              ? 'bg-[var(--pink)] shadow-[0_0_0_3px_var(--pink-tint)] ring-2 ring-[var(--pink)]'
+                              : filled
+                                ? 'bg-[var(--pink)]'
+                                : 'border border-[var(--border-strong)]'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0">
+                          <Link
+                            to={sectionPath(section)}
+                            search={{ q: question.id }}
+                            aria-current={current ? 'step' : undefined}
+                            onClick={() => close()}
+                            className={`block text-sm ${filled || current ? 'text-white' : 'text-[var(--text-muted)]'}`}
+                          >
+                            {railTitle(
+                              question.timelineIndex,
+                              planning,
+                              question.rail,
+                            )}
+                          </Link>
+                          {summary === 'Song set in Order of appearance' &&
+                          songHash ? (
+                            <Link
+                              to="/portal/appearance"
+                              search={{ q: 'appearances' }}
+                              hash={songHash}
+                              onClick={() => close()}
+                              className="mt-0.5 block text-[13px] text-[var(--pink-soft)] underline"
+                            >
+                              {summary}
+                            </Link>
+                          ) : summary ? (
+                            <span className="mt-0.5 block text-[13px] text-[var(--text-muted)]">
+                              {summary}
+                            </span>
+                          ) : null}
                         </span>
-                        {summary ? (
-                          <span className="mt-0.5 block text-[13px] text-[var(--text-muted)]">
-                            {summary}
-                          </span>
-                        ) : null}
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-          </ol>
+                      </div>
+                    </li>
+                  )
+                })}
+            </ol>
+          )}
         </section>
       ))}
     </div>

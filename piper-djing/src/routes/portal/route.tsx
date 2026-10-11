@@ -52,6 +52,8 @@ function toPage(
     locked: page.locked,
     planning: page.planning,
     master: page.master,
+    shareToken: page.shareToken,
+    shareOn: page.shareOn,
   }
 }
 

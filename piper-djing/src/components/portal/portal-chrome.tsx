@@ -32,6 +32,7 @@ export function PortalChrome({ children }: { children: ReactNode }) {
   const progress = overallProgress(planning, page.master)
   const path = useRouterState({ select: (state) => state.location.pathname })
   const current = stepFor(path)
+  if (path.startsWith('/portal/plan')) return <div>{children}</div>
   return (
     <div className="portal">
       <header className="hidden border-b border-[var(--border)] px-14 py-6 min-[1024px]:flex min-[1024px]:items-center min-[1024px]:justify-between">
@@ -44,6 +45,9 @@ export function PortalChrome({ children }: { children: ReactNode }) {
             {progress.percent}%
           </span>{' '}
           planned
+          <Link to="/portal/plan" className="ml-4 underline">
+            Our plan
+          </Link>
           <SaveNote
             state={saveState}
             savedLabel={savedLabel}

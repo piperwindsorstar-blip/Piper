@@ -88,6 +88,12 @@ export function OverviewScreen() {
             Continue: review →
           </Link>
         )}
+        <Link
+          to="/portal/plan"
+          className="inline-flex min-h-11 items-center text-sm underline"
+        >
+          See our plan
+        </Link>
         <a
           href={sayHelloHref()}
           className="inline-flex min-h-11 items-center text-sm underline"

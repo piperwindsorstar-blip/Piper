@@ -133,6 +133,7 @@ export function railSummary(planning: Planning, question: Question): string {
   if (question.type === 'song' && question.timelineIndex !== undefined) {
     const row = itemAt(planning.timeline, question.timelineIndex)
     if (!row) return ''
+    if (row.songFrom) return 'Song set in Order of appearance'
     const title = row.song.trim()
     const artist = row.artist.trim()
     if (title && artist) return `${title} · ${artist}`

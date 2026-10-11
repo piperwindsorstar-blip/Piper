@@ -48,8 +48,10 @@ describe('portal master wording', () => {
     planning.timeline[8] = { ...planning.timeline[8], label: 'Our dance' }
     const questions = sectionQuestions(planning, 'timeline', master)
     const firstDance = questions.find(
-      (question) => question.id === 'timeline-8',
+      (question) => question.id === 'moment-first-dance',
     )
+    assert.ok(Object.hasOwn(master, 'moment-first-dance'))
+    assert.equal(master['moment-first-dance'].label, 'Your song')
     assert.ok(firstDance)
     assert.equal(firstDance.rail, 'Our dance')
     assert.equal(firstDance.label, 'Our dance')
