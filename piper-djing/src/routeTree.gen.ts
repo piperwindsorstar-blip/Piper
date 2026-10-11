@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BookRouteImport } from './routes/book'
 import { Route as DeskRouteRouteImport } from './routes/desk/route'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as WeddingsRouteImport } from './routes/weddings'
@@ -31,6 +32,12 @@ import { Route as DeskReviewsRouteImport } from './routes/desk/reviews'
 import { Route as DeskSettingsRouteImport } from './routes/desk/settings'
 import { Route as DeskTermsRouteImport } from './routes/desk/terms'
 import { Route as PSlugRouteImport } from './routes/p/$slug'
+import { Route as PortalIndexRouteImport } from './routes/portal/index'
+import { Route as PortalAppearanceRouteImport } from './routes/portal/appearance'
+import { Route as PortalDetailsRouteImport } from './routes/portal/details'
+import { Route as PortalMusicRouteImport } from './routes/portal/music'
+import { Route as PortalReviewRouteImport } from './routes/portal/review'
+import { Route as PortalTimelineRouteImport } from './routes/portal/timeline'
 import { Route as ApiBotsV1RouteImport } from './routes/api/bots/v1'
 
 const IndexRoute = IndexRouteImport.update({
@@ -51,6 +58,11 @@ const DeskRouteRoute = DeskRouteRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalRouteRoute = PortalRouteRouteImport.update({
+  id: '/portal',
+  path: '/portal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
@@ -143,6 +155,36 @@ const PSlugRoute = PSlugRouteImport.update({
   path: '/p/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalAppearanceRoute = PortalAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalDetailsRoute = PortalDetailsRouteImport.update({
+  id: '/details',
+  path: '/details',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalMusicRoute = PortalMusicRouteImport.update({
+  id: '/music',
+  path: '/music',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalReviewRoute = PortalReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalTimelineRoute = PortalTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
 const ApiBotsV1Route = ApiBotsV1RouteImport.update({
   id: '/api/bots/v1',
   path: '/api/bots/v1',
@@ -152,6 +194,7 @@ const ApiBotsV1Route = ApiBotsV1RouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/desk': typeof DeskRouteRouteWithChildren
+  '/portal': typeof PortalRouteRouteWithChildren
   '/book': typeof BookRoute
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -171,7 +214,13 @@ export interface FileRoutesByFullPath {
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
+  '/portal/appearance': typeof PortalAppearanceRoute
+  '/portal/details': typeof PortalDetailsRoute
+  '/portal/music': typeof PortalMusicRoute
+  '/portal/review': typeof PortalReviewRoute
+  '/portal/timeline': typeof PortalTimelineRoute
   '/desk/': typeof DeskIndexRoute
+  '/portal/': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
 }
 export interface FileRoutesByTo {
@@ -195,13 +244,20 @@ export interface FileRoutesByTo {
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
+  '/portal/appearance': typeof PortalAppearanceRoute
+  '/portal/details': typeof PortalDetailsRoute
+  '/portal/music': typeof PortalMusicRoute
+  '/portal/review': typeof PortalReviewRoute
+  '/portal/timeline': typeof PortalTimelineRoute
   '/desk': typeof DeskIndexRoute
+  '/portal': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/desk': typeof DeskRouteRouteWithChildren
+  '/portal': typeof PortalRouteRouteWithChildren
   '/book': typeof BookRoute
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -221,7 +277,13 @@ export interface FileRoutesById {
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
+  '/portal/appearance': typeof PortalAppearanceRoute
+  '/portal/details': typeof PortalDetailsRoute
+  '/portal/music': typeof PortalMusicRoute
+  '/portal/review': typeof PortalReviewRoute
+  '/portal/timeline': typeof PortalTimelineRoute
   '/desk/': typeof DeskIndexRoute
+  '/portal/': typeof PortalIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
 }
 export interface FileRouteTypes {
@@ -229,6 +291,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/desk'
+    | '/portal'
     | '/book'
     | '/login'
     | '/robots.txt'
@@ -248,7 +311,13 @@ export interface FileRouteTypes {
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
+    | '/portal/appearance'
+    | '/portal/details'
+    | '/portal/music'
+    | '/portal/review'
+    | '/portal/timeline'
     | '/desk/'
+    | '/portal/'
     | '/api/bots/v1'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -272,12 +341,19 @@ export interface FileRouteTypes {
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
+    | '/portal/appearance'
+    | '/portal/details'
+    | '/portal/music'
+    | '/portal/review'
+    | '/portal/timeline'
     | '/desk'
+    | '/portal'
     | '/api/bots/v1'
   id:
     | '__root__'
     | '/'
     | '/desk'
+    | '/portal'
     | '/book'
     | '/login'
     | '/robots.txt'
@@ -297,13 +373,20 @@ export interface FileRouteTypes {
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
+    | '/portal/appearance'
+    | '/portal/details'
+    | '/portal/music'
+    | '/portal/review'
+    | '/portal/timeline'
     | '/desk/'
+    | '/portal/'
     | '/api/bots/v1'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DeskRouteRoute: typeof DeskRouteRouteWithChildren
+  PortalRouteRoute: typeof PortalRouteRouteWithChildren
   BookRoute: typeof BookRoute
   LoginRoute: typeof LoginRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
@@ -342,6 +425,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/robots.txt': {
@@ -470,6 +560,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/': {
+      id: '/portal/'
+      path: '/'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/appearance': {
+      id: '/portal/appearance'
+      path: '/appearance'
+      fullPath: '/portal/appearance'
+      preLoaderRoute: typeof PortalAppearanceRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/details': {
+      id: '/portal/details'
+      path: '/details'
+      fullPath: '/portal/details'
+      preLoaderRoute: typeof PortalDetailsRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/music': {
+      id: '/portal/music'
+      path: '/music'
+      fullPath: '/portal/music'
+      preLoaderRoute: typeof PortalMusicRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/review': {
+      id: '/portal/review'
+      path: '/review'
+      fullPath: '/portal/review'
+      preLoaderRoute: typeof PortalReviewRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/timeline': {
+      id: '/portal/timeline'
+      path: '/timeline'
+      fullPath: '/portal/timeline'
+      preLoaderRoute: typeof PortalTimelineRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/api/bots/v1': {
       id: '/api/bots/v1'
       path: '/api/bots/v1'
@@ -516,9 +648,32 @@ const DeskRouteRouteWithChildren = DeskRouteRoute._addFileChildren(
   DeskRouteRouteChildren,
 )
 
+interface PortalRouteRouteChildren {
+  PortalAppearanceRoute: typeof PortalAppearanceRoute
+  PortalDetailsRoute: typeof PortalDetailsRoute
+  PortalMusicRoute: typeof PortalMusicRoute
+  PortalReviewRoute: typeof PortalReviewRoute
+  PortalTimelineRoute: typeof PortalTimelineRoute
+  PortalIndexRoute: typeof PortalIndexRoute
+}
+
+const PortalRouteRouteChildren: PortalRouteRouteChildren = {
+  PortalAppearanceRoute: PortalAppearanceRoute,
+  PortalDetailsRoute: PortalDetailsRoute,
+  PortalMusicRoute: PortalMusicRoute,
+  PortalReviewRoute: PortalReviewRoute,
+  PortalTimelineRoute: PortalTimelineRoute,
+  PortalIndexRoute: PortalIndexRoute,
+}
+
+const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
+  PortalRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DeskRouteRoute: DeskRouteRouteWithChildren,
+  PortalRouteRoute: PortalRouteRouteWithChildren,
   BookRoute: BookRoute,
   LoginRoute: LoginRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,

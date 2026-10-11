@@ -277,12 +277,60 @@ html:has(.desk) {
   scrollbar-width: none;
 }
 
+.portal {
+  --bg: #0d0d0d;
+  --surface: #141416;
+  --field: #16161a;
+  --field-2: #1c1c21;
+  --border: #222228;
+  --border-strong: #34343a;
+  --line: #2a2a30;
+  --text: #ffffff;
+  --text-muted: #a9a9b2;
+  --text-faint: #8a8a94;
+  --pink: #ff4f9a;
+  --pink-soft: #ff8dbe;
+  --pink-tint: #2a1220;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.portal .portal-display {
+  font-family: 'Inter Display', Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.portal :focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
+}
+
+.portal .portal-input {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--field);
+  color: var(--text);
+  padding: 0.9rem 1rem;
+  font: inherit;
+}
+
+.portal .portal-input:disabled {
+  opacity: 0.7;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home .marquee,
   .weddings .marquee,
   .spin-slow,
   .pulse-glow,
-  .desk .desk-motion {
+  .desk .desk-motion,
+  .portal .portal-motion {
     animation: none;
     transition: none;
   }

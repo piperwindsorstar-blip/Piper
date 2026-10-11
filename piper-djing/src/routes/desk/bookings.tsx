@@ -7,6 +7,7 @@ import {
 import { useServerFn } from '@tanstack/react-start'
 import { ChevronDown, Plus, X } from 'lucide-react'
 import { useState } from 'react'
+import { PortalDeskFields } from '../../components/portal/desk-fields.tsx'
 import {
   Chip,
   DeskTitle,
@@ -975,6 +976,7 @@ function BookingCard({
             </Link>
           ) : null}
         </p>
+        {open ? <PortalDeskFields slug={booking.slug} /> : null}
         <form
           key={formKey}
           className="grid gap-3"

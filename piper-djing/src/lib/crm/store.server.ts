@@ -28,6 +28,8 @@ import { DESK_OWNER_EMAIL } from './desk-owner.ts'
 import { HOME_BASE } from './home-base.ts'
 import type { PackageOffer } from './packages.ts'
 import {
+  isPlanLocked,
+  mergeCoupleSave,
   parsePlanning,
   planningFromUnknown,
   type Planning,
@@ -41,7 +43,12 @@ import type {
   ReviewView,
 } from './reviews.ts'
 import { askLegacyDate } from '../legacy-book.server.ts'
-import { holdLastDay, isBlockedDate, PACKAGE_CENTS } from '../piper/rules.ts'
+import {
+  holdLastDay,
+  isBlockedDate,
+  PACKAGE_CENTS,
+  torontoToday,
+} from '../piper/rules.ts'
 
 export type { ReviewView }
 
@@ -2490,18 +2497,73 @@ export async function saveCouplePlanning(
   value: unknown,
 ): Promise<Planning> {
   await ensurePlanningColumn()
-  const rows = await query<BookingRow>(
+  const rows = await query<BookingRow & { planning?: string }>(
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
   )
   const row = rows[0]
   if (!row) throw new Error('That page was not found.')
-  const planning = planningFromUnknown(value, planningSeed(row))
+  const existing = parsePlanning(row.planning, planningSeed(row)).planning
+  if (isPlanLocked(existing, torontoToday())) {
+    throw new Error('This plan is locked.')
+  }
+  const planning = mergeCoupleSave(
+    existing,
+    planningFromUnknown(value, planningSeed(row)),
+  )
   await query('UPDATE bookings SET planning = $1 WHERE id = $2', [
     JSON.stringify(planning),
     row.id,
   ])
   return planning
+}
+
+export async function savePortalDeskFields(
+  slugValue: string,
+  fields: { arrivalTime: string; dueDate: string; unlock: boolean },
+): Promise<Planning> {
+  await ensurePlanningColumn()
+  const rows = await query<BookingRow & { planning?: string }>(
+    'SELECT * FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  const row = rows[0]
+  if (!row) throw new Error('That page was not found.')
+  const existing = parsePlanning(row.planning, planningSeed(row)).planning
+  const planning = {
+    ...existing,
+    arrivalTime: clipPortal(fields.arrivalTime, 200),
+    dueDate: /^\d{4}-\d{2}-\d{2}$/.test(fields.dueDate) ? fields.dueDate : '',
+    planLocked: fields.unlock ? false : existing.planLocked,
+  }
+  await query('UPDATE bookings SET planning = $1 WHERE id = $2', [
+    JSON.stringify(planning),
+    row.id,
+  ])
+  return planning
+}
+
+export async function lockCouplePlan(slugValue: string): Promise<Planning> {
+  await ensurePlanningColumn()
+  const rows = await query<BookingRow & { planning?: string }>(
+    'SELECT * FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  const row = rows[0]
+  if (!row) throw new Error('That page was not found.')
+  const planning = {
+    ...parsePlanning(row.planning, planningSeed(row)).planning,
+    planLocked: true,
+  }
+  await query('UPDATE bookings SET planning = $1 WHERE id = $2', [
+    JSON.stringify(planning),
+    row.id,
+  ])
+  return planning
+}
+
+function clipPortal(value: string, max: number): string {
+  return value.trim().slice(0, max)
 }
 
 export async function invoiceBySlug(slugValue: string) {

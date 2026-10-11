@@ -14,6 +14,7 @@ import {
   addQuestion,
   coupleBySlug,
   saveCouplePlanning,
+  savePortalDeskFields,
   bookExternalDate,
   createBooking,
   countedTotal,
@@ -407,6 +408,23 @@ export const deleteReview = createServerFn({ method: 'POST' })
 export const getCouple = createServerFn({ method: 'POST' })
   .validator((data: { slug: string }) => data)
   .handler(async ({ data }) => coupleBySlug(data.slug))
+
+export const savePortalDesk = createServerFn({ method: 'POST' })
+  .validator(
+    (data: { slug: string; arrivalTime: string; dueDate: string; unlock: boolean }) =>
+      data,
+  )
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        planning: await savePortalDeskFields(data.slug, data),
+      }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const saveCouplePlanningForm = createServerFn({ method: 'POST' })
   .validator((data: { slug: string; planning: unknown }) => data)
