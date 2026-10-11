@@ -7,7 +7,6 @@ import {
 import { cad } from '../../lib/crm/money.ts'
 import { longDate } from '../../lib/crm/dates.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
-import { getOverview } from '../../lib/crm/desk.functions.ts'
 import { attention } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import {
@@ -21,13 +20,12 @@ const deskRoute = getRouteApi('/desk')
 
 export const Route = createFileRoute('/desk/')({
   head: () => deskHead('Overview · Piper DJing'),
-  loader: () => getOverview(),
   component: OverviewPage,
 })
 
 function OverviewPage() {
-  const data = Route.useLoaderData()
   const desk = deskRoute.useLoaderData()
+  const data = desk.overview
   const waiting = attention(desk.bookings, desk.leads, todayInToronto())
   return (
     <div className="grid gap-5">

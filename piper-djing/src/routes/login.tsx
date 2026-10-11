@@ -31,19 +31,30 @@ function LoginPage() {
         method="post"
         onSubmit={(event) => {
           event.preventDefault()
-          const password = String(new FormData(event.currentTarget).get('password') ?? '')
-          void sign({ data: { password } }).then(async (result) => {
-            if (!result.ok) {
-              setError('That password did not match.')
-              return
-            }
-            await router.navigate({ to: '/desk' })
-          })
+          const password = String(
+            new FormData(event.currentTarget).get('password') ?? '',
+          )
+          void sign({ data: { password } })
+            .then(async (result) => {
+              if (!result.ok) {
+                setError('That password did not match.')
+                return
+              }
+              await router.navigate({ to: '/desk' })
+            })
+            .catch(() => {
+              setError('The desk did not open. Try again.')
+            })
         }}
       >
         <label className="field">
           Password
-          <input name="password" type="password" autoComplete="current-password" required />
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
         </label>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button type="submit" className={`${bigButton} bg-ink text-ivory`}>

@@ -24,7 +24,6 @@ import {
   savePortalMaster,
   bookExternalDate,
   createBooking,
-  countedTotal,
   listExternalDates,
   listVenues,
   releaseExternalDate,
@@ -82,23 +81,94 @@ function fail(error: unknown) {
   }
 }
 
+function overviewFrom(
+  bookings: Awaited<ReturnType<typeof listBookings>>,
+  leads: Awaited<ReturnType<typeof listLeads>>,
+  externalDates: Awaited<ReturnType<typeof listExternalDates>>,
+) {
+  return {
+    bookings: bookings.length,
+    leads: leads.length,
+    totalCents: countedTotalFrom(bookings),
+    upcoming: bookings.filter(
+      (booking) =>
+        !booking.sample &&
+        (booking.status === 'hold' || booking.status === 'booked'),
+    ),
+    external: externalDates.filter((row) => !row.released),
+  }
+}
+
+function countedTotalFrom(
+  bookings: Awaited<ReturnType<typeof listBookings>>,
+): number {
+  return bookings.reduce((sum, booking) => {
+    if (
+      booking.sample ||
+      booking.status === 'cancelled' ||
+      booking.status === 'released'
+    ) {
+      return sum
+    }
+    return sum + booking.totalCents
+  }, 0)
+}
+
 export const getOverview = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireDesk()
-    const bookings = await listBookings()
-    return {
-      bookings: bookings.length,
-      leads: (await listLeads()).length,
-      totalCents: await countedTotal(),
-      upcoming: bookings.filter(
-        (booking) =>
-          !booking.sample &&
-          (booking.status === 'hold' || booking.status === 'booked'),
-      ),
-      external: (await listExternalDates()).filter((row) => !row.released),
-    }
+    const [bookings, leads, externalDates] = await Promise.all([
+      listBookings(),
+      listLeads(),
+      listExternalDates(),
+    ])
+    return overviewFrom(bookings, leads, externalDates)
   },
 )
+
+/** One read for the desk frame, so opening it is a single request. */
+export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireDesk()
+  const [
+    bookings,
+    payments,
+    leads,
+    externalDates,
+    questions,
+    media,
+    partners,
+    reviews,
+    bots,
+    packages,
+    venues,
+  ] = await Promise.all([
+    listBookings(),
+    listPayments(),
+    listLeads(),
+    listExternalDates(),
+    listQuestions(),
+    listMedia(),
+    listPartners(),
+    listReviews(),
+    listBots(),
+    listPackageOffers(),
+    listVenues(),
+  ])
+  return {
+    overview: overviewFrom(bookings, leads, externalDates),
+    bookings,
+    payments,
+    leads,
+    externalDates,
+    questions,
+    media,
+    partners,
+    reviews,
+    bots,
+    packages,
+    venues,
+  }
+})
 
 export const getExternalDates = createServerFn({ method: 'GET' }).handler(
   async () => {
