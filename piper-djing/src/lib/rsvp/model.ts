@@ -92,6 +92,8 @@ export type RsvpWedding = {
   priceKind: PriceKind
   paid: boolean
   bookingSlug: string
+  /** Where a confirmed guest reply is emailed. The sign-in address stays on `email`. */
+  replyEmail: string
   sample: boolean
   notes: string[]
   schedule: ScheduleItem[]
@@ -109,6 +111,40 @@ export type PaidCouple = {
   sample: boolean
   status: string
   receivedCents: number
+}
+
+export type CoupleBooking = {
+  partnerOne: string
+  partnerTwo: string
+  eventDate: string
+  email: string
+  sample: boolean
+}
+
+/** Address that hears about a confirmed reply. Never the sign-in address. */
+export function coupleReplyAddress(
+  wedding: Pick<
+    RsvpWedding,
+    'partnerOne' | 'partnerTwo' | 'eventDate' | 'replyEmail'
+  >,
+  bookings: CoupleBooking[],
+): string {
+  const written = wedding.replyEmail.trim()
+  if (written.includes('@')) return written.slice(0, 120)
+  const one = foldName(wedding.partnerOne)
+  const two = foldName(wedding.partnerTwo)
+  if (!one || !two) return ''
+  for (const booking of bookings) {
+    if (booking.sample) continue
+    if (booking.eventDate !== wedding.eventDate) continue
+    if (!booking.email.includes('@')) continue
+    const left = foldName(booking.partnerOne)
+    const right = foldName(booking.partnerTwo)
+    const same = left === one && right === two
+    const swapped = left === two && right === one
+    if (same || swapped) return booking.email.trim().slice(0, 120)
+  }
+  return ''
 }
 
 export type PriceQuote = {
@@ -1088,6 +1124,7 @@ export function blankWedding(input: {
     priceKind: input.priceKind,
     paid: false,
     bookingSlug: '',
+    replyEmail: '',
     sample: false,
     notes: [],
     schedule: [
@@ -1201,6 +1238,7 @@ export function parseWedding(raw: unknown, slug: string): RsvpWedding | null {
   base.autoRemind = record.autoRemind === false ? false : true
   base.paid = asFlag(record.paid)
   base.bookingSlug = asText(record.bookingSlug, 80)
+  base.replyEmail = asText(record.replyEmail, 120)
   base.sample = asFlag(record.sample)
   base.notes = Array.isArray(record.notes)
     ? record.notes.map((item) => asText(item, 160)).filter((item) => item)

@@ -11,6 +11,7 @@ import {
   calendarIcs,
   confirmationLetter,
   coupleNotice,
+  coupleReplyAddress,
   coupleTitle,
   csvFor,
   daysUntil,
@@ -46,6 +47,7 @@ import type {
   SongStatus,
 } from './model.ts'
 import {
+  coupleBookings,
   createRsvpWedding,
   deleteRsvp,
   ensureSampleRsvp,
@@ -132,7 +134,7 @@ export const startRsvp = createServerFn({ method: 'POST' })
     if (!data.email.includes('@')) {
       return {
         ok: false as const,
-        error: 'Enter the email for the sign-in link.',
+        error: "Enter the couple's email.",
       }
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data.eventDate)) {
@@ -374,11 +376,9 @@ export const saveHouseholdReply = createServerFn({ method: 'POST' })
       result.party.email,
       confirmationLetter(result.wedding, result.party, url),
     )
-    if (result.wedding.email.includes('@')) {
-      await emailLetter(
-        result.wedding.email,
-        coupleNotice(result.wedding, result.party),
-      )
+    const couple = coupleReplyAddress(result.wedding, await coupleBookings())
+    if (couple.includes('@')) {
+      await emailLetter(couple, coupleNotice(result.wedding, result.party))
     }
     if (!guest.delivered) {
       return { ok: true as const, mailed: false, detail: guest.detail }
@@ -445,7 +445,7 @@ export const openRsvpSignIn = createServerFn({ method: 'POST' })
     return { ok: true as const, slug: wedding.slug }
   })
 
-function manageView(wedding: RsvpWedding, desk: boolean) {
+function manageView(wedding: RsvpWedding, desk: boolean, replyTarget: string) {
   const copy = structuredClone(wedding)
   copy.signInToken = ''
   copy.signInExpires = ''
@@ -461,6 +461,7 @@ function manageView(wedding: RsvpWedding, desk: boolean) {
     catererLabel: shortMonthDay(copy.catererDeadline),
     path: rsvpPath(copy.slug),
     publicLink: publicUrl(rsvpPath(copy.slug)),
+    replyTarget,
   }
 }
 
@@ -481,9 +482,32 @@ export const getRsvpManage = createServerFn({ method: 'GET' }).handler(
         path: rsvpPath(wedding.slug),
       }
     }
-    return manageView(wedding, desk)
+    return manageView(
+      wedding,
+      desk,
+      coupleReplyAddress(wedding, await coupleBookings()),
+    )
   },
 )
+
+export const saveRsvpReplyEmail = createServerFn({ method: 'POST' })
+  .validator((data: { email?: string }) => ({ email: text(data.email, 120) }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    if (data.email && !data.email.includes('@')) {
+      return { ok: false as const, error: "Enter the couple's email." }
+    }
+    wedding.replyEmail = data.email
+    await writeRsvp(wedding)
+    return { ok: true as const }
+  })
 
 export const saveRsvpParty = createServerFn({ method: 'POST' })
   .validator((data: Record<string, unknown>) => data)

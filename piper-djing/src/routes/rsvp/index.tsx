@@ -102,7 +102,7 @@ function RsvpProduct() {
               onChange={(event) => setTwo(event.target.value)}
             />
           </Field>
-          <Field id="email" label="Email" error={error}>
+          <Field id="email" label="Couple's email" error={error}>
             <input
               id="email"
               type="email"

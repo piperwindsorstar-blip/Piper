@@ -7,6 +7,7 @@ import {
   downloadRsvpCsv,
   removeRsvpParty,
   saveRsvpParty,
+  saveRsvpReplyEmail,
   saveRsvpSetup,
   saveSongStatus,
   sendRsvpReminders,
@@ -115,6 +116,7 @@ export function Overview({ data }: { data: ReadyManage }) {
           View guest site →
         </Link>
       </div>
+      <ReplyEmail data={data} />
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <Stat
           label="Attending"
@@ -199,6 +201,53 @@ export function Overview({ data }: { data: ReadyManage }) {
         </section>
       </div>
     </div>
+  )
+}
+
+function ReplyEmail({ data }: { data: ReadyManage }) {
+  const save = useServerFn(saveRsvpReplyEmail)
+  const router = useRouter()
+  const [email, setEmail] = useState(data.wedding.replyEmail)
+  const [notice, setNotice] = useState('')
+  const hint = data.wedding.replyEmail
+    ? 'A confirmed RSVP is emailed to the couple at this address.'
+    : data.replyTarget
+      ? 'A confirmed RSVP is emailed to the address on their Piper date. Save a couple address here to use that instead.'
+      : "Enter the couple's email. A confirmed RSVP is emailed to them."
+  return (
+    <form
+      className="mt-6 grid gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        setNotice('')
+        void save({ data: { email } }).then(async (result) => {
+          setNotice(result.ok ? 'Saved.' : result.error)
+          if (result.ok) await router.invalidate()
+        })
+      }}
+    >
+      <label className="text-sm" htmlFor="reply-email">
+        Couple's email
+        <input
+          id="reply-email"
+          type="email"
+          autoComplete="email"
+          className={`${rsvpField} mt-1`}
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </label>
+      <p className="text-sm text-[var(--text-muted)]">{hint}</p>
+      <button
+        className={`${rsvpButton} w-auto justify-self-start px-6`}
+        type="submit"
+      >
+        Save
+      </button>
+      {notice ? (
+        <p className="text-sm text-[var(--text-muted)]">{notice}</p>
+      ) : null}
+    </form>
   )
 }
 

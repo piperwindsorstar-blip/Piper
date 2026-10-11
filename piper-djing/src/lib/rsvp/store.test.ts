@@ -60,6 +60,7 @@ describe('rsvp store', { skip: liveBook }, () => {
     })
     assert.equal(created.priceCents, PIPER_RSVP_CENTS)
     assert.equal(created.paid, false)
+    assert.equal(created.replyEmail, 'paid-rsvp@example.com')
     assert.equal((await readRsvp(created.slug))?.email, 'paid-rsvp@example.com')
     await deleteRsvp(created.slug)
     await removeBooking(booking.id)

@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { query } from '../db.server.ts'
 import { sampleWedding } from './demo.ts'
 import { blankWedding, coupleSlug, parseWedding, quoteRsvp } from './model.ts'
-import type { PriceQuote, RsvpWedding } from './model.ts'
+import type { CoupleBooking, PriceQuote, RsvpWedding } from './model.ts'
 
 const TABLE = `
 CREATE TABLE IF NOT EXISTS rsvp_weddings (
@@ -108,6 +108,23 @@ export async function deleteRsvp(slug: string): Promise<void> {
   await query('DELETE FROM rsvp_weddings WHERE slug = $1', [slug])
 }
 
+export async function coupleBookings(): Promise<CoupleBooking[]> {
+  const rows = await query<{
+    partner_one: string
+    partner_two: string
+    email: string
+    event_date: string
+    sample: unknown
+  }>('SELECT partner_one, partner_two, email, event_date, sample FROM bookings')
+  return rows.map((row) => ({
+    partnerOne: row.partner_one,
+    partnerTwo: row.partner_two,
+    email: row.email,
+    eventDate: row.event_date,
+    sample: flag(row.sample),
+  }))
+}
+
 export async function quoteRsvpPrice(email: string): Promise<PriceQuote> {
   const rows = await query<{
     email: string
@@ -157,6 +174,7 @@ export async function createRsvpWedding(input: {
     inviteCode: newInviteCode(),
   })
   wedding.slug = slug
+  wedding.replyEmail = input.email.trim().slice(0, 120)
   await writeRsvp(wedding)
   return wedding
 }

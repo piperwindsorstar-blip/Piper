@@ -20,6 +20,7 @@ const SAMPLE: RsvpWedding = {
   priceKind: 'piper',
   paid: true,
   bookingSlug: '',
+  replyEmail: 'sarah.m@example.com',
   sample: true,
   notes: [
     'Step-free route from parking to every space; seating on request',

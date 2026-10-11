@@ -11,6 +11,7 @@ import {
   codesMatch,
   csvCell,
   confirmationLetter,
+  coupleReplyAddress,
   coupleSlug,
   findParty,
   foldName,
@@ -72,6 +73,52 @@ describe('rsvp price and link', () => {
       STANDALONE_RSVP_CENTS,
     )
     assert.equal(quoteRsvp('new@example.com', bookings).kind, 'standalone')
+  })
+
+  it('emails a confirmed RSVP to the couple, not the sign-in address', () => {
+    const wedding = sampleWedding()
+    wedding.replyEmail = ''
+    wedding.email = 'piperpweddingdj@gmail.com'
+    assert.equal(coupleReplyAddress(wedding, []), '')
+    const saved = parseWedding(
+      JSON.parse(JSON.stringify({ ...sampleWedding(), replyEmail: undefined })),
+      wedding.slug,
+    )
+    assert.equal(saved?.replyEmail, '')
+    wedding.replyEmail = 'mark@example.com'
+    assert.equal(coupleReplyAddress(wedding, []), 'mark@example.com')
+    wedding.replyEmail = ''
+    assert.equal(
+      coupleReplyAddress(wedding, [
+        {
+          partnerOne: 'Michael',
+          partnerTwo: 'Sarah',
+          eventDate: wedding.eventDate,
+          email: 'couple@example.com',
+          sample: false,
+        },
+      ]),
+      'couple@example.com',
+    )
+    assert.equal(
+      coupleReplyAddress(wedding, [
+        {
+          partnerOne: 'Sarah',
+          partnerTwo: 'Michael',
+          eventDate: '2020-01-01',
+          email: 'other@example.com',
+          sample: false,
+        },
+        {
+          partnerOne: 'Sarah',
+          partnerTwo: 'Michael',
+          eventDate: wedding.eventDate,
+          email: 'sample@example.com',
+          sample: true,
+        },
+      ]),
+      '',
+    )
   })
 
   it('starts the public link with RSVP', () => {
