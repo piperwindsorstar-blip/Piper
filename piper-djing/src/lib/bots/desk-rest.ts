@@ -45,3 +45,38 @@ export function deskBotTarget(pathname: string): DeskBotTarget | null {
     id: match[2] || null,
   }
 }
+
+const RSVP_SLUG = '([a-z0-9]+(?:-[a-z0-9]+)*)'
+const RSVP_TOKEN = '([A-Za-z0-9_-]+)'
+
+export type RsvpBotAction =
+  | { kind: 'questions'; id: string }
+  | { kind: 'question-reply'; id: string; questionId: string }
+  | { kind: 'guests'; id: string }
+  | { kind: 'guest'; id: string; guestId: string }
+
+/** Nested RSVP paths. The two-segment desk routes stay on deskBotTarget. */
+export function rsvpBotTarget(pathname: string): RsvpBotAction | null {
+  const bare = bareBotPath(pathname)
+  const questions = new RegExp(
+    `^/api/bots/v1/rsvps/${RSVP_SLUG}/questions$`,
+  ).exec(bare)
+  if (questions?.[1]) return { kind: 'questions', id: questions[1] }
+  const reply = new RegExp(
+    `^/api/bots/v1/rsvps/${RSVP_SLUG}/questions/${RSVP_TOKEN}/reply$`,
+  ).exec(bare)
+  if (reply?.[1] && reply[2]) {
+    return { kind: 'question-reply', id: reply[1], questionId: reply[2] }
+  }
+  const guests = new RegExp(`^/api/bots/v1/rsvps/${RSVP_SLUG}/guests$`).exec(
+    bare,
+  )
+  if (guests?.[1]) return { kind: 'guests', id: guests[1] }
+  const guest = new RegExp(
+    `^/api/bots/v1/rsvps/${RSVP_SLUG}/guests/${RSVP_TOKEN}$`,
+  ).exec(bare)
+  if (guest?.[1] && guest[2]) {
+    return { kind: 'guest', id: guest[1], guestId: guest[2] }
+  }
+  return null
+}

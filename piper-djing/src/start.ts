@@ -13,7 +13,11 @@ import {
   unknownServerFn,
 } from './lib/legacy-book.server.ts'
 import { deskBotResponse } from './lib/bots/desk-rest.server.ts'
-import { deskBotTarget, isDeskUsageRoot } from './lib/bots/desk-rest.ts'
+import {
+  deskBotTarget,
+  isDeskUsageRoot,
+  rsvpBotTarget,
+} from './lib/bots/desk-rest.ts'
 import { deskUsageResponse } from './lib/bots/usage.server.ts'
 import { LEGACY_HOST, legacyLocation } from './lib/legacy-host.ts'
 import { applySecurityHeaders, httpsRedirectTarget } from './lib/security.ts'
@@ -63,7 +67,7 @@ const legacyHost = createMiddleware().server(async ({ next, request }) => {
   if (isDeskUsageRoot(url.pathname)) {
     return finish(await deskUsageResponse(request))
   }
-  if (deskBotTarget(url.pathname)) {
+  if (deskBotTarget(url.pathname) || rsvpBotTarget(url.pathname)) {
     return finish(await deskBotResponse(request))
   }
   return finish(await proxyLegacyBook(request))

@@ -3,6 +3,7 @@ import { query } from '../db.server.ts'
 import { sampleWedding } from './demo.ts'
 import { blankWedding, coupleSlug, parseWedding, quoteRsvp } from './model.ts'
 import type { CoupleBooking, PriceQuote, RsvpWedding } from './model.ts'
+import type { CoupleQuestion } from './questions.ts'
 
 const TABLE = `
 CREATE TABLE IF NOT EXISTS rsvp_weddings (
@@ -104,8 +105,126 @@ export async function listRsvps(): Promise<RsvpWedding[]> {
 }
 
 export async function deleteRsvp(slug: string): Promise<void> {
-  await ensureRsvp()
+  await ensureRsvpDesk()
+  await query('DELETE FROM rsvp_questions WHERE slug = $1', [slug])
   await query('DELETE FROM rsvp_weddings WHERE slug = $1', [slug])
+}
+
+const QUESTIONS = `
+CREATE TABLE IF NOT EXISTS rsvp_questions (
+  id text PRIMARY KEY,
+  slug text NOT NULL,
+  couple text NOT NULL DEFAULT '',
+  question text NOT NULL,
+  asked_at text NOT NULL,
+  reply text NOT NULL DEFAULT '',
+  replied_at text NOT NULL DEFAULT ''
+)`
+
+type QuestionRow = {
+  id: string
+  slug: string
+  couple: string
+  question: string
+  asked_at: string
+  reply: string
+  replied_at: string
+}
+
+async function ensureRsvpDesk(): Promise<void> {
+  await ensureRsvp()
+  await query(QUESTIONS)
+  await query(
+    'CREATE INDEX IF NOT EXISTS rsvp_questions_slug ON rsvp_questions (slug)',
+  )
+}
+
+function questionFrom(row: QuestionRow): CoupleQuestion {
+  return {
+    id: row.id,
+    rsvpId: row.slug,
+    couple: row.couple,
+    text: row.question,
+    askedAt: row.asked_at,
+    reply: row.reply,
+    repliedAt: row.replied_at,
+  }
+}
+
+export async function listCoupleQuestions(
+  slug?: string,
+  openOnly = false,
+): Promise<CoupleQuestion[]> {
+  await ensureRsvpDesk()
+  const columns = 'id, slug, couple, question, asked_at, reply, replied_at'
+  if (slug) {
+    const rows = await query<QuestionRow>(
+      `SELECT ${columns} FROM rsvp_questions WHERE slug = $1 ORDER BY asked_at`,
+      [slug],
+    )
+    return rows.map(questionFrom)
+  }
+  const rows = await query<QuestionRow>(
+    openOnly
+      ? `SELECT ${columns} FROM rsvp_questions WHERE trim(reply) = '' ORDER BY asked_at`
+      : `SELECT ${columns} FROM rsvp_questions ORDER BY asked_at`,
+  )
+  return rows.map(questionFrom)
+}
+
+export async function insertCoupleQuestion(input: {
+  slug: string
+  couple: string
+  text: string
+  askedAt: string
+}): Promise<CoupleQuestion> {
+  await ensureRsvpDesk()
+  const question: CoupleQuestion = {
+    id: newToken(),
+    rsvpId: input.slug,
+    couple: input.couple,
+    text: input.text,
+    askedAt: input.askedAt,
+    reply: '',
+    repliedAt: '',
+  }
+  await query(
+    `INSERT INTO rsvp_questions (id, slug, couple, question, asked_at, reply, replied_at)
+     VALUES ($1, $2, $3, $4, $5, '', '')`,
+    [
+      question.id,
+      question.rsvpId,
+      question.couple,
+      question.text,
+      question.askedAt,
+    ],
+  )
+  return question
+}
+
+export async function replyCoupleQuestion(
+  slug: string,
+  id: string,
+  text: string,
+  repliedAt: string,
+): Promise<CoupleQuestion | null> {
+  await ensureRsvpDesk()
+  const found = await query<{ id: string }>(
+    'SELECT id FROM rsvp_questions WHERE id = $1 AND slug = $2',
+    [id, slug],
+  )
+  if (found.length === 0) return null
+  await query(
+    'UPDATE rsvp_questions SET reply = $1, replied_at = $2 WHERE id = $3 AND slug = $4',
+    [text, repliedAt, id, slug],
+  )
+  const rows = await query<QuestionRow>(
+    `SELECT id, slug, couple, question, asked_at, reply, replied_at
+     FROM rsvp_questions WHERE id = $1 AND slug = $2`,
+    [id, slug],
+  )
+  if (rows.length === 0) return null
+  return questionFrom(rows[0])
 }
 
 export async function coupleBookings(): Promise<CoupleBooking[]> {

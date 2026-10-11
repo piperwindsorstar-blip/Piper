@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import { isDesk } from '../auth/session.server.ts'
+import { PUBLIC_EMAIL } from '../crm/defaults.ts'
 import { emailLetter } from '../crm/mail.server.ts'
 import { publicUrl } from '../crm/safe-origin.ts'
 import { torontoToday } from '../piper/rules.ts'
@@ -46,11 +47,16 @@ import type {
   RsvpWedding,
   SongStatus,
 } from './model.ts'
+import { confirmGuestList } from './guest-list.ts'
+import type { GuestListRow } from './guest-list.ts'
+import { questionLetter } from './questions.ts'
 import {
   coupleBookings,
   createRsvpWedding,
   deleteRsvp,
   ensureSampleRsvp,
+  insertCoupleQuestion,
+  listCoupleQuestions,
   listRsvps,
   newToken,
   quoteRsvpPrice,
@@ -83,6 +89,41 @@ function allowLookup(ip: string): boolean {
 
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
+}
+
+function guestRows(value: unknown): GuestListRow[] | null {
+  if (!Array.isArray(value)) return null
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const row = item as Record<string, unknown>
+    return [
+      {
+        id: text(row.id, 40),
+        name: text(row.name, 80),
+        partyId: text(row.partyId, 40),
+        plusOneAllowed: row.plusOneAllowed === true,
+      },
+    ]
+  })
+}
+
+function plusOneDrafts(value: unknown) {
+  if (!Array.isArray(value)) return null
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const plus = item as Record<string, unknown>
+    const hostId = text(plus.hostId, 40)
+    if (!hostId) return []
+    return [
+      {
+        id: text(plus.id, 40) || newToken(),
+        hostId,
+        name: text(plus.name, 80),
+        meal: text(plus.meal, 80),
+        dietaryNote: text(plus.dietaryNote, 240),
+      },
+    ]
+  })
 }
 
 function torontoHour(): number {
@@ -269,6 +310,8 @@ function householdPayload(wedding: RsvpWedding, token: string) {
         lastName: guest.lastName,
         isChild: guest.isChild,
         isPlusOne: guest.isPlusOne,
+        plusOneAllowed: guest.plusOneAllowed,
+        plusOneOf: guest.plusOneOf,
         replies: guest.replies,
         meal: guest.meal,
         dietary: guest.dietary,
@@ -360,6 +403,7 @@ export const saveHouseholdReply = createServerFn({ method: 'POST' })
         ? data.removePlusOneIds.map((id) => text(id, 40)).filter(Boolean)
         : [],
       addPlusOne: add ? { id: newToken(), name: text(add.name, 80) } : null,
+      plusOnes: plusOneDrafts(data.plusOnes),
     })
     if (!result.ok) return result
     await writeRsvp(result.wedding)
@@ -445,10 +489,15 @@ export const openRsvpSignIn = createServerFn({ method: 'POST' })
     return { ok: true as const, slug: wedding.slug }
   })
 
-function manageView(wedding: RsvpWedding, desk: boolean, replyTarget: string) {
+async function manageView(
+  wedding: RsvpWedding,
+  desk: boolean,
+  replyTarget: string,
+) {
   const copy = structuredClone(wedding)
   copy.signInToken = ''
   copy.signInExpires = ''
+  const questions = await listCoupleQuestions(copy.slug)
   return {
     mode: 'ready' as const,
     desk,
@@ -462,6 +511,7 @@ function manageView(wedding: RsvpWedding, desk: boolean, replyTarget: string) {
     path: rsvpPath(copy.slug),
     publicLink: publicUrl(rsvpPath(copy.slug)),
     replyTarget,
+    questions,
   }
 }
 
@@ -489,6 +539,63 @@ export const getRsvpManage = createServerFn({ method: 'GET' }).handler(
     )
   },
 )
+
+export const askRsvpQuestion = createServerFn({ method: 'POST' })
+  .validator((data: { text?: string }) => ({ text: text(data.text, 2000) }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    if (!data.text) return { ok: false as const, error: 'Write your question.' }
+    const question = await insertCoupleQuestion({
+      slug: wedding.slug,
+      couple: coupleTitle(wedding),
+      text: data.text,
+      askedAt: new Date().toISOString(),
+    })
+    const mailed = await emailLetter(PUBLIC_EMAIL, questionLetter(question))
+    return {
+      ok: true as const,
+      notice: mailed.delivered
+        ? 'Sent. Piper has your question.'
+        : 'Saved on your RSVP. The email to Piper did not send.',
+    }
+  })
+
+export const saveRsvpGuestList = createServerFn({ method: 'POST' })
+  .validator((data: { guests?: unknown; meals?: unknown }) => ({
+    guests: guestRows(data.guests),
+    meals:
+      typeof data.meals === 'string'
+        ? data.meals.split(',')
+        : Array.isArray(data.meals)
+          ? data.meals.filter(
+              (item): item is string => typeof item === 'string',
+            )
+          : [],
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    if (!data.guests) {
+      return { ok: false as const, error: 'Send the guest list.' }
+    }
+    const saved = confirmGuestList(wedding, data.guests, data.meals, newToken)
+    if (!saved.ok) return saved
+    await writeRsvp(saved.wedding)
+    return { ok: true as const }
+  })
 
 export const saveRsvpReplyEmail = createServerFn({ method: 'POST' })
   .validator((data: { email?: string }) => ({ email: text(data.email, 120) }))
@@ -545,6 +652,7 @@ export const saveRsvpParty = createServerFn({ method: 'POST' })
                 .filter(Boolean),
               isChild: guest.isChild === true,
               isPlusOne: guest.isPlusOne === true,
+              plusOneAllowed: guest.plusOneAllowed === true,
             },
           ]
         }),

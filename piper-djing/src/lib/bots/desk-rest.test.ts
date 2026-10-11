@@ -246,4 +246,155 @@ describe('desk bot edits', { skip: liveBook }, () => {
       await deleteRsvp('bot-rsvp-check')
     }
   })
+
+  it('reads guest parties and lets a writer move, add, and remove a name', async () => {
+    const wedding = sampleWedding()
+    wedding.slug = 'bot-guest-list'
+    wedding.email = 'bot-guests@example.com'
+    await writeRsvp(wedding)
+    try {
+      const reader = await inviteBot('Guest Reader', 'reader')
+      const writer = await inviteBot('Guest Writer', 'writer')
+      const listed = await deskBotResponse(
+        new Request(
+          'http://localhost/api/bots/v1/rsvps/bot-guest-list/guests',
+          {
+            headers: { authorization: `Bearer ${reader.token}` },
+          },
+        ),
+        async () => 'no',
+      )
+      assert.equal(listed.status, 200)
+      const body = (await listed.json()) as {
+        guests: {
+          id: string
+          name: string
+          partyId: string
+          attending: string
+          meal: string
+          dietaryNote: string
+          isPlusOne: boolean
+          plusOneOf: string | null
+        }[]
+      }
+      const liz = body.guests.find((guest) => guest.id === 'liz')
+      const jordan = body.guests.find((guest) => guest.id === 'jordan')
+      if (!liz || !jordan) throw new Error('missing guest')
+      assert.equal(liz.name, 'Elizabeth Miller')
+      assert.equal(liz.partyId, 'miller')
+      assert.equal(liz.attending, 'yes')
+      assert.equal(liz.meal, 'Wild salmon')
+      assert.match(liz.dietaryNote, /Gluten-free/)
+      assert.equal(liz.isPlusOne, false)
+      assert.equal(jordan.isPlusOne, true)
+      assert.equal(jordan.plusOneOf, 'liz')
+
+      const summary = await deskBotResponse(
+        new Request('http://localhost/api/bots/v1/rsvps/bot-guest-list', {
+          headers: { authorization: `Bearer ${reader.token}` },
+        }),
+        async () => 'no',
+      )
+      const summaryBody = (await summary.json()) as {
+        rsvp: {
+          totals: {
+            yes: number
+            no: number
+            noReply: number
+            plusOnes: number
+            meals: { label: string; count: number }[]
+          }
+        }
+      }
+      assert.equal(summaryBody.rsvp.totals.yes, 6)
+      assert.equal(summaryBody.rsvp.totals.no, 1)
+      assert.equal(summaryBody.rsvp.totals.noReply, 1)
+      assert.equal(summaryBody.rsvp.totals.plusOnes, 1)
+      assert.ok(summaryBody.rsvp.totals.meals.some((meal) => meal.count > 0))
+
+      const denied = await deskBotResponse(
+        new Request(
+          'http://localhost/api/bots/v1/rsvps/bot-guest-list/guests/ada',
+          {
+            method: 'PATCH',
+            headers: {
+              authorization: `Bearer ${reader.token}`,
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({ partyId: 'miller' }),
+          },
+        ),
+        async () => 'no',
+      )
+      assert.equal(denied.status, 403)
+
+      const moved = await deskBotResponse(
+        new Request(
+          'http://localhost/api/bots/v1/rsvps/bot-guest-list/guests/ada',
+          {
+            method: 'PATCH',
+            headers: {
+              authorization: `Bearer ${writer.token}`,
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({ partyId: 'miller' }),
+          },
+        ),
+        async () => 'no',
+      )
+      assert.equal(moved.status, 200)
+      const movedBody = (await moved.json()) as {
+        guests: { id: string; partyId: string }[]
+      }
+      assert.equal(
+        movedBody.guests.find((guest) => guest.id === 'ada')?.partyId,
+        'miller',
+      )
+
+      const added = await deskBotResponse(
+        new Request(
+          'http://localhost/api/bots/v1/rsvps/bot-guest-list/guests',
+          {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${writer.token}`,
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({ names: ['Zinnia Quill'] }),
+          },
+        ),
+        async () => 'no',
+      )
+      assert.equal(added.status, 200)
+      const addedBody = (await added.json()) as {
+        guests: { id: string; name: string; partyId: string }[]
+      }
+      const zinnia = addedBody.guests.find(
+        (guest) => guest.name === 'Zinnia Quill',
+      )
+      assert.ok(zinnia)
+      assert.ok(zinnia.partyId)
+      const quiet = await deskBotResponse(
+        new Request('http://localhost/api/bots/v1/rsvps/bot-guest-list', {
+          headers: { authorization: `Bearer ${reader.token}` },
+        }),
+        async () => 'no',
+      )
+      assert.equal(JSON.stringify(await quiet.json()).includes('Zinnia'), false)
+
+      const removed = await deskBotResponse(
+        new Request(
+          `http://localhost/api/bots/v1/rsvps/bot-guest-list/guests/${zinnia.id}`,
+          {
+            method: 'DELETE',
+            headers: { authorization: `Bearer ${writer.token}` },
+          },
+        ),
+        async () => 'no',
+      )
+      assert.equal(removed.status, 200)
+    } finally {
+      await deleteRsvp('bot-guest-list')
+    }
+  })
 })

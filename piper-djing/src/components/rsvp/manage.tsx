@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { priceLabel } from '../../lib/rsvp/model.ts'
 import {
+  askRsvpQuestion,
   downloadRsvpCsv,
   removeRsvpParty,
   saveRsvpParty,
@@ -12,6 +13,7 @@ import {
   saveSongStatus,
   sendRsvpReminders,
 } from '../../lib/rsvp/rsvp.functions.ts'
+import { GuestPaste } from './guest-paste.tsx'
 import type { getRsvpManage } from '../../lib/rsvp/rsvp.functions.ts'
 import { downloadText, rsvpButton, rsvpField, rsvpGhost } from './shell.tsx'
 
@@ -117,6 +119,24 @@ export function Overview({ data }: { data: ReadyManage }) {
         </Link>
       </div>
       <ReplyEmail data={data} />
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <AskQuestion questions={data.questions} />
+        <GuestPaste
+          key={data.wedding.parties
+            .map(
+              (party) =>
+                `${party.id}:${party.token}:${party.guests.map((guest) => guest.id).join('.')}`,
+            )
+            .join('|')}
+          parties={data.wedding.parties}
+          meals={
+            data.wedding.questions.find(
+              (question) => question.type === 'choice',
+            )?.options ?? []
+          }
+          publicLink={data.publicLink}
+        />
+      </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <Stat
           label="Attending"
@@ -249,6 +269,87 @@ function ReplyEmail({ data }: { data: ReadyManage }) {
       ) : null}
     </form>
   )
+}
+
+function AskQuestion({ questions }: { questions: ReadyManage['questions'] }) {
+  const ask = useServerFn(askRsvpQuestion)
+  const router = useRouter()
+  const [text, setText] = useState('')
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <h2 className="font-semibold">Ask a question</h2>
+      <form
+        className="mt-3 grid gap-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (!text.trim() || busy) return
+          setBusy(true)
+          setNotice('')
+          void ask({ data: { text } }).then(async (result) => {
+            setBusy(false)
+            if (!result.ok) {
+              setNotice(result.error)
+              return
+            }
+            setText('')
+            setNotice(result.notice)
+            await router.invalidate()
+          })
+        }}
+      >
+        <label className="text-sm" htmlFor="ask-question">
+          Your question
+          <textarea
+            id="ask-question"
+            className={`${rsvpField} mt-1 min-h-28 py-3`}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+        </label>
+        <button
+          className={`${rsvpButton} w-auto`}
+          type="submit"
+          disabled={busy}
+        >
+          Send
+        </button>
+      </form>
+      {notice ? (
+        <p className="mt-3 text-sm text-[var(--text-muted)]">{notice}</p>
+      ) : null}
+      <ul className="mt-4 grid gap-3">
+        {questions.map((question) => (
+          <li key={question.id} className="text-sm">
+            <p>{question.text}</p>
+            <p className="mt-1 text-[var(--text-faint)]">
+              {askedWhen(question.askedAt)}
+            </p>
+            {question.reply ? (
+              <p className="mt-2 rounded-2xl bg-[var(--field)] p-3">
+                {question.reply}
+              </p>
+            ) : (
+              <p className="mt-2 text-[var(--text-muted)]">
+                Waiting for a reply
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function askedWhen(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
 }
 
 function Stat({
@@ -437,6 +538,7 @@ function PartyDrawer({
       altNames: guest.altNames.join(', '),
       isChild: guest.isChild,
       isPlusOne: guest.isPlusOne,
+      plusOneAllowed: guest.plusOneAllowed,
     })) ?? [
       {
         id: '',
@@ -445,6 +547,7 @@ function PartyDrawer({
         altNames: '',
         isChild: false,
         isPlusOne: false,
+        plusOneAllowed: false,
       },
     ],
   )
@@ -544,6 +647,16 @@ function PartyDrawer({
               />
               Child
             </label>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={guest.plusOneAllowed}
+                onChange={(event) =>
+                  updateGuest(index, { plusOneAllowed: event.target.checked })
+                }
+              />
+              Allow a plus-one
+            </label>
           </div>
         ))}
         <button
@@ -559,6 +672,7 @@ function PartyDrawer({
                 altNames: '',
                 isChild: false,
                 isPlusOne: false,
+                plusOneAllowed: false,
               },
             ])
           }

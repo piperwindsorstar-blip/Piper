@@ -22,6 +22,10 @@ export type RsvpGuest = {
   altNames: string[]
   isChild: boolean
   isPlusOne: boolean
+  /** The couple allows this guest to bring one plus-one. */
+  plusOneAllowed: boolean
+  /** Guest id this plus-one belongs to. Empty for everyone else. */
+  plusOneOf: string
   replies: Record<string, RsvpStatus>
   meal: string
   dietary: string[]
@@ -399,6 +403,8 @@ export function emptyGuest(
     altNames: [],
     isChild: false,
     isPlusOne,
+    plusOneAllowed: false,
+    plusOneOf: '',
     replies: {},
     meal: '',
     dietary: [],
@@ -418,6 +424,14 @@ export type HouseholdGuestPatch = {
   plusOneName: string
 }
 
+export type PlusOneDraft = {
+  id: string
+  hostId: string
+  name: string
+  meal: string
+  dietaryNote: string
+}
+
 export type HouseholdPatch = {
   email: string
   note: string
@@ -427,6 +441,73 @@ export type HouseholdPatch = {
   guests: HouseholdGuestPatch[]
   removePlusOneIds: string[]
   addPlusOne: { id: string; name: string } | null
+  plusOnes?: PlusOneDraft[] | null
+}
+
+function hostMayBring(party: RsvpParty, hostId: string): boolean {
+  const host = party.guests.find(
+    (guest) => guest.id === hostId && !guest.isPlusOne,
+  )
+  if (!host) return false
+  if (host.plusOneAllowed) return true
+  if (!party.plusOneAllowed) return false
+  if (party.guests.some((guest) => !guest.isPlusOne && guest.plusOneAllowed)) {
+    return false
+  }
+  const first = party.guests.find((guest) => !guest.isPlusOne)
+  return first?.id === hostId
+}
+
+function syncPlusOnes(
+  wedding: RsvpWedding,
+  party: RsvpParty,
+  extras: PlusOneDraft[],
+  final: boolean,
+): { ok: true } | { ok: false; error: string } {
+  const meals = new Set(mealOptions(wedding))
+  const wanted = extras.filter((extra) => hostMayBring(party, extra.hostId))
+  const hosts = new Set(wanted.map((extra) => extra.hostId))
+  const previous = party.guests.filter((guest) => guest.isPlusOne)
+  party.guests = party.guests.filter((guest) => !guest.isPlusOne)
+  for (const extra of wanted) {
+    const host = party.guests.find(
+      (guest) => guest.id === extra.hostId && !guest.isPlusOne,
+    )
+    if (!host) continue
+    const name = splitPerson(extra.name)
+    if (!name.first) {
+      if (final) return { ok: false, error: "Enter the plus-one's name." }
+      continue
+    }
+    const earlier =
+      previous.find((guest) => guest.plusOneOf === host.id) ??
+      previous.find((guest) => guest.id === extra.id)
+    const plus = earlier
+      ? structuredClone(earlier)
+      : emptyGuest(extra.id, name.first, name.last, true)
+    plus.firstName = name.first
+    plus.lastName = name.last
+    plus.isPlusOne = true
+    plus.plusOneOf = host.id
+    plus.replies = { ...host.replies }
+    plus.dietaryNote = extra.dietaryNote.trim().slice(0, 240)
+    const coming = party.eventIds.some(
+      (id) => replyFor(plus, id) === 'attending',
+    )
+    const meal = extra.meal.trim().slice(0, 80)
+    if (!coming || meals.size === 0) plus.meal = ''
+    else if (meals.has(meal)) plus.meal = meal
+    else plus.meal = ''
+    if (final && coming && meals.size > 0 && !plus.meal) {
+      return {
+        ok: false,
+        error: `Choose a meal for ${plus.firstName}.`,
+      }
+    }
+    if (!hosts.has(host.id)) continue
+    party.guests.push(plus)
+  }
+  return { ok: true }
 }
 
 export function applyHousehold(
@@ -448,6 +529,7 @@ export function applyHousehold(
     (guest) => !(guest.isPlusOne && remove.has(guest.id)),
   )
   if (
+    !patch.plusOnes &&
     patch.addPlusOne &&
     party.plusOneAllowed &&
     !party.guests.some((guest) => guest.isPlusOne)
@@ -499,6 +581,10 @@ export function applyHousehold(
       guest.meal = incoming.meal.trim().slice(0, 80)
     }
   }
+  if (patch.plusOnes) {
+    const synced = syncPlusOnes(next, party, patch.plusOnes, patch.final)
+    if (!synced.ok) return synced
+  }
   if (patch.final) {
     for (const guest of party.guests) {
       const pending = party.eventIds.every(
@@ -541,6 +627,7 @@ export type PartyDraft = {
     altNames: string[]
     isChild: boolean
     isPlusOne: boolean
+    plusOneAllowed?: boolean
   }[]
 }
 
@@ -589,6 +676,7 @@ export function applyPartyDraft(
         ),
         altNames: guest.altNames,
         isChild: guest.isChild,
+        plusOneAllowed: guest.plusOneAllowed === true,
       })),
     })
     return { ok: true, wedding: next }
@@ -609,6 +697,7 @@ export function applyPartyDraft(
       altNames: guest.altNames,
       isChild: guest.isChild,
       isPlusOne: guest.isPlusOne,
+      plusOneAllowed: guest.plusOneAllowed === true,
     }
   })
   return { ok: true, wedding: next }
@@ -1352,6 +1441,8 @@ function parseGuests(value: unknown): RsvpGuest[] {
           : [],
         isChild: asFlag(record.isChild),
         isPlusOne: asFlag(record.isPlusOne),
+        plusOneAllowed: asFlag(record.plusOneAllowed),
+        plusOneOf: asText(record.plusOneOf, 40),
         replies: parseReplies(record.replies),
         meal: asText(record.meal, 80),
         dietary: Array.isArray(record.dietary)

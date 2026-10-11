@@ -44,14 +44,20 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
   const router = useRouter()
   const [guests, setGuests] = useState(data.party.guests)
   const email = data.party.email
-  const [removed, setRemoved] = useState<string[]>([])
-  const [addName, setAddName] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const visible = guests.filter((guest) => !removed.includes(guest.id))
-  const tally = tallyGuests(data.events, visible)
-  const plusLeft =
-    data.party.plusOneAllowed && !visible.some((guest) => guest.isPlusOne)
+  const hosts = guests.filter((guest) => !guest.isPlusOne)
+  const tally = tallyGuests(data.events, guests)
+  const [plus, setPlus] = useState(() => initialPlus(data))
+
+  function canBring(hostId: string) {
+    const host = hosts.find((guest) => guest.id === hostId)
+    if (!host) return false
+    if (host.plusOneAllowed) return true
+    if (!data.party.plusOneAllowed) return false
+    if (hosts.some((guest) => guest.plusOneAllowed)) return false
+    return hosts[0]?.id === hostId
+  }
 
   function patch(final: boolean) {
     return {
@@ -61,19 +67,33 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
         email,
         note: data.party.note,
         final,
-        guests: visible.map((guest) => ({
+        guests: hosts.map((guest) => ({
           id: guest.id,
           replies: guest.replies,
           meal: guest.meal,
           dietary: guest.dietary,
           dietaryNote: guest.dietaryNote,
           song: guest.song,
-          plusOneName: guest.isPlusOne
-            ? `${guest.firstName} ${guest.lastName}`.trim()
-            : '',
+          plusOneName: '',
         })),
-        removePlusOneIds: removed,
-        addPlusOne: plusLeft && addName.trim() ? { name: addName } : null,
+        removePlusOneIds: [],
+        addPlusOne: null,
+        plusOnes: hosts.flatMap((guest) => {
+          const draft = plus[guest.id]
+          const coming = data.events.some(
+            (event) => guest.replies[event.id] === 'attending',
+          )
+          if (!draft.bringing || !coming || !canBring(guest.id)) return []
+          return [
+            {
+              id: draft.id,
+              hostId: guest.id,
+              name: draft.name,
+              meal: draft.meal,
+              dietaryNote: draft.dietaryNote,
+            },
+          ]
+        }),
       },
     }
   }
@@ -97,7 +117,7 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
       </p>
       <h1 className="portal-display text-4xl">{data.party.name}</h1>
       <div className="mt-6 grid gap-4">
-        {visible.map((guest) => {
+        {hosts.map((guest) => {
           const coming = data.events.some(
             (event) => guest.replies[event.id] === 'attending',
           )
@@ -280,32 +300,28 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
                   />
                 </Field>
               ) : null}
-              {guest.isPlusOne ? (
-                <button
-                  type="button"
-                  className="mt-3 min-h-11 text-sm text-[var(--pink-soft)]"
-                  onClick={() =>
-                    setRemoved((current) => [...current, guest.id])
+              {coming && canBring(guest.id) ? (
+                <PlusOneFields
+                  hostId={guest.id}
+                  draft={
+                    plus[guest.id] ?? {
+                      bringing: false,
+                      name: '',
+                      meal: '',
+                      dietaryNote: '',
+                      id: '',
+                    }
                   }
-                >
-                  Not bringing a guest? Remove plus-one
-                </button>
+                  meals={data.meals}
+                  onChange={(draft) =>
+                    setPlus((current) => ({ ...current, [guest.id]: draft }))
+                  }
+                />
               ) : null}
             </article>
           )
         })}
       </div>
-      {plusLeft ? (
-        <Field id="plus-one" label="Bring a guest">
-          <input
-            id="plus-one"
-            className={`${rsvpField} mt-2`}
-            placeholder="Their name"
-            value={addName}
-            onChange={(event) => setAddName(event.target.value)}
-          />
-        </Field>
-      ) : null}
       {error ? (
         <p className="mt-4 text-sm text-[var(--pink-soft)]" role="alert">
           {error}
@@ -319,6 +335,24 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
         className={`${rsvpButton} mt-3`}
         disabled={busy || data.locked}
         onClick={() => {
+          const missing = hosts.find((guest) => {
+            const draft = plus[guest.id]
+            const coming = data.events.some(
+              (event) => guest.replies[event.id] === 'attending',
+            )
+            if (!draft.bringing || !coming || !canBring(guest.id)) return false
+            if (!draft.name.trim()) return true
+            return data.meals.length > 0 && !draft.meal
+          })
+          if (missing) {
+            const draft = plus[missing.id]
+            setError(
+              draft.name.trim()
+                ? `Choose a meal for ${draft.name.trim().split(/\s+/)[0]}.`
+                : "Enter the plus-one's name.",
+            )
+            return
+          }
           setBusy(true)
           setError('')
           void save(patch(false)).then(async (result) => {
@@ -342,6 +376,123 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
         </p>
       ) : null}
     </RsvpFrame>
+  )
+}
+
+type PlusDraft = {
+  bringing: boolean
+  name: string
+  meal: string
+  dietaryNote: string
+  id: string
+}
+
+function initialPlus(data: HouseholdData): Record<string, PlusDraft> {
+  const hosts = data.party.guests.filter((guest) => !guest.isPlusOne)
+  const extras = data.party.guests.filter((guest) => guest.isPlusOne)
+  const legacy =
+    !hosts.some((guest) => guest.plusOneAllowed) && data.party.plusOneAllowed
+  const first = hosts[0]?.id
+  const state: Record<string, PlusDraft> = {}
+  for (const host of hosts) {
+    const existing =
+      extras.find((guest) => guest.plusOneOf === host.id) ??
+      (legacy && host.id === first
+        ? extras.find((guest) => !guest.plusOneOf)
+        : undefined)
+    state[host.id] = existing
+      ? {
+          bringing: true,
+          name: `${existing.firstName} ${existing.lastName}`.trim(),
+          meal: existing.meal,
+          dietaryNote: existing.dietaryNote,
+          id: existing.id,
+        }
+      : { bringing: false, name: '', meal: '', dietaryNote: '', id: '' }
+  }
+  return state
+}
+
+function PlusOneFields({
+  hostId,
+  draft,
+  meals,
+  onChange,
+}: {
+  hostId: string
+  draft: PlusDraft
+  meals: string[]
+  onChange: (draft: PlusDraft) => void
+}) {
+  return (
+    <div className="mt-4 rounded-2xl border border-[var(--border)] p-3">
+      <p className="text-sm font-semibold">Bringing a plus-one?</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          aria-pressed={draft.bringing}
+          className={choiceClass(draft.bringing)}
+          onClick={() => onChange({ ...draft, bringing: true })}
+        >
+          Yes
+        </button>
+        <button
+          type="button"
+          aria-pressed={!draft.bringing}
+          className={choiceClass(!draft.bringing, true)}
+          onClick={() => onChange({ ...draft, bringing: false })}
+        >
+          No
+        </button>
+      </div>
+      {draft.bringing ? (
+        <div className="mt-3 grid gap-3">
+          <Field id={`${hostId}-plus-name`} label="Plus-one's name">
+            <input
+              id={`${hostId}-plus-name`}
+              className={rsvpField}
+              value={draft.name}
+              onChange={(event) =>
+                onChange({ ...draft, name: event.target.value })
+              }
+            />
+          </Field>
+          {meals.length > 0 ? (
+            <Field id={`${hostId}-plus-meal`} label="Meal">
+              <select
+                id={`${hostId}-plus-meal`}
+                className={rsvpField}
+                value={draft.meal}
+                onChange={(event) =>
+                  onChange({ ...draft, meal: event.target.value })
+                }
+              >
+                <option value="">Choose a meal</option>
+                {meals.map((meal) => (
+                  <option key={meal} value={meal}>
+                    {meal}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : null}
+          <label
+            className="text-sm text-[var(--text-muted)]"
+            htmlFor={`${hostId}-plus-note`}
+          >
+            Dietary or allergy note
+          </label>
+          <textarea
+            id={`${hostId}-plus-note`}
+            className={`${rsvpField} min-h-20 py-3`}
+            value={draft.dietaryNote}
+            onChange={(event) =>
+              onChange({ ...draft, dietaryNote: event.target.value })
+            }
+          />
+        </div>
+      ) : null}
+    </div>
   )
 }
 

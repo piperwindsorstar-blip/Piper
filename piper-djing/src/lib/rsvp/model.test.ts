@@ -245,6 +245,121 @@ describe('rsvp household', () => {
     })
     assert.equal(saved.ok, false)
   })
+
+  it('keeps a separate meal for each guest', () => {
+    const wedding = sampleWedding()
+    const saved = applyHousehold(wedding, 'okafor', {
+      email: 'ada@example.com',
+      note: '',
+      final: true,
+      today: '2026-10-11',
+      now: '2026-10-11T23:00:00.000Z',
+      guests: [
+        {
+          id: 'chidi',
+          replies: { ceremony: 'attending' },
+          meal: 'Prime rib',
+          dietary: [],
+          dietaryNote: 'Shellfish',
+          song: '',
+          plusOneName: '',
+        },
+        {
+          id: 'ada',
+          replies: { ceremony: 'attending' },
+          meal: 'Wild salmon',
+          dietary: [],
+          dietaryNote: '',
+          song: '',
+          plusOneName: '',
+        },
+      ],
+      removePlusOneIds: [],
+      addPlusOne: null,
+    })
+    if (!saved.ok) throw new Error(saved.error)
+    const meals = saved.party.guests.map((guest) => guest.meal)
+    assert.deepEqual(meals, ['Prime rib', 'Wild salmon'])
+    assert.equal(saved.party.guests[0]?.dietaryNote, 'Shellfish')
+  })
+
+  it('requires a meal before a plus-one reply can be sent', () => {
+    const wedding = sampleWedding()
+    const blocked = applyHousehold(wedding, 'thompson', {
+      email: 'william@example.com',
+      note: '',
+      final: true,
+      today: '2026-10-11',
+      now: '2026-10-11T23:00:00.000Z',
+      guests: [
+        {
+          id: 'william',
+          replies: { ceremony: 'attending' },
+          meal: 'Prime rib',
+          dietary: [],
+          dietaryNote: '',
+          song: '',
+          plusOneName: '',
+        },
+      ],
+      removePlusOneIds: [],
+      addPlusOne: null,
+      plusOnes: [
+        {
+          id: 'alex',
+          hostId: 'william',
+          name: 'Alex Kim',
+          meal: '',
+          dietaryNote: 'Peanuts',
+        },
+      ],
+    })
+    assert.equal(blocked.ok, false)
+    const saved = applyHousehold(wedding, 'thompson', {
+      email: 'william@example.com',
+      note: '',
+      final: true,
+      today: '2026-10-11',
+      now: '2026-10-11T23:00:00.000Z',
+      guests: [
+        {
+          id: 'william',
+          replies: { ceremony: 'attending' },
+          meal: 'Prime rib',
+          dietary: [],
+          dietaryNote: '',
+          song: '',
+          plusOneName: '',
+        },
+      ],
+      removePlusOneIds: [],
+      addPlusOne: null,
+      plusOnes: [
+        {
+          id: 'alex',
+          hostId: 'william',
+          name: 'Alex Kim',
+          meal: 'Wild salmon',
+          dietaryNote: 'Peanuts',
+        },
+      ],
+    })
+    if (!saved.ok) throw new Error(saved.error)
+    const plus = saved.party.guests.find((guest) => guest.id === 'alex')
+    assert.ok(plus)
+    assert.equal(plus.isPlusOne, true)
+    assert.equal(plus.plusOneOf, 'william')
+    assert.equal(plus.meal, 'Wild salmon')
+    assert.equal(plus.dietaryNote, 'Peanuts')
+    assert.equal(
+      overviewStats(saved.wedding, Date.parse('2026-10-11T23:00:00.000Z'))
+        .guests,
+      sampleWedding().parties.reduce(
+        (sum, party) => sum + party.guests.length,
+        0,
+      ) + 1,
+    )
+  })
 })
 
 describe('rsvp songs, mail, and csv', () => {

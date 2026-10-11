@@ -57,13 +57,28 @@ import type { BookingView, BotRole, LeadView } from '../crm/store.server.ts'
 import type { ReviewDraft } from '../crm/reviews.ts'
 import { isPackageId } from '../crm/defaults.ts'
 import { dollarsToCents, optionalDiscount } from '../crm/money.ts'
+import {
+  addGuestNames,
+  moveGuest,
+  removeGuest,
+  rsvpTotals,
+  splitGuestPaste,
+  toBotGuests,
+} from '../rsvp/guest-list.ts'
 import { overviewStats, songRows } from '../rsvp/model.ts'
 import type { RsvpWedding } from '../rsvp/model.ts'
-import { listRsvps, readRsvp, writeRsvp } from '../rsvp/store.server.ts'
+import {
+  listCoupleQuestions,
+  listRsvps,
+  newToken,
+  readRsvp,
+  replyCoupleQuestion,
+  writeRsvp,
+} from '../rsvp/store.server.ts'
 import { legacyRole } from './desk-leads.server.ts'
 import { selectLeads, toBotLead } from './desk-leads.ts'
-import { deskBotTarget } from './desk-rest.ts'
-import type { DeskBotTarget } from './desk-rest.ts'
+import { deskBotTarget, rsvpBotTarget } from './desk-rest.ts'
+import type { DeskBotTarget, RsvpBotAction } from './desk-rest.ts'
 
 const DENIED = 'Send Authorization: Bearer and the token from join.'
 
@@ -85,8 +100,10 @@ export async function deskBotResponse(
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: HEADERS })
   }
-  const target = deskBotTarget(new URL(request.url).pathname)
-  if (!target) {
+  const pathname = new URL(request.url).pathname
+  const nested = rsvpBotTarget(pathname)
+  const target = deskBotTarget(pathname)
+  if (!target && !nested) {
     return botJson({ error: 'That resource is not on the desk.' }, 404)
   }
   const token = bearer(request)
@@ -99,7 +116,7 @@ export async function deskBotResponse(
     const saved = await remembered(token, key)
     if (saved) return saved
   }
-  const response = await dispatch(request, target, role)
+  const response = await dispatch(request, target, nested, role)
   if (writing && key && response.status < 500) {
     await remember(token, key, response)
   }
@@ -131,7 +148,8 @@ function canManage(role: BotRole): boolean {
 
 async function dispatch(
   request: Request,
-  target: DeskBotTarget,
+  target: DeskBotTarget | null,
+  nested: RsvpBotAction | null,
   role: BotRole,
 ): Promise<Response> {
   const method = request.method
@@ -150,6 +168,10 @@ async function dispatch(
   const body =
     method === 'GET' || method === 'DELETE' ? {} : await readBody(request)
   try {
+    if (nested) return await rsvpNested(method, nested, body)
+    if (!target) {
+      return botJson({ error: 'That resource is not on the desk.' }, 404)
+    }
     return await route(
       method,
       target,
@@ -206,7 +228,7 @@ async function route(
     case 'settings':
       return settings(method, body, role)
     case 'rsvps':
-      return rsvps(method, target.id, body, role)
+      return rsvps(method, target.id, body, role, search)
     default:
       return botJson({ error: 'That resource is not on the desk.' }, 404)
   }
@@ -794,9 +816,21 @@ async function rsvps(
   id: string | null,
   body: Record<string, unknown>,
   role: BotRole,
+  search: URLSearchParams,
 ): Promise<Response> {
   if (method === 'GET' && !id) {
     return botJson({ rsvps: (await listRsvps()).map(toBotRsvp) })
+  }
+  if (id === 'questions') {
+    if (method !== 'GET') {
+      return botJson({ error: 'That action is not on the desk.' }, 405)
+    }
+    return botJson({
+      questions: await listCoupleQuestions(
+        undefined,
+        search.get('open') === 'true',
+      ),
+    })
   }
   if (method === 'GET' && id) {
     const wedding = await readRsvp(id)
@@ -840,6 +874,7 @@ function toBotRsvp(wedding: RsvpWedding) {
     guests: stats.guests,
     repliesIn: stats.repliedGuests,
     meals: stats.meals,
+    totals: rsvpTotals(wedding, Date.now()),
     dietaryNotes: dietaryNotes(wedding),
     songs: songRows(wedding).map((row) => ({
       title: row.title,
@@ -866,6 +901,78 @@ function dietaryNotes(wedding: RsvpWedding): { guest: string; note: string }[] {
     }
   }
   return notes
+}
+
+async function rsvpNested(
+  method: string,
+  action: RsvpBotAction,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const wedding = await readRsvp(action.id)
+  if (!wedding) return botJson({ error: 'That RSVP is not on the desk.' }, 404)
+  if (action.kind === 'questions') {
+    if (method !== 'GET') {
+      return botJson({ error: 'That action is not on the desk.' }, 405)
+    }
+    return botJson({ questions: await listCoupleQuestions(action.id) })
+  }
+  if (action.kind === 'question-reply') {
+    if (method !== 'POST') {
+      return botJson({ error: 'That action is not on the desk.' }, 405)
+    }
+    const text = str(body, 'text').trim().slice(0, 2000)
+    if (!text) return botJson({ error: 'Send text with the reply.' }, 400)
+    const question = await replyCoupleQuestion(
+      action.id,
+      action.questionId,
+      text,
+      new Date().toISOString(),
+    )
+    if (!question) {
+      return botJson({ error: 'That question is not on the desk.' }, 404)
+    }
+    return botJson({ question })
+  }
+  if (action.kind === 'guests') {
+    if (method === 'GET') {
+      return botJson({ guests: toBotGuests(wedding) })
+    }
+    if (method !== 'POST') {
+      return botJson({ error: 'That action is not on the desk.' }, 405)
+    }
+    const names = namesFrom(body)
+    if (!names) {
+      return botJson({ error: 'Send names as a list of guest names.' }, 400)
+    }
+    const saved = addGuestNames(wedding, names, newToken)
+    await writeRsvp(saved)
+    return botJson({ guests: toBotGuests(saved) })
+  }
+  if (method === 'PATCH') {
+    const partyId = str(body, 'partyId').trim()
+    if (!partyId)
+      return botJson({ error: 'Send partyId to move a guest.' }, 400)
+    const moved = moveGuest(wedding, action.guestId, partyId)
+    if (!moved.ok) return botJson({ error: moved.error }, 404)
+    await writeRsvp(moved.wedding)
+    return botJson({ guests: toBotGuests(moved.wedding) })
+  }
+  if (method !== 'DELETE') {
+    return botJson({ error: 'That action is not on the desk.' }, 405)
+  }
+  const removed = removeGuest(wedding, action.guestId)
+  if (!removed) return botJson({ error: 'That guest is not on the desk.' }, 404)
+  await writeRsvp(removed)
+  return botJson({
+    removed: action.guestId,
+    guests: toBotGuests(removed),
+  })
+}
+
+function namesFrom(body: Record<string, unknown>): string[] | null {
+  if (!Array.isArray(body.names)) return null
+  if (body.names.some((item) => typeof item !== 'string')) return null
+  return splitGuestPaste(body.names.join('\n'))
 }
 
 function guestLinkOn(body: Record<string, unknown>): boolean | null {
