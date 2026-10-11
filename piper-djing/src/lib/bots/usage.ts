@@ -54,7 +54,7 @@ export function usageDocument(packages: UsagePackage[]) {
     reads: {
       usage: 'GET /api/bots/v1',
       glance: 'GET /api/bots/v1/glance',
-      list: 'GET /api/bots/v1/{leads|bookings|invoices|payments|packages|terms|questions|media|partners|reviews|bots|emails|externals|venues|settings}',
+      list: 'GET /api/bots/v1/{leads|bookings|invoices|payments|packages|terms|questions|media|partners|reviews|bots|emails|externals|venues|settings|rsvps}',
       one: 'GET /api/bots/v1/{resource}/{id}',
       filters: 'List leads with ?date=YYYY-MM-DD or ?q=text',
     },
@@ -72,6 +72,8 @@ export function usageDocument(packages: UsagePackage[]) {
       invites:
         'POST /api/bots/v1/bots with {name, role}. PATCH or DELETE /api/bots/v1/bots/{id}. CEO only. role is reader, writer, or ceo.',
       emails: 'GET only. Emails are a record of what was sent.',
+      rsvps:
+        'GET /api/bots/v1/rsvps and GET /api/bots/v1/rsvps/{id}. Readers and writers can read. PATCH /api/bots/v1/rsvps/{id} with {guestLink:"on"} turns the guest link on. The CEO bot only.',
       venues:
         'POST /api/bots/v1/venues with {name, street} saves a venue. PATCH /api/bots/v1/venues/{id} with {name, street} edits that venue. The same name updates the address. An empty street clears it. DELETE /api/bots/v1/venues/{id} removes it from the list until that name is saved again. A booking or an external date also saves its venues. Choosing a saved venue fills its address.',
       idempotency:

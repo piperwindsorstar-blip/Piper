@@ -27,6 +27,8 @@ describe('desk usage', () => {
     assert.match(text, /DELETE \/api\/bots\/v1\/externals/)
     assert.match(text, /discountCents or discountDollars/)
     assert.match(text, /PATCH \/api\/bots\/v1\/venues/)
+    assert.match(text, /GET \/api\/bots\/v1\/rsvps/)
+    assert.match(text, /The CEO bot only/)
     assert.match(text, /DELETE \/api\/bots\/v1\/venues/)
     assert.doesNotMatch(text, /instead of deleting it/)
   })

@@ -57,6 +57,9 @@ import type { BookingView, BotRole, LeadView } from '../crm/store.server.ts'
 import type { ReviewDraft } from '../crm/reviews.ts'
 import { isPackageId } from '../crm/defaults.ts'
 import { dollarsToCents, optionalDiscount } from '../crm/money.ts'
+import { overviewStats, songRows } from '../rsvp/model.ts'
+import type { RsvpWedding } from '../rsvp/model.ts'
+import { listRsvps, readRsvp, writeRsvp } from '../rsvp/store.server.ts'
 import { legacyRole } from './desk-leads.server.ts'
 import { selectLeads, toBotLead } from './desk-leads.ts'
 import { deskBotTarget } from './desk-rest.ts'
@@ -202,6 +205,8 @@ async function route(
       return venues(method, target.id, body)
     case 'settings':
       return settings(method, body, role)
+    case 'rsvps':
+      return rsvps(method, target.id, body, role)
     default:
       return botJson({ error: 'That resource is not on the desk.' }, 404)
   }
@@ -782,6 +787,94 @@ async function settings(
     })
   }
   return botJson({ error: 'That action is not on the desk.' }, 405)
+}
+
+async function rsvps(
+  method: string,
+  id: string | null,
+  body: Record<string, unknown>,
+  role: BotRole,
+): Promise<Response> {
+  if (method === 'GET' && !id) {
+    return botJson({ rsvps: (await listRsvps()).map(toBotRsvp) })
+  }
+  if (method === 'GET' && id) {
+    const wedding = await readRsvp(id)
+    if (!wedding)
+      return botJson({ error: 'That RSVP is not on the desk.' }, 404)
+    return botJson({ rsvp: toBotRsvp(wedding) })
+  }
+  if ((method === 'PATCH' || method === 'PUT') && id) {
+    if (!canManage(role)) {
+      return botJson({ error: 'Only the CEO can turn a guest link on.' }, 403)
+    }
+    const wedding = await readRsvp(id)
+    if (!wedding)
+      return botJson({ error: 'That RSVP is not on the desk.' }, 404)
+    const open = guestLinkOn(body)
+    if (open === null) {
+      return botJson(
+        { error: 'Send guestLink on to open the guest link.' },
+        400,
+      )
+    }
+    wedding.paid = open
+    await writeRsvp(wedding)
+    return botJson({ rsvp: toBotRsvp(wedding) })
+  }
+  return botJson({ error: 'That action is not on the desk.' }, 405)
+}
+
+function toBotRsvp(wedding: RsvpWedding) {
+  const stats = overviewStats(wedding, Date.now())
+  return {
+    id: wedding.slug,
+    partnerOne: wedding.partnerOne,
+    partnerTwo: wedding.partnerTwo,
+    email: wedding.email,
+    eventDate: wedding.eventDate,
+    venue: wedding.venue,
+    price: Math.round(wedding.priceCents / 100),
+    paid: wedding.paid ? 'yes' : 'no',
+    guestLink: wedding.paid ? 'on' : 'off',
+    guests: stats.guests,
+    repliesIn: stats.repliedGuests,
+    meals: stats.meals,
+    dietaryNotes: dietaryNotes(wedding),
+    songs: songRows(wedding).map((row) => ({
+      title: row.title,
+      artist: row.artist,
+      count: row.count,
+      who: row.who,
+      status: row.status,
+    })),
+  }
+}
+
+function dietaryNotes(wedding: RsvpWedding): { guest: string; note: string }[] {
+  const notes: { guest: string; note: string }[] = []
+  for (const party of wedding.parties) {
+    for (const guest of party.guests) {
+      const parts = [...guest.dietary, guest.dietaryNote]
+        .map((item) => item.trim())
+        .filter((item) => item !== '')
+      if (parts.length === 0) continue
+      notes.push({
+        guest: `${guest.firstName} ${guest.lastName}`.trim(),
+        note: parts.join(', '),
+      })
+    }
+  }
+  return notes
+}
+
+function guestLinkOn(body: Record<string, unknown>): boolean | null {
+  const link = body.guestLink
+  if (link === 'on' || link === true) return true
+  if (link === 'off' || link === false) return false
+  if (body.paid === 'yes' || body.paid === true) return true
+  if (body.paid === 'no' || body.paid === false) return false
+  return null
 }
 
 function leadDraft(body: Record<string, unknown>, current: LeadView | null) {

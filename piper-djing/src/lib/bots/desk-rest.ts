@@ -14,6 +14,7 @@ const RESOURCES = [
   'externals',
   'venues',
   'settings',
+  'rsvps',
 ] as const
 
 export type DeskBotTarget = {
