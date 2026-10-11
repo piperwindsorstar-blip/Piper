@@ -43,11 +43,12 @@ function BotsPage() {
         className={`${deskCard} grid gap-3 sm:grid-cols-2`}
         onSubmit={(event) => {
           event.preventDefault()
-          const form = new FormData(event.currentTarget)
+          const form = event.currentTarget
+          const data = new FormData(form)
           void save({
             data: {
-              name: String(form.get('name') ?? ''),
-              role: String(form.get('role') ?? ''),
+              name: String(data.get('name') ?? ''),
+              role: String(data.get('role') ?? ''),
             },
           }).then(async (result) => {
             if (!result.ok) {
@@ -57,7 +58,7 @@ function BotsPage() {
             }
             setError(null)
             setToken(result.token)
-            event.currentTarget.reset()
+            form.reset()
             await router.invalidate()
           })
         }}
