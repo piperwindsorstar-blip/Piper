@@ -30,7 +30,6 @@ import {
   partiesWaiting,
   partyByToken,
   partyLine,
-  reminderLetter,
   rsvpPath,
   setSongStatus,
   shortMonthDay,
@@ -469,6 +468,7 @@ export const getRsvpManage = createServerFn({ method: 'GET' }).handler(
   async () => {
     const wedding = await ownedWedding()
     if (!wedding) return null
+    const { deliverDueReminders } = await import('./reminders.server.ts')
     await deliverDueReminders(wedding)
     const desk = await isDesk()
     if (!wedding.paid && !desk) {
@@ -629,34 +629,6 @@ export const downloadRsvpCsv = createServerFn({ method: 'GET' })
     return csvFor(wedding, data.kind as CsvKind)
   })
 
-async function mailParties(
-  wedding: RsvpWedding,
-  parties: RsvpWedding['parties'],
-): Promise<{ sent: number; detail: string }> {
-  let sent = 0
-  let detail = ''
-  for (const party of parties) {
-    const result = await emailLetter(
-      party.email,
-      reminderLetter(wedding, party, publicUrl(rsvpPath(wedding.slug))),
-    )
-    if (result.delivered) sent += 1
-    else detail = result.detail
-  }
-  return { sent, detail }
-}
-
-export async function deliverDueReminders(wedding: RsvpWedding): Promise<void> {
-  const today = torontoToday()
-  const parties = partiesToRemind(wedding, today)
-  if (parties.length === 0) return
-  const result = await mailParties(wedding, parties)
-  if (result.sent === parties.length) {
-    wedding.remindedOn = today
-    await writeRsvp(wedding)
-  }
-}
-
 export const sendRsvpReminders = createServerFn({ method: 'POST' })
   .validator((data: { now?: boolean } | undefined) => ({
     now: data?.now === true,
@@ -677,6 +649,7 @@ export const sendRsvpReminders = createServerFn({ method: 'POST' })
         detail: 'Nobody is waiting on an email.',
       }
     }
+    const { mailParties } = await import('./reminders.server.ts')
     const result = await mailParties(wedding, parties)
     if (!data.now && result.sent === parties.length) {
       wedding.remindedOn = torontoToday()
@@ -693,6 +666,7 @@ export const getRsvpDesk = createServerFn({ method: 'GET' }).handler(
   async () => {
     if (!(await isDesk())) return []
     const weddings = await listRsvps()
+    const { deliverDueReminders } = await import('./reminders.server.ts')
     for (const wedding of weddings) await deliverDueReminders(wedding)
     return weddings.map((wedding) => ({
       slug: wedding.slug,
