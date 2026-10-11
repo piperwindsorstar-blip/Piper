@@ -6,11 +6,11 @@ const CSP = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://grok.com",
+  "script-src 'self' 'unsafe-inline' https://grok.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data:",
-  "connect-src 'self' https://grok.com https://*.grok.com",
+  "connect-src 'self' https://grok.com https://*.grok.com https://cloudflareinsights.com",
 ].join('; ')
 
 function clientScheme(request: Request, url: URL): string {

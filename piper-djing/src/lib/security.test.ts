@@ -64,10 +64,10 @@ describe('security headers', () => {
       'strict-origin-when-cross-origin',
     )
     assert.equal(response.headers.get('x-frame-options'), 'DENY')
-    assert.match(
-      response.headers.get('content-security-policy') ?? '',
-      /frame-ancestors 'none'/,
-    )
+    const policy = response.headers.get('content-security-policy') ?? ''
+    assert.match(policy, /frame-ancestors 'none'/)
+    assert.match(policy, /https:\/\/static\.cloudflareinsights\.com/)
+    assert.match(policy, /connect-src[^;]*https:\/\/cloudflareinsights\.com/)
   })
 
   it('does not pin localhost to https', () => {
