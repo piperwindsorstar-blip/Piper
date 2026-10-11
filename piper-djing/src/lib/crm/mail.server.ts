@@ -200,6 +200,10 @@ async function deliver(to: string, letter: Letter): Promise<MailResult> {
       detail: `The ${PUBLIC_EMAIL} inbox needs its Gmail app password before it can send. ${saved}`,
     }
   }
+  if (usesEdgeBook()) {
+    const { sendEdgeMail } = await import('./smtp-edge.ts')
+    return sendEdgeMail(smtp, to, letter)
+  }
   try {
     const transport = nodemailer.createTransport({
       host: smtp.host,

@@ -18,6 +18,7 @@ import {
   noteLookup,
   overviewStats,
   partiesToRemind,
+  partiesWaiting,
   parseWedding,
   quoteRsvp,
   repliesLocked,
@@ -222,6 +223,10 @@ describe('rsvp songs, mail, and csv', () => {
     )
     assert.deepEqual(names, ['thompson'])
     assert.deepEqual(partiesToRemind(sampleWedding(), '2027-05-02'), [])
+    assert.deepEqual(
+      partiesWaiting(sampleWedding()).map((party) => party.id),
+      ['thompson'],
+    )
   })
 
   it('builds a confirmation that stays inside the party', () => {

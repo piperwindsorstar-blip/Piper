@@ -455,6 +455,11 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
               setBusy(false)
               return
             }
+            if (!result.mailed) {
+              setError(result.detail || 'The email was not sent.')
+              setBusy(false)
+              return
+            }
             await router.navigate({
               to: '/rsvp/$slug/p/$token/done',
               params: { slug: data.slug, token: data.party.token },

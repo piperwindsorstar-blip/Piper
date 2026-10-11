@@ -9,6 +9,7 @@ import {
   saveRsvpParty,
   saveRsvpSetup,
   saveSongStatus,
+  sendRsvpReminders,
 } from '../../lib/rsvp/rsvp.functions.ts'
 import type { getRsvpManage } from '../../lib/rsvp/rsvp.functions.ts'
 import { downloadText, rsvpButton, rsvpField, rsvpGhost } from './shell.tsx'
@@ -815,6 +816,9 @@ export function Songs({ data }: { data: ReadyManage }) {
 
 export function Exports({ data }: { data: ReadyManage }) {
   const load = useServerFn(downloadRsvpCsv)
+  const remind = useServerFn(sendRsvpReminders)
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
   const today = data.wedding.eventDate || 'rsvp'
   async function grab(
     kind: 'caterer' | 'songs' | 'guests' | 'seating',
@@ -856,10 +860,34 @@ export function Exports({ data }: { data: ReadyManage }) {
           onClick={() => void grab('seating', 'seating')}
         />
       </div>
-      <p className="mt-4 text-sm text-[var(--text-muted)]">
-        Still waiting on {data.stats.waitingParties} parties. Reminder emails
-        stay on the desk so a click here does not send mail.
-      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className="min-h-11 rounded-full bg-[var(--pink)] px-4 text-sm font-semibold text-[#0D0D0D]"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true)
+            setNotice('')
+            void remind({ data: { now: true } }).then((result) => {
+              setBusy(false)
+              setNotice(
+                result.ok
+                  ? result.detail
+                  : result.detail || 'The email was not sent.',
+              )
+            })
+          }}
+        >
+          Email parties still waiting
+        </button>
+        <p className="text-sm text-[var(--text-muted)]">
+          Still waiting on {data.stats.waitingParties} parties. The automatic
+          note goes out 7 days before the deadline.
+        </p>
+      </div>
+      {notice ? (
+        <p className="mt-3 text-sm text-[var(--text-muted)]">{notice}</p>
+      ) : null}
     </div>
   )
 }

@@ -27,6 +27,7 @@ import {
   overviewStats,
   parseWedding,
   partiesToRemind,
+  partiesWaiting,
   partyByToken,
   partyLine,
   reminderLetter,
@@ -361,22 +362,29 @@ export const saveHouseholdReply = createServerFn({ method: 'POST' })
     })
     if (!result.ok) return result
     await writeRsvp(result.wedding)
-    if (data.final === true) {
-      const url = editUrl(result.wedding.slug, result.party.token)
-      if (result.party.email.includes('@')) {
-        await emailLetter(
-          result.party.email,
-          confirmationLetter(result.wedding, result.party, url),
-        )
-      }
-      if (result.wedding.email.includes('@')) {
-        await emailLetter(
-          result.wedding.email,
-          coupleNotice(result.wedding, result.party),
-        )
+    if (data.final !== true) return { ok: true as const, mailed: true }
+    if (!result.party.email.includes('@')) {
+      return {
+        ok: true as const,
+        mailed: false,
+        detail: 'Enter an email for the confirmation.',
       }
     }
-    return { ok: true as const }
+    const url = editUrl(result.wedding.slug, result.party.token)
+    const guest = await emailLetter(
+      result.party.email,
+      confirmationLetter(result.wedding, result.party, url),
+    )
+    if (result.wedding.email.includes('@')) {
+      await emailLetter(
+        result.wedding.email,
+        coupleNotice(result.wedding, result.party),
+      )
+    }
+    if (!guest.delivered) {
+      return { ok: true as const, mailed: false, detail: guest.detail }
+    }
+    return { ok: true as const, mailed: true }
   })
 
 export const getRsvpCalendar = createServerFn({ method: 'GET' })
@@ -407,7 +415,16 @@ export const requestRsvpSignIn = createServerFn({ method: 'POST' })
       wedding.signInToken = token
       wedding.signInExpires = new Date(Date.now() + 86_400_000).toISOString()
       await writeRsvp(wedding)
-      await emailLetter(email, signInLetter(publicUrl(`/rsvp/open/${token}`)))
+      const mailed = await emailLetter(
+        email,
+        signInLetter(publicUrl(`/rsvp/open/${token}`)),
+      )
+      if (!mailed.delivered) {
+        return {
+          ok: false as const,
+          error: 'The email could not be sent. Try again in a minute.',
+        }
+      }
     }
     return { ok: true as const }
   })
@@ -452,6 +469,7 @@ export const getRsvpManage = createServerFn({ method: 'GET' }).handler(
   async () => {
     const wedding = await ownedWedding()
     if (!wedding) return null
+    await deliverDueReminders(wedding)
     const desk = await isDesk()
     if (!wedding.paid && !desk) {
       return {
@@ -611,33 +629,71 @@ export const downloadRsvpCsv = createServerFn({ method: 'GET' })
     return csvFor(wedding, data.kind as CsvKind)
   })
 
-export const sendRsvpReminders = createServerFn({ method: 'POST' }).handler(
-  async () => {
+async function mailParties(
+  wedding: RsvpWedding,
+  parties: RsvpWedding['parties'],
+): Promise<{ sent: number; detail: string }> {
+  let sent = 0
+  let detail = ''
+  for (const party of parties) {
+    const result = await emailLetter(
+      party.email,
+      reminderLetter(wedding, party, publicUrl(rsvpPath(wedding.slug))),
+    )
+    if (result.delivered) sent += 1
+    else detail = result.detail
+  }
+  return { sent, detail }
+}
+
+export async function deliverDueReminders(wedding: RsvpWedding): Promise<void> {
+  const today = torontoToday()
+  const parties = partiesToRemind(wedding, today)
+  if (parties.length === 0) return
+  const result = await mailParties(wedding, parties)
+  if (result.sent === parties.length) {
+    wedding.remindedOn = today
+    await writeRsvp(wedding)
+  }
+}
+
+export const sendRsvpReminders = createServerFn({ method: 'POST' })
+  .validator((data: { now?: boolean } | undefined) => ({
+    now: data?.now === true,
+  }))
+  .handler(async ({ data }) => {
     const wedding = await ownedWedding()
     const desk = await isDesk()
     if (!wedding || (!wedding.paid && !desk)) {
-      return { ok: false as const, sent: 0 }
+      return { ok: false as const, sent: 0, detail: 'This RSVP is not open.' }
     }
-    const today = torontoToday()
-    const parties = partiesToRemind(wedding, today)
-    for (const party of parties) {
-      await emailLetter(
-        party.email,
-        reminderLetter(wedding, party, publicUrl(rsvpPath(wedding.slug))),
-      )
+    const parties = data.now
+      ? partiesWaiting(wedding)
+      : partiesToRemind(wedding, torontoToday())
+    if (parties.length === 0) {
+      return {
+        ok: true as const,
+        sent: 0,
+        detail: 'Nobody is waiting on an email.',
+      }
     }
-    if (parties.length > 0) {
-      wedding.remindedOn = today
+    const result = await mailParties(wedding, parties)
+    if (!data.now && result.sent === parties.length) {
+      wedding.remindedOn = torontoToday()
       await writeRsvp(wedding)
     }
-    return { ok: true as const, sent: parties.length }
-  },
-)
+    return {
+      ok: result.sent > 0,
+      sent: result.sent,
+      detail: result.sent > 0 ? `Sent ${result.sent}.` : result.detail,
+    }
+  })
 
 export const getRsvpDesk = createServerFn({ method: 'GET' }).handler(
   async () => {
     if (!(await isDesk())) return []
     const weddings = await listRsvps()
+    for (const wedding of weddings) await deliverDueReminders(wedding)
     return weddings.map((wedding) => ({
       slug: wedding.slug,
       couple: coupleTitle(wedding),

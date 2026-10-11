@@ -811,6 +811,12 @@ export function setSongStatus(
   return next
 }
 
+function unansweredParties(wedding: RsvpWedding): RsvpParty[] {
+  return wedding.parties.filter(
+    (party) => party.email.includes('@') && !party.lastRepliedAt,
+  )
+}
+
 export function partiesToRemind(
   wedding: RsvpWedding,
   today: string,
@@ -818,9 +824,13 @@ export function partiesToRemind(
   if (!wedding.autoRemind || !wedding.paid) return []
   if (shiftDate(wedding.deadline, -7) !== today) return []
   if (wedding.remindedOn === today) return []
-  return wedding.parties.filter(
-    (party) => party.email.trim().length > 0 && !party.lastRepliedAt,
-  )
+  return unansweredParties(wedding)
+}
+
+/** Parties a manual reminder can reach. The 7-day rule does not apply. */
+export function partiesWaiting(wedding: RsvpWedding): RsvpParty[] {
+  if (!wedding.paid) return []
+  return unansweredParties(wedding)
 }
 
 export function csvCell(value: string): string {

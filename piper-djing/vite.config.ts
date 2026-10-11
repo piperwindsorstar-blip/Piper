@@ -45,6 +45,9 @@ const config = defineConfig({
   server: {
     allowedHosts: ['.trycloudflare.com'],
   },
+  ssr: {
+    external: ['cloudflare:sockets'],
+  },
   build: {
     rolldownOptions: {
       output: {
@@ -76,7 +79,7 @@ const config = defineConfig({
           }
         : {}),
       rollupConfig: {
-        external: [/^@sentry\//, 'pg'],
+        external: [/^@sentry\//, 'pg', 'cloudflare:sockets'],
       },
     }),
     tailwindcss(),
