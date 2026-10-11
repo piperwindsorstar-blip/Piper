@@ -430,6 +430,9 @@ const APPEARANCE_QUESTIONS: Question[] = [
   },
 ]
 
+export const SONG_HELPER =
+  'Search for the song, or paste a YouTube, Spotify or SoundCloud link.'
+
 const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
   id: `moment-${MOMENTS[index]?.key ?? index}`,
   section: 'timeline' as const,
@@ -437,7 +440,7 @@ const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
   group: row.section,
   type: 'song' as const,
   label: songTitle(row.activity),
-  helper: 'Search for it or paste a YouTube, Spotify or SoundCloud link.',
+  helper: SONG_HELPER,
   rail: row.activity,
   timelineIndex: index,
 }))
@@ -515,7 +518,7 @@ export function timelineQuestions(
         group: row.section,
         type: 'song' as const,
         label: songTitle(row.label.trim() || row.activity),
-        helper: 'Search for it or paste a YouTube, Spotify or SoundCloud link.',
+        helper: SONG_HELPER,
         rail: row.label.trim() || row.activity,
         timelineIndex: index,
       },

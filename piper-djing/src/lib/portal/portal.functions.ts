@@ -15,7 +15,9 @@ import {
 import { isPlanLocked } from '../crm/planning.ts'
 import { changeLetter, planLetter } from './letter.ts'
 import { overallProgress } from './progress.ts'
+import { isDesk } from '../auth/session.server.ts'
 import { coupleSlugFromCookie, rememberCoupleSlug } from './session.server.ts'
+import { lookupSongs } from './song-search.ts'
 
 export const openCouplePortal = createServerFn({ method: 'POST' })
   .validator((data: { slug: string }) => data)
@@ -153,4 +155,18 @@ export const requestPortalChange = createServerFn({ method: 'POST' })
     )
     if (!mailed.delivered) return { ok: false as const, error: mailed.detail }
     return { ok: true as const }
+  })
+
+export const searchSongs = createServerFn({ method: 'POST' })
+  .validator((data: { query: string }) => {
+    const query = typeof data.query === 'string' ? data.query : ''
+    return { query: query.slice(0, 80) }
+  })
+  .handler(async ({ data }) => {
+    if (!coupleSlugFromCookie() && !(await isDesk())) return []
+    try {
+      return await lookupSongs(data.query)
+    } catch {
+      return []
+    }
   })

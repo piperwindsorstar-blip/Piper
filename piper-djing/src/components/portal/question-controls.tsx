@@ -7,7 +7,8 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useServerFn } from '@tanstack/react-start'
+import { useEffect, useRef, useState } from 'react'
 import type {
   AppearanceRole,
   AppearanceRow,
@@ -15,6 +16,9 @@ import type {
   SongItem,
 } from '../../lib/crm/planning.ts'
 import { itemAt, linkPlatform, textValue } from '../../lib/portal/questions.ts'
+import { searchSongs } from '../../lib/portal/portal.functions.ts'
+import { isSongLink } from '../../lib/portal/song-search.ts'
+import type { SongHit } from '../../lib/portal/song-search.ts'
 import type { Question } from '../../lib/portal/questions.ts'
 import { useListSensors } from './ordered-moments.tsx'
 import { usePortal } from './portal-state.tsx'
@@ -330,19 +334,18 @@ function Song({
         </div>
       ) : (
         <>
-          {/* TODO: connect a real song search API. Pasting a link works today. */}
-          <label className="block">
-            <span className="sr-only">Song or link</span>
-            <input
-              className="portal-input"
-              placeholder="Search a song or paste a link"
-              value={row.link}
-              disabled={disabled}
-              onChange={(event) =>
-                editTimeline(index, { link: event.target.value })
-              }
-            />
-          </label>
+          <SongSearch
+            disabled={disabled}
+            label="Song or link"
+            onLink={(link) => editTimeline(index, { link })}
+            onPick={(hit) =>
+              editTimeline(index, {
+                song: hit.title,
+                artist: hit.artist,
+                link: hit.link,
+              })
+            }
+          />
           {row.link.trim() ? <Platform value={row.link} /> : null}
           {picked ? (
             <div className="mt-4 flex items-center gap-4 rounded-[18px] border-2 border-[var(--pink)] bg-[var(--pink-tint)] p-3">
@@ -937,15 +940,15 @@ function SongBits({
 }) {
   return (
     <div className="grid gap-2">
-      {/* TODO: connect a real song search API. Pasting a link works today. */}
-      <input
-        className="portal-input"
-        aria-label={`${labelPrefix} song or link`}
-        placeholder="Song or paste a link"
-        value={song.link}
+      <SongSearch
         disabled={disabled}
-        onChange={(event) => onChange({ ...song, link: event.target.value })}
+        label={`${labelPrefix} song or link`}
+        onLink={(link) => onChange({ ...song, link })}
+        onPick={(hit) =>
+          onChange({ song: hit.title, artist: hit.artist, link: hit.link })
+        }
       />
+      {song.link.trim() ? <Platform value={song.link} /> : null}
       <input
         className="portal-input"
         aria-label={`${labelPrefix} title`}
@@ -1008,6 +1011,105 @@ function GripDots() {
         </g>
       ))}
     </svg>
+  )
+}
+
+function SongSearch({
+  disabled,
+  label,
+  onLink,
+  onPick,
+}: {
+  disabled: boolean
+  label: string
+  onLink: (link: string) => void
+  onPick: (hit: SongHit) => void
+}) {
+  const search = useServerFn(searchSongs)
+  const searchRef = useRef(search)
+  searchRef.current = search
+  const request = useRef(0)
+  const [draft, setDraft] = useState('')
+  const [hits, setHits] = useState<SongHit[]>([])
+  const [status, setStatus] = useState<'idle' | 'loading' | 'empty'>('idle')
+
+  useEffect(() => {
+    const query = draft.trim()
+    if (disabled || query.length < 2 || isSongLink(query)) {
+      setHits([])
+      setStatus('idle')
+      return
+    }
+    const id = request.current + 1
+    request.current = id
+    setStatus('loading')
+    let live = true
+    const timer = window.setTimeout(() => {
+      void searchRef.current({ data: { query } }).then((rows) => {
+        if (!live || request.current !== id) return
+        setHits(rows)
+        setStatus(rows.length === 0 ? 'empty' : 'idle')
+      })
+    }, 350)
+    return () => {
+      live = false
+      window.clearTimeout(timer)
+    }
+  }, [disabled, draft])
+
+  return (
+    <div>
+      <label className="block">
+        <span className="sr-only">{label}</span>
+        <input
+          className="portal-input"
+          placeholder="Search a song or paste a link"
+          value={draft}
+          disabled={disabled}
+          onChange={(event) => {
+            const next = event.target.value
+            setDraft(next)
+            if (isSongLink(next)) onLink(next.trim())
+          }}
+        />
+      </label>
+      {status === 'loading' ? (
+        <p className="mt-2 text-sm text-[var(--text-muted)]">Searching…</p>
+      ) : null}
+      {status === 'empty' ? (
+        <p className="mt-2 text-sm text-[var(--text-muted)]">
+          No song under that name. Paste a link instead.
+        </p>
+      ) : null}
+      {hits.length > 0 ? (
+        <ul className="mt-2 grid gap-2">
+          {hits.map((hit, index) => (
+            <li key={`${hit.link}-${index}`}>
+              <button
+                type="button"
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-[18px] border border-[var(--border-strong)] bg-[var(--field)] px-4 py-3 text-left"
+                onClick={() => {
+                  onPick(hit)
+                  setDraft('')
+                  setHits([])
+                  setStatus('idle')
+                }}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-bold">{hit.title}</span>
+                  <span className="block truncate text-sm text-[var(--pink-soft)]">
+                    {hit.artist}
+                  </span>
+                </span>
+                <span className="shrink-0 text-sm text-[var(--text-muted)]">
+                  Use this
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   )
 }
 
