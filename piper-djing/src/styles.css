@@ -1,0 +1,341 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --color-paper: #f4f1ec;
+  --color-paper-deep: #e7e1d8;
+  --color-ivory: #fffcf8;
+  --color-ink: #1a1816;
+  --color-ink-soft: #2e2926;
+  --color-muted: #6f6a64;
+  --color-line: #e3ddd4;
+  --color-danger: #8d3b34;
+  --color-stage: #000000;
+  --color-night: #0b0f17;
+  --color-mark: #f034ea;
+  --color-mist: #f7f4fd;
+  --color-soft: #5e5775;
+  --color-neon: #ff007f;
+  --color-hot: #ff1493;
+  --color-rosy: #ec4899;
+  --color-rose2: #f43f5e;
+  --color-ink-950: #0d0d0d;
+  --color-ink-900: #121212;
+  --color-ink-800: #1a1a1a;
+  --color-ink-700: #262626;
+  --color-blush: #ffe6f2;
+  --color-violet: #7c3aed;
+  --color-lilac: #eee8ff;
+  --color-sky: #8fd3f4;
+  --color-ice: #e3f4fd;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --radius-card: 2rem;
+  --animate-brand-float: brand-float 4.5s ease-in-out infinite;
+  --animate-brand-glow: brand-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes brand-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes brand-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(240 52 234 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 32px 2px rgb(240 52 234 / 0.55);
+  }
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+dialog {
+  width: min(28rem, calc(100% - 2rem));
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-ivory);
+  padding: 1.75rem;
+  color: var(--color-ink);
+}
+
+dialog::backdrop {
+  background: rgb(26 24 22 / 0.45);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  background: var(--color-ivory);
+  padding: 0.75rem 1rem;
+  color: var(--color-ink);
+}
+
+/* Wedding page tokens stay on this route. The home page scopes its own dark type. */
+.weddings {
+  --color-paper: #ffffff;
+  --color-ink: #1c1533;
+  --color-line: #e3dcf2;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+}
+
+.weddings :focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+.home {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+.home :focus-visible {
+  outline: 2px solid #ff1493;
+  outline-offset: 2px;
+}
+
+.text-glow {
+  text-shadow: 0 0 30px rgba(255, 0, 127, 0.55);
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(#e3dcf2 1px, transparent 1px),
+    linear-gradient(90deg, #e3dcf2 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.grid-fade {
+  -webkit-mask-image: radial-gradient(70% 70% at 50% 40%, #000, transparent);
+  mask-image: radial-gradient(70% 70% at 50% 40%, #000, transparent);
+}
+
+@keyframes wed-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.weddings .marquee {
+  animation: wed-marquee 36s linear infinite;
+  width: max-content;
+}
+
+@keyframes home-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.home .marquee {
+  animation: home-marquee 34s linear infinite;
+  width: max-content;
+}
+
+@keyframes home-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-slow {
+  animation: home-spin 22s linear infinite;
+}
+
+@keyframes home-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-glow {
+  animation: home-pulse 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+html:has(.desk) {
+  scroll-padding-bottom: 13rem;
+}
+
+.desk :is(a, button, input, select, textarea, summary) {
+  scroll-margin-bottom: 13rem;
+}
+
+.desk {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  background: #0d0d0d;
+  color: #f5f2f4;
+  font-family: var(--font-sans);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+.desk :focus-visible {
+  outline: 2px solid #ff1493;
+  outline-offset: 2px;
+}
+
+.desk .field {
+  color: rgb(255 255 255 / 0.65);
+}
+
+.desk input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.desk select,
+.desk textarea {
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 0.5rem;
+  background: #0d0d0d;
+  color: #fff;
+  padding: 0.625rem 0.75rem;
+}
+
+.desk input:not([type='checkbox']):not([type='radio']):not([type='file']):focus,
+.desk select:focus,
+.desk textarea:focus {
+  border-color: #ff007f;
+}
+
+.desk input[type='date'],
+.desk input[type='datetime-local'] {
+  color-scheme: dark;
+}
+
+.desk input[type='checkbox'],
+.desk input[type='radio'] {
+  accent-color: #ff007f;
+}
+
+.desk input[type='file'] {
+  color: rgb(255 255 255 / 0.85);
+}
+
+.desk .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.desk .no-scrollbar {
+  scrollbar-width: none;
+}
+
+.portal {
+  --bg: #0d0d0d;
+  --surface: #141416;
+  --field: #16161a;
+  --field-2: #1c1c21;
+  --border: #222228;
+  --border-strong: #34343a;
+  --line: #2a2a30;
+  --text: #ffffff;
+  --text-muted: #a9a9b2;
+  --text-faint: #8a8a94;
+  --pink: #ff4f9a;
+  --pink-soft: #ff8dbe;
+  --pink-tint: #2a1220;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.portal .portal-display {
+  font-family: 'Inter Display', Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.portal :focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
+}
+
+.portal .portal-input {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--field);
+  color: var(--text);
+  padding: 0.9rem 1rem;
+  font: inherit;
+}
+
+.portal .portal-input:disabled {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home .marquee,
+  .weddings .marquee,
+  .spin-slow,
+  .pulse-glow,
+  .desk .desk-motion,
+  .portal .portal-motion {
+    animation: none;
+    transition: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}

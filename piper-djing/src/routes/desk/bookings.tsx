@@ -1,0 +1,1704 @@
+import {
+  Link,
+  createFileRoute,
+  getRouteApi,
+  useRouter,
+} from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { ChevronDown, Plus, X } from 'lucide-react'
+import { useState } from 'react'
+import { PortalDeskFields } from '../../components/portal/desk-fields.tsx'
+import {
+  Chip,
+  DeskTitle,
+  deskCard,
+  deskDanger,
+  deskGhost,
+  deskPrimary,
+  invoiceTone,
+  statusTone,
+} from '../../components/desk-ui.tsx'
+import { isPackageId } from '../../lib/crm/defaults.ts'
+import {
+  externalCouple,
+  externalKindLabel,
+  externalVenues,
+} from '../../lib/crm/external-dates.ts'
+import type { ExternalDate } from '../../lib/crm/external-dates.ts'
+import { matchingVenue } from '../../lib/crm/venues.ts'
+import type { SavedVenue } from '../../lib/crm/venues.ts'
+import type { PackageId } from '../../lib/crm/defaults.ts'
+import { longDate } from '../../lib/crm/dates.ts'
+import { todayInToronto } from '../../lib/crm/date-request.ts'
+import {
+  addBooking,
+  addExternalDate,
+  addVenue,
+  changeStatus,
+  editVenue,
+  deleteBooking,
+  deleteExternal,
+  deleteVenue,
+  getBookings,
+  releaseExternal,
+  markSent,
+  markVoid,
+  recordPayment,
+  saveBooking,
+  sendBookingMail,
+  sendInvoiceMail,
+} from '../../lib/crm/desk.functions.ts'
+import { invoiceControls } from '../../lib/crm/booking-rules.ts'
+import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
+import { daysUntil } from '../../lib/desk-console.ts'
+import { deskHead } from '../../lib/desk-head.ts'
+import { dollarsToCents, cad } from '../../lib/crm/money.ts'
+import { applyDiscount, PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
+
+const deskRoute = getRouteApi('/desk')
+
+const FILTERS = [
+  ['All', 'all'],
+  ['Open', 'open'],
+  ['Held', 'hold'],
+  ['Booked', 'booked'],
+  ['Cancelled', 'cancelled'],
+] as const
+
+export const Route = createFileRoute('/desk/bookings')({
+  head: () => deskHead('Bookings · Piper DJing'),
+  loader: () => getBookings(),
+  component: BookingsPage,
+})
+
+function BookingsPage() {
+  const bookings = Route.useLoaderData()
+  const { payments, packages, externalDates, venues } =
+    deskRoute.useLoaderData()
+  const [filter, setFilter] = useState<(typeof FILTERS)[number][1]>('all')
+  const [samples, setSamples] = useState(true)
+  const pool = samples
+    ? bookings
+    : bookings.filter((booking) => !booking.sample)
+  const list = pool.filter(
+    (booking) => filter === 'all' || booking.status === filter,
+  )
+
+  return (
+    <div className="grid gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <DeskTitle kicker="Bookings" title="Bookings">
+          <p className="mt-1 text-sm text-white/65">
+            Delete removes the booking, the invoice, and the payments. The date
+            opens. An inquiry stays until you delete it on the leads page.
+          </p>
+        </DeskTitle>
+        <label className="flex items-center gap-2 text-sm text-white/65">
+          <input
+            type="checkbox"
+            checked={samples}
+            onChange={(event) => setSamples(event.target.checked)}
+          />
+          Show test samples
+        </label>
+      </div>
+      <NewBooking packages={packages} venues={venues} />
+      <ExternalDates dates={externalDates} venues={venues} />
+      <SavedVenues venues={venues} />
+      <div
+        role="tablist"
+        aria-label="Status"
+        className="no-scrollbar flex max-w-full gap-2 overflow-x-auto"
+      >
+        {FILTERS.map(([label, value]) => {
+          const count =
+            value === 'all'
+              ? null
+              : pool.filter((booking) => booking.status === value).length
+          return (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={filter === value}
+              onClick={() => setFilter(value)}
+              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-semibold ${
+                filter === value
+                  ? 'border-neon bg-neon text-white'
+                  : 'border-white/15 text-white/65 hover:text-white'
+              }`}
+            >
+              {label}
+              {count === null ? '' : ` · ${count}`}
+            </button>
+          )
+        })}
+      </div>
+      {bookings.length === 0 ? (
+        <p className="text-sm text-white/65">No bookings yet.</p>
+      ) : list.length === 0 ? (
+        <p className="text-sm text-white/65">No bookings here.</p>
+      ) : null}
+      <div className="grid gap-3">
+        {list.map((booking) => (
+          <BookingCard
+            key={booking.id}
+            booking={booking}
+            packages={packages}
+            venues={venues}
+            payments={payments.filter(
+              (payment) => payment.bookingId === booking.id,
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function NewBooking({
+  packages,
+  venues,
+}: {
+  packages: { id: string; name: string; cents: number }[]
+  venues: SavedVenue[]
+}) {
+  const add = useServerFn(addBooking)
+  const router = useRouter()
+  const prices = priceRecord(packages)
+  const [error, setError] = useState<string | null>(null)
+  const [packageId, setPackageId] = useState('full')
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(0)
+  const [preview, setPreview] = useState(() => ({
+    ...quote(
+      { packageId: 'full', withStag: false, uplights: 0, venueKm: [] },
+      prices,
+    ),
+    discountCents: 0,
+  }))
+
+  return (
+    <section className={`${deskCard} ${open ? 'border-neon/40' : ''}`}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span className="flex items-center gap-3 font-display text-xl font-bold">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-neon text-white">
+            {open ? (
+              <X className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            )}
+          </span>
+          New booking
+        </span>
+      </button>
+      <form
+        className={open ? 'mt-5 grid gap-4' : 'hidden'}
+        onChange={(event) => {
+          const next = liveQuote(event.currentTarget, prices)
+          if (next) setPreview(next)
+          setError(null)
+        }}
+        onSubmit={(event) => {
+          event.preventDefault()
+          const formElement = event.currentTarget
+          const form = new FormData(formElement)
+          const withStag = form.get('withStag') === 'on'
+          const discount = readDiscount(form)
+          if (!discount.ok) {
+            setError(discount.error)
+            return
+          }
+          void add({
+            data: {
+              partnerOne: String(form.get('partnerOne') ?? ''),
+              partnerTwo: String(form.get('partnerTwo') ?? ''),
+              email: String(form.get('email') ?? ''),
+              phone: String(form.get('phone') ?? ''),
+              eventDate: String(form.get('eventDate') ?? ''),
+              stagDate: withStag ? String(form.get('stagDate') ?? '') : null,
+              packageId: String(form.get('packageId') ?? 'full'),
+              withStag,
+              uplights: Number(form.get('uplights') ?? 0),
+              venueKm: kilometres(form),
+              venueName: String(form.get('venueName') ?? ''),
+              venueStreet: String(form.get('venueStreet') ?? ''),
+              venueTwoName: String(form.get('venueTwoName') ?? ''),
+              venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+              sample: form.get('sample') === 'on',
+              notes: String(form.get('notes') ?? ''),
+              discountCents: discount.cents,
+            },
+          }).then(async (result) => {
+            if (!result.ok) {
+              setError(result.error)
+              return
+            }
+            setError(null)
+            setOpen(false)
+            formElement.reset()
+            setDraft((value) => value + 1)
+            setPackageId('full')
+            setPreview({
+              ...quote(
+                {
+                  packageId: 'full',
+                  withStag: false,
+                  uplights: 0,
+                  venueKm: [],
+                },
+                prices,
+              ),
+              discountCents: 0,
+            })
+            await router.invalidate()
+          })
+        }}
+      >
+        <BookingFields
+          key={draft}
+          packageId={packageId}
+          onPackage={setPackageId}
+          packages={packages}
+          venues={venues}
+        />
+        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/10 bg-ink-950 p-4">
+          <div className="flex gap-8">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">
+                Total
+              </p>
+              <p className="font-display text-2xl font-extrabold tabular-nums">
+                {cad(preview.totalCents)}
+              </p>
+              {preview.discountCents > 0 ? (
+                <p className="text-xs text-white/65">
+                  {cad(preview.discountCents)} off
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">
+                Deposit
+              </p>
+              <p className="font-display text-2xl font-extrabold text-hot tabular-nums">
+                {cad(preview.depositCents)}
+              </p>
+            </div>
+          </div>
+          <p className="max-w-xs text-xs text-white/65">
+            Travel is added from kilometres once the venue is set. The first 20
+            are included.
+          </p>
+          <button type="submit" className={deskPrimary}>
+            Save as open
+          </button>
+        </div>
+      </form>
+    </section>
+  )
+}
+
+function ExternalDates({
+  dates,
+  venues,
+}: {
+  dates: ExternalDate[]
+  venues: SavedVenue[]
+}) {
+  const add = useServerFn(addExternalDate)
+  const release = useServerFn(releaseExternal)
+  const remove = useServerFn(deleteExternal)
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+  const active = dates.filter((row) => !row.released)
+  const released = dates.filter((row) => row.released)
+
+  return (
+    <section className={deskCard}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span className="flex items-center gap-3 font-display text-xl font-bold">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-neon text-white">
+            {open ? (
+              <X className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            )}
+          </span>
+          External date
+        </span>
+      </button>
+      <p className="mt-3 text-sm text-white/65">
+        A wedding or other event you play for another company. The date is
+        booked. There is no invoice.
+      </p>
+      <form
+        className={open ? 'mt-5 grid gap-4' : 'hidden'}
+        onSubmit={(event) => {
+          event.preventDefault()
+          const formElement = event.currentTarget
+          const form = new FormData(formElement)
+          void add({
+            data: {
+              eventDate: String(form.get('eventDate') ?? ''),
+              kind: String(form.get('kind') ?? ''),
+              company: String(form.get('company') ?? ''),
+              label: String(form.get('label') ?? ''),
+              partnerOne: String(form.get('partnerOne') ?? ''),
+              partnerTwo: String(form.get('partnerTwo') ?? ''),
+              venueName: String(form.get('venueName') ?? ''),
+              venueStreet: String(form.get('venueStreet') ?? ''),
+              venueTwoName: String(form.get('venueTwoName') ?? ''),
+              venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+              notes: String(form.get('notes') ?? ''),
+            },
+          }).then(async (result) => {
+            if (!result.ok) {
+              setNotice(null)
+              setError(result.error)
+              return
+            }
+            setError(null)
+            setNotice('Booked. The date is taken.')
+            setOpen(false)
+            formElement.reset()
+            setDraft((value) => value + 1)
+            await router.invalidate()
+          })
+        }}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm">
+            Date
+            <input
+              name="eventDate"
+              type="date"
+              required
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            What it is
+            <select
+              name="kind"
+              defaultValue="wedding"
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            >
+              <option value="wedding">Wedding</option>
+              <option value="event">Event</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Company
+            <input
+              name="company"
+              required
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Who or what
+            <input
+              name="label"
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            First partner
+            <input
+              name="partnerOne"
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Second partner
+            <input
+              name="partnerTwo"
+              maxLength={80}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <VenuePair
+            key={draft}
+            venues={venues}
+            chooseLabel="Choose a venue"
+            nameLabel="Venue name"
+            streetLabel="Venue address"
+            nameField="venueName"
+            streetField="venueStreet"
+            secondChooseLabel="Choose a second venue"
+            secondNameLabel="Second venue name"
+            secondStreetLabel="Second venue address"
+            secondNameField="venueTwoName"
+            secondStreetField="venueTwoStreet"
+            span="sm:col-span-2"
+            labelClass="grid gap-1 text-sm"
+            inputClass="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
+        </div>
+        <label className="grid gap-1 text-sm">
+          Note
+          <textarea
+            name="notes"
+            maxLength={500}
+            rows={2}
+            className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
+        </label>
+        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        <button type="submit" className={deskPrimary}>
+          Book this date
+        </button>
+      </form>
+      {notice ? <p className="mt-4 text-sm text-white">{notice}</p> : null}
+      {dates.length === 0 ? (
+        <p className="mt-4 text-sm text-white/65">No external dates yet.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-white/10">
+          {[...active, ...released].map((row) => (
+            <li
+              key={row.id}
+              className="flex flex-wrap items-center justify-between gap-3 py-3"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  {row.company}
+                  {externalCouple(row) ? ` · ${externalCouple(row)}` : ''}
+                </p>
+                <p className="text-sm text-white/65">
+                  {longDate(row.eventDate)} · {externalKindLabel(row.kind)}
+                  {row.notes ? ` · ${row.notes}` : ''}
+                </p>
+                {externalVenues(row).map((venue) => (
+                  <p key={venue} className="text-sm text-white/65">
+                    {venue}
+                  </p>
+                ))}
+                {row.released ? (
+                  <p className="text-sm text-white/55">
+                    A released date stays released.
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {row.released ? (
+                  <Chip tone="gray">released</Chip>
+                ) : (
+                  <button
+                    type="button"
+                    className={deskGhost}
+                    onClick={() => {
+                      void release({ data: { id: row.id } }).then(
+                        async (result) => {
+                          if (!result.ok) {
+                            setNotice(null)
+                            setError(result.error)
+                            return
+                          }
+                          setError(null)
+                          setNotice('Released. A released date stays released.')
+                          await router.invalidate()
+                        },
+                      )
+                    }}
+                  >
+                    Release
+                  </button>
+                )}
+                {confirmId === row.id ? (
+                  <>
+                    <button
+                      type="button"
+                      className={deskDanger}
+                      onClick={() => {
+                        void remove({ data: { id: row.id } }).then(
+                          async (result) => {
+                            if (!result.ok) {
+                              setNotice(null)
+                              setError(result.error)
+                              return
+                            }
+                            setConfirmId(null)
+                            setError(null)
+                            setNotice('Deleted. The date is open.')
+                            await router.invalidate()
+                          },
+                        )
+                      }}
+                    >
+                      Delete this date
+                    </button>
+                    <button
+                      type="button"
+                      className={deskGhost}
+                      onClick={() => setConfirmId(null)}
+                    >
+                      Keep it
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className={deskDanger}
+                    onClick={() => setConfirmId(row.id)}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function VenueRow({
+  venue,
+  onError,
+  onNotice,
+}: {
+  venue: SavedVenue
+  onError: (message: string | null) => void
+  onNotice: (message: string | null) => void
+}) {
+  const edit = useServerFn(editVenue)
+  const remove = useServerFn(deleteVenue)
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <li className="py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold">{venue.name}</p>
+          <p className="text-sm text-white/65">
+            {venue.street || 'No address yet'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={deskGhost}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? 'Close' : 'Edit'}
+          </button>
+          <button
+            type="button"
+            className={deskDanger}
+            onClick={() => {
+              void remove({ data: { id: venue.id } }).then(async (result) => {
+                if (!result.ok) {
+                  onNotice(null)
+                  onError(result.error)
+                  return
+                }
+                onError(null)
+                onNotice('Removed from the list.')
+                await router.invalidate()
+              })
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      {open ? (
+        <form
+          className="mt-3 grid gap-3 sm:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const form = new FormData(event.currentTarget)
+            void edit({
+              data: {
+                id: venue.id,
+                name: String(form.get('name') ?? ''),
+                street: String(form.get('street') ?? ''),
+              },
+            }).then(async (result) => {
+              if (!result.ok) {
+                onNotice(null)
+                onError(result.error)
+                return
+              }
+              onError(null)
+              onNotice('Saved. That venue is updated.')
+              setOpen(false)
+              await router.invalidate()
+            })
+          }}
+        >
+          <label className="grid gap-1 text-sm">
+            Venue name
+            <input
+              name="name"
+              required
+              maxLength={160}
+              defaultValue={venue.name}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Venue address
+            <input
+              name="street"
+              maxLength={160}
+              defaultValue={venue.street}
+              className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+            />
+          </label>
+          <div className="sm:col-span-2">
+            <button type="submit" className={deskPrimary}>
+              Save changes
+            </button>
+          </div>
+        </form>
+      ) : null}
+    </li>
+  )
+}
+
+function SavedVenues({ venues }: { venues: SavedVenue[] }) {
+  const add = useServerFn(addVenue)
+  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  return (
+    <section className={deskCard}>
+      <h2 className="font-display text-xl font-bold">Saved venues</h2>
+      <p className="mt-3 text-sm text-white/65">
+        Every venue on the book is kept here. Pick one on a booking or an
+        external date and the address fills in. Edit changes the name and the
+        address. Saving the same name updates the address. Delete removes it
+        from this list until that name is saved again.
+      </p>
+      <form
+        className="mt-5 grid gap-4 sm:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          const formElement = event.currentTarget
+          const form = new FormData(formElement)
+          void add({
+            data: {
+              name: String(form.get('name') ?? ''),
+              street: String(form.get('street') ?? ''),
+            },
+          }).then(async (result) => {
+            if (!result.ok) {
+              setNotice(null)
+              setError(result.error)
+              return
+            }
+            setError(null)
+            setNotice('Saved. That venue is on the list.')
+            formElement.reset()
+            await router.invalidate()
+          })
+        }}
+      >
+        <label className="grid gap-1 text-sm">
+          Venue name
+          <input
+            name="name"
+            required
+            maxLength={160}
+            className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Venue address
+          <input
+            name="street"
+            maxLength={160}
+            className="rounded-lg border border-white/15 bg-ink-950 px-3 py-2"
+          />
+        </label>
+        <div className="sm:col-span-2">
+          <button type="submit" className={deskPrimary}>
+            Save venue
+          </button>
+        </div>
+      </form>
+      {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+      {notice ? <p className="mt-4 text-sm text-white">{notice}</p> : null}
+      {venues.length === 0 ? (
+        <p className="mt-4 text-sm text-white/65">No venues yet.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-white/10">
+          {venues.map((venue) => (
+            <VenueRow
+              key={venue.id}
+              venue={venue}
+              onError={setError}
+              onNotice={setNotice}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function priceRecord(
+  packages: { id: string; cents: number }[],
+): Record<PackageId, number> {
+  const prices: Record<PackageId, number> = { ...PACKAGE_CENTS }
+  for (const item of packages) {
+    if (isPackageId(item.id)) prices[item.id] = item.cents
+  }
+  return prices
+}
+
+function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
+  const data = new FormData(form)
+  const packageId = String(data.get('packageId') ?? 'full')
+  if (!isPackageId(packageId)) return null
+  const uplights = Number(data.get('uplights') ?? 0)
+  if (!Number.isInteger(uplights) || uplights < 0) return null
+  const venueKm = kilometres(data).filter(
+    (km) => Number.isFinite(km) && km >= 0,
+  )
+  const rawDiscount = String(data.get('discount') ?? '').trim()
+  try {
+    const discountCents = rawDiscount ? dollarsToCents(rawDiscount) : 0
+    const quoted = quote(
+      {
+        packageId,
+        withStag: packageId === 'full' && data.get('withStag') === 'on',
+        uplights,
+        venueKm,
+      },
+      prices,
+    )
+    return applyDiscount(quoted, discountCents, {
+      packageId,
+      withStag: packageId === 'full' && data.get('withStag') === 'on',
+    })
+  } catch {
+    return null
+  }
+}
+
+function discountFrom(form: FormData): number {
+  const raw = String(form.get('discount') ?? '').trim()
+  if (!raw) return 0
+  return dollarsToCents(raw)
+}
+
+function readDiscount(
+  form: FormData,
+): { ok: true; cents: number } | { ok: false; error: string } {
+  try {
+    return { ok: true, cents: discountFrom(form) }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Enter a discount.',
+    }
+  }
+}
+
+function BookingCard({
+  booking,
+  payments,
+  packages,
+  venues,
+}: {
+  packages: { id: string; name: string }[]
+  venues: SavedVenue[]
+  booking: {
+    id: number
+    slug: string
+    partnerOne: string
+    partnerTwo: string
+    email: string
+    phone: string
+    eventDate: string
+    stagDate: string | null
+    packageId: string
+    packageName: string
+    withStag: boolean
+    uplights: number
+    venueKm: number[]
+    venueName: string
+    venueStreet: string
+    venueTwoName: string
+    venueTwoStreet: string
+    sample: boolean
+    status: string
+    totalCents: number
+    depositCents: number
+    discountCents: number
+    holdStartedOn: string | null
+    holdLastDay: string | null
+    stagReleased: boolean
+    notes: string
+    invoice: {
+      id: number
+      slug: string
+      status: string
+      totalCents: number
+      depositCents: number
+      receivedCents: number
+      balanceCents: number
+    } | null
+  }
+  payments: { id: number; cents: number; note: string }[]
+}) {
+  const save = useServerFn(saveBooking)
+  const status = useServerFn(changeStatus)
+  const sent = useServerFn(markSent)
+  const voided = useServerFn(markVoid)
+  const pay = useServerFn(recordPayment)
+  const mailBooking = useServerFn(sendBookingMail)
+  const mailInvoice = useServerFn(sendInvoiceMail)
+  const remove = useServerFn(deleteBooking)
+  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [packageId, setPackageId] = useState(booking.packageId)
+  const [open, setOpen] = useState(false)
+  const [action, setAction] = useState('release')
+  const formKey = `${booking.status}-${booking.invoice?.status}-${booking.invoice?.receivedCents}-${booking.holdLastDay}-${booking.notes}`
+  const daysLeft =
+    booking.status === 'hold' && booking.holdLastDay
+      ? daysUntil(todayInToronto(), booking.holdLastDay)
+      : null
+  const controls = invoiceControls(booking.invoice?.status ?? null)
+  const canMail = hasCoupleAddress(booking.email)
+
+  return (
+    <article
+      className={`rounded-2xl border bg-ink-900 ${open ? 'border-neon/40' : 'border-white/10'}`}
+    >
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 p-5 text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-display text-xl font-bold">
+              {booking.partnerOne} and {booking.partnerTwo}
+            </h2>
+            {booking.sample ? (
+              <span className="text-sm tracking-wide text-rose-300">TEST</span>
+            ) : null}
+          </div>
+          <p className="text-sm text-white/65">
+            {longDate(booking.eventDate)} · {booking.packageName}
+            {booking.stagDate ? ` · stag ${longDate(booking.stagDate)}` : ''}
+            {booking.stagReleased ? ' · stag released' : ''}
+          </p>
+          {booking.holdStartedOn && booking.holdLastDay ? (
+            <p className="mt-1 text-sm text-white/65">
+              Hold {longDate(booking.holdStartedOn)} through{' '}
+              {longDate(booking.holdLastDay)}
+            </p>
+          ) : null}
+          <p className="mt-1 text-sm text-white/85 tabular-nums">
+            {cad(booking.invoice?.totalCents ?? booking.totalCents)} total
+            {booking.discountCents > 0
+              ? ` · ${cad(booking.discountCents)} off`
+              : ''}{' '}
+            · {cad(booking.invoice?.depositCents ?? booking.depositCents)}{' '}
+            deposit · {cad(booking.invoice?.receivedCents ?? 0)} received ·{' '}
+            {cad(booking.invoice?.balanceCents ?? booking.totalCents)} balance
+            {booking.invoice ? ` · invoice ${booking.invoice.status}` : ''}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex gap-2">
+            <Chip tone={statusTone(booking.status)}>{booking.status}</Chip>
+            {booking.invoice ? (
+              <Chip tone={invoiceTone(booking.invoice.status)}>
+                invoice {booking.invoice.status}
+              </Chip>
+            ) : null}
+          </div>
+          {daysLeft !== null && booking.holdLastDay ? (
+            <span
+              className={`text-xs ${daysLeft < 10 ? 'text-amber-200' : 'text-white/65'}`}
+            >
+              Hold ends {longDate(booking.holdLastDay)} · {daysLeft} days left
+            </span>
+          ) : null}
+        </div>
+        <ChevronDown
+          className={`desk-motion h-5 w-5 text-white/40 ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      <div
+        className={open ? 'space-y-5 border-t border-white/10 p-5' : 'hidden'}
+      >
+        <p className="flex flex-wrap gap-4 text-sm">
+          <Link
+            to="/c/$slug"
+            params={{ slug: booking.slug }}
+            className="font-semibold text-hot hover:underline"
+          >
+            Couple page
+          </Link>
+          <span className="text-white/65">
+            Their planning form is on that page.
+          </span>
+          {booking.invoice ? (
+            <Link
+              to="/p/$slug"
+              params={{ slug: booking.invoice.slug }}
+              className="font-semibold text-hot hover:underline"
+            >
+              Invoice page
+            </Link>
+          ) : null}
+        </p>
+        {open ? <PortalDeskFields slug={booking.slug} /> : null}
+        <form
+          key={formKey}
+          className="grid gap-3"
+          onChange={() => setError(null)}
+          onSubmit={(event) => {
+            event.preventDefault()
+            const form = new FormData(event.currentTarget)
+            const withStag = form.get('withStag') === 'on'
+            const discount = readDiscount(form)
+            if (!discount.ok) {
+              setError(discount.error)
+              return
+            }
+            void save({
+              data: {
+                id: booking.id,
+                partnerOne: String(form.get('partnerOne') ?? ''),
+                partnerTwo: String(form.get('partnerTwo') ?? ''),
+                email: String(form.get('email') ?? ''),
+                phone: String(form.get('phone') ?? ''),
+                eventDate: String(form.get('eventDate') ?? ''),
+                stagDate: withStag ? String(form.get('stagDate') ?? '') : null,
+                packageId: String(form.get('packageId') ?? booking.packageId),
+                withStag,
+                uplights: Number(form.get('uplights') ?? 0),
+                venueKm: kilometres(form),
+                venueName: String(form.get('venueName') ?? ''),
+                venueStreet: String(form.get('venueStreet') ?? ''),
+                venueTwoName: String(form.get('venueTwoName') ?? ''),
+                venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+                sample: form.get('sample') === 'on',
+                notes: String(form.get('notes') ?? ''),
+                discountCents: discount.cents,
+              },
+            }).then(async (result) => {
+              if (!result.ok) {
+                setError(result.error)
+                return
+              }
+              setError(null)
+              setNotice('Saved.')
+              await router.invalidate()
+            })
+          }}
+        >
+          <BookingFields
+            packageId={packageId}
+            onPackage={setPackageId}
+            packages={packages}
+            venues={venues}
+            columns={3}
+            defaults={{
+              partnerOne: booking.partnerOne,
+              partnerTwo: booking.partnerTwo,
+              email: booking.email,
+              phone: booking.phone,
+              eventDate: booking.eventDate,
+              stagDate: booking.stagDate ?? '',
+              withStag: booking.withStag,
+              uplights: booking.uplights,
+              kmOne: booking.venueKm[0] ?? '',
+              kmTwo: booking.venueKm[1] ?? '',
+              venueName: booking.venueName,
+              venueStreet: booking.venueStreet,
+              venueTwoName: booking.venueTwoName,
+              venueTwoStreet: booking.venueTwoStreet,
+              sample: booking.sample,
+              notes: booking.notes,
+              discountCents: booking.discountCents,
+            }}
+          />
+          {!booking.venueName.trim() || !booking.venueStreet.trim() ? (
+            <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100 md:col-span-3">
+              Add the venue name and street. The hold starts when the invoice is
+              sent and both are filled in.
+            </p>
+          ) : null}
+          <button type="submit" className={`${deskGhost} w-fit`}>
+            Save details
+          </button>
+        </form>
+        <div className="flex flex-wrap gap-2">
+          {controls.send ? (
+            <button
+              type="button"
+              className={deskPrimary}
+              onClick={() => {
+                void sent({ data: { id: booking.id } })
+                  .then(async (result) => {
+                    if (!result.ok) {
+                      setError(result.error)
+                      return
+                    }
+                    setError(null)
+                    setNotice(
+                      result.newlyBooked
+                        ? 'The deposit cleared. The date is booked.'
+                        : 'The invoice is sent.',
+                    )
+                    await router.invalidate()
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
+              }}
+            >
+              Mark the invoice sent
+            </button>
+          ) : null}
+          {controls.canVoid ? (
+            <button
+              type="button"
+              className={deskDanger}
+              onClick={() => {
+                void voided({ data: { id: booking.id } })
+                  .then(async (result) => {
+                    if (!result.ok) {
+                      setError(result.error)
+                      return
+                    }
+                    setError(null)
+                    setNotice('The invoice is void. The balance is zero.')
+                    await router.invalidate()
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
+              }}
+            >
+              Void the invoice
+            </button>
+          ) : null}
+          {canMail ? (
+            <button
+              type="button"
+              className={deskGhost}
+              onClick={() => {
+                void mailBooking({ data: { id: booking.id } })
+                  .then(async (result) => {
+                    if (!result.ok) {
+                      setError(result.error)
+                      return
+                    }
+                    setError(null)
+                    setNotice(
+                      result.delivered
+                        ? `The booking email is on its way to ${booking.email}.`
+                        : result.detail,
+                    )
+                    await router.invalidate()
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
+              }}
+            >
+              Email the booking
+            </button>
+          ) : null}
+          {booking.invoice && canMail ? (
+            <button
+              type="button"
+              className={deskGhost}
+              onClick={() => {
+                void mailInvoice({ data: { id: booking.id } })
+                  .then(async (result) => {
+                    if (!result.ok) {
+                      setError(result.error)
+                      return
+                    }
+                    setError(null)
+                    setNotice(
+                      result.delivered
+                        ? `The invoice email is on its way to ${booking.email}.`
+                        : result.detail,
+                    )
+                    await router.invalidate()
+                  })
+                  .catch((caught: unknown) => {
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : 'That did not save.',
+                    )
+                  })
+              }}
+            >
+              Email the invoice
+            </button>
+          ) : null}
+        </div>
+        {controls.blocked ? (
+          <p className="text-sm text-white/85">{controls.blocked}</p>
+        ) : null}
+        {!canMail ? (
+          <p className="text-sm text-rose-300">
+            This booking has no email address.
+          </p>
+        ) : null}
+        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
+        <div className="grid gap-5 md:grid-cols-2">
+          <form
+            className="rounded-xl border border-white/10 bg-ink-950 p-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const form = new FormData(event.currentTarget)
+              const next = String(form.get('action') ?? '')
+              if (
+                next !== 'release' &&
+                next !== 'cancel' &&
+                next !== 'release-stag'
+              )
+                return
+              void status({ data: { id: booking.id, action: next } }).then(
+                async (result) => {
+                  if (!result.ok) {
+                    setError(result.error)
+                    return
+                  }
+                  setError(null)
+                  setNotice('The status is updated.')
+                  await router.invalidate()
+                },
+              )
+            }}
+          >
+            <label className="field min-w-52">
+              Status
+              <select
+                name="action"
+                value={action}
+                onChange={(event) => setAction(event.target.value)}
+              >
+                <option value="release">Release the date</option>
+                <option value="cancel">Cancel</option>
+                {booking.withStag && !booking.stagReleased ? (
+                  <option value="release-stag">Release the stag date</option>
+                ) : null}
+              </select>
+            </label>
+            <button
+              type="submit"
+              className={`mt-3 ${action === 'cancel' ? deskDanger : deskGhost}`}
+            >
+              Update status
+            </button>
+          </form>
+          <form
+            className="rounded-xl border border-white/10 bg-ink-950 p-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const submitter =
+                event.nativeEvent instanceof SubmitEvent
+                  ? event.nativeEvent.submitter
+                  : null
+              const form = new FormData(event.currentTarget, submitter)
+              const refund = form.get('kind') === 'refund'
+              try {
+                const cents = dollarsToCents(String(form.get('amount') ?? ''))
+                void pay({
+                  data: {
+                    id: booking.id,
+                    cents: refund ? -cents : cents,
+                    note: String(form.get('note') ?? ''),
+                  },
+                }).then(async (result) => {
+                  if (!result.ok) {
+                    setError(result.error)
+                    return
+                  }
+                  setError(null)
+                  setNotice(
+                    result.newlyBooked
+                      ? 'The deposit cleared. The date is booked.'
+                      : refund
+                        ? 'The refund is on the invoice. The date stays booked.'
+                        : 'The payment is on the invoice.',
+                  )
+                  await router.invalidate()
+                })
+              } catch (caught) {
+                setError(
+                  caught instanceof Error ? caught.message : 'Enter an amount.',
+                )
+              }
+            }}
+          >
+            <p className="font-semibold">Record payment</p>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="field w-36">
+                Amount
+                <input name="amount" inputMode="decimal" placeholder="500.00" />
+              </label>
+              <label className="field min-w-40 flex-1">
+                Note
+                <input name="note" />
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button name="kind" value="payment" className={deskPrimary}>
+                Record payment
+              </button>
+              <button name="kind" value="refund" className={deskGhost}>
+                Record refund
+              </button>
+            </div>
+            {payments.length > 0 ? (
+              <ul className="mt-3 space-y-1 text-sm">
+                {payments.map((payment) => (
+                  <li
+                    key={payment.id}
+                    className="flex justify-between gap-3 text-white/65"
+                  >
+                    <span>{payment.note}</span>
+                    <span
+                      className={`tabular-nums ${payment.cents < 0 ? 'text-rose-300' : ''}`}
+                    >
+                      {cad(payment.cents)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </form>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-ink-950 p-4">
+          <p className="font-semibold">Delete this booking</p>
+          <p className="mt-1 text-sm text-white/65">
+            The booking, invoice, and payments are removed. The date opens. An
+            inquiry with the same names stays until you delete it on the leads
+            page.
+          </p>
+          {confirmDelete ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={deskDanger}
+                onClick={() => {
+                  void remove({ data: { id: booking.id } }).then(
+                    async (result) => {
+                      if (!result.ok) {
+                        setError(result.error)
+                        return
+                      }
+                      setError(null)
+                      setNotice('Deleted. The date is open.')
+                      await router.invalidate()
+                    },
+                  )
+                }}
+              >
+                Delete this booking
+              </button>
+              <button
+                type="button"
+                className={deskGhost}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Keep it
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={`mt-3 ${deskDanger}`}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function VenuePair({
+  venues,
+  chooseLabel,
+  nameLabel,
+  streetLabel,
+  nameField,
+  streetField,
+  defaultName = '',
+  defaultStreet = '',
+  secondChooseLabel,
+  secondNameLabel,
+  secondStreetLabel,
+  secondNameField,
+  secondStreetField,
+  defaultSecondName = '',
+  defaultSecondStreet = '',
+  span,
+  labelClass,
+  inputClass,
+}: {
+  venues: SavedVenue[]
+  chooseLabel: string
+  nameLabel: string
+  streetLabel: string
+  nameField: string
+  streetField: string
+  defaultName?: string
+  defaultStreet?: string
+  secondChooseLabel: string
+  secondNameLabel: string
+  secondStreetLabel: string
+  secondNameField: string
+  secondStreetField: string
+  defaultSecondName?: string
+  defaultSecondStreet?: string
+  span: string
+  labelClass: string
+  inputClass?: string
+}) {
+  return (
+    <>
+      <VenueFields
+        venues={venues}
+        chooseLabel={chooseLabel}
+        nameLabel={nameLabel}
+        streetLabel={streetLabel}
+        nameField={nameField}
+        streetField={streetField}
+        defaultName={defaultName}
+        defaultStreet={defaultStreet}
+        span={span}
+        labelClass={labelClass}
+        inputClass={inputClass}
+      />
+      <VenueFields
+        venues={venues}
+        chooseLabel={secondChooseLabel}
+        nameLabel={secondNameLabel}
+        streetLabel={secondStreetLabel}
+        nameField={secondNameField}
+        streetField={secondStreetField}
+        defaultName={defaultSecondName}
+        defaultStreet={defaultSecondStreet}
+        span={span}
+        labelClass={labelClass}
+        inputClass={inputClass}
+      />
+    </>
+  )
+}
+
+function VenueFields({
+  venues,
+  chooseLabel,
+  nameLabel,
+  streetLabel,
+  nameField,
+  streetField,
+  defaultName,
+  defaultStreet,
+  span,
+  labelClass,
+  inputClass,
+}: {
+  venues: SavedVenue[]
+  chooseLabel: string
+  nameLabel: string
+  streetLabel: string
+  nameField: string
+  streetField: string
+  defaultName: string
+  defaultStreet: string
+  span: string
+  labelClass: string
+  inputClass?: string
+}) {
+  const [name, setName] = useState(defaultName)
+  const [street, setStreet] = useState(defaultStreet)
+  const picked = matchingVenue(venues, name)
+
+  return (
+    <>
+      {venues.length > 0 ? (
+        <label className={`${labelClass} ${span}`}>
+          {chooseLabel}
+          <select
+            className={inputClass}
+            value={picked ? String(picked.id) : ''}
+            onChange={(event) => {
+              const venue = venues.find(
+                (item) => String(item.id) === event.target.value,
+              )
+              if (!venue) return
+              setName(venue.name)
+              setStreet(venue.street)
+            }}
+          >
+            <option value="">Pick a saved venue</option>
+            {venues.map((venue) => (
+              <option key={venue.id} value={venue.id}>
+                {venue.street ? `${venue.name} — ${venue.street}` : venue.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      <label className={labelClass}>
+        {nameLabel}
+        <input
+          name={nameField}
+          maxLength={160}
+          className={inputClass}
+          value={name}
+          onChange={(event) => {
+            const next = event.target.value
+            setName(next)
+            const match = matchingVenue(venues, next)
+            if (match) setStreet(match.street)
+          }}
+        />
+      </label>
+      <label className={labelClass}>
+        {streetLabel}
+        <input
+          name={streetField}
+          maxLength={160}
+          className={inputClass}
+          value={street}
+          onChange={(event) => setStreet(event.target.value)}
+        />
+      </label>
+    </>
+  )
+}
+
+function kilometres(form: FormData): number[] {
+  return ['kmOne', 'kmTwo']
+    .map((name) => String(form.get(name) ?? '').trim())
+    .filter((value) => value !== '')
+    .map((value) => Number(value))
+}
+
+function BookingFields({
+  packageId,
+  onPackage,
+  packages,
+  venues,
+  defaults,
+  columns = 2,
+}: {
+  packageId: string
+  onPackage: (value: string) => void
+  packages: { id: string; name: string }[]
+  venues: SavedVenue[]
+  columns?: 2 | 3
+  defaults?: {
+    partnerOne: string
+    partnerTwo: string
+    email: string
+    phone: string
+    eventDate: string
+    stagDate: string
+    withStag: boolean
+    uplights: number
+    kmOne: number | ''
+    kmTwo: number | ''
+    venueName: string
+    venueStreet: string
+    venueTwoName: string
+    venueTwoStreet: string
+    sample: boolean
+    notes: string
+    discountCents: number
+  }
+}) {
+  const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
+  return (
+    <div
+      className={`grid gap-3 ${columns === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
+    >
+      <label className="field">
+        First partner
+        <input name="partnerOne" required defaultValue={defaults?.partnerOne} />
+      </label>
+      <label className="field">
+        Second partner
+        <input name="partnerTwo" required defaultValue={defaults?.partnerTwo} />
+      </label>
+      <label className="field">
+        Email
+        <input name="email" defaultValue={defaults?.email} />
+      </label>
+      <label className="field">
+        Phone
+        <input name="phone" defaultValue={defaults?.phone} />
+      </label>
+      <label className="field">
+        Wedding date
+        <input
+          name="eventDate"
+          type="date"
+          required
+          defaultValue={defaults?.eventDate}
+        />
+      </label>
+      <label className="field">
+        Package
+        <select
+          name="packageId"
+          value={packageId}
+          onChange={(event) => onPackage(event.target.value)}
+        >
+          {packages.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {packageId === 'full' ? (
+        <label
+          className={`flex items-center gap-3 text-sm text-white/85 ${span}`}
+        >
+          <input
+            name="withStag"
+            type="checkbox"
+            defaultChecked={defaults?.withStag}
+          />
+          Full day plus a stag, one booking
+        </label>
+      ) : null}
+      {packageId === 'full' ? (
+        <label className="field">
+          Stag date
+          <input
+            name="stagDate"
+            type="date"
+            defaultValue={defaults?.stagDate}
+          />
+        </label>
+      ) : null}
+      <label className="field">
+        Uplights
+        <input
+          name="uplights"
+          type="number"
+          min={0}
+          defaultValue={defaults?.uplights ?? 0}
+        />
+      </label>
+      <label className="field">
+        Kilometres to the venue
+        <input
+          name="kmOne"
+          inputMode="decimal"
+          defaultValue={defaults?.kmOne}
+        />
+      </label>
+      <label className="field">
+        Kilometres to the second venue
+        <input
+          name="kmTwo"
+          inputMode="decimal"
+          defaultValue={defaults?.kmTwo}
+        />
+      </label>
+      <label className="field">
+        Discount
+        <input
+          name="discount"
+          inputMode="decimal"
+          placeholder="0.00"
+          defaultValue={
+            defaults?.discountCents
+              ? (defaults.discountCents / 100).toFixed(2)
+              : ''
+          }
+        />
+      </label>
+      <VenuePair
+        venues={venues}
+        chooseLabel="Choose a venue"
+        nameLabel="Venue name"
+        streetLabel="Venue street"
+        nameField="venueName"
+        streetField="venueStreet"
+        defaultName={defaults?.venueName}
+        defaultStreet={defaults?.venueStreet}
+        secondChooseLabel="Choose a second venue"
+        secondNameLabel="Second venue name"
+        secondStreetLabel="Second venue street"
+        secondNameField="venueTwoName"
+        secondStreetField="venueTwoStreet"
+        defaultSecondName={defaults?.venueTwoName}
+        defaultSecondStreet={defaults?.venueTwoStreet}
+        span={span}
+        labelClass="field"
+      />
+      <label className={`field ${span}`}>
+        Notes
+        <textarea name="notes" rows={3} defaultValue={defaults?.notes} />
+      </label>
+      <label
+        className={`flex items-center gap-3 text-sm text-white/85 ${span}`}
+      >
+        <input
+          name="sample"
+          type="checkbox"
+          defaultChecked={defaults?.sample}
+        />
+        TEST sample. Off the public date check, off the calendar, and out of
+        totals.
+      </label>
+    </div>
+  )
+}
