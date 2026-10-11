@@ -16,8 +16,9 @@ import type {
   SongItem,
 } from '../../lib/crm/planning.ts'
 import { itemAt, linkPlatform, textValue } from '../../lib/portal/questions.ts'
-import { searchSongs } from '../../lib/portal/portal.functions.ts'
+import { searchSongs, suggestSongs } from '../../lib/portal/portal.functions.ts'
 import { isSongLink } from '../../lib/portal/song-search.ts'
+import { suggestionHeading } from '../../lib/portal/song-suggestions.ts'
 import type { SongHit } from '../../lib/portal/song-search.ts'
 import type { Question } from '../../lib/portal/questions.ts'
 import { useListSensors } from './ordered-moments.tsx'
@@ -299,7 +300,7 @@ function Song({
   question: Question
   disabled: boolean
 }) {
-  const { planning, editTimeline, removeMoment } = usePortal()
+  const { page, planning, editTimeline, removeMoment } = usePortal()
   const index = question.timelineIndex ?? 0
   const row = itemAt(planning.timeline, index)
   if (!row) return null
@@ -338,6 +339,18 @@ function Song({
             disabled={disabled}
             label="Song or link"
             onLink={(link) => editTimeline(index, { link })}
+            onPick={(hit) =>
+              editTimeline(index, {
+                song: hit.title,
+                artist: hit.artist,
+                link: hit.link,
+              })
+            }
+          />
+          <CouplePicks
+            slug={page.slug}
+            presetKey={row.presetKey}
+            disabled={disabled}
             onPick={(hit) =>
               editTimeline(index, {
                 song: hit.title,
@@ -1011,6 +1024,61 @@ function GripDots() {
         </g>
       ))}
     </svg>
+  )
+}
+
+function CouplePicks({
+  slug,
+  presetKey,
+  disabled,
+  onPick,
+}: {
+  slug: string
+  presetKey: string
+  disabled: boolean
+  onPick: (hit: SongHit) => void
+}) {
+  const heading = suggestionHeading(presetKey)
+  const load = useServerFn(suggestSongs)
+  const loadRef = useRef(load)
+  loadRef.current = load
+  const [hits, setHits] = useState<SongHit[]>([])
+
+  useEffect(() => {
+    if (!heading) {
+      setHits([])
+      return
+    }
+    let live = true
+    void loadRef.current({ data: { slug, presetKey } }).then((rows) => {
+      if (live) setHits(rows)
+    })
+    return () => {
+      live = false
+    }
+  }, [heading, presetKey, slug])
+
+  if (!heading || hits.length === 0) return null
+  return (
+    <div className="mt-4">
+      <p className="text-sm text-[var(--text-muted)]">{heading}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {hits.map((hit) => (
+          <button
+            key={`${hit.title}-${hit.artist}`}
+            type="button"
+            className="min-h-11 rounded-full border border-[var(--border-strong)] px-4 text-left text-sm"
+            disabled={disabled}
+            onClick={() => onPick(hit)}
+          >
+            <span className="font-bold">{hit.title}</span>
+            {hit.artist ? (
+              <span className="text-[var(--pink-soft)]"> · {hit.artist}</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 

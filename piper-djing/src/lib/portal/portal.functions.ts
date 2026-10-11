@@ -11,6 +11,7 @@ import {
   readCoupleShare,
   readPortalMaster,
   saveCouplePlanning,
+  suggestionsForCouple,
 } from '../crm/store.server.ts'
 import { isPlanLocked } from '../crm/planning.ts'
 import { changeLetter, planLetter } from './letter.ts'
@@ -166,6 +167,25 @@ export const searchSongs = createServerFn({ method: 'POST' })
     if (!coupleSlugFromCookie() && !(await isDesk())) return []
     try {
       return await lookupSongs(data.query)
+    } catch {
+      return []
+    }
+  })
+
+export const suggestSongs = createServerFn({ method: 'POST' })
+  .validator((data: { slug: string; presetKey: string }) => {
+    const slug = typeof data.slug === 'string' ? data.slug : ''
+    const presetKey = typeof data.presetKey === 'string' ? data.presetKey : ''
+    return { slug: slug.slice(0, 80), presetKey: presetKey.slice(0, 80) }
+  })
+  .handler(async ({ data }) => {
+    const desk = await isDesk()
+    const viewer = coupleSlugFromCookie()
+    if (!desk && !viewer) return []
+    const slug = desk ? data.slug : viewer
+    if (!slug) return []
+    try {
+      return await suggestionsForCouple(slug, data.presetKey)
     } catch {
       return []
     }

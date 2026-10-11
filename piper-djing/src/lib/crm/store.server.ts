@@ -43,6 +43,8 @@ import type {
   ReviewView,
 } from './reviews.ts'
 import { masterDrafts, parseMaster } from '../portal/master.ts'
+import { rankSuggestions, songsFromPlans } from '../portal/song-suggestions.ts'
+import type { SongHit } from '../portal/song-search.ts'
 import type { MasterMap } from '../portal/questions.ts'
 import { overallProgress } from '../portal/progress.ts'
 import { askLegacyDate } from '../legacy-book.server.ts'
@@ -2460,6 +2462,32 @@ function planningSeed(row: BookingRow): PlanningSeed {
     ceremonyAddress: ceremony,
     receptionAddress: receptionStreet || ceremony,
   }
+}
+
+const SUGGESTION_SEED: PlanningSeed = {
+  coupleNames: '',
+  email: '',
+  phone: '',
+  weddingDate: '',
+  venueName: '',
+}
+
+export async function suggestionsForCouple(
+  slugValue: string,
+  presetKey: string,
+): Promise<SongHit[]> {
+  await ensurePlanningColumn()
+  const rows = await query<{
+    slug: string
+    sample?: unknown
+    planning?: string
+  }>('SELECT slug, sample, planning FROM bookings')
+  const plans = rows.map((row) => ({
+    slug: row.slug,
+    sample: flag(row.sample),
+    timeline: parsePlanning(row.planning, SUGGESTION_SEED).planning.timeline,
+  }))
+  return rankSuggestions(presetKey, songsFromPlans(plans, slugValue))
 }
 
 export async function coupleBySlug(slugValue: string) {
