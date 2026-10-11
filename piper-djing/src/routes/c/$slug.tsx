@@ -28,75 +28,79 @@ function CouplePage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-xl px-5 py-16">
-        <p className="text-sm uppercase tracking-wide text-muted">
-          {booking.sample ? 'TEST' : statusLine(booking.status)}
-        </p>
-        <h1 className="mt-3 font-display text-4xl tracking-tight">
-          {booking.partnerOne} and {booking.partnerTwo}
-        </h1>
-        <p className="mt-6 text-lg">{longDate(booking.eventDate)}</p>
-        {booking.withStag ? (
-          <p className="mt-2 text-ink-soft">{stagLine(booking)}</p>
-        ) : null}
-        <p className="mt-2 text-ink-soft">
-          {booking.packageName}
-          {booking.withStag ? ', with a stag and doe' : ''}
-        </p>
-        {booking.venueName ? (
-          <p className="mt-2 text-ink-soft">Venue: {booking.venueName}</p>
-        ) : null}
-        {booking.venueTwoName ? (
-          <p className="mt-2 text-ink-soft">
-            Second venue: {booking.venueTwoName}
-          </p>
-        ) : null}
-        {booking.status === 'hold' &&
-        booking.holdStartedOn &&
-        booking.holdLastDay ? (
-          <p className="mt-2 text-ink-soft">
-            Hold: {longDate(booking.holdStartedOn)} through{' '}
-            {longDate(booking.holdLastDay)}
-          </p>
-        ) : null}
-        {booking.invoiceStatus === 'void' ? (
-          <p className="mt-6 text-sm">
-            This invoice is void. The balance is zero.
-          </p>
-        ) : null}
-        <dl className="mt-8 grid gap-2 text-sm">
-          {booking.discountCents > 0 ? (
-            <Row label="Discount" value={cad(booking.discountCents)} />
-          ) : null}
-          <Row label="Total" value={cad(booking.totalCents)} />
-          <Row label="Deposit" value={cad(booking.depositCents)} />
-          <Row label="Received" value={cad(booking.receivedCents)} />
-          <Row label="Balance" value={cad(booking.balanceCents)} />
-        </dl>
-        {booking.invoiceSlug ? (
-          <p className="mt-8 text-sm">
-            Your invoice is {invoiceLine(booking.invoiceStatus)}.{' '}
-            <Link
-              to="/p/$slug"
-              params={{ slug: booking.invoiceSlug }}
-              className="inline-flex min-h-11 items-center text-ink"
-            >
-              Invoice
-            </Link>
-          </p>
-        ) : null}
-        {booking.status === 'booked' ? (
-          <p className="mt-8 text-sm">
-            <a
-              href={GOOGLE_REVIEW_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center underline underline-offset-4"
-            >
-              Leave a Google review
-            </a>
-          </p>
-        ) : null}
+      <main className="mx-auto w-full max-w-6xl overflow-x-hidden px-5 py-10 md:px-8">
+        <div className="bg-white font-[Arial,Roboto,sans-serif] text-[#202124] shadow-sm ring-1 ring-[#dadce0]">
+          <div className="flex flex-wrap items-start justify-between gap-6 px-4 py-4">
+            <div className="min-w-0">
+              <p className="text-xs font-bold tracking-wide text-[#434343] uppercase">
+                {booking.sample ? 'TEST' : statusLine(booking.status)}
+              </p>
+              <h1 className="mt-1 text-2xl font-bold">
+                {booking.partnerOne} and {booking.partnerTwo}
+              </h1>
+              <p className="mt-2 text-sm text-[#434343]">
+                {longDate(booking.eventDate)}
+                {booking.withStag ? ` · ${stagLine(booking)}` : ''}
+              </p>
+              <p className="mt-1 text-sm text-[#434343]">
+                {booking.packageName}
+                {booking.withStag ? ', with a stag and doe' : ''}
+                {booking.venueName ? ` · ${booking.venueName}` : ''}
+                {booking.venueTwoName
+                  ? ` · Second venue: ${booking.venueTwoName}`
+                  : ''}
+              </p>
+              {booking.status === 'hold' &&
+              booking.holdStartedOn &&
+              booking.holdLastDay ? (
+                <p className="mt-1 text-sm text-[#434343]">
+                  Hold: {longDate(booking.holdStartedOn)} through{' '}
+                  {longDate(booking.holdLastDay)}
+                </p>
+              ) : null}
+            </div>
+            <div className="min-w-52">
+              {booking.invoiceStatus === 'void' ? (
+                <p className="mb-2 text-sm">
+                  This invoice is void. The balance is zero.
+                </p>
+              ) : null}
+              <dl className="grid grid-cols-2 gap-x-4 text-sm">
+                {booking.discountCents > 0 ? (
+                  <Row label="Discount" value={cad(booking.discountCents)} />
+                ) : null}
+                <Row label="Total" value={cad(booking.totalCents)} />
+                <Row label="Deposit" value={cad(booking.depositCents)} />
+                <Row label="Received" value={cad(booking.receivedCents)} />
+                <Row label="Balance" value={cad(booking.balanceCents)} />
+              </dl>
+              {booking.invoiceSlug ? (
+                <p className="mt-3 text-sm">
+                  Your invoice is {invoiceLine(booking.invoiceStatus)}.{' '}
+                  <Link
+                    to="/p/$slug"
+                    params={{ slug: booking.invoiceSlug }}
+                    className="inline-flex min-h-11 items-center text-[#1a73e8] underline"
+                  >
+                    Invoice
+                  </Link>
+                </p>
+              ) : null}
+              {booking.status === 'booked' ? (
+                <p className="text-sm">
+                  <a
+                    href={GOOGLE_REVIEW_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center text-[#1a73e8] underline"
+                  >
+                    Leave a Google review
+                  </a>
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
         <PlanningForm
           initial={booking.planning}
           saved={booking.planningSaved}
@@ -137,9 +141,9 @@ function stagLine(booking: {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 border-t border-line py-2">
-      <dt className="text-muted">{label}</dt>
-      <dd>{value}</dd>
+    <div className="contents">
+      <dt className="border-t border-[#dadce0] py-1 text-[#434343]">{label}</dt>
+      <dd className="border-t border-[#dadce0] py-1 text-right">{value}</dd>
     </div>
   )
 }
