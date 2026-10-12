@@ -431,7 +431,7 @@ const APPEARANCE_QUESTIONS: Question[] = [
 ]
 
 export const SONG_HELPER =
-  'Search for the song, or paste a YouTube, Spotify or SoundCloud link.'
+  'Search Spotify, or paste a YouTube, Spotify or SoundCloud link.'
 
 const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
   id: `moment-${MOMENTS[index]?.key ?? index}`,

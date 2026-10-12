@@ -1131,7 +1131,7 @@ function SongSearch({
         <span className="sr-only">{label}</span>
         <input
           className="portal-input"
-          placeholder="Search a song or paste a link"
+          placeholder="Search Spotify or paste a link"
           value={draft}
           disabled={disabled}
           onChange={(event) => {

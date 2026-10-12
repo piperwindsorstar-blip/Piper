@@ -1,38 +1,79 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { blankPlanning } from '../crm/planning.ts'
-import { isSongLink, songHits } from './song-search.ts'
+import { isSongLink, lookupSongs, songHits } from './song-search.ts'
 import { timelineQuestions } from './questions.ts'
 
-describe('song search', () => {
+describe('song search', { concurrency: false }, () => {
   it('treats a web address as a link and a title as a search', () => {
     assert.equal(isSongLink('https://open.spotify.com/track/abc'), true)
     assert.equal(isSongLink('Perfect'), false)
     assert.equal(isSongLink('not a url'), false)
   })
 
-  it('keeps titled songs and drops rows with no name', () => {
+  it('keeps titled Spotify tracks and drops rows with no name', () => {
     const hits = songHits({
-      results: [
-        {
-          trackName: 'Perfect',
-          artistName: 'Ed Sheeran',
-          trackViewUrl: 'https://music.apple.com/ca/album/perfect/1',
-        },
-        { artistName: 'Nobody' },
-        'nope',
-      ],
-    })
-    assert.deepEqual(hits, [
-      {
-        title: 'Perfect',
-        artist: 'Ed Sheeran',
-        link: 'https://music.apple.com/ca/album/perfect/1',
+      tracks: {
+        items: [
+          {
+            name: 'Perfect',
+            artists: [
+              { name: 'Ed Sheeran' },
+              { name: 'Beyoncé' },
+              { name: 'Andrea Bocelli' },
+              { name: 'Skipped' },
+            ],
+            external_urls: {
+              spotify: 'https://open.spotify.com/track/perfect',
+            },
+          },
+          {
+            name: 'Photograph',
+            artists: [{ name: 'Ed Sheeran' }],
+          },
+          { artists: [{ name: 'Nobody' }] },
+          'nope',
+          {
+            name: 'x'.repeat(200),
+            artists: [{ name: 'y'.repeat(200) }],
+            external_urls: {
+              spotify: 'https://open.spotify.com/' + 'z'.repeat(400),
+            },
+          },
+        ],
       },
-    ])
+    })
+    assert.equal(hits.length, 3)
+    assert.deepEqual(hits[0], {
+      title: 'Perfect',
+      artist: 'Ed Sheeran, Beyoncé, Andrea Bocelli',
+      link: 'https://open.spotify.com/track/perfect',
+    })
+    assert.deepEqual(hits[1], {
+      title: 'Photograph',
+      artist: 'Ed Sheeran',
+      link: '',
+    })
+    assert.equal(hits[2]?.title.length, 120)
+    assert.equal(hits[2]?.artist.length, 120)
+    assert.equal(hits[2]?.link.length, 300)
   })
 
-  it('asks the couple to search for the song', () => {
+  it('stops after six tracks', () => {
+    const hits = songHits({
+      tracks: {
+        items: Array.from({ length: 8 }, (_item, index) => ({
+          name: `Song ${index}`,
+          artists: [{ name: 'Artist' }],
+          external_urls: { spotify: `https://open.spotify.com/track/${index}` },
+        })),
+      },
+    })
+    assert.equal(hits.length, 6)
+    assert.equal(hits[5]?.title, 'Song 5')
+  })
+
+  it('asks the couple to search Spotify', () => {
     const planning = blankPlanning({
       coupleNames: '',
       email: '',
@@ -43,8 +84,101 @@ describe('song search', () => {
     const helper = timelineQuestions(planning)[0]?.helper ?? ''
     assert.equal(
       helper,
-      'Search for the song, or paste a YouTube, Spotify or SoundCloud link.',
+      'Search Spotify, or paste a YouTube, Spotify or SoundCloud link.',
     )
-    assert.doesNotMatch(helper, /Search for it/)
+  })
+
+  it('skips the network for a link, a short query, and missing credentials', async () => {
+    const previousFetch = globalThis.fetch
+    const previousId = process.env.SPOTIFY_CLIENT_ID
+    const previousSecret = process.env.SPOTIFY_CLIENT_SECRET
+    delete process.env.SPOTIFY_CLIENT_ID
+    delete process.env.SPOTIFY_CLIENT_SECRET
+    let calls = 0
+    globalThis.fetch = (() => {
+      calls += 1
+      throw new Error('network')
+    }) as typeof fetch
+    try {
+      assert.deepEqual(
+        await lookupSongs('https://open.spotify.com/track/abc'),
+        [],
+      )
+      assert.deepEqual(await lookupSongs('P'), [])
+      assert.deepEqual(await lookupSongs('Perfect'), [])
+      assert.equal(calls, 0)
+    } finally {
+      globalThis.fetch = previousFetch
+      restoreEnv('SPOTIFY_CLIENT_ID', previousId)
+      restoreEnv('SPOTIFY_CLIENT_SECRET', previousSecret)
+    }
+  })
+
+  it('searches Spotify tracks and reuses the access token', async () => {
+    const previousFetch = globalThis.fetch
+    const previousId = process.env.SPOTIFY_CLIENT_ID
+    const previousSecret = process.env.SPOTIFY_CLIENT_SECRET
+    const clientId = `client-${Date.now()}`
+    process.env.SPOTIFY_CLIENT_ID = clientId
+    process.env.SPOTIFY_CLIENT_SECRET = 'client-secret'
+    const calls: string[] = []
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const url = String(input)
+      calls.push(`${init?.method ?? 'GET'} ${url}`)
+      if (url.startsWith('https://accounts.spotify.com/api/token')) {
+        const header = new Headers(init?.headers).get('authorization') ?? ''
+        assert.equal(header, `Basic ${btoa(`${clientId}:client-secret`)}`)
+        return Response.json({ access_token: 'token-1', expires_in: 3600 })
+      }
+      const header = new Headers(init?.headers).get('authorization') ?? ''
+      assert.equal(header, 'Bearer token-1')
+      const parsed = new URL(url)
+      assert.equal(parsed.searchParams.get('type'), 'track')
+      assert.equal(parsed.searchParams.get('market'), 'CA')
+      assert.equal(parsed.searchParams.get('limit'), '6')
+      assert.equal(parsed.searchParams.get('q'), 'Perfect')
+      return Response.json({
+        tracks: {
+          items: [
+            {
+              name: 'Perfect',
+              artists: [{ name: 'Ed Sheeran' }],
+              external_urls: {
+                spotify: 'https://open.spotify.com/track/perfect',
+              },
+            },
+          ],
+        },
+      })
+    }) as typeof fetch
+    try {
+      const first = await lookupSongs('Perfect')
+      const second = await lookupSongs('Perfect')
+      assert.equal(calls.filter((call) => call.startsWith('POST')).length, 1)
+      assert.equal(calls.filter((call) => call.startsWith('GET')).length, 2)
+      assert.deepEqual(first, [
+        {
+          title: 'Perfect',
+          artist: 'Ed Sheeran',
+          link: 'https://open.spotify.com/track/perfect',
+        },
+      ])
+      assert.deepEqual(second, first)
+    } finally {
+      globalThis.fetch = previousFetch
+      restoreEnv('SPOTIFY_CLIENT_ID', previousId)
+      restoreEnv('SPOTIFY_CLIENT_SECRET', previousSecret)
+    }
   })
 })
+
+function restoreEnv(
+  name: 'SPOTIFY_CLIENT_ID' | 'SPOTIFY_CLIENT_SECRET',
+  value: string | undefined,
+) {
+  if (value === undefined) delete process.env[name]
+  else process.env[name] = value
+}
