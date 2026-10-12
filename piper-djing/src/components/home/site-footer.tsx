@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { LINKS } from './content.ts'
 import { Icon } from './icon.tsx'
 
@@ -28,6 +29,9 @@ export function SiteFooter() {
             <Icon n="insta" className="h-4 w-4 text-hot" />
             @DJ_PIPERP
           </a>
+          <Link to="/rsvp" className="hover:text-white">
+            RSVP
+          </Link>
           <a
             href={LINKS.review}
             target="_blank"

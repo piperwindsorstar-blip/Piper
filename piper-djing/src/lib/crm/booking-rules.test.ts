@@ -100,6 +100,31 @@ describe('status', () => {
     assert.equal(paid.newlyBooked, true)
   })
 
+  it('books a stag only after the flat $350 deposit', () => {
+    const booking: BookingState = {
+      ...base(),
+      packageId: 'stag',
+      withStag: false,
+      stagDate: null,
+      totalCents: 81000,
+      depositCents: 35000,
+      status: 'hold',
+      holdStartedOn: '2027-01-01',
+    }
+    const invoice: InvoiceState = {
+      status: 'sent',
+      totalCents: 81000,
+      depositCents: 35000,
+      receivedCents: 0,
+    }
+    const short = recordMoney(booking, invoice, 20000)
+    assert.equal(short.newlyBooked, false)
+    assert.equal(short.booking.status, 'hold')
+    const covered = recordMoney(booking, invoice, 35000)
+    assert.equal(covered.newlyBooked, true)
+    assert.equal(covered.booking.status, 'booked')
+  })
+
   it('does not book a $0 total or a $0 deposit', () => {
     const held = markInvoiceSent(
       base(),

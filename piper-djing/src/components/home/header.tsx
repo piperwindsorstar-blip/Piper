@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { LINKS, LOGO_ALT, LOGO_SRC, NAV } from './content.ts'
 
-export function Header() {
+export function Header({ anchorBase = '' }: { anchorBase?: '' | '/' }) {
   return (
     <header
       className="sticky top-0 z-40 border-b border-white/10 bg-ink-950/80 backdrop-blur-xl"
@@ -19,16 +19,32 @@ export function Header() {
           {NAV.map((item) => (
             <a
               key={item.href}
-              href={item.href}
+              href={
+                item.href.startsWith('/')
+                  ? item.href
+                  : `${anchorBase}${item.href}`
+              }
               className="transition hover:text-white hover:[text-shadow:0_0_14px_#FF1493]"
             >
               {item.label}
             </a>
           ))}
+          <Link
+            to="/rsvp"
+            className="transition hover:text-white hover:[text-shadow:0_0_14px_#FF1493]"
+          >
+            RSVP
+          </Link>
         </nav>
         <div className="flex items-center gap-2">
+          <Link
+            to="/rsvp"
+            className="text-sm text-white/80 transition hover:text-white md:hidden"
+          >
+            RSVP
+          </Link>
           <a
-            href="#check-a-date"
+            href={anchorBase ? `${anchorBase}#check-a-date` : '#check-a-date'}
             className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-white transition hover:bg-hot"
           >
             Check a date

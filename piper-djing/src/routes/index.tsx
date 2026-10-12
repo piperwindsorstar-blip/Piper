@@ -12,7 +12,7 @@ export const Route = createFileRoute('/')({
   head: () => {
     const head = publicHead({
       path: '/',
-      title: 'DJ Piper P | Wedding & Event DJ in Brantford, Ontario',
+      title: 'DJ Piper P | Brantford wedding DJ',
       description: HOME_DESCRIPTION,
     })
     return {

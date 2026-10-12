@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers'
-import { TERMS_BODY } from './src/lib/crm/terms.ts'
+import { reviseTerms, TERMS_BODY } from './src/lib/crm/terms.ts'
 
 const EDGE_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS sessions (
@@ -193,12 +193,23 @@ export class Book extends DurableObject {
         "ALTER TABLE bookings ADD COLUMN planning text NOT NULL DEFAULT ''",
       )
     }
-    const existing = this.ctx.storage.sql.exec('SELECT id FROM terms').toArray()
+    const existing = this.ctx.storage.sql
+      .exec('SELECT body FROM terms WHERE id = 1')
+      .toArray()
     if (existing.length === 0) {
       this.ctx.storage.sql.exec(
         'INSERT INTO terms (id, body) VALUES (1, ?)',
         TERMS_BODY,
       )
+    } else {
+      const body = String(existing[0]?.body ?? '')
+      const next = reviseTerms(body)
+      if (next !== body) {
+        this.ctx.storage.sql.exec(
+          'UPDATE terms SET body = ? WHERE id = 1',
+          next,
+        )
+      }
     }
     const leadColumns = this.ctx.storage.sql
       .exec('PRAGMA table_info(leads)')

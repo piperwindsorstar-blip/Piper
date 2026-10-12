@@ -14,7 +14,7 @@ function lockedUrl(path: string): string {
 }
 
 export const HOME_DESCRIPTION =
-  'DJ Piper P is a warm, well-planned, flexible DJ for weddings, private events, charity and community events in Brantford, Ontario and the surrounding area.'
+  'Brantford wedding DJ Piper P is a warm, well-planned, flexible DJ for weddings, private events, charity and community events in Brantford, Ontario and the surrounding area.'
 
 export const WEDDING_DESCRIPTION =
   'Custom playlists, premium sound and lighting, and stress-free coordination for weddings in Brantford, Paris, Hamilton, Cambridge, and nearby Ontario.'

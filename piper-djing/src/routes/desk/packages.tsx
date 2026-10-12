@@ -5,6 +5,7 @@ import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
 import { getPackages, savePackage } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { cad, dollarsToCents } from '../../lib/crm/money.ts'
+import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import type { PackageOffer } from '../../lib/crm/packages.ts'
 
 export const Route = createFileRoute('/desk/packages')({
@@ -30,9 +31,10 @@ function PackagesPage() {
         ))}
       </div>
       <p className="text-sm text-white/65">
-        A full wedding day plus a stag is one booking. Wired uplights are{' '}
-        {cad(1500)} each. Travel is calculated from kilometres, with the first
-        20 included.
+        A full wedding day plus a stag is one booking with a $500 deposit. The
+        Pre-Party on its own is a flat $350 deposit. A wedding or a reception on
+        its own is 30% of the total, to the nearest $25. Ceremony only is $350
+        paid in full. Wired uplights are {cad(1500)} each. {DESK_TRAVEL_COPY}
       </p>
     </div>
   )

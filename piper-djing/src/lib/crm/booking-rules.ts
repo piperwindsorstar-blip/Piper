@@ -3,6 +3,7 @@ import {
   applyDiscount,
   CEREMONY_DEPOSIT_CENTS,
   FULL_PLUS_STAG_DEPOSIT_CENTS,
+  STAG_DEPOSIT_CENTS,
   holdCovers,
   isBlockedDate,
   isRejectedName,
@@ -201,15 +202,19 @@ function bookIfCovered(
       ? discount > 0
         ? invoice.depositCents
         : Math.max(ceremonyCents, invoice.depositCents)
-      : booking.packageId === 'full' && booking.withStag
+      : booking.packageId === 'stag'
         ? discount > 0
-          ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, invoice.depositCents)
-          : FULL_PLUS_STAG_DEPOSIT_CENTS
-        : requiredDeposit({
-            packageId: booking.packageId,
-            withStag: booking.withStag,
-            invoiceDepositCents: invoice.depositCents,
-          })
+          ? Math.min(STAG_DEPOSIT_CENTS, invoice.depositCents)
+          : STAG_DEPOSIT_CENTS
+        : booking.packageId === 'full' && booking.withStag
+          ? discount > 0
+            ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, invoice.depositCents)
+            : FULL_PLUS_STAG_DEPOSIT_CENTS
+          : requiredDeposit({
+              packageId: booking.packageId,
+              withStag: booking.withStag,
+              invoiceDepositCents: invoice.depositCents,
+            })
   const covered =
     invoice.status === 'sent' &&
     invoice.totalCents > 0 &&

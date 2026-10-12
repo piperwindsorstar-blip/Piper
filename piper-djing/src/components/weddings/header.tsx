@@ -25,20 +25,28 @@ export function Header({
           {NAV.map(([label, href]) => (
             <a
               key={label}
-              href={`${sectionBase}${href}`}
+              href={href.startsWith('/') ? href : `${sectionBase}${href}`}
               className="hover:text-ink"
             >
               {label}
             </a>
           ))}
+          <Link to="/rsvp" className="hover:text-ink">
+            RSVP
+          </Link>
         </nav>
-        <button
-          type="button"
-          onClick={openCalendar}
-          className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-neon"
-        >
-          Check Dates
-        </button>
+        <div className="flex items-center gap-3">
+          <Link to="/rsvp" className="text-sm font-medium text-soft md:hidden">
+            RSVP
+          </Link>
+          <button
+            type="button"
+            onClick={openCalendar}
+            className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-neon"
+          >
+            Check Dates
+          </button>
+        </div>
       </div>
     </header>
   )

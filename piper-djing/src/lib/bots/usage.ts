@@ -1,10 +1,10 @@
 import { SAVED_WEDDINGS } from '../crm/booking-rules.ts'
+import { DESK_TRAVEL_COPY } from '../crm/travel-copy.ts'
 import {
   FULL_PLUS_STAG_DEPOSIT_CENTS,
   HOLD_DAYS,
   PACKAGE_CENTS,
-  TRAVEL_CENTS_PER_KM,
-  TRAVEL_FREE_KM,
+  STAG_DEPOSIT_CENTS,
   UPLIGHT_CENTS,
 } from '../piper/rules.ts'
 
@@ -39,7 +39,7 @@ export function usageDocument(packages: UsagePackage[]) {
     auth: 'Authorization: Bearer <token from join>',
     roles:
       'Every bot can read. A writer can change leads, bookings, invoices, payments, packages, questions, media, partners, reviews, external dates, venues, and the terms text. The CEO can do those writes and can also change invites and settings. A reader can only read.',
-    money: `Integer Canadian cents. ${PACKAGE_CENTS.full} is the default full wedding day. Send cents, priceCents, amountCents, or amountDollars. Wired uplights are ${UPLIGHT_CENTS} cents each. Travel includes the first ${TRAVEL_FREE_KM} kilometres, then ${TRAVEL_CENTS_PER_KM} cents for each further kilometre. Two venues is the maximum.`,
+    money: `Integer Canadian cents. ${PACKAGE_CENTS.full} is the default full wedding day. Send cents, priceCents, amountCents, or amountDollars. Wired uplights are ${UPLIGHT_CENTS} cents each. ${DESK_TRAVEL_COPY}`,
     dates: 'YYYY-MM-DD',
     join: {
       method: 'POST',
@@ -84,7 +84,7 @@ export function usageDocument(packages: UsagePackage[]) {
       invoice: ['draft', 'sent', 'void'],
     },
     packages: listed,
-    packageRules: `These four only. Do not add a fifth. A full wedding day plus a stag is one booking with a ${FULL_PLUS_STAG_DEPOSIT_CENTS} cent deposit, not its own package. Ceremony only is paid in full at the stored ceremony price. A deposit on the other packages is 30 percent of the total, to the nearest $25, and an exact half rounds down. Filing a package does not hold or book a date. Do not rebuild ${customs} as packages. Those totals stay.`,
-    bookingRules: `A new booking starts open. A hold starts when an invoice is sent and the venue name and street exist, and it lasts ${HOLD_DAYS} days counting that day in Toronto. Send discountCents or discountDollars to take a custom discount off the quoted total. The deposit is calculated again from what is left. Ceremony only is then paid in full of that amount. A full day plus a stag keeps its $500 deposit unless the discounted total is smaller. A discount cannot be larger than the total. The four saved weddings keep their agreed totals. A date is booked when a sent invoice is above $0 and the deposit has cleared. Ceremony only books when the payment covers the stored ceremony price, unless that booking has a discount. A $0 total or a $0 deposit does not book a date. A payment, a refund, or an edit does not unbook a date. Cancel or release leaves the row and opens the date. DELETE /api/bots/v1/bookings/{id} removes the booking, its invoice, its payments, and its emails, and the date opens. A deleted saved wedding stays deleted. Deleting an inquiry does not remove its booking. A test sample stays off the public dates and off the counted total. An external date is a wedding or other event Piper plays for another company. POST /api/bots/v1/externals with eventDate, kind (wedding or event), and company. partnerOne, partnerTwo, venueName, venueStreet, venueTwoName, and venueTwoStreet are optional. It is booked immediately, blocks that date, and has no invoice and no counted total. PATCH /api/bots/v1/externals/{id} with {released:true} releases it. A released external date stays released. DELETE /api/bots/v1/externals/{id} removes the row, booked or released, and the date opens. ${customs}. The amount already paid on those four is the deposit. The balance is still owed.`,
+    packageRules: `These four only. Do not add a fifth. A full wedding day plus a stag is one booking with a ${FULL_PLUS_STAG_DEPOSIT_CENTS} cent deposit, not its own package. Ceremony only is paid in full at the stored ceremony price. The Pre-Party on its own is a flat ${STAG_DEPOSIT_CENTS} cent deposit. A wedding or a reception on its own is 30 percent of the total, to the nearest $25, and an exact half rounds down. Filing a package does not hold or book a date. Do not rebuild ${customs} as packages. Those totals stay.`,
+    bookingRules: `A new booking starts open. A hold starts when an invoice is sent and the venue name and street exist, and it lasts ${HOLD_DAYS} days counting that day in Toronto. Send discountCents or discountDollars to take a custom discount off the quoted total. The deposit is calculated again from what is left. Ceremony only is then paid in full of that amount. The Pre-Party on its own keeps its $350 deposit unless the discounted total is smaller. A full day plus a stag keeps its $500 deposit unless the discounted total is smaller. A discount cannot be larger than the total. The four saved weddings keep their agreed totals. A date is booked when a sent invoice is above $0 and the deposit has cleared. Ceremony only books when the payment covers the stored ceremony price, unless that booking has a discount. A $0 total or a $0 deposit does not book a date. A payment, a refund, or an edit does not unbook a date. Cancel or release leaves the row and opens the date. DELETE /api/bots/v1/bookings/{id} removes the booking, its invoice, its payments, and its emails, and the date opens. A deleted saved wedding stays deleted. Deleting an inquiry does not remove its booking. A test sample stays off the public dates and off the counted total. An external date is a wedding or other event Piper plays for another company. POST /api/bots/v1/externals with eventDate, kind (wedding or event), and company. partnerOne, partnerTwo, venueName, venueStreet, venueTwoName, and venueTwoStreet are optional. It is booked immediately, blocks that date, and has no invoice and no counted total. PATCH /api/bots/v1/externals/{id} with {released:true} releases it. A released external date stays released. DELETE /api/bots/v1/externals/{id} removes the row, booked or released, and the date opens. ${customs}. The amount already paid on those four is the deposit. The balance is still owed.`,
   }
 }

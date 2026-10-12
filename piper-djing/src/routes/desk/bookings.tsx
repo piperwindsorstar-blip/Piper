@@ -53,6 +53,7 @@ import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
 import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
+import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import { applyDiscount, PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
 
 const deskRoute = getRouteApi('/desk')
@@ -293,8 +294,10 @@ function NewBooking({
             </div>
           </div>
           <p className="max-w-xs text-xs text-white/65">
-            Travel is added from kilometres once the venue is set. The first 20
-            are included.
+            {DESK_TRAVEL_COPY}
+            {preview.hotel
+              ? ' A hotel is also required for this distance.'
+              : ''}
           </p>
           <button type="submit" className={deskPrimary}>
             Save as open
@@ -1644,7 +1647,7 @@ function BookingFields({
         />
       </label>
       <label className="field">
-        Kilometres to the venue
+        One-way kilometres to the venue
         <input
           name="kmOne"
           inputMode="decimal"
@@ -1652,7 +1655,7 @@ function BookingFields({
         />
       </label>
       <label className="field">
-        Kilometres to the second venue
+        One-way kilometres to the second venue
         <input
           name="kmTwo"
           inputMode="decimal"

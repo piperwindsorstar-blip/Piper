@@ -1,4 +1,5 @@
 import { GOOGLE_REVIEW_URL, PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
+import { TRAVEL_BANDS } from '../../lib/piper/rules.ts'
 
 export const LINKS = {
   weddings: '/weddings',
@@ -128,7 +129,7 @@ export const FAQ = [
   ],
   [
     'Do you travel outside Brantford?',
-    'Yes. Piper plays weddings across Brantford, Paris, Hamilton, Cambridge and surrounding areas. Travel details are included in your quote.',
+    `Yes. Piper plays weddings across Brantford, Paris, Hamilton, Cambridge and surrounding areas. ${TRAVEL_BANDS}`,
   ],
   [
     'Can we control the music?',

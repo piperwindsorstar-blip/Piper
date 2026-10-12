@@ -10,8 +10,10 @@ import {
   holdCovers,
   quote,
   requiredDeposit,
+  STAG_DEPOSIT_CENTS,
   torontoToday,
   travelCents,
+  travelCharge,
   travelForVenues,
   uplightCents,
 } from './rules.ts'
@@ -36,15 +38,70 @@ describe('travel and uplights', () => {
     assert.equal(uplightCents(4), 6000)
   })
 
-  it('calculates travel from kilometres', () => {
-    assert.equal(travelCents(10), 0)
-    assert.equal(travelCents(20), 0)
-    assert.equal(travelCents(21), 150)
+  it('charges one-way distance in bands and adds a hotel past 200 km', () => {
+    assert.equal(travelCents(49.9), 0)
+    assert.deepEqual(travelCharge(50), { cents: 11000, hotel: false })
+    assert.deepEqual(travelCharge(100), { cents: 11000, hotel: false })
+    assert.deepEqual(travelCharge(100.1), { cents: 25000, hotel: false })
+    assert.deepEqual(travelCharge(200), { cents: 25000, hotel: false })
+    assert.deepEqual(travelCharge(200.1), { cents: 25000, hotel: true })
+    assert.throws(() => travelCents(-1), /kilometres/)
   })
 
   it('allows two venues and refuses a third', () => {
-    assert.equal(travelForVenues([21, 30]), 150 + 1500)
+    assert.deepEqual(travelForVenues([40, 80]), {
+      cents: 11000,
+      hotel: false,
+    })
+    assert.deepEqual(travelForVenues([80, 220]), {
+      cents: 11000 + 25000,
+      hotel: true,
+    })
     assert.throws(() => travelForVenues([1, 2, 3]), /Two venues/)
+  })
+
+  it('includes travel on ceremony only and deposits a stag at $350', () => {
+    const ceremony = quote({
+      packageId: 'ceremony',
+      withStag: false,
+      uplights: 0,
+      venueKm: [220],
+    })
+    assert.equal(ceremony.totalCents, 35000)
+    assert.equal(ceremony.depositCents, 35000)
+    assert.equal(ceremony.hotel, false)
+    const stag = quote({
+      packageId: 'stag',
+      withStag: false,
+      uplights: 0,
+      venueKm: [80],
+    })
+    assert.equal(stag.totalCents, 70000 + 11000)
+    assert.equal(stag.depositCents, STAG_DEPOSIT_CENTS)
+    assert.equal(stag.hotel, false)
+    const far = quote({
+      packageId: 'full',
+      withStag: false,
+      uplights: 0,
+      venueKm: [240],
+    })
+    assert.equal(far.totalCents, 165000 + 25000)
+    assert.equal(far.hotel, true)
+    assert.equal(
+      requiredDeposit({
+        packageId: 'stag',
+        withStag: false,
+        invoiceDepositCents: 1000,
+      }),
+      STAG_DEPOSIT_CENTS,
+    )
+    const discounted = applyDiscount(stag, 70000, {
+      packageId: 'stag',
+      withStag: false,
+    })
+    assert.equal(discounted.totalCents, 11000)
+    assert.equal(discounted.depositCents, 11000)
+    assert.equal(discounted.hotel, false)
   })
 })
 

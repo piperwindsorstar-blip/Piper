@@ -224,8 +224,11 @@ export function Landing({
               </ul>
               <p className="mt-2 border-t border-line pt-6 text-sm text-muted">
                 A full wedding day can include a stag and doe as one booking.
-                Travel outside Brantford, a second venue, and uplighting are
-                quoted apart from the package.
+                Travel is the one-way driving distance from Brantford. Under 50
+                km is included, 50 to 100 km is $110, over 100 km up to 200 km
+                is $250, and over 200 km is $250 plus a hotel. Ceremony only
+                includes travel. A second venue and uplighting are quoted apart
+                from the package.
               </p>
             </div>
             <button

@@ -15,7 +15,7 @@ export function rsvpHead(title: string, index = false) {
             {
               name: 'description',
               content:
-                'A private wedding RSVP from DJ Piper P. $20 with a paid Piper date, $30 on its own. The link starts with RSVP.',
+                'A private wedding RSVP from DJ Piper P. $20 with a paid Piper date, $30 on its own. Your guests get their own link to reply.',
             },
           ]
         : []),

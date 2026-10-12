@@ -1,4 +1,4 @@
-import { TERMS_BODY } from './crm/terms.ts'
+import { reviseTerms, TERMS_BODY } from './crm/terms.ts'
 
 type Row = Record<string, unknown>
 
@@ -230,9 +230,17 @@ async function open(): Promise<Client> {
   const { PGlite } = await import('@electric-sql/pglite')
   const db = new PGlite()
   await db.exec(SCHEMA)
-  const existing = await db.query<{ id: number }>('SELECT id FROM terms')
-  if (existing.rows.length === 0) {
+  const existing = await db.query<{ body: string }>(
+    'SELECT body FROM terms WHERE id = 1',
+  )
+  const stored = existing.rows[0]?.body
+  if (!stored) {
     await db.query('INSERT INTO terms (id, body) VALUES (1, $1)', [TERMS_BODY])
+  } else {
+    const next = reviseTerms(stored)
+    if (next !== stored) {
+      await db.query('UPDATE terms SET body = $1 WHERE id = 1', [next])
+    }
   }
   const site = await db.query<{ id: number }>('SELECT id FROM site')
   if (site.rows.length === 0) {

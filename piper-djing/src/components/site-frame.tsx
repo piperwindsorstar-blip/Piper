@@ -114,6 +114,12 @@ export function SiteFooter({ brand = false }: { brand?: boolean }) {
         >
           {PUBLIC_EMAIL}
         </a>
+        <Link
+          to="/rsvp"
+          className={`inline-flex min-h-11 items-center text-sm ${brand ? `text-ivory ${focusLight}` : `text-ink ${focus}`}`}
+        >
+          RSVP
+        </Link>
         <a
           href={GOOGLE_REVIEW_URL}
           target="_blank"

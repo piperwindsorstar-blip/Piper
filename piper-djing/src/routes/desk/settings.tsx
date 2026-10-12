@@ -3,6 +3,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
 import { getSettings, saveSettings } from '../../lib/crm/desk.functions.ts'
+import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/settings')({
@@ -56,9 +57,7 @@ function SettingsPage() {
       </form>
       <section className={deskCard}>
         <p className="text-sm leading-relaxed text-white/85">
-          Travel is calculated from kilometres. The first 20 kilometres are
-          included, then each further kilometre is added. Two venues is the
-          maximum. There is no flat travel fee to type in.
+          {DESK_TRAVEL_COPY} There is no flat travel fee to type in.
         </p>
       </section>
       <section className={deskCard}>

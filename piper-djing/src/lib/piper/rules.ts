@@ -19,12 +19,24 @@ export const PACKAGE_CENTS: Record<PackageId, number> = {
 /** Ceremony only is paid in full. An invoice cannot lower this. */
 export const CEREMONY_DEPOSIT_CENTS = PACKAGE_CENTS.ceremony
 
+/** The Pre-Party on its own is a flat $350 deposit. */
+export const STAG_DEPOSIT_CENTS = 35000
+
 /** A full wedding day plus a stag is one booking, deposited at $500. */
 export const FULL_PLUS_STAG_DEPOSIT_CENTS = 50000
 
-/** The first 20 km from home are included. Past that, travel is per kilometre. */
-export const TRAVEL_FREE_KM = 20
-export const TRAVEL_CENTS_PER_KM = 150
+/**
+ * One-way driving distance. Under 50 km is included. 50–100 km is $110.
+ * Over 100 km, up to 200 km, is $250. Over 200 km is $250 plus a hotel.
+ */
+export const TRAVEL_INCLUDED_UNDER_KM = 50
+export const TRAVEL_NEAR_THROUGH_KM = 100
+export const TRAVEL_HOTEL_OVER_KM = 200
+export const TRAVEL_NEAR_CENTS = 11000
+export const TRAVEL_FAR_CENTS = 25000
+
+export const TRAVEL_BANDS =
+  'Under 50 km is included. From 50 km to 100 km is $110. Over 100 km, up to 200 km, is $250. Over 200 km is $250 plus a hotel. The Aisle, ceremony only, includes travel.'
 
 export const BLOCKED_DATE = '2027-02-20'
 
@@ -56,20 +68,44 @@ export function uplightCents(count: number): number {
   return count * UPLIGHT_CENTS
 }
 
-/** Travel is calculated from kilometres. It is not a typed flat fee. */
+export type TravelCharge = {
+  cents: number
+  hotel: boolean
+}
+
+/** Travel is calculated from one-way kilometres. It is not a typed flat fee. */
 export function travelCents(oneWayKm: number): number {
+  return travelCharge(oneWayKm).cents
+}
+
+export function travelCharge(oneWayKm: number): TravelCharge {
   if (!Number.isFinite(oneWayKm) || oneWayKm < 0) {
     throw new Error('Distance is a number of kilometres.')
   }
-  if (oneWayKm <= TRAVEL_FREE_KM) return 0
-  return Math.round((oneWayKm - TRAVEL_FREE_KM) * TRAVEL_CENTS_PER_KM)
+  if (oneWayKm < TRAVEL_INCLUDED_UNDER_KM) return { cents: 0, hotel: false }
+  if (oneWayKm <= TRAVEL_NEAR_THROUGH_KM) {
+    return { cents: TRAVEL_NEAR_CENTS, hotel: false }
+  }
+  return {
+    cents: TRAVEL_FAR_CENTS,
+    hotel: oneWayKm > TRAVEL_HOTEL_OVER_KM,
+  }
 }
 
-export function travelForVenues(oneWayKm: number[]): number {
+export function travelForVenues(oneWayKm: number[]): TravelCharge {
   if (oneWayKm.length > 2) {
     throw new Error('Two venues maximum.')
   }
-  return oneWayKm.reduce((sum, km) => sum + travelCents(km), 0)
+  return oneWayKm.reduce<TravelCharge>(
+    (sum, km) => {
+      const charge = travelCharge(km)
+      return {
+        cents: sum.cents + charge.cents,
+        hotel: sum.hotel || charge.hotel,
+      }
+    },
+    { cents: 0, hotel: false },
+  )
 }
 
 export function torontoToday(now = new Date()): string {
@@ -130,6 +166,7 @@ export function requiredDeposit(input: {
   invoiceDepositCents: number
 }): number {
   if (input.packageId === 'ceremony') return CEREMONY_DEPOSIT_CENTS
+  if (input.packageId === 'stag') return STAG_DEPOSIT_CENTS
   if (input.packageId === 'full' && input.withStag)
     return FULL_PLUS_STAG_DEPOSIT_CENTS
   return input.invoiceDepositCents
@@ -143,7 +180,7 @@ export function quote(
     venueKm: number[]
   },
   prices: Record<PackageId, number> = PACKAGE_CENTS,
-): { totalCents: number; depositCents: number } {
+): { totalCents: number; depositCents: number; hotel: boolean } {
   if (input.withStag && input.packageId !== 'full') {
     throw new Error('A stag is added to the full wedding day.')
   }
@@ -151,23 +188,33 @@ export function quote(
     input.packageId === 'full' && input.withStag
       ? prices.full + prices.stag
       : prices[input.packageId]
-  const totalCents =
-    packageCents + uplightCents(input.uplights) + travelForVenues(input.venueKm)
+  const travel =
+    input.packageId === 'ceremony'
+      ? { cents: 0, hotel: false }
+      : travelForVenues(input.venueKm)
+  const totalCents = packageCents + uplightCents(input.uplights) + travel.cents
   const depositCents =
     input.packageId === 'ceremony'
       ? prices.ceremony
-      : input.packageId === 'full' && input.withStag
-        ? FULL_PLUS_STAG_DEPOSIT_CENTS
-        : deposit30(totalCents)
-  return { totalCents, depositCents }
+      : input.packageId === 'stag'
+        ? Math.min(STAG_DEPOSIT_CENTS, totalCents)
+        : input.packageId === 'full' && input.withStag
+          ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, totalCents)
+          : deposit30(totalCents)
+  return { totalCents, depositCents, hotel: travel.hotel }
 }
 
 /** A custom discount comes off the quoted total. The deposit is calculated again. */
 export function applyDiscount(
-  quoted: { totalCents: number; depositCents: number },
+  quoted: { totalCents: number; depositCents: number; hotel: boolean },
   discountCents: number,
   shape: { packageId: PackageId; withStag: boolean },
-): { totalCents: number; depositCents: number; discountCents: number } {
+): {
+  totalCents: number
+  depositCents: number
+  discountCents: number
+  hotel: boolean
+} {
   if (!Number.isInteger(discountCents) || discountCents < 0) {
     throw new Error('The discount is a whole amount.')
   }
@@ -179,8 +226,10 @@ export function applyDiscount(
   const depositCents =
     shape.packageId === 'ceremony'
       ? totalCents
-      : shape.packageId === 'full' && shape.withStag
-        ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, totalCents)
-        : deposit30(totalCents)
-  return { totalCents, depositCents, discountCents }
+      : shape.packageId === 'stag'
+        ? Math.min(STAG_DEPOSIT_CENTS, totalCents)
+        : shape.packageId === 'full' && shape.withStag
+          ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, totalCents)
+          : deposit30(totalCents)
+  return { totalCents, depositCents, discountCents, hotel: quoted.hotel }
 }
