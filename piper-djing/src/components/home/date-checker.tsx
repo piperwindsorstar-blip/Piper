@@ -19,9 +19,9 @@ export function DateChecker() {
   const check = useServerFn(checkDate)
   const navigate = useNavigate()
   const today = todayInToronto()
-  const [eventType, setEventType] = useState<(typeof HOME_EVENT_TYPES)[number] | typeof CUSTOM_EVENT>(
-    'Wedding',
-  )
+  const [eventType, setEventType] = useState<
+    (typeof HOME_EVENT_TYPES)[number] | typeof CUSTOM_EVENT
+  >('Wedding')
   const [custom, setCustom] = useState('')
   const [company, setCompany] = useState('')
   const [year, setYear] = useState(() => Number(today.slice(0, 4)))
@@ -245,7 +245,10 @@ export function DateChecker() {
           </p>
         ) : null}
         {error ? (
-          <p role="alert" className="mt-3 text-center text-sm font-medium text-hot">
+          <p
+            role="alert"
+            className="mt-3 text-center text-sm font-medium text-hot"
+          >
             {error}
           </p>
         ) : null}

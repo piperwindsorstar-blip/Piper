@@ -1,15 +1,11 @@
 import nodemailer from 'nodemailer'
 import { query, usesEdgeBook } from '../db.server.ts'
 import { PUBLIC_EMAIL } from './defaults.ts'
-import {
-  bookingLetter,
-  coupleAddress,
-  invoiceLetter,
-  type Letter,
-  type LetterBooking,
-} from './mail-copy.ts'
+import { bookingLetter, coupleAddress, invoiceLetter } from './mail-copy.ts'
+import type { Letter, LetterBooking } from './mail-copy.ts'
 import { publicUrl } from './safe-origin.ts'
-import { deskProfile, listBookings, type BookingView } from './store.server.ts'
+import { deskProfile, listBookings } from './store.server.ts'
+import type { BookingView } from './store.server.ts'
 
 export type MailResult = {
   delivered: boolean

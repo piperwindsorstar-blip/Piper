@@ -15,9 +15,8 @@ import {
   SAVED_WEDDINGS,
   savedWeddingNote,
   voidInvoice,
-  type BookingState,
-  type InvoiceState,
 } from './booking-rules.ts'
+import type { BookingState, InvoiceState } from './booking-rules.ts'
 import { longDate } from './dates.ts'
 import { isPackageId, PACKAGE_BUTTON_COPY, packageName } from './defaults.ts'
 import { asExternalKind } from './external-dates.ts'
@@ -32,9 +31,8 @@ import {
   mergeCoupleSave,
   parsePlanning,
   planningFromUnknown,
-  type Planning,
-  type PlanningSeed,
 } from './planning.ts'
+import type { Planning, PlanningSeed } from './planning.ts'
 import { isReviewSource } from './reviews.ts'
 import type {
   PublicReview,
@@ -335,7 +333,7 @@ async function invoiceFor(bookingId: number): Promise<InvoiceRow | null> {
     'SELECT * FROM invoices WHERE booking_id = $1',
     [bookingId],
   )
-  return rows[0] ?? null
+  return rows.at(0) ?? null
 }
 
 async function bookingRow(id: number): Promise<BookingRow> {
@@ -343,7 +341,7 @@ async function bookingRow(id: number): Promise<BookingRow> {
   const rows = await query<BookingRow>('SELECT * FROM bookings WHERE id = $1', [
     id,
   ])
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) throw new Error('That booking is not on the book.')
   return row
 }
@@ -549,7 +547,7 @@ async function savedWeddingId(
        )`,
     [wedding.date, wedding.partnerOne, wedding.partnerTwo],
   )
-  const id = rows[0]?.id
+  const id = rows.at(0)?.id
   return id == null ? null : whole(id, 'Booking')
 }
 
@@ -561,7 +559,7 @@ async function ensureSavedInvoice(
     'SELECT id FROM invoices WHERE booking_id = $1',
     [bookingId],
   )
-  let invoiceId = existing[0]?.id
+  let invoiceId = existing.at(0)?.id
   if (invoiceId == null) {
     const inserted = await query<{ id: number }>(
       `INSERT INTO invoices (slug, booking_id, status, total_cents, deposit_cents, received_cents)
@@ -576,13 +574,13 @@ async function ensureSavedInvoice(
         wedding.depositClearedCents,
       ],
     )
-    invoiceId = inserted[0]?.id
+    invoiceId = inserted.at(0)?.id
     if (invoiceId == null) {
       const again = await query<{ id: number }>(
         'SELECT id FROM invoices WHERE booking_id = $1',
         [bookingId],
       )
-      invoiceId = again[0]?.id
+      invoiceId = again.at(0)?.id
     }
   }
   if (invoiceId == null) return
@@ -634,7 +632,7 @@ export async function ensureSavedWeddings(): Promise<void> {
           false,
         ],
       )
-      id = inserted[0]?.id ?? (await savedWeddingId(wedding))
+      id = inserted.at(0)?.id ?? (await savedWeddingId(wedding))
     }
     if (id == null) continue
     await ensureSavedInvoice(id, wedding)
@@ -677,7 +675,7 @@ async function venueRow(name: string): Promise<SavedVenue | null> {
     'SELECT id, name, street FROM venues WHERE lower(name) = lower($1)',
     [name.trim()],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) return null
   return { id: whole(row.id, 'Venue'), name: row.name, street: row.street }
 }
@@ -803,7 +801,7 @@ export async function saveVenue(
     'INSERT INTO venues (name, street) VALUES ($1, $2) RETURNING id',
     [cleanName, cleanStreet],
   )
-  const id = inserted[0]?.id
+  const id = inserted.at(0)?.id
   if (id == null) throw new Error('That venue was not saved.')
   return { id: whole(id, 'Venue'), name: cleanName, street: cleanStreet }
 }
@@ -821,7 +819,7 @@ export async function updateVenue(
     'SELECT id, name FROM venues WHERE id = $1',
     [venueId],
   )
-  const row = current[0]
+  const row = current.at(0)
   if (!row) throw new Error('That venue is not saved.')
   const other = await venueRow(cleanName)
   if (other && other.id !== venueId) {
@@ -851,7 +849,7 @@ export async function removeVenue(id: number): Promise<void> {
     'DELETE FROM venues WHERE id = $1 RETURNING name',
     [venueId],
   )
-  const name = rows[0]?.name
+  const name = rows.at(0)?.name
   if (!name) throw new Error('That venue is not saved.')
   await query(
     `INSERT INTO hidden_venues (name)
@@ -913,7 +911,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
       figures.discountCents,
     ],
   )
-  const id = inserted[0]?.id
+  const id = inserted.at(0)?.id
   if (!id) throw new Error('That booking was not saved.')
   await query(
     `INSERT INTO invoices (slug, booking_id, status, total_cents, deposit_cents, received_cents)
@@ -1060,7 +1058,7 @@ function savedNames(partnerOne: string, partnerTwo: string): [string, string] {
     partnerTwo.trim().toLowerCase(),
   ]
   names.sort()
-  return [names[0] ?? '', names[1] ?? '']
+  return [names.at(0) ?? '', names.at(1) ?? '']
 }
 
 function savedWeddingFor(
@@ -1193,7 +1191,7 @@ async function externalRow(id: number): Promise<ExternalDate> {
     'SELECT * FROM external_dates WHERE id = $1',
     [id],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) throw new Error('That date is not on the book.')
   return toExternal(row)
 }
@@ -1258,7 +1256,7 @@ export async function bookExternalDate(input: {
       notes,
     ],
   )
-  const id = inserted[0]?.id
+  const id = inserted.at(0)?.id
   if (id == null) throw new Error('That date was not saved.')
   await rememberVenue(venueName, venueStreet)
   await rememberVenue(venueTwoName, venueTwoStreet)
@@ -1280,7 +1278,7 @@ export async function removeExternalDate(id: number): Promise<void> {
     'DELETE FROM external_dates WHERE id = $1 RETURNING id',
     [current.id],
   )
-  if (!removed[0]) throw new Error('That date is not on the book.')
+  if (!removed.at(0)) throw new Error('That date is not on the book.')
 }
 
 export async function removeBooking(id: number): Promise<void> {
@@ -1307,7 +1305,7 @@ export async function removeBooking(id: number): Promise<void> {
     'DELETE FROM bookings WHERE id = $1 RETURNING id',
     [row.id],
   )
-  if (!removed[0]) throw new Error('That booking is not on the book.')
+  if (!removed.at(0)) throw new Error('That booking is not on the book.')
 }
 
 export type BookingPatch = {
@@ -1664,7 +1662,7 @@ export async function removeLead(id: number): Promise<void> {
     'DELETE FROM leads WHERE id = $1 RETURNING id',
     [leadId],
   )
-  if (!rows[0]) throw new Error('That inquiry is not on the desk.')
+  if (!rows.at(0)) throw new Error('That inquiry is not on the desk.')
 }
 
 export async function listPayments(): Promise<PaymentView[]> {
@@ -1713,8 +1711,8 @@ async function paymentRow(id: number): Promise<{
      WHERE payments.id = $1`,
     [paymentId],
   )
-  if (rows.length === 0) throw new Error('That payment is not on the book.')
-  const row = rows[0]
+  const row = rows.at(0)
+  if (!row) throw new Error('That payment is not on the book.')
   return {
     id: whole(row.id, 'Payment'),
     invoiceId: whole(row.invoice_id, 'Invoice'),
@@ -1731,7 +1729,7 @@ async function syncPaymentLedger(bookingId: number): Promise<void> {
     'SELECT COALESCE(SUM(cents), 0) AS total FROM payments WHERE invoice_id = $1',
     [invoiceRow.id],
   )
-  const received = Math.max(0, whole(sums[0]?.total ?? 0, 'Payment'))
+  const received = Math.max(0, whole(sums.at(0)?.total ?? 0, 'Payment'))
   const before = toInvoice(invoiceRow)
   const booking = toState(await bookingRow(bookingId))
   if (received >= before.receivedCents) {
@@ -1796,7 +1794,7 @@ export async function kindWordsOn(): Promise<boolean> {
   const rows = await query<{ kind_words: unknown }>(
     'SELECT kind_words FROM site WHERE id = 1',
   )
-  return flag(rows[0]?.kind_words)
+  return flag(rows.at(0)?.kind_words)
 }
 
 export async function setKindWords(on: boolean): Promise<boolean> {
@@ -1830,10 +1828,10 @@ export async function deskProfile(): Promise<{
     owner_email: string | null
     home_base: string | null
   }>('SELECT owner_email, home_base FROM site WHERE id = 1')
-  if (rows.length === 0) {
+  const row = rows.at(0)
+  if (!row) {
     return { email: DESK_OWNER_EMAIL, homeBase: HOME_BASE }
   }
-  const row = rows[0]
   return {
     email: (row.owner_email ?? '').trim() || DESK_OWNER_EMAIL,
     homeBase: (row.home_base ?? '').trim() || HOME_BASE,
@@ -1985,7 +1983,7 @@ export async function addReview(input: ReviewDraft): Promise<ReviewView> {
   const ids = await query<{ id: number }>(
     'SELECT COALESCE(MAX(id), 0) + 1 AS id FROM reviews',
   )
-  const id = whole(ids[0]?.id, 'Review')
+  const id = whole(ids.at(0)?.id, 'Review')
   await query(
     `INSERT INTO reviews (id, quote, names, when_label, event_type, town, reviewed_on, source, show_on_site)
      VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8)`,
@@ -2027,7 +2025,7 @@ export async function updateReview(
       reviewIdValue,
     ],
   )
-  const saved = rows[0]
+  const saved = rows.at(0)
   if (!saved) throw new Error('That review is not on the page.')
   await forgetPublicSite()
   return toReview(saved)
@@ -2043,7 +2041,7 @@ export async function setReviewShown(
     `UPDATE reviews SET show_on_site = $1 WHERE id = $2 RETURNING ${REVIEW_COLUMNS}`,
     [show ? 1 : 0, reviewIdValue],
   )
-  const saved = rows[0]
+  const saved = rows.at(0)
   if (!saved) throw new Error('That review is not on the page.')
   await forgetPublicSite()
   return toReview(saved)
@@ -2060,7 +2058,7 @@ export async function getTerms(): Promise<string> {
   const rows = await query<{ body: string }>(
     'SELECT body FROM terms WHERE id = 1',
   )
-  const body = rows[0]?.body
+  const body = rows.at(0)?.body
   if (!body) throw new Error('The terms document is missing.')
   return body
 }
@@ -2071,7 +2069,7 @@ export async function updateTerms(body: string): Promise<string> {
     'UPDATE terms SET body = $1 WHERE id = 1 RETURNING body',
     [next],
   )
-  const saved = rows[0]?.body
+  const saved = rows.at(0)?.body
   if (!saved) throw new Error('The terms document is missing.')
   return saved
 }
@@ -2089,7 +2087,7 @@ export async function addQuestion(prompt: string): Promise<void> {
   const rows = await query<{ sort: number }>(
     'SELECT COALESCE(MAX(sort), 0) + 1 AS sort FROM questions',
   )
-  const sort = rows.length === 0 ? 1 : whole(rows[0].sort, 'Question')
+  const sort = whole(rows.at(0)?.sort ?? 1, 'Question')
   await query('INSERT INTO questions (prompt, sort) VALUES ($1, $2)', [
     next,
     sort,
@@ -2123,8 +2121,8 @@ export async function updateQuestion(
     'UPDATE questions SET prompt = $1 WHERE id = $2 RETURNING id, prompt',
     [next, questionId],
   )
-  if (rows.length === 0) throw new Error('That question is not on the desk.')
-  const saved = rows[0]
+  const saved = rows.at(0)
+  if (!saved) throw new Error('That question is not on the desk.')
   return { id: whole(saved.id, 'Question'), prompt: saved.prompt }
 }
 
@@ -2134,7 +2132,7 @@ export async function removeQuestion(id: number): Promise<void> {
     'DELETE FROM questions WHERE id = $1 RETURNING id',
     [questionId],
   )
-  if (!rows[0]) throw new Error('That question is not on the desk.')
+  if (!rows.at(0)) throw new Error('That question is not on the desk.')
 }
 
 export async function updateMedia(
@@ -2149,8 +2147,8 @@ export async function updateMedia(
     'UPDATE media SET title = $1, url = $2 WHERE id = $3 RETURNING id, title, url',
     [nextTitle, nextUrl, mediaId],
   )
-  if (rows.length === 0) throw new Error('That link is not on the desk.')
-  const saved = rows[0]
+  const saved = rows.at(0)
+  if (!saved) throw new Error('That link is not on the desk.')
   return { id: whole(saved.id, 'Media'), title: saved.title, url: saved.url }
 }
 
@@ -2160,7 +2158,7 @@ export async function removeMedia(id: number): Promise<void> {
     'DELETE FROM media WHERE id = $1 RETURNING id',
     [mediaId],
   )
-  if (!rows[0]) throw new Error('That link is not on the desk.')
+  if (!rows.at(0)) throw new Error('That link is not on the desk.')
 }
 
 const PACKAGE_ORDER: PackageId[] = ['full', 'reception', 'stag', 'ceremony']
@@ -2226,7 +2224,7 @@ export async function packagesForToken(
     { sql: PACKAGE_OFFER_TABLE },
     { sql: 'SELECT id, name, detail, cents FROM package_offers' },
   ])
-  const role = results[0][0]?.role
+  const role = results.at(0)?.at(0)?.role
   if (typeof role !== 'string') return null
   asRole(role)
   return offersFromRows(results[2] as OfferRow[])
@@ -2268,7 +2266,7 @@ export async function updatePackageOffer(input: {
      WHERE id = $4 RETURNING id`,
     [name, detail, input.cents, input.id],
   )
-  if (!rows[0]) throw new Error('Choose a package.')
+  if (!rows.at(0)) throw new Error('Choose a package.')
   const saved = (await listPackageOffers()).find((item) => item.id === input.id)
   if (!saved) throw new Error('Choose a package.')
   await forgetPublicSite()
@@ -2329,8 +2327,8 @@ function partnerLogoData(value: string): { mime: string; logo: string } {
       value.trim(),
     )
   if (!match) throw new Error('Use a PNG, JPEG, or WebP logo.')
-  const mime = match[1] ?? ''
-  const logo = (match[2] ?? '').replace(/\s/g, '')
+  const [, mime = '', encodedLogo = ''] = match
+  const logo = encodedLogo.replace(/\s/g, '')
   if (!PARTNER_MIMES.has(mime) || !logo) {
     throw new Error('Use a PNG, JPEG, or WebP logo.')
   }
@@ -2425,7 +2423,7 @@ export async function partnerLogo(
     'SELECT mime, logo FROM partners WHERE id = $1',
     [id],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row || !PARTNER_MIMES.has(row.mime)) return null
   return row
 }
@@ -2442,7 +2440,7 @@ export async function addPartner(input: {
   const ids = await query<{ id: number }>(
     'SELECT COALESCE(MAX(id), 0) + 1 AS id FROM partners',
   )
-  const id = whole(ids[0]?.id, 'Partner')
+  const id = whole(ids.at(0)?.id, 'Partner')
   await query(
     'INSERT INTO partners (id, name, href, mime, logo) VALUES ($1, $2, $3, $4, $5)',
     [id, name, href, mime, logo],
@@ -2520,7 +2518,7 @@ export async function updateBot(
     'UPDATE bots SET name = $1, role = $2 WHERE id = $3 RETURNING id',
     [nextName, nextRole, botId],
   )
-  if (!rows[0]) throw new Error('That bot is not on the desk.')
+  if (!rows.at(0)) throw new Error('That bot is not on the desk.')
   return { id: botId, name: nextName, role: nextRole }
 }
 
@@ -2530,7 +2528,7 @@ export async function removeBot(id: number): Promise<void> {
     'DELETE FROM bots WHERE id = $1 RETURNING id',
     [botId],
   )
-  if (!rows[0]) throw new Error('That bot is not on the desk.')
+  if (!rows.at(0)) throw new Error('That bot is not on the desk.')
 }
 
 export async function inviteBot(
@@ -2556,7 +2554,7 @@ export async function botFromToken(
     'SELECT id, name, role FROM bots WHERE token = $1',
     [token],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) return null
   return { id: row.id, name: row.name, role: asRole(row.role) }
 }
@@ -2608,7 +2606,7 @@ export async function coupleBySlug(slugValue: string) {
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) return null
   const view = await present(toView(row, await invoiceFor(row.id)))
   const planning = parsePlanning(row.planning, planningSeed(row))
@@ -2647,7 +2645,7 @@ export async function saveCouplePlanning(
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) throw new Error('That page was not found.')
   const existing = parsePlanning(row.planning, planningSeed(row)).planning
   if (isPlanLocked(existing, torontoToday())) {
@@ -2673,7 +2671,7 @@ export async function savePortalDeskFields(
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) throw new Error('That page was not found.')
   const existing = parsePlanning(row.planning, planningSeed(row)).planning
   const planning = {
@@ -2730,7 +2728,7 @@ export async function readPortalMaster(): Promise<MasterMap> {
   const rows = await query<{ portal_master: string | null }>(
     'SELECT portal_master FROM site WHERE id = 1',
   )
-  return parseMaster(rows[0]?.portal_master ?? '')
+  return parseMaster(rows.at(0)?.portal_master ?? '')
 }
 
 export async function savePortalMaster(value: unknown): Promise<MasterMap> {
@@ -2803,8 +2801,8 @@ export async function saveCouplePasscode(
     'SELECT id FROM bookings WHERE slug = $1',
     [slugValue],
   )
-  if (rows.length === 0) throw new Error('That page was not found.')
-  const row = rows[0]
+  const row = rows.at(0)
+  if (!row) throw new Error('That page was not found.')
   const clash = await query<{ id: number }>(
     'SELECT id FROM bookings WHERE upper(portal_passcode) = $1 AND id <> $2',
     [passcode, row.id],
@@ -2825,7 +2823,7 @@ export async function coupleByPasscode(code: string): Promise<string | null> {
     'SELECT slug FROM bookings WHERE upper(portal_passcode) = $1',
     [passcode],
   )
-  return rows[0]?.slug ?? null
+  return rows.at(0)?.slug ?? null
 }
 
 function shareEnabled(value: unknown): boolean {
@@ -2842,8 +2840,8 @@ export async function readCoupleShare(
   }>('SELECT portal_share, portal_share_on FROM bookings WHERE slug = $1', [
     slugValue,
   ])
-  if (rows.length === 0) return { token: '', on: false }
-  const row = rows[0]
+  const row = rows.at(0)
+  if (!row) return { token: '', on: false }
   return {
     token: (row.portal_share ?? '').trim(),
     on: shareEnabled(row.portal_share_on),
@@ -2856,8 +2854,8 @@ export async function enableCoupleShare(slugValue: string): Promise<string> {
     'SELECT id, portal_share FROM bookings WHERE slug = $1',
     [slugValue],
   )
-  if (rows.length === 0) throw new Error('That page was not found.')
-  const row = rows[0]
+  const row = rows.at(0)
+  if (!row) throw new Error('That page was not found.')
   let token = (row.portal_share ?? '').trim()
   if (!/^[A-Za-z0-9_-]{16,80}$/.test(token)) {
     token = randomBytes(24).toString('base64url')
@@ -2883,9 +2881,8 @@ export async function planByShareToken(token: string) {
   const rows = await query<
     BookingRow & { planning?: string; portal_share_on?: unknown }
   >('SELECT * FROM bookings WHERE portal_share = $1', [clean])
-  if (rows.length === 0) return null
-  const row = rows[0]
-  if (!shareEnabled(row.portal_share_on)) return null
+  const row = rows.at(0)
+  if (!row || !shareEnabled(row.portal_share_on)) return null
   const view = await present(toView(row, await invoiceFor(row.id)))
   const planning = parsePlanning(row.planning, planningSeed(row))
   return {
@@ -2913,7 +2910,7 @@ export async function couplePortalForDesk(slugValue: string) {
   return {
     ...page,
     slug: slugValue,
-    passcode: (rows[0]?.portal_passcode ?? '').trim().toUpperCase(),
+    passcode: (rows.at(0)?.portal_passcode ?? '').trim().toUpperCase(),
     master,
     today,
     locked: isPlanLocked(page.planning, today),
@@ -2929,8 +2926,8 @@ export async function saveDeskPlanning(
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
   )
-  if (rows.length === 0) throw new Error('That page was not found.')
-  const row = rows[0]
+  const row = rows.at(0)
+  if (!row) throw new Error('That page was not found.')
   const existing = parsePlanning(row.planning, planningSeed(row)).planning
   const planning = mergeCoupleSave(
     existing,
@@ -2949,7 +2946,7 @@ export async function lockCouplePlan(slugValue: string): Promise<Planning> {
     'SELECT * FROM bookings WHERE slug = $1',
     [slugValue],
   )
-  const row = rows[0]
+  const row = rows.at(0)
   if (!row) throw new Error('That page was not found.')
   const planning = {
     ...parsePlanning(row.planning, planningSeed(row)).planning,
@@ -2971,7 +2968,7 @@ export async function invoiceBySlug(slugValue: string) {
     'SELECT * FROM invoices WHERE slug = $1',
     [slugValue],
   )
-  const invoice = invoices[0]
+  const invoice = invoices.at(0)
   if (!invoice) return null
   const row = await bookingRow(invoice.booking_id)
   const view = toView(row, invoice)

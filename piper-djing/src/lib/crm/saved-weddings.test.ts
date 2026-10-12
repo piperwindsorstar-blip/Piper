@@ -21,10 +21,11 @@ describe('saved weddings', { skip: liveBook }, () => {
       assert.equal(row.phone, '')
       assert.equal(row.totalCents, wedding.totalCents)
       assert.equal(row.depositCents, wedding.depositClearedCents)
-      assert.equal(row.invoice?.status, 'sent')
-      assert.equal(row.invoice?.receivedCents, wedding.depositClearedCents)
+      assert.ok(row.invoice)
+      assert.equal(row.invoice.status, 'sent')
+      assert.equal(row.invoice.receivedCents, wedding.depositClearedCents)
       assert.equal(
-        row.invoice?.balanceCents,
+        row.invoice.balanceCents,
         wedding.totalCents - wedding.depositClearedCents,
       )
       assert.match(row.notes, /previous book/)

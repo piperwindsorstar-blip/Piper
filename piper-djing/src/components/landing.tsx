@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useRef, useState, type RefObject } from 'react'
+import { useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import {
   GOOGLE_REVIEW_URL,
   PACKAGE_BUTTON_COPY,

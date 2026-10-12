@@ -1,5 +1,4 @@
 import { PACKAGE_BUTTON_COPY } from './defaults.ts'
-import type { PackageId } from './defaults.ts'
 import {
   readPublicEdge,
   readPublicMemory,
@@ -32,10 +31,10 @@ function staticCatalog(): PublicCatalog {
     reviews: [],
     partners: [],
     packages: PACKAGE_BUTTON_COPY.map((item) => ({
-      id: item.id as PackageId,
+      id: item.id,
       name: item.name,
       detail: item.detail,
-      cents: PACKAGE_CENTS[item.id as PackageId],
+      cents: PACKAGE_CENTS[item.id],
     })),
   }
 }

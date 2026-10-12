@@ -33,7 +33,8 @@ export type WeddingInput = {
   discountCents?: number
 }
 
-export type BookingState = WeddingInput & {
+export type BookingState = Omit<WeddingInput, 'discountCents'> & {
+  discountCents: number
   status: BookingStatus
   totalCents: number
   depositCents: number
@@ -196,7 +197,7 @@ function bookIfCovered(
   if (booking.status === 'booked') {
     return { booking, invoice, newlyBooked: false }
   }
-  const discount = booking.discountCents ?? 0
+  const discount = booking.discountCents
   const required =
     booking.packageId === 'ceremony'
       ? discount > 0

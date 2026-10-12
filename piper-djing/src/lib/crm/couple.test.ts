@@ -5,7 +5,7 @@ import { coupleBySlug, createBooking, sendInvoice } from './store.server.ts'
 const liveBook = Boolean(process.env.DATABASE_URL)
 
 describe('couple portal', { skip: liveBook }, () => {
-  it('shows the date and the invoice without streets', async () => {
+  it('shows the date and venue details but keeps inquiry notes private', async () => {
     const booking = await createBooking({
       partnerOne: 'Nora',
       partnerTwo: 'Ellis',
@@ -29,10 +29,9 @@ describe('couple portal', { skip: liveBook }, () => {
     assert.equal(page.venueName, 'The Hall')
     assert.equal(page.venueTwoName, 'The Barn')
     assert.equal(page.invoiceSlug, booking.invoice?.slug)
-    const printed = JSON.stringify(page)
-    assert.doesNotMatch(printed, /Chapel/)
-    assert.doesNotMatch(printed, /Mill Road/)
-    assert.doesNotMatch(printed, /Butcher/)
+    assert.equal(page.planning.ceremonyAddress, '12 Chapel Lane')
+    assert.equal(page.planning.receptionAddress, '4 Mill Road')
+    assert.doesNotMatch(JSON.stringify(page), /Butcher/)
     assert.equal(page.status, 'open')
 
     await sendInvoice(booking.id)

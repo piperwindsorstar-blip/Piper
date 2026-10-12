@@ -1,5 +1,10 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { deleteCookie, getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
+import {
+  deleteCookie,
+  getCookie,
+  getRequest,
+  setCookie,
+} from '@tanstack/react-start/server'
 import { query } from '../db.server.ts'
 
 const COOKIE = 'piper_desk'
@@ -23,7 +28,10 @@ export function passwordsMatch(given: string, expected: string): boolean {
 export async function isDesk(): Promise<boolean> {
   const id = getCookie(COOKIE)
   if (!id) return false
-  const rows = await query<{ id: string }>('SELECT id FROM sessions WHERE id = $1', [id])
+  const rows = await query<{ id: string }>(
+    'SELECT id FROM sessions WHERE id = $1',
+    [id],
+  )
   return rows.length > 0
 }
 

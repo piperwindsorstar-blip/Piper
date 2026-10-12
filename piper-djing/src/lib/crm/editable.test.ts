@@ -45,6 +45,7 @@ describe('stored package prices', () => {
       venueName: 'The Hall',
       venueStreet: '1 King Street',
       sample: true,
+      discountCents: 0,
       status: 'hold',
       totalCents: 35000,
       depositCents: 35000,

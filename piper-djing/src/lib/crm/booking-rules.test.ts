@@ -27,6 +27,7 @@ const base = (): BookingState => ({
   venueName: 'The Hall',
   venueStreet: '1 King Street',
   sample: false,
+  discountCents: 0,
   status: 'open',
   totalCents: 235000,
   depositCents: 50000,

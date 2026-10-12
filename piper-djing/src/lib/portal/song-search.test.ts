@@ -95,10 +95,10 @@ describe('song search', { concurrency: false }, () => {
     delete process.env.SPOTIFY_CLIENT_ID
     delete process.env.SPOTIFY_CLIENT_SECRET
     let calls = 0
-    globalThis.fetch = (() => {
+    globalThis.fetch = () => {
       calls += 1
       throw new Error('network')
-    }) as typeof fetch
+    }
     try {
       assert.deepEqual(
         await lookupSongs('https://open.spotify.com/track/abc'),
@@ -122,10 +122,7 @@ describe('song search', { concurrency: false }, () => {
     process.env.SPOTIFY_CLIENT_ID = clientId
     process.env.SPOTIFY_CLIENT_SECRET = 'client-secret'
     const calls: string[] = []
-    globalThis.fetch = (async (
-      input: RequestInfo | URL,
-      init?: RequestInit,
-    ) => {
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       calls.push(`${init?.method ?? 'GET'} ${url}`)
       if (url.startsWith('https://accounts.spotify.com/api/token')) {
@@ -153,7 +150,7 @@ describe('song search', { concurrency: false }, () => {
           ],
         },
       })
-    }) as typeof fetch
+    }
     try {
       const first = await lookupSongs('Perfect')
       const second = await lookupSongs('Perfect')

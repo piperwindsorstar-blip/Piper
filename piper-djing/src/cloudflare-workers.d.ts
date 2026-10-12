@@ -24,9 +24,9 @@ declare module 'cloudflare:workers' {
       }
     }
   }
-  export abstract class DurableObject<E = unknown> {
+  export abstract class DurableObject<TEnv = unknown> {
     ctx: DurableObjectState
-    env: E
-    constructor(ctx: DurableObjectState, env: E)
+    env: TEnv
+    constructor(ctx: DurableObjectState, env: TEnv)
   }
 }
