@@ -160,6 +160,18 @@ export class Book extends DurableObject {
     return this.ctx.storage.sql.exec(sql, ...params).toArray()
   }
 
+  /** Several statements in one durable-object call. */
+  async batch(
+    statements: { sql: string; params?: unknown[] }[],
+  ): Promise<Record<string, unknown>[][]> {
+    await this.ensure()
+    return statements.map((statement) =>
+      this.ctx.storage.sql
+        .exec(statement.sql, ...(statement.params ?? []))
+        .toArray(),
+    )
+  }
+
   private ensure(): Promise<void> {
     if (!this.ready) {
       this.ready = this.init().catch((error: unknown) => {
@@ -205,6 +217,24 @@ export class Book extends DurableObject {
       this.ctx.storage.sql.exec(
         'INSERT INTO site (id, kind_words) VALUES (1, 0)',
       )
+    }
+    const reviewColumns = this.ctx.storage.sql
+      .exec('PRAGMA table_info(reviews)')
+      .toArray()
+    const reviewNames = new Set(reviewColumns.map((column) => column.name))
+    const reviewAdds: [string, string][] = [
+      ['event_type', "text NOT NULL DEFAULT ''"],
+      ['town', "text NOT NULL DEFAULT ''"],
+      ['reviewed_on', "text NOT NULL DEFAULT ''"],
+      ['source', "text NOT NULL DEFAULT 'other'"],
+      ['show_on_site', 'integer NOT NULL DEFAULT 0'],
+    ]
+    for (const [name, definition] of reviewAdds) {
+      if (!reviewNames.has(name)) {
+        this.ctx.storage.sql.exec(
+          `ALTER TABLE reviews ADD COLUMN ${name} ${definition}`,
+        )
+      }
     }
   }
 }

@@ -56,6 +56,7 @@ export const Route = createFileRoute('/book')({
     }
   },
   loader: () => getPublicSite(),
+  staleTime: 5 * 60 * 1000,
   component: BookPage,
 })
 

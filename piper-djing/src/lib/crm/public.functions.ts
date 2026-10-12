@@ -2,25 +2,16 @@ import { createServerFn } from '@tanstack/react-start'
 import { isPackageId, packageName } from './defaults.ts'
 import { parseDateRequest, todayInToronto } from './date-request.ts'
 import { emailOwner } from './mail.server.ts'
+import { readPublicSite } from './public-site.server.ts'
 import {
   createEventInquiry,
   createInquiry,
   dateOpen,
-  ensureSavedWeddings,
-  homepageReviews,
   listPackageOffers,
-  listPartners,
 } from './store.server.ts'
 
 export const getPublicSite = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    await ensureSavedWeddings()
-    return {
-      reviews: await homepageReviews(),
-      partners: await listPartners(),
-      packages: await listPackageOffers(),
-    }
-  },
+  async () => readPublicSite(),
 )
 
 export const checkDate = createServerFn({ method: 'POST' })

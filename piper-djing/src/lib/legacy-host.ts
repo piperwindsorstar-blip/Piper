@@ -4,8 +4,8 @@ export const LEGACY_HOST = 'piperp-wedding-dj.grok.me'
 const PUBLIC_ORIGIN = 'https://piperpweddingdj.services'
 
 /**
- * Bot calls, couple links, and couple pages stay on the old host.
- * That book is where the invites and the couple links already live.
+ * Bot calls, couple links, and couple pages are not redirected.
+ * This worker answers them itself and does not call the old host.
  */
 export function staysOnLegacyHost(pathname: string): boolean {
   return (

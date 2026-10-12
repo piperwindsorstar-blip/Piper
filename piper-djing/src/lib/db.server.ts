@@ -161,11 +161,29 @@ CREATE TABLE IF NOT EXISTS rsvp_weddings (
 CREATE INDEX IF NOT EXISTS rsvp_weddings_email ON rsvp_weddings (lower(email));
 `
 
+export type SqlStatement = { sql: string; params?: unknown[] }
+
+type EdgeStub = {
+  query: (sql: string, params?: unknown[]) => Promise<Row[]>
+  batch?: (statements: { sql: string; params: unknown[] }[]) => Promise<Row[][]>
+}
+
 type EdgeBook = {
   idFromName: (name: string) => unknown
-  get: (id: unknown) => {
-    query: (sql: string, params?: unknown[]) => Promise<Row[]>
-  }
+  get: (id: unknown) => EdgeStub
+}
+
+/** One increment is one Book durable-object call. A batch is one call. */
+let bookCalls = 0
+
+export function takeBookCalls(): number {
+  const count = bookCalls
+  bookCalls = 0
+  return count
+}
+
+function noteBookCall(): void {
+  bookCalls += 1
 }
 
 function edgeBook(): EdgeBook | null {
@@ -236,9 +254,42 @@ export async function query<T extends Row>(
   if (book) {
     const stub = book.get(book.idFromName('piper'))
     const statement = positional(text, params)
+    noteBookCall()
     return (await stub.query(statement.sql, statement.params)) as T[]
   }
   if (!opening) opening = open()
   const client = await opening
+  noteBookCall()
   return (await client.query(text, params)) as T[]
+}
+
+/** Several statements inside one Book call. Local tests count the batch as one call. */
+export async function queryBatch<T extends Row = Row>(
+  statements: SqlStatement[],
+): Promise<T[][]> {
+  if (statements.length === 0) return []
+  const book = edgeBook()
+  if (book) {
+    const stub = book.get(book.idFromName('piper'))
+    const prepared = statements.map((statement) =>
+      positional(statement.sql, statement.params ?? []),
+    )
+    noteBookCall()
+    if (stub.batch) return (await stub.batch(prepared)) as T[][]
+    const rows: T[][] = []
+    for (const statement of prepared) {
+      rows.push((await stub.query(statement.sql, statement.params)) as T[])
+    }
+    return rows
+  }
+  if (!opening) opening = open()
+  const client = await opening
+  noteBookCall()
+  const rows: T[][] = []
+  for (const statement of statements) {
+    rows.push(
+      (await client.query(statement.sql, statement.params ?? [])) as T[],
+    )
+  }
+  return rows
 }

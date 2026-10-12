@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { query, usesEdgeBook } from '../db.server.ts'
+import { query, queryBatch, usesEdgeBook } from '../db.server.ts'
 import {
   assertBookableDate,
   assertBookableNames,
@@ -47,7 +47,7 @@ import { rankSuggestions, songsFromPlans } from '../portal/song-suggestions.ts'
 import type { SongHit } from '../portal/song-search.ts'
 import type { MasterMap } from '../portal/questions.ts'
 import { overallProgress } from '../portal/progress.ts'
-import { askLegacyDate } from '../legacy-book.server.ts'
+import { forgetPublicSite } from './public-memory.ts'
 import {
   holdLastDay,
   isBlockedDate,
@@ -353,13 +353,54 @@ async function states(): Promise<BookingState[]> {
   return rows.map(toState)
 }
 
+const DISMISSED_TABLE = `CREATE TABLE IF NOT EXISTS dismissed_weddings (
+  event_date text NOT NULL,
+  partner_one text NOT NULL,
+  partner_two text NOT NULL,
+  PRIMARY KEY (event_date, partner_one, partner_two)
+)`
+
 async function dateTakenByOthers(
   day: string,
   exceptId: number | null,
 ): Promise<boolean> {
-  if (await externalDateActive(day, null)) return true
-  const rows = await bookingRows()
-  const others = rows.filter((row) => row.id !== exceptId).map(toState)
+  const results = await queryBatch([
+    { sql: DISMISSED_TABLE },
+    {
+      sql: `SELECT partner_one, partner_two FROM dismissed_weddings
+            WHERE event_date = $1`,
+      params: [day],
+    },
+    {
+      sql: 'SELECT id FROM external_dates WHERE event_date = $1 AND released = 0',
+      params: [day],
+    },
+    {
+      sql: 'SELECT * FROM bookings WHERE event_date = $1 OR stag_date = $1',
+      params: [day],
+    },
+  ])
+  const dismissed = results[1] as { partner_one: string; partner_two: string }[]
+  const externals = results[2] as { id: number }[]
+  const bookings = results[3] as BookingRow[]
+  if (externals.length > 0) return true
+  const saved = SAVED_WEDDINGS.find((wedding) => wedding.date === day)
+  if (saved) {
+    const [one, two] = savedNames(saved.partnerOne, saved.partnerTwo)
+    const gone = dismissed.some(
+      (row) => row.partner_one === one && row.partner_two === two,
+    )
+    const ownRow =
+      exceptId != null &&
+      bookings.some(
+        (row) =>
+          row.id === exceptId &&
+          savedNames(row.partner_one, row.partner_two)[0] === one &&
+          savedNames(row.partner_one, row.partner_two)[1] === two,
+      )
+    if (!gone && !ownRow) return true
+  }
+  const others = bookings.filter((row) => row.id !== exceptId).map(toState)
   return dateIsTaken(others, day)
 }
 
@@ -1010,13 +1051,7 @@ export async function createInquiry(
 export async function dateOpen(day: string): Promise<boolean> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Choose a date.')
   if (isBlockedDate(day, null)) return false
-  for (const wedding of SAVED_WEDDINGS) {
-    if (wedding.date !== day) continue
-    if (!(await isSavedWeddingDismissed(wedding))) return false
-  }
-  if (await dateTakenByOthers(day, null)) return false
-  const legacy = await askLegacyDate(day)
-  return legacy !== 'taken'
+  return !(await dateTakenByOthers(day, null))
 }
 
 function savedNames(partnerOne: string, partnerTwo: string): [string, string] {
@@ -1150,18 +1185,6 @@ function toExternal(row: ExternalRow): ExternalDate {
     notes: row.notes,
     released: flag(row.released),
   }
-}
-
-async function externalDateActive(
-  day: string,
-  exceptId: number | null,
-): Promise<boolean> {
-  await ensureExternalDates()
-  const rows = await query<{ id: number }>(
-    'SELECT id FROM external_dates WHERE event_date = $1 AND released = 0',
-    [day],
-  )
-  return rows.some((row) => row.id !== exceptId)
 }
 
 async function externalRow(id: number): Promise<ExternalDate> {
@@ -1977,6 +2000,7 @@ export async function addReview(input: ReviewDraft): Promise<ReviewView> {
       review.show ? 1 : 0,
     ],
   )
+  await forgetPublicSite()
   return { id, ...review }
 }
 
@@ -2005,6 +2029,7 @@ export async function updateReview(
   )
   const saved = rows[0]
   if (!saved) throw new Error('That review is not on the page.')
+  await forgetPublicSite()
   return toReview(saved)
 }
 
@@ -2020,6 +2045,7 @@ export async function setReviewShown(
   )
   const saved = rows[0]
   if (!saved) throw new Error('That review is not on the page.')
+  await forgetPublicSite()
   return toReview(saved)
 }
 
@@ -2027,6 +2053,7 @@ export async function removeReview(id: number): Promise<void> {
   const reviewIdValue = reviewId(id)
   await ensureReviews()
   await query('DELETE FROM reviews WHERE id = $1', [reviewIdValue])
+  await forgetPublicSite()
 }
 
 export async function getTerms(): Promise<string> {
@@ -2138,33 +2165,21 @@ export async function removeMedia(id: number): Promise<void> {
 
 const PACKAGE_ORDER: PackageId[] = ['full', 'reception', 'stag', 'ceremony']
 
-async function ensurePackageOffers(): Promise<void> {
-  await query(
-    `CREATE TABLE IF NOT EXISTS package_offers (
-      id text PRIMARY KEY,
-      name text NOT NULL,
-      detail text NOT NULL,
-      cents integer NOT NULL
-    )`,
-  )
-  for (const item of PACKAGE_BUTTON_COPY) {
-    await query(
-      `INSERT INTO package_offers (id, name, detail, cents)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (id) DO NOTHING`,
-      [item.id, item.name, item.detail, PACKAGE_CENTS[item.id]],
-    )
-  }
+const PACKAGE_OFFER_TABLE = `CREATE TABLE IF NOT EXISTS package_offers (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  detail text NOT NULL,
+  cents integer NOT NULL
+)`
+
+type OfferRow = {
+  id: string
+  name: string
+  detail: string
+  cents: unknown
 }
 
-export async function listPackageOffers(): Promise<PackageOffer[]> {
-  await ensurePackageOffers()
-  const rows = await query<{
-    id: string
-    name: string
-    detail: string
-    cents: unknown
-  }>('SELECT id, name, detail, cents FROM package_offers')
+function offersFromRows(rows: OfferRow[]): PackageOffer[] {
   const byId = new Map(rows.map((row) => [row.id, row]))
   return PACKAGE_ORDER.map((id) => {
     const row = byId.get(id)
@@ -2176,6 +2191,45 @@ export async function listPackageOffers(): Promise<PackageOffer[]> {
       cents: row ? whole(row.cents, 'Price') : PACKAGE_CENTS[id],
     }
   })
+}
+
+async function ensurePackageOffers(): Promise<void> {
+  await query(PACKAGE_OFFER_TABLE)
+  for (const item of PACKAGE_BUTTON_COPY) {
+    await query(
+      `INSERT INTO package_offers (id, name, detail, cents)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO NOTHING`,
+      [item.id, item.name, item.detail, PACKAGE_CENTS[item.id]],
+    )
+  }
+}
+
+export async function listPackageOffers(): Promise<PackageOffer[]> {
+  const results = await queryBatch([
+    { sql: PACKAGE_OFFER_TABLE },
+    { sql: 'SELECT id, name, detail, cents FROM package_offers' },
+  ])
+  return offersFromRows(results[1] as OfferRow[])
+}
+
+/** One Book call: the token and the four packages. Null when the token is not on this book. */
+export async function packagesForToken(
+  token: string,
+): Promise<PackageOffer[] | null> {
+  if (!token) return null
+  const results = await queryBatch([
+    {
+      sql: 'SELECT role FROM bots WHERE token = $1',
+      params: [token],
+    },
+    { sql: PACKAGE_OFFER_TABLE },
+    { sql: 'SELECT id, name, detail, cents FROM package_offers' },
+  ])
+  const role = results[0][0]?.role
+  if (typeof role !== 'string') return null
+  asRole(role)
+  return offersFromRows(results[2] as OfferRow[])
 }
 
 export async function packagePriceMap(): Promise<Record<PackageId, number>> {
@@ -2217,6 +2271,7 @@ export async function updatePackageOffer(input: {
   if (!rows[0]) throw new Error('Choose a package.')
   const saved = (await listPackageOffers()).find((item) => item.id === input.id)
   if (!saved) throw new Error('Choose a package.')
+  await forgetPublicSite()
   return saved
 }
 
@@ -2308,6 +2363,59 @@ export async function listPartners(): Promise<PartnerView[]> {
   }))
 }
 
+export type PublicCatalog = {
+  reviews: PublicReview[]
+  partners: PartnerView[]
+  packages: PackageOffer[]
+}
+
+/** Reviews, partners, and packages in one Book call. */
+export async function loadPublicCatalog(): Promise<PublicCatalog> {
+  const results = await queryBatch([
+    {
+      sql: `SELECT ${REVIEW_COLUMNS} FROM reviews
+            WHERE show_on_site <> 0
+            ORDER BY reviewed_on DESC, id DESC`,
+    },
+    { sql: 'SELECT id, name, href, mime, logo FROM partners ORDER BY id' },
+    { sql: PACKAGE_OFFER_TABLE },
+    { sql: 'SELECT id, name, detail, cents FROM package_offers' },
+  ])
+  const reviews = (results[0] as ReviewRow[]).map((row) => {
+    const source: ReviewSource = isReviewSource(row.source)
+      ? row.source
+      : 'other'
+    return {
+      id: whole(row.id, 'Review'),
+      quote: row.quote,
+      names: row.names,
+      eventType: row.event_type,
+      town: row.town,
+      date: row.reviewed_on,
+      source,
+    }
+  })
+  const partners = (
+    results[1] as {
+      id: number
+      name: string
+      href: string
+      mime: string
+      logo: string
+    }[]
+  ).map((row) => ({
+    id: whole(row.id, 'Partner'),
+    name: row.name,
+    href: row.href,
+    src: `data:${row.mime};base64,${row.logo}`,
+  }))
+  return {
+    reviews,
+    partners,
+    packages: offersFromRows(results[3] as OfferRow[]),
+  }
+}
+
 export async function partnerLogo(
   id: number,
 ): Promise<{ mime: string; logo: string } | null> {
@@ -2339,6 +2447,7 @@ export async function addPartner(input: {
     'INSERT INTO partners (id, name, href, mime, logo) VALUES ($1, $2, $3, $4, $5)',
     [id, name, href, mime, logo],
   )
+  await forgetPublicSite()
   return { id, name, href, src: `data:${mime};base64,${logo}` }
 }
 
@@ -2347,6 +2456,7 @@ export async function removePartner(id: number): Promise<void> {
     throw new Error('That brand is not on the page.')
   await ensurePartners()
   await query('DELETE FROM partners WHERE id = $1', [id])
+  await forgetPublicSite()
 }
 
 export async function updatePartner(input: {
@@ -2376,6 +2486,7 @@ export async function updatePartner(input: {
   }
   const saved = (await listPartners()).find((partner) => partner.id === id)
   if (!saved) throw new Error('That brand is not on the page.')
+  await forgetPublicSite()
   return saved
 }
 

@@ -1,6 +1,5 @@
 import { botFromToken, listLeads } from '../crm/store.server.ts'
-import { LEGACY_HOST } from '../legacy-host.ts'
-import { legacyVerdict, selectLeads, toBotLead } from './desk-leads.ts'
+import { selectLeads, toBotLead } from './desk-leads.ts'
 
 const DENIED = 'Send Authorization: Bearer and the token from join.'
 
@@ -35,41 +34,11 @@ export async function legacyAllows(
   return verdict
 }
 
+/** A token that is not on this book is refused. The old site is not asked. */
 export async function legacyRole(
-  token: string,
+  _token: string,
 ): Promise<'yes' | 'no' | 'unknown' | 'reader' | 'writer' | 'ceo'> {
-  try {
-    const response = await fetch(`https://${LEGACY_HOST}/api/bots/v1/glance`, {
-      headers: {
-        accept: 'application/json',
-        authorization: `Bearer ${token}`,
-      },
-      redirect: 'manual',
-    })
-    const verdict = legacyVerdict(
-      response.status,
-      response.headers.get('content-type'),
-    )
-    if (verdict !== 'yes') return verdict
-    const body: unknown = await response.json().catch(() => null)
-    return roleFromGlance(body) ?? 'yes'
-  } catch {
-    return 'unknown'
-  }
-}
-
-function roleFromGlance(body: unknown): 'reader' | 'writer' | 'ceo' | null {
-  if (!body || typeof body !== 'object') return null
-  const record = body as Record<string, unknown>
-  const nested =
-    record.bot && typeof record.bot === 'object'
-      ? (record.bot as Record<string, unknown>).role
-      : null
-  for (const candidate of [record.role, nested]) {
-    if (candidate === 'reader' || candidate === 'writer' || candidate === 'ceo')
-      return candidate
-  }
-  return null
+  return 'no'
 }
 
 function bearer(request: Request): string {

@@ -14,18 +14,12 @@ describe('date check', { skip: liveBook }, () => {
     }
   })
 
-  it('leaves an ordinary date open when the old desk says open', async () => {
-    setLegacyDateReader(async () => 'open')
+  it('leaves an ordinary date open', async () => {
     assert.equal(await dateOpen('2028-09-01'), true)
   })
 
-  it('treats a date as taken when the old desk says taken', async () => {
+  it('does not ask another site whether an ordinary date is taken', async () => {
     setLegacyDateReader(async () => 'taken')
-    assert.equal(await dateOpen('2028-09-02'), false)
-  })
-
-  it('stays open for an ordinary date when the old desk does not answer', async () => {
-    setLegacyDateReader(async () => 'unknown')
-    assert.equal(await dateOpen('2028-09-03'), true)
+    assert.equal(await dateOpen('2028-09-02'), true)
   })
 })

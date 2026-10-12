@@ -8,6 +8,7 @@ const fonts =
 
 export const Route = createFileRoute('/')({
   loader: () => getPublicSite(),
+  staleTime: 5 * 60 * 1000,
   head: () => {
     const head = publicHead({
       path: '/',

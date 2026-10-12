@@ -21,6 +21,7 @@ import {
   listLeads,
   listMedia,
   listPackageOffers,
+  packagesForToken,
   listPartners,
   listPayments,
   listQuestions,
@@ -108,6 +109,19 @@ export async function deskBotResponse(
   }
   const token = bearer(request)
   if (!token) return botJson({ error: DENIED }, 401)
+  if (
+    target &&
+    !nested &&
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    target.resource === 'packages'
+  ) {
+    const offers = await packagesForToken(token)
+    if (!offers) return botJson({ error: DENIED }, 401)
+    if (!target.id) return botJson({ packages: offers })
+    const item = offers.find((offer) => offer.id === target.id)
+    if (!item) return botJson({ error: 'Choose a package.' }, 404)
+    return botJson({ package: item })
+  }
   const role = await actorRole(token, checkLegacy)
   if (role instanceof Response) return role
   const key = request.headers.get('idempotency-key')?.trim() ?? ''
