@@ -171,7 +171,7 @@ export function DeskShell({
 
   return (
     <div className="desk flex min-h-screen min-w-0 flex-col bg-ink-950 text-white">
-      <header className="border-b border-white/10 bg-linear-to-b from-neon/10 to-transparent px-5 pt-4 pb-4 lg:px-8">
+      <header className="desk-header border-b border-white/10 bg-linear-to-b from-neon/10 to-transparent px-5 pt-4 pb-4 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img
