@@ -11,7 +11,11 @@
 export type RsvpTemplateId =
   'ivory' | 'minimal' | 'blush' | 'kraft' | 'black-tie'
 
-export type PhotoShape = 'banner' | 'circle' | 'arch'
+/**
+ * `full` shows the whole photo at its own shape — nothing is ever cut. The
+ * three crops are the couple's choice, and only ever when they ask for one.
+ */
+export type PhotoShape = 'full' | 'banner' | 'circle' | 'arch'
 
 export const TEMPLATE_IDS: RsvpTemplateId[] = [
   'ivory',
@@ -21,7 +25,10 @@ export const TEMPLATE_IDS: RsvpTemplateId[] = [
   'black-tie',
 ]
 
-export const PHOTO_SHAPES: PhotoShape[] = ['banner', 'circle', 'arch']
+export const PHOTO_SHAPES: PhotoShape[] = ['full', 'banner', 'circle', 'arch']
+
+/** The couple's default: the whole photo, exactly as they took it. */
+export const DEFAULT_PHOTO_SHAPE: PhotoShape = 'full'
 
 export const DEFAULT_TEMPLATE: RsvpTemplateId = 'ivory'
 
@@ -34,7 +41,7 @@ export function parseTemplateId(value: unknown): RsvpTemplateId {
 export function parsePhotoShape(value: unknown): PhotoShape {
   return typeof value === 'string' && (PHOTO_SHAPES as string[]).includes(value)
     ? (value as PhotoShape)
-    : 'banner'
+    : DEFAULT_PHOTO_SHAPE
 }
 
 export type RsvpButton = {
@@ -373,6 +380,43 @@ export type RsvpPhoto = {
   height: number
   /** Bytes of the stored JPEG, for the desk and the couple to see. */
   bytes: number
+  /** The shaped rendition's own version. Empty when there is none stored. */
+  cropVersion: string
+  /** Where the couple put the crop, so opening the tool again lines up. */
+  crop: PhotoCrop
+}
+
+/**
+ * How the couple positioned a crop. `zoom` 1 shows the whole photo inside the
+ * frame; anything above that moves in. `panX`/`panY` run -1 to 1. The default
+ * is the middle of the photo, so a shape never lands on a face by accident.
+ */
+export type PhotoCrop = {
+  zoom: number
+  panX: number
+  panY: number
+}
+
+export const CENTRE_CROP: PhotoCrop = { zoom: 1, panX: 0, panY: 0 }
+
+export function parseCrop(raw: unknown): PhotoCrop {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return CENTRE_CROP
+  const record = raw as Record<string, unknown>
+  const zoom = finiteNumber(record.zoom)
+  return {
+    zoom: zoom >= 1 && zoom <= 3 ? zoom : 1,
+    panX: clampPan(finiteNumber(record.panX)),
+    panY: clampPan(finiteNumber(record.panY)),
+  }
+}
+
+function finiteNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function clampPan(value: number): number {
+  return Math.min(1, Math.max(-1, value))
 }
 
 export function parsePhoto(raw: unknown): RsvpPhoto | null {
@@ -388,6 +432,11 @@ export function parsePhoto(raw: unknown): RsvpPhoto | null {
     width,
     height,
     bytes: wholeNumber(record.bytes),
+    cropVersion:
+      typeof record.cropVersion === 'string'
+        ? record.cropVersion.slice(0, 40)
+        : '',
+    crop: parseCrop(record.crop),
   }
 }
 
@@ -397,11 +446,43 @@ function wholeNumber(value: unknown): number {
   return Math.round(number)
 }
 
+/**
+ * The shape a photo actually shows as.
+ *
+ * A photo uploaded before the couple could reposition a crop has no shaped
+ * rendition stored — the stored image *is* the old crop. Showing it as a crop
+ * again would cut it twice, so it reads as the whole photo instead. Nothing is
+ * ever trimmed without a crop the couple can see and move.
+ */
+export function resolvePhotoShape(photo: RsvpPhoto): PhotoShape {
+  if (photo.shape === 'full') return 'full'
+  return photo.cropVersion ? photo.shape : 'full'
+}
+
 /** Where the stored photo is served from, on the site's own domain. */
 export function photoPath(slug: string, photo: RsvpPhoto | null): string {
   if (!photo) return ''
   const clean = slug.trim().toLowerCase()
   return `/api/rsvp/${clean}/photo?v=${encodeURIComponent(photo.version)}`
+}
+
+/** The shaped rendition, or empty when the photo has none stored. */
+export function cropPath(slug: string, photo: RsvpPhoto | null): string {
+  if (!photo || !photo.cropVersion) return ''
+  const clean = slug.trim().toLowerCase()
+  const shape = resolvePhotoShape(photo)
+  if (shape === 'full') return ''
+  return `/api/rsvp/${clean}/photo?shape=${shape}&v=${encodeURIComponent(photo.cropVersion)}`
+}
+
+/**
+ * The image the guest actually sees: the whole photo, or the shaped crop when
+ * the couple chose one and the site has it stored.
+ */
+export function photoSrc(slug: string, photo: RsvpPhoto | null): string {
+  if (!photo) return ''
+  const crop = cropPath(slug, photo)
+  return crop || photoPath(slug, photo)
 }
 
 /**
@@ -415,6 +496,7 @@ export function shapeSize(shape: PhotoShape): {
 } {
   if (shape === 'circle') return { width: 1000, height: 1000 }
   if (shape === 'arch') return { width: 1000, height: 1250 }
+  if (shape === 'full') return { width: 0, height: 0 }
   return { width: 1200, height: 420 }
 }
 
@@ -428,5 +510,36 @@ export function shapeRadius(shape: PhotoShape): string {
 export function shapeLabel(shape: PhotoShape): string {
   if (shape === 'circle') return 'Circle'
   if (shape === 'arch') return 'Arch'
+  if (shape === 'full') return 'Full photo'
   return 'Full-width banner'
+}
+
+/**
+ * The most a photo may take in an email: the card is 600px wide, and a tall
+ * portrait is capped at 800px high so it can never run off the screen. It
+ * scales down to fit; it is never trimmed.
+ */
+export const EMAIL_PHOTO_WIDTH = 600
+export const EMAIL_PHOTO_MAX_HEIGHT = 800
+
+/** The width and height the photo is drawn at in the letter. */
+export function emailPhotoBox(
+  shape: PhotoShape,
+  width: number,
+  height: number,
+): { width: number; height: number } {
+  const natural = shapeSize(shape)
+  const sourceWidth = shape === 'full' ? width : natural.width
+  const sourceHeight = shape === 'full' ? height : natural.height
+  if (sourceWidth <= 0 || sourceHeight <= 0) {
+    return { width: EMAIL_PHOTO_WIDTH, height: EMAIL_PHOTO_MAX_HEIGHT }
+  }
+  const scale = Math.min(
+    EMAIL_PHOTO_WIDTH / sourceWidth,
+    EMAIL_PHOTO_MAX_HEIGHT / sourceHeight,
+  )
+  return {
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+    height: Math.max(1, Math.round(sourceHeight * scale)),
+  }
 }

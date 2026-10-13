@@ -8,12 +8,16 @@ import {
   decodeBase64,
   encodeBase64,
   frameStyle,
+  fullFrame,
   isHeicFile,
   joinBase64,
   parsePhotoUpload,
   photoInputError,
   photoSizeLabel,
+  sourceRect,
+  uploadFrames,
 } from './photo.ts'
+import { shapeSize } from './templates.ts'
 
 describe('the couple photo', () => {
   it('accepts JPG, PNG and HEIC and turns the rest away', () => {
@@ -164,6 +168,139 @@ describe('the couple photo', () => {
     assert.equal(clamped.drawWidth, edge.drawWidth)
     assert.equal(clamped.x, edge.x)
     assert.ok(clamped.drawWidth <= 4000 * 3 + 1)
+  })
+
+  it('shows the whole photo at its own shape, never trimmed', () => {
+    // the canvas is the photo, so nothing can be cut off
+    const wide = fullFrame(1200, 900)
+    assert.deepEqual(wide, {
+      x: 0,
+      y: 0,
+      drawWidth: 1200,
+      drawHeight: 900,
+      width: 1200,
+      height: 900,
+    })
+    // a zoom or a pan is ignored: a full photo is never cropped
+    const frame = cropFrame({
+      imageWidth: 1200,
+      imageHeight: 900,
+      shape: 'full',
+      zoom: 3,
+      panX: 1,
+      panY: -1,
+    })
+    assert.deepEqual(frame, wide)
+
+    // a tall portrait stays tall: same proportions, no trimming
+    const tall = fullFrame(450, 1200)
+    assert.equal(tall.width, 450)
+    assert.equal(tall.height, 1200)
+    assert.ok(Math.abs(tall.width / tall.height - 450 / 1200) < 0.0001)
+
+    // and a smaller photo is left exactly as it is
+    assert.deepEqual(fullFrame(640, 480), {
+      x: 0,
+      y: 0,
+      drawWidth: 640,
+      drawHeight: 480,
+      width: 640,
+      height: 480,
+    })
+  })
+
+  it('stores the whole photo beside a crop, never instead of it', () => {
+    const base = {
+      imageWidth: 4000,
+      imageHeight: 3000,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+    }
+    // "Full photo" writes the photo itself and asks for no crop at all.
+    const full = uploadFrames({ ...base, shape: 'full' })
+    assert.deepEqual(full.whole, fullFrame(4000, 3000))
+    assert.equal(full.crop, null)
+    for (const shape of ['banner', 'circle', 'arch'] as const) {
+      // Zooming and panning move the crop, and must never reach the stored
+      // whole photo: a couple who picks a shape can still go back to "Full
+      // photo" and get the picture they uploaded.
+      const frames = uploadFrames({
+        ...base,
+        shape,
+        zoom: 2.5,
+        panX: 0.75,
+        panY: -1,
+      })
+      assert.deepEqual(
+        frames.whole,
+        fullFrame(4000, 3000),
+        `${shape} still stores the whole photo`,
+      )
+      assert.deepEqual(
+        { width: frames.crop?.width, height: frames.crop?.height },
+        shapeSize(shape),
+        `${shape} crops to its own frame`,
+      )
+    }
+  })
+
+  it('centres every crop on the middle of the photo by default', () => {
+    for (const shape of ['banner', 'circle', 'arch'] as const) {
+      const frame = cropFrame({
+        imageWidth: 4000,
+        imageHeight: 3000,
+        shape,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+      })
+      // the frame sits over the middle of the photo, so a face is not cut off
+      const rect = sourceRect({
+        imageWidth: 4000,
+        imageHeight: 3000,
+        shape,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+      })
+      const centreX = rect.x + rect.width / 2
+      const centreY = rect.y + rect.height / 2
+      assert.ok(Math.abs(centreX - 2000) < 1, `${shape} is centred across`)
+      assert.ok(Math.abs(centreY - 1500) < 1, `${shape} is centred down`)
+      assert.equal(frame.x, 0 - (frame.drawWidth - frame.width) / 2 + 0)
+    }
+  })
+
+  it('moves the kept part of the photo when the couple drags the frame', () => {
+    const base = {
+      imageWidth: 4000,
+      imageHeight: 800,
+      shape: 'banner' as const,
+    }
+    const middle = sourceRect({ ...base, zoom: 1, panX: 0, panY: 0 })
+    const left = sourceRect({ ...base, zoom: 1, panX: -1, panY: 0 })
+    const right = sourceRect({ ...base, zoom: 1, panX: 1, panY: 0 })
+    // the whole photo's height is always kept in a wide banner
+    assert.ok(middle.height >= 799)
+    // panning left shows the left of the photo, panning right the right
+    assert.ok(left.x < middle.x)
+    assert.ok(right.x > middle.x)
+    // and the frame never runs past the edge of the photo
+    assert.ok(left.x >= -0.001)
+    assert.ok(right.x + right.width <= 4000.001)
+  })
+
+  it('keeps the whole photo in view for a full-frame crop', () => {
+    const rect = sourceRect({
+      imageWidth: 1000,
+      imageHeight: 1250,
+      shape: 'full',
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+    })
+    assert.deepEqual(rect, { x: 0, y: 0, width: 1000, height: 1250 })
   })
 
   it('expresses the crop as percentages for the live preview', () => {

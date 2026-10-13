@@ -14,9 +14,11 @@ import {
   quoteRsvpPrice,
   readRsvp,
   readRsvpPhoto,
+  readRsvpPhotoCrop,
   readRsvpPhotoMeta,
   removeRsvpPhoto,
   saveRsvpPhoto,
+  saveRsvpPhotoCrop,
 } from './store.server.ts'
 
 const liveBook = Boolean(process.env.DATABASE_URL)
@@ -92,11 +94,26 @@ describe('the couple photo store', { skip: liveBook }, () => {
       shape: 'circle',
       width: 1000,
       height: 1000,
+      crop: { zoom: 1.4, panX: -0.3, panY: 0.6 },
+      cropBytes: new Uint8Array(2048).fill(3),
     })
     assert.equal(photo.bytes, 400_000)
     assert.equal(photo.shape, 'circle')
+    assert.deepEqual(photo.crop, { zoom: 1.4, panX: -0.3, panY: 0.6 })
+    assert.ok(photo.cropVersion)
     const meta = await readRsvpPhotoMeta(wedding.slug)
     assert.ok(meta && meta.mime === 'image/jpeg' && meta.shape === 'circle')
+    assert.equal(meta.width, 1000)
+    assert.equal(meta.height, 1000)
+    assert.equal(meta.crop.zoom, 1.4)
+    assert.equal(meta.crop.panX, -0.3)
+    assert.equal(meta.crop.panY, 0.6)
+    // the whole photo is kept whole, and the shaped crop sits beside it
+    const crop = await readRsvpPhotoCrop(wedding.slug)
+    assert.ok(crop)
+    assert.equal(crop.shape, 'circle')
+    assert.equal(crop.bytes.length, 2048)
+    assert.equal(crop.bytes[2047], 3)
 
     const back = await readRsvpPhoto(wedding.slug)
     const backBytes = back === null ? new Uint8Array() : back.bytes
@@ -115,13 +132,50 @@ describe('the couple photo store', { skip: liveBook }, () => {
       height: 1250,
     })
     assert.notEqual(second.version, photo.version)
+    // no crop given: the shaped rendition is cleared, not left stale
+    assert.equal(second.cropVersion, '')
+    assert.equal(await readRsvpPhotoCrop(wedding.slug), null)
     const replaced = await readRsvpPhoto(wedding.slug)
     assert.equal(replaced === null ? 0 : replaced.bytes.length, 1000)
     assert.equal(replaced === null ? 0 : replaced.bytes[999], 7)
 
+    // moving the crop keeps the whole photo exactly as it was
+    const moved = await saveRsvpPhotoCrop({
+      slug: wedding.slug,
+      shape: 'circle',
+      crop: { zoom: 2, panX: 0.5, panY: -0.5 },
+      cropBytes: new Uint8Array(512).fill(9),
+    })
+    assert.ok(moved)
+    assert.equal(moved.shape, 'circle')
+    assert.deepEqual(moved.crop, { zoom: 2, panX: 0.5, panY: -0.5 })
+    assert.equal(moved.bytes, 1000)
+    const stillWhole = await readRsvpPhoto(wedding.slug)
+    assert.equal(stillWhole === null ? 0 : stillWhole.bytes.length, 1000)
+    assert.equal(stillWhole === null ? 0 : stillWhole.bytes[999], 7)
+    const movedCrop = await readRsvpPhotoCrop(wedding.slug)
+    assert.equal(movedCrop === null ? 0 : movedCrop.bytes.length, 512)
+
+    // choosing the whole photo again drops the shaped rendition
+    const whole = await saveRsvpPhotoCrop({
+      slug: wedding.slug,
+      shape: 'full',
+      crop: { zoom: 1, panX: 0, panY: 0 },
+    })
+    assert.ok(whole)
+    assert.equal(whole.shape, 'full')
+    assert.equal(whole.cropVersion, '')
+    assert.equal(await readRsvpPhotoCrop(wedding.slug), null)
+    assert.equal(
+      (await readRsvpPhoto(wedding.slug))?.bytes.length,
+      1000,
+      'the whole photo survives a shape change',
+    )
+
     await removeRsvpPhoto(wedding.slug)
     assert.equal(await readRsvpPhoto(wedding.slug), null)
     assert.equal(await readRsvpPhotoMeta(wedding.slug), null)
+    assert.equal(await readRsvpPhotoCrop(wedding.slug), null)
 
     // removing the whole RSVP takes the photo rows with it
     await saveRsvpPhoto({
@@ -131,8 +185,11 @@ describe('the couple photo store', { skip: liveBook }, () => {
       shape: 'banner',
       width: 1200,
       height: 420,
+      crop: { zoom: 1, panX: 0, panY: 0 },
+      cropBytes: new Uint8Array(256).fill(1),
     })
     await deleteRsvp(wedding.slug)
     assert.equal(await readRsvpPhoto(wedding.slug), null)
+    assert.equal(await readRsvpPhotoCrop(wedding.slug), null)
   })
 })

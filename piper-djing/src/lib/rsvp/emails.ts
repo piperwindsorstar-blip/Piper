@@ -15,7 +15,13 @@ import type {
   RsvpParty,
   RsvpWedding,
 } from './model.ts'
-import { photoPath, shapeRadius, templateFor } from './templates.ts'
+import {
+  emailPhotoBox,
+  photoSrc,
+  resolvePhotoShape,
+  shapeRadius,
+  templateFor,
+} from './templates.ts'
 import type { PhotoShape, RsvpSkin } from './templates.ts'
 
 export type RsvpEmailKind =
@@ -196,20 +202,36 @@ type Block =
   | { t: 'row'; label: string; value: string }
   | { t: 'space' }
   | { t: 'heading'; text: string }
-  | { t: 'photo'; url: string; alt: string; shape: PhotoShape }
+  | {
+      t: 'photo'
+      url: string
+      alt: string
+      shape: PhotoShape
+      width: number
+      height: number
+    }
 
-/** The couple's photo sits at the top of the card when they have one. */
+/**
+ * The couple's photo sits at the top of the card when they have one. It is
+ * shown whole unless the couple picked a shape and positioned a crop, in which
+ * case the shaped rendition is used — and its size is always the photo's own
+ * proportions scaled to the card, so nothing is ever stretched or trimmed.
+ */
 export function photoBlock(wedding: RsvpWedding): Block[] {
   const photo = wedding.photo
   if (!photo) return []
-  const path = photoPath(wedding.slug, photo)
-  if (!path) return []
+  const url = photoSrc(wedding.slug, photo)
+  if (!url) return []
+  const shape = resolvePhotoShape(photo)
+  const box = emailPhotoBox(shape, photo.width, photo.height)
   return [
     {
       t: 'photo',
-      url: `https://${SITE_HOST}${path}`,
+      url: `https://${SITE_HOST}${url}`,
       alt: `${coupleTitle(wedding)} photo`,
-      shape: photo.shape,
+      shape,
+      width: box.width,
+      height: box.height,
     },
   ]
 }
@@ -254,7 +276,7 @@ function renderBlock(block: Block, skin: RsvpSkin): string {
     case 'space':
       return `<div style="height:14px;line-height:14px;">&nbsp;</div>`
     case 'photo':
-      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px;"><tr><td align="center"><img src="${esc(block.url)}" alt="${esc(block.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:${shapeRadius(block.shape)};"><div style="height:30px;line-height:30px;">&nbsp;</div></td></tr></table>`
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px;"><tr><td align="center"><img src="${esc(block.url)}" alt="${esc(block.alt)}" width="${block.width}" height="${block.height}" style="display:block;width:${block.width}px;max-width:100%;height:auto;border:0;border-radius:${shapeRadius(block.shape)};"><div style="height:30px;line-height:30px;">&nbsp;</div></td></tr></table>`
   }
 }
 
@@ -404,6 +426,7 @@ export function confirmationEmail(
     detail: guestLine(wedding, party, guest),
   }))
   const blocks: Block[] = [
+    ...photoBlock(wedding),
     { t: 'eyebrow', text: 'Your RSVP' },
     { t: 'heading', text: `Thank you, ${lead.firstName || 'there'}!` },
     {
@@ -477,6 +500,7 @@ export function reminderEmail(
   const title = coupleTitle(wedding)
   const deadline = shortMonthDay(wedding.deadline)
   const blocks: Block[] = [
+    ...photoBlock(wedding),
     { t: 'eyebrow', text: 'A gentle reminder' },
     { t: 'names', text: title },
     { t: 'line', text: 'are still hoping to hear from you' },
@@ -590,6 +614,7 @@ export function welcomeEmail(
   const title = coupleTitle(wedding)
   const { name, town } = venueParts(wedding)
   const blocks: Block[] = [
+    ...photoBlock(wedding),
     { t: 'eyebrow', text: 'Your RSVP page is live' },
     { t: 'names', text: title },
     { t: 'line', text: 'Thank you — your RSVP page is open.' },

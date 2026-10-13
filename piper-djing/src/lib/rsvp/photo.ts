@@ -8,7 +8,7 @@
  */
 
 import type { PhotoShape } from './templates.ts'
-import { parsePhotoShape, shapeSize } from './templates.ts'
+import { CENTRE_CROP, parsePhotoShape, shapeSize } from './templates.ts'
 
 /** What a couple may pick. */
 export const PHOTO_SOURCE_MAX = 10 * 1024 * 1024
@@ -123,9 +123,11 @@ export function parsePhotoUpload(
       error: 'That photo is still over 500 KB after resizing.',
     }
   }
-  const size = shapeSize(parsePhotoShape(shape))
-  const cleanWidth = whole(width, size.width)
-  const cleanHeight = whole(height, size.height)
+  const chosen = parsePhotoShape(shape)
+  const size = shapeSize(chosen)
+  // A full photo keeps its own shape, so its size comes from the file itself.
+  const cleanWidth = whole(width, size.width || PHOTO_WIDTH_MAX)
+  const cleanHeight = whole(height, size.height || PHOTO_WIDTH_MAX)
   return {
     ok: true,
     photo: {
@@ -133,7 +135,7 @@ export function parsePhotoUpload(
       bytes,
       width: cleanWidth,
       height: cleanHeight,
-      shape: parsePhotoShape(shape),
+      shape: chosen,
     },
   }
 }
@@ -188,12 +190,33 @@ export type CropFrame = {
 }
 
 /**
+ * The whole photo on the canvas, one pixel to one pixel: nothing is trimmed,
+ * stretched or shrunk. The canvas takes the photo's own shape, so a portrait
+ * stays a portrait and a landscape stays a landscape. (The upload path has
+ * already capped the width, so this stays within the stored bounds.)
+ */
+export function fullFrame(imageWidth: number, imageHeight: number): CropFrame {
+  const width = Math.max(1, Math.round(imageWidth))
+  const height = Math.max(1, Math.round(imageHeight))
+  return {
+    x: 0,
+    y: 0,
+    drawWidth: width,
+    drawHeight: height,
+    width,
+    height,
+  }
+}
+
+/**
  * The crop the couple chooses. The same numbers place the photo in the live
  * preview (as percentages) and draw it onto the canvas, so the picture they
  * line up is the picture guests get.
  *
- * `zoom` runs 1 (fills the frame) to 3. `panX`/`panY` run -1 to 1, where -1
- * shows the left/top of the photo and 1 the right/bottom.
+ * `zoom` runs 1 (the whole photo fills the frame as far as it can) to 3.
+ * `panX`/`panY` run -1 to 1, where -1 shows the left/top of the photo and 1
+ * the right/bottom. The middle of the photo is the default, so a crop starts
+ * centred on the couple rather than wherever the maths happens to land.
  */
 export function cropFrame(input: {
   imageWidth: number
@@ -203,6 +226,9 @@ export function cropFrame(input: {
   panX: number
   panY: number
 }): CropFrame {
+  if (input.shape === 'full') {
+    return fullFrame(input.imageWidth, input.imageHeight)
+  }
   const size = shapeSize(input.shape)
   const width = Math.max(1, Math.round(input.imageWidth))
   const height = Math.max(1, Math.round(input.imageHeight))
@@ -221,6 +247,62 @@ export function cropFrame(input: {
     height: size.height,
   }
 }
+
+/**
+ * The two pictures one upload stores: the couple's whole photo, always, and —
+ * only when they picked a shape — a crop of it drawn beside the whole.
+ *
+ * The whole frame is `fullFrame`, never the crop frame, so choosing a shape can
+ * never replace the stored photo with a crop of itself. That is what lets
+ * "Full photo" hand the couple back the picture they uploaded.
+ */
+export function uploadFrames(input: {
+  imageWidth: number
+  imageHeight: number
+  shape: PhotoShape
+  zoom: number
+  panX: number
+  panY: number
+}): { whole: CropFrame; crop: CropFrame | null } {
+  return {
+    whole: fullFrame(input.imageWidth, input.imageHeight),
+    crop: input.shape === 'full' ? null : cropFrame(input),
+  }
+}
+
+/**
+ * The part of the photo the crop keeps, in the photo's own pixels. The crop
+ * tool draws this rectangle over the whole photo, so the couple can see what a
+ * shape keeps and what it lets go of before they choose it.
+ */
+export function sourceRect(input: {
+  imageWidth: number
+  imageHeight: number
+  shape: PhotoShape
+  zoom: number
+  panX: number
+  panY: number
+}): { x: number; y: number; width: number; height: number } {
+  const width = Math.max(1, input.imageWidth)
+  const height = Math.max(1, input.imageHeight)
+  if (input.shape === 'full') {
+    return { x: 0, y: 0, width, height }
+  }
+  const frame = cropFrame(input)
+  const scale = frame.drawWidth / width
+  return {
+    x: -frame.x / scale,
+    y: -frame.y / scale,
+    width: frame.width / scale,
+    height: frame.height / scale,
+  }
+}
+
+/**
+ * The middle of the photo, as a starting point. Every shape begins centred, so
+ * a face in the middle of a frame is never quietly pushed out of it.
+ */
+export const START_CROP = CENTRE_CROP
 
 /** Keeps a -0 out of the numbers the canvas and the CSS both read. */
 function normalise(value: number): number {

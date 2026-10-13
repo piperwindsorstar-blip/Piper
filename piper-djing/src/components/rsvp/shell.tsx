@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
-import { shapeSize, templateFor } from '../../lib/rsvp/templates.ts'
+import { templateFor } from '../../lib/rsvp/templates.ts'
 import type { PhotoShape, RsvpTemplateId } from '../../lib/rsvp/templates.ts'
 
 /** The couple's photo, as the guest pages show it. */
@@ -8,6 +8,9 @@ export type GuestPhoto = {
   url: string
   shape: PhotoShape
   alt: string
+  /** The photo's own proportions, so a full photo keeps its shape. */
+  width: number
+  height: number
 }
 
 export type RsvpStyle = {
@@ -88,27 +91,36 @@ export function RsvpFrame({ children }: { children: ReactNode }) {
   )
 }
 
-/** The couple's photo, cropped by shape so it reads as banner, circle or arch. */
+/**
+ * The couple's photo. "Full photo" shows the whole picture at its own shape,
+ * full width, with nothing cut off. Banner, circle and arch show the shaped
+ * rendition the couple positioned.
+ */
 export function RsvpPhoto({ photo }: { photo: GuestPhoto }) {
-  const size = shapeSize(photo.shape)
-  const radius =
-    photo.shape === 'circle'
-      ? '50%'
-      : photo.shape === 'arch'
-        ? '999px 999px 0 0'
-        : '14px'
-  const width =
-    photo.shape === 'circle' ? '64%' : photo.shape === 'arch' ? '76%' : '100%'
+  if (photo.shape === 'full') {
+    return (
+      <img
+        src={photo.url}
+        alt={photo.alt}
+        className="mx-auto mb-6 block h-auto w-full"
+        style={{
+          maxWidth: '100%',
+          borderRadius: '14px',
+          ...(photo.width > 0 && photo.height > 0
+            ? { aspectRatio: `${photo.width} / ${photo.height}` }
+            : {}),
+        }}
+      />
+    )
+  }
+  const radius = photo.shape === 'circle' ? '50%' : '999px 999px 0 0'
+  const width = photo.shape === 'circle' ? '64%' : '76%'
   return (
     <img
       src={photo.url}
       alt={photo.alt}
       className="mx-auto mb-6 block h-auto object-cover"
-      style={{
-        width,
-        borderRadius: radius,
-        aspectRatio: `${size.width} / ${size.height}`,
-      }}
+      style={{ width, borderRadius: radius }}
     />
   )
 }

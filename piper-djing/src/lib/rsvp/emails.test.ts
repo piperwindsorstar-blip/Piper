@@ -127,15 +127,93 @@ describe('invitation style', () => {
       width: 1000,
       height: 1000,
       bytes: 120_000,
+      cropVersion: '42',
+      crop: { zoom: 1, panX: 0, panY: 0 },
     }
     const withPhoto = invitationEmail(wedding, party, url)
-    assert.match(withPhoto.html, /\/api\/rsvp\/sarah-and-michael\/photo\?v=42/)
+    assert.match(
+      withPhoto.html,
+      /\/api\/rsvp\/sarah-and-michael\/photo\?shape=circle&amp;v=42/,
+    )
     assert.match(withPhoto.html, /alt="Sarah &amp; Michael photo"/)
     assert.match(withPhoto.html, /border-radius:50%/)
     // the template still reads complete without one
     const plain = sampleWedding()
     plain.photo = null
     assert.match(invitationEmail(plain, party, url).html, /background:#FBF7F0/)
+  })
+
+  it('shows the whole photo, never cropped, on every letter', () => {
+    const wedding = sampleWedding()
+    const party = wedding.parties[0]
+    assert.ok(party)
+    // a tall portrait: 1000 x 1250, as Mark & Mya uploaded
+    wedding.photo = {
+      shape: 'full',
+      version: '77',
+      width: 1000,
+      height: 1250,
+      bytes: 90_000,
+      cropVersion: '',
+      crop: { zoom: 1, panX: 0, panY: 0 },
+    }
+    const letters = [
+      invitationEmail(wedding, party, url),
+      reminderEmail(wedding, party, url),
+      confirmationEmail(wedding, party, url),
+      welcomeEmail(wedding, {
+        amountLabel: '$20.00',
+        dashboardUrl: url,
+        guestUrl: url,
+      }),
+    ]
+    for (const letter of letters) {
+      // the whole photo, no shape query, no border-radius crop
+      assert.match(letter.html, /\/api\/rsvp\/sarah-and-michael\/photo\?v=77/)
+      assert.doesNotMatch(letter.html, /photo\?shape=full/)
+      assert.match(letter.html, /border-radius:0;/)
+      // a 1000x1250 portrait caps at 800 high and stays in proportion
+      assert.match(letter.html, /width="600" height="750"/)
+      assert.match(letter.html, /max-width:100%|width:100%/)
+    }
+  })
+
+  it('caps a very tall portrait at 800px high and scales it down', () => {
+    const wedding = sampleWedding()
+    const party = wedding.parties[0]
+    assert.ok(party)
+    wedding.photo = {
+      shape: 'full',
+      version: '9',
+      width: 900,
+      height: 2400,
+      bytes: 90_000,
+      cropVersion: '',
+      crop: { zoom: 1, panX: 0, panY: 0 },
+    }
+    const html = invitationEmail(wedding, party, url).html
+    assert.match(html, /width="300" height="800"/)
+    assert.doesNotMatch(html, /height="2400"/)
+  })
+
+  it('never re-crops a photo stored before the couple could position one', () => {
+    const wedding = sampleWedding()
+    const party = wedding.parties[0]
+    assert.ok(party)
+    // an old arch upload: the stored image *is* the old crop
+    wedding.photo = {
+      shape: 'arch',
+      version: '3',
+      width: 1000,
+      height: 1250,
+      bytes: 90_000,
+      cropVersion: '',
+      crop: { zoom: 1, panX: 0, panY: 0 },
+    }
+    const html = invitationEmail(wedding, party, url).html
+    assert.match(html, /\/api\/rsvp\/sarah-and-michael\/photo\?v=3/)
+    assert.doesNotMatch(html, /shape=arch/)
+    assert.match(html, /width="600" height="750"/)
   })
 })
 

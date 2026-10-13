@@ -4,8 +4,8 @@ import { sampleWedding } from './demo.ts'
 import { blankWedding, coupleSlug, parseWedding, quoteRsvp } from './model.ts'
 import type { CoupleBooking, PriceQuote, RsvpWedding } from './model.ts'
 import { chunkBase64, decodeBase64, encodeBase64, joinBase64 } from './photo.ts'
-import type { RsvpPhoto } from './templates.ts'
-import { parsePhotoShape } from './templates.ts'
+import type { PhotoShape, RsvpPhoto } from './templates.ts'
+import { parseCrop, parsePhotoShape } from './templates.ts'
 import type { CoupleQuestion } from './questions.ts'
 
 const TABLE = `
@@ -22,7 +22,7 @@ const PHOTOS = `
 CREATE TABLE IF NOT EXISTS rsvp_photos (
   slug text PRIMARY KEY,
   mime text NOT NULL,
-  shape text NOT NULL DEFAULT 'banner',
+  shape text NOT NULL DEFAULT 'full',
   version text NOT NULL,
   width integer NOT NULL DEFAULT 0,
   height integer NOT NULL DEFAULT 0,
@@ -32,6 +32,24 @@ CREATE TABLE IF NOT EXISTS rsvp_photos (
 
 const PHOTO_PARTS = `
 CREATE TABLE IF NOT EXISTS rsvp_photo_parts (
+  slug text NOT NULL,
+  idx integer NOT NULL,
+  data text NOT NULL,
+  PRIMARY KEY (slug, idx)
+)`
+
+/** The shaped rendition: the same photo with a banner, circle or arch crop. */
+const PHOTO_CROPS = `
+CREATE TABLE IF NOT EXISTS rsvp_photo_crops (
+  slug text PRIMARY KEY,
+  shape text NOT NULL,
+  version text NOT NULL,
+  bytes integer NOT NULL DEFAULT 0,
+  updated_at text NOT NULL
+)`
+
+const PHOTO_CROP_PARTS = `
+CREATE TABLE IF NOT EXISTS rsvp_photo_crop_parts (
   slug text NOT NULL,
   idx integer NOT NULL,
   data text NOT NULL,
@@ -328,6 +346,35 @@ export async function ensureRsvpPhotos(): Promise<void> {
   await ensureRsvp()
   await query(PHOTOS)
   await query(PHOTO_PARTS)
+  await query(PHOTO_CROPS)
+  await query(PHOTO_CROP_PARTS)
+  await ensurePhotoColumns()
+}
+
+/**
+ * A photo table written before the couple could reposition a crop has no
+ * position columns yet, so they are added once and existing rows keep the
+ * centre of the photo.
+ */
+async function ensurePhotoColumns(): Promise<void> {
+  for (const [name, definition] of [
+    ['crop_zoom', 'integer NOT NULL DEFAULT 1'],
+    ['crop_pan_x', 'integer NOT NULL DEFAULT 0'],
+    ['crop_pan_y', 'integer NOT NULL DEFAULT 0'],
+    ['crop_shape', "text NOT NULL DEFAULT ''"],
+    ['crop_version', "text NOT NULL DEFAULT ''"],
+  ] as const) {
+    try {
+      await query(`SELECT ${name} FROM rsvp_photos LIMIT 0`)
+    } catch {
+      try {
+        await query(`ALTER TABLE rsvp_photos ADD COLUMN ${name} ${definition}`)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (!/duplicate column|already exists/i.test(message)) throw error
+      }
+    }
+  }
 }
 
 type PhotoRow = {
@@ -338,6 +385,11 @@ type PhotoRow = {
   width: unknown
   height: unknown
   bytes: unknown
+  crop_zoom: unknown
+  crop_pan_x: unknown
+  crop_pan_y: unknown
+  crop_shape: unknown
+  crop_version: unknown
   updated_at: string
 }
 
@@ -352,10 +404,16 @@ export async function saveRsvpPhoto(input: {
   shape: string
   width: number
   height: number
+  crop?: { zoom: number; panX: number; panY: number }
+  /** The shaped rendition, when the couple chose a crop rather than the whole photo. */
+  cropBytes?: Uint8Array
 }): Promise<RsvpPhoto> {
   await ensureRsvpPhotos()
   const slug = input.slug.trim().toLowerCase()
   const version = String(Date.now())
+  const shape = parsePhotoShape(input.shape)
+  const crop = parseCrop(input.crop)
+  const cropVersion = input.cropBytes ? version : ''
   const rows = chunkBase64(encodeBase64(input.bytes))
   const statements = [
     { sql: 'DELETE FROM rsvp_photo_parts WHERE slug = $1', params: [slug] },
@@ -365,8 +423,9 @@ export async function saveRsvpPhoto(input: {
     })),
     {
       sql: `INSERT INTO rsvp_photos
-              (slug, mime, shape, version, width, height, bytes, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+              (slug, mime, shape, version, width, height, bytes, updated_at,
+               crop_zoom, crop_pan_x, crop_pan_y, crop_shape, crop_version)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ON CONFLICT (slug) DO UPDATE SET
               mime = EXCLUDED.mime,
               shape = EXCLUDED.shape,
@@ -374,34 +433,183 @@ export async function saveRsvpPhoto(input: {
               width = EXCLUDED.width,
               height = EXCLUDED.height,
               bytes = EXCLUDED.bytes,
-              updated_at = EXCLUDED.updated_at`,
+              updated_at = EXCLUDED.updated_at,
+              crop_zoom = EXCLUDED.crop_zoom,
+              crop_pan_x = EXCLUDED.crop_pan_x,
+              crop_pan_y = EXCLUDED.crop_pan_y,
+              crop_shape = EXCLUDED.crop_shape,
+              crop_version = EXCLUDED.crop_version`,
       params: [
         slug,
         input.mime,
-        parsePhotoShape(input.shape),
+        shape,
         version,
         Math.round(input.width),
         Math.round(input.height),
         input.bytes.length,
         new Date().toISOString(),
+        Math.round(crop.zoom * 1000),
+        Math.round(crop.panX * 1000),
+        Math.round(crop.panY * 1000),
+        cropVersion ? shape : '',
+        cropVersion,
       ],
     },
   ]
+  if (input.cropBytes) {
+    const cropRows = chunkBase64(encodeBase64(input.cropBytes))
+    statements.push(
+      {
+        sql: 'DELETE FROM rsvp_photo_crop_parts WHERE slug = $1',
+        params: [slug],
+      },
+      ...cropRows.map((data, index) => ({
+        sql: 'INSERT INTO rsvp_photo_crop_parts (slug, idx, data) VALUES ($1, $2, $3)',
+        params: [slug, index, data],
+      })),
+      {
+        sql: `INSERT INTO rsvp_photo_crops
+                (slug, shape, version, bytes, updated_at)
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (slug) DO UPDATE SET
+                shape = EXCLUDED.shape,
+                version = EXCLUDED.version,
+                bytes = EXCLUDED.bytes,
+                updated_at = EXCLUDED.updated_at`,
+        params: [
+          slug,
+          shape,
+          cropVersion,
+          input.cropBytes.length,
+          new Date().toISOString(),
+        ],
+      },
+    )
+  } else {
+    statements.push(
+      {
+        sql: 'DELETE FROM rsvp_photo_crop_parts WHERE slug = $1',
+        params: [slug],
+      },
+      { sql: 'DELETE FROM rsvp_photo_crops WHERE slug = $1', params: [slug] },
+    )
+  }
   await queryBatch(statements)
   return {
-    shape: parsePhotoShape(input.shape),
+    shape,
     version,
     width: Math.round(input.width),
     height: Math.round(input.height),
     bytes: input.bytes.length,
+    cropVersion,
+    crop,
+  }
+}
+
+/**
+ * The couple moved the crop, or picked a different shape, without uploading
+ * again. The whole photo stays put; only the position and the rendition change.
+ */
+export async function saveRsvpPhotoCrop(input: {
+  slug: string
+  shape: string
+  crop: { zoom: number; panX: number; panY: number }
+  /** The new shaped rendition. Omitted for the whole photo, which needs none. */
+  cropBytes?: Uint8Array
+}): Promise<RsvpPhoto | null> {
+  await ensureRsvpPhotos()
+  const slug = input.slug.trim().toLowerCase()
+  const rows = await query<PhotoRow>(
+    'SELECT * FROM rsvp_photos WHERE slug = $1',
+    [slug],
+  )
+  if (rows.length === 0) return null
+  const row = rows[0]
+  const shape = parsePhotoShape(input.shape)
+  const crop = parseCrop(input.crop)
+  const version = String(Date.now())
+  const cropVersion = input.cropBytes ? version : ''
+  const statements = []
+  if (input.cropBytes) {
+    const cropRows = chunkBase64(encodeBase64(input.cropBytes))
+    statements.push(
+      {
+        sql: 'DELETE FROM rsvp_photo_crop_parts WHERE slug = $1',
+        params: [slug],
+      },
+      ...cropRows.map((data, index) => ({
+        sql: 'INSERT INTO rsvp_photo_crop_parts (slug, idx, data) VALUES ($1, $2, $3)',
+        params: [slug, index, data],
+      })),
+      {
+        sql: `INSERT INTO rsvp_photo_crops
+                (slug, shape, version, bytes, updated_at)
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (slug) DO UPDATE SET
+                shape = EXCLUDED.shape,
+                version = EXCLUDED.version,
+                bytes = EXCLUDED.bytes,
+                updated_at = EXCLUDED.updated_at`,
+        params: [
+          slug,
+          shape,
+          cropVersion,
+          input.cropBytes.length,
+          new Date().toISOString(),
+        ],
+      },
+    )
+  } else {
+    statements.push(
+      {
+        sql: 'DELETE FROM rsvp_photo_crop_parts WHERE slug = $1',
+        params: [slug],
+      },
+      { sql: 'DELETE FROM rsvp_photo_crops WHERE slug = $1', params: [slug] },
+    )
+  }
+  statements.push({
+    sql: `UPDATE rsvp_photos SET
+            shape = $2,
+            crop_zoom = $3,
+            crop_pan_x = $4,
+            crop_pan_y = $5,
+            crop_shape = $6,
+            crop_version = $7,
+            updated_at = $8
+          WHERE slug = $1`,
+    params: [
+      slug,
+      shape,
+      Math.round(crop.zoom * 1000),
+      Math.round(crop.panX * 1000),
+      Math.round(crop.panY * 1000),
+      cropVersion ? shape : '',
+      cropVersion,
+      new Date().toISOString(),
+    ],
+  })
+  await queryBatch(statements)
+  return {
+    shape,
+    version: row.version,
+    width: whole(row.width),
+    height: whole(row.height),
+    bytes: whole(row.bytes),
+    cropVersion,
+    crop,
   }
 }
 
 export async function readRsvpPhotoMeta(slug: string): Promise<{
   mime: string
-  shape: string
+  shape: PhotoShape
   version: string
+  width: number
+  height: number
   bytes: number
+  cropVersion: string
+  crop: { zoom: number; panX: number; panY: number }
 } | null> {
   await ensureRsvpPhotos()
   const rows = await query<PhotoRow>(
@@ -414,11 +622,19 @@ export async function readRsvpPhotoMeta(slug: string): Promise<{
     mime: row.mime,
     shape: parsePhotoShape(row.shape),
     version: row.version,
+    width: whole(row.width),
+    height: whole(row.height),
     bytes: whole(row.bytes),
+    cropVersion: typeof row.crop_version === 'string' ? row.crop_version : '',
+    crop: {
+      zoom: whole(row.crop_zoom) / 1000 || 1,
+      panX: whole(row.crop_pan_x) / 1000,
+      panY: whole(row.crop_pan_y) / 1000,
+    },
   }
 }
 
-/** The stored JPEG, reassembled from its rows. */
+/** The whole photo, reassembled from its rows. Nothing is ever trimmed here. */
 export async function readRsvpPhoto(
   slug: string,
 ): Promise<{ mime: string; version: string; bytes: Uint8Array } | null> {
@@ -434,10 +650,36 @@ export async function readRsvpPhoto(
   return { mime: meta.mime, version: meta.version, bytes }
 }
 
+/** The shaped rendition, or null when the photo has no crop stored. */
+export async function readRsvpPhotoCrop(slug: string): Promise<{
+  mime: string
+  shape: PhotoShape
+  version: string
+  bytes: Uint8Array
+} | null> {
+  const meta = await readRsvpPhotoMeta(slug)
+  if (!meta || !meta.cropVersion) return null
+  const rows = await query<{ data: string }>(
+    'SELECT data FROM rsvp_photo_crop_parts WHERE slug = $1 ORDER BY idx',
+    [slug.trim().toLowerCase()],
+  )
+  if (rows.length === 0) return null
+  const bytes = decodeBase64(joinBase64(rows.map((row) => row.data)))
+  if (!bytes || bytes.length === 0) return null
+  return {
+    mime: meta.mime,
+    shape: meta.shape,
+    version: meta.cropVersion,
+    bytes,
+  }
+}
+
 export async function removeRsvpPhoto(slug: string): Promise<void> {
   await ensureRsvpPhotos()
   const clean = slug.trim().toLowerCase()
   await query('DELETE FROM rsvp_photo_parts WHERE slug = $1', [clean])
+  await query('DELETE FROM rsvp_photo_crop_parts WHERE slug = $1', [clean])
+  await query('DELETE FROM rsvp_photo_crops WHERE slug = $1', [clean])
   await query('DELETE FROM rsvp_photos WHERE slug = $1', [clean])
 }
 

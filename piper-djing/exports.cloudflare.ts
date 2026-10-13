@@ -159,6 +159,40 @@ const EDGE_SCHEMA = [
     sent_at text NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS rsvp_emails_slug ON rsvp_emails (slug)`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photos (
+    slug text PRIMARY KEY,
+    mime text NOT NULL,
+    shape text NOT NULL DEFAULT 'full',
+    version text NOT NULL,
+    width integer NOT NULL DEFAULT 0,
+    height integer NOT NULL DEFAULT 0,
+    bytes integer NOT NULL DEFAULT 0,
+    updated_at text NOT NULL,
+    crop_zoom integer NOT NULL DEFAULT 1,
+    crop_pan_x integer NOT NULL DEFAULT 0,
+    crop_pan_y integer NOT NULL DEFAULT 0,
+    crop_shape text NOT NULL DEFAULT '',
+    crop_version text NOT NULL DEFAULT ''
+  )`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photo_parts (
+    slug text NOT NULL,
+    idx integer NOT NULL,
+    data text NOT NULL,
+    PRIMARY KEY (slug, idx)
+  )`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photo_crops (
+    slug text PRIMARY KEY,
+    shape text NOT NULL,
+    version text NOT NULL,
+    bytes integer NOT NULL DEFAULT 0,
+    updated_at text NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photo_crop_parts (
+    slug text NOT NULL,
+    idx integer NOT NULL,
+    data text NOT NULL,
+    PRIMARY KEY (slug, idx)
+  )`,
 ]
 
 export class Book extends DurableObject {
@@ -196,6 +230,26 @@ export class Book extends DurableObject {
 
   private async init(): Promise<void> {
     for (const statement of EDGE_SCHEMA) this.ctx.storage.sql.exec(statement)
+    // A photo table written before the couple could position a crop keeps the
+    // centre of the photo until they move it.
+    const photoNames = new Set(
+      this.ctx.storage.sql
+        .exec('PRAGMA table_info(rsvp_photos)')
+        .toArray()
+        .map((column) => String(column.name)),
+    )
+    for (const [name, definition] of [
+      ['crop_zoom', 'integer NOT NULL DEFAULT 1'],
+      ['crop_pan_x', 'integer NOT NULL DEFAULT 0'],
+      ['crop_pan_y', 'integer NOT NULL DEFAULT 0'],
+      ['crop_shape', "text NOT NULL DEFAULT ''"],
+      ['crop_version', "text NOT NULL DEFAULT ''"],
+    ] as const) {
+      if (photoNames.has(name)) continue
+      this.ctx.storage.sql.exec(
+        `ALTER TABLE rsvp_photos ADD COLUMN ${name} ${definition}`,
+      )
+    }
     const columns = this.ctx.storage.sql
       .exec('PRAGMA table_info(bookings)')
       .toArray()
