@@ -61,6 +61,7 @@ import { listRsvpEmails, sendKey, sendRsvpEmail } from './mailer.server.ts'
 import { parsePhotoUpload } from './photo.ts'
 import { photoPath, parseTemplateId } from './templates.ts'
 import { notifyCouplePaid, notifyPiperSignup } from './notify.server.ts'
+import { catererSheet } from './caterer.ts'
 import {
   FLOOR_IMAGE_MAX,
   deleteFloorImage,
@@ -1462,6 +1463,15 @@ export const saveSeatingImage = createServerFn({ method: 'POST' })
     await writeFloorImage(wedding.slug, data.image)
     return { ok: true as const }
   })
+
+/** The caterer's printout: meals, dietary notes and who sits where. */
+export const getCatererSheet = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const wedding = await openWedding()
+    if (!wedding) return null
+    return catererSheet(wedding, await loadSeating(wedding))
+  },
+)
 
 export const dismissSeatingNotices = createServerFn({ method: 'POST' }).handler(
   async () => {

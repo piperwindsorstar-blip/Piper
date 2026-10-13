@@ -212,16 +212,41 @@ export function FloorPlan({
     setView(fitView(planRef.current))
   }, [roomKey])
 
-  // Ctrl/⌘ + wheel (and trackpad pinch) zooms; a plain wheel scrolls the page.
+  // The mouse wheel and a trackpad pinch zoom around the pointer; a
+  // two-finger trackpad swipe pans.
   useEffect(() => {
     const element = svg.current
     if (!element || print) return
     const wheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return
       event.preventDefault()
+      const pixels =
+        event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? element.clientHeight
+            : 1
+      const dx = event.deltaX * pixels
+      const dy = event.deltaY * pixels
+      const pinch = event.ctrlKey || event.metaKey
+      // A trackpad swipe moves sideways too; a mouse wheel only goes up and down.
+      const swipe = !pinch && event.deltaMode === 0 && Math.abs(dx) > 0.5
+      if (swipe) {
+        const rect = element.getBoundingClientRect()
+        const current = viewRef.current
+        const per = Math.max(current.w / rect.width, current.h / rect.height)
+        const next = {
+          ...current,
+          x: current.x + dx * per,
+          y: current.y + dy * per,
+        }
+        viewRef.current = next
+        setView(next)
+        return
+      }
       const at = toRoom(event.clientX, event.clientY)
       if (!at) return
-      zoomAt(at, Math.exp(-event.deltaY * 0.01))
+      const strength = pinch ? 0.01 : 0.0015
+      zoomAt(at, Math.exp(-Math.max(-400, Math.min(400, dy)) * strength))
     }
     element.addEventListener('wheel', wheel, { passive: false })
     return () => element.removeEventListener('wheel', wheel)
@@ -855,6 +880,9 @@ function TableShape({
     print ? 14 : Math.max(12, perPixel * 14),
     print ? 0 : Math.max(10, perPixel * 11),
   )
+  // Names only once they are big enough to read without running together;
+  // at Fit zoom and in print the plan shows table numbers and counts only.
+  const showNames = !print && perPixel > 0 && NAME_SIZE / perPixel >= 8
   return (
     <g>
       <g
@@ -900,7 +928,7 @@ function TableShape({
       >
         {label.length > 16 ? `${label.slice(0, 15)}…` : label}
       </text>
-      {!print && layout.showCount ? (
+      {layout.showCount ? (
         <text
           x={table.x}
           y={table.y + layout.countY}
@@ -911,7 +939,7 @@ function TableShape({
           fill={colours.muted}
           pointerEvents="none"
         >
-          {sitting.length} / {table.seats} seated
+          {sitting.length} / {table.seats}
         </text>
       ) : null}
       {spots.map((spot, seat) => {
@@ -957,7 +985,7 @@ function TableShape({
               strokeWidth={chosen ? 4 : 1.5}
               strokeDasharray={guest || !placing ? undefined : '3 3'}
             />
-            {guest ? (
+            {guest && showNames ? (
               <>
                 <text
                   x={spot.x}

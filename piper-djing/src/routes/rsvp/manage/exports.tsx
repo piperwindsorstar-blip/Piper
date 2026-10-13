@@ -1,6 +1,7 @@
 import { createFileRoute, getRouteApi } from '@tanstack/react-router'
 import { Exports } from '../../../components/rsvp/manage.tsx'
 import {
+  getCatererSheet,
   getRsvpSeating,
   getRsvpTimeline,
 } from '../../../lib/rsvp/rsvp.functions.ts'
@@ -9,11 +10,12 @@ const parent = getRouteApi('/rsvp/manage')
 
 export const Route = createFileRoute('/rsvp/manage/exports')({
   loader: async () => {
-    const [seating, timeline] = await Promise.all([
+    const [seating, timeline, caterer] = await Promise.all([
       getRsvpSeating(),
       getRsvpTimeline(),
+      getCatererSheet(),
     ])
-    return { seating, timeline }
+    return { seating, timeline, caterer }
   },
   component: function Page() {
     const data = parent.useLoaderData()

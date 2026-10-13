@@ -9,7 +9,9 @@ import {
   TABLE_SHAPES,
   addTables,
   assignGuest,
+  autoArrange,
   crowdingWarning,
+  findFreeSpot,
   fitTableSize,
   formatLength,
   fromInches,
@@ -19,12 +21,14 @@ import {
   newRoomItem,
   newTable,
   normalAngle,
+  overlappingTables,
   removeTable,
   resizeRoom,
   resizeTable,
   seatParty,
   tableLabel,
   tableNameProblem,
+  tableSize,
   toInches,
   unseat,
 } from '../../lib/rsvp/seating.ts'
@@ -186,9 +190,18 @@ export function SeatingChart({ data }: { data: SeatingData }) {
     selection?.kind === 'item'
       ? plan.items.find((item) => item.id === selection.id)
       : undefined
-  const tight = plan.tables
-    .map((table) => crowdingWarning(table))
-    .filter(Boolean)
+  const clashing = overlappingTables(plan)
+  const tight = [
+    ...plan.tables.map((table) => crowdingWarning(table)).filter(Boolean),
+    ...(clashing.length > 0
+      ? [
+          `${plan.tables
+            .filter((table) => clashing.includes(table.id))
+            .map((table) => tableLabel(table.name))
+            .join(', ')} ${clashing.length === 1 ? 'runs' : 'run'} into another table or room item. Drag ${clashing.length === 1 ? 'it' : 'them'} apart or use Auto-arrange tables.`,
+        ]
+      : []),
+  ]
 
   return (
     <div>
@@ -306,22 +319,35 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             className={`${rsvpGhost} w-auto`}
             disabled={plan.tables.length >= MAX_TABLES}
             onClick={() => {
-              const table = newTable(
-                planRef.current.tables,
-                planRef.current.room,
-                newId(),
-              )
-              commit(
-                {
-                  ...planRef.current,
-                  tables: [...planRef.current.tables, table],
-                },
-                true,
-              )
+              const current = planRef.current
+              const clear = findFreeSpot(current, tableSize('round', 8))
+              const table = newTable(current, newId())
+              commit({ ...current, tables: [...current.tables, table] }, true)
               setSelection({ kind: 'table', id: table.id })
+              if (!clear) {
+                setProblem(
+                  'There is no clear floor left, so the new table is in the middle. Make the room bigger or use Auto-arrange tables.',
+                )
+              }
             }}
           >
             + Add table
+          </button>
+          <button
+            type="button"
+            className={`${rsvpGhost} w-auto`}
+            disabled={plan.tables.length === 0}
+            onClick={() => {
+              const result = autoArrange(planRef.current)
+              commit(result.plan, true)
+              setProblem(
+                result.unplaced > 0
+                  ? `${result.unplaced} table${result.unplaced === 1 ? '' : 's'} did not fit and stayed where ${result.unplaced === 1 ? 'it was' : 'they were'}. Make the room bigger, then arrange again.`
+                  : '',
+              )
+            }}
+          >
+            Auto-arrange tables
           </button>
           <select
             className={`${smallField} w-auto text-sm`}
@@ -607,13 +633,25 @@ export function SeatingChart({ data }: { data: SeatingData }) {
                           }}
                         >
                           <option value="">Seat whole party…</option>
-                          {plan.tables.map((table) => (
-                            <option key={table.id} value={table.id}>
-                              {tableLabel(table.name)} (
-                              {table.seats - guestsAt(plan, table.id).length}{' '}
-                              free)
-                            </option>
-                          ))}
+                          {plan.tables.map((table) => {
+                            const free =
+                              table.seats - guestsAt(plan, table.id).length
+                            const room = free >= party.guests.length
+                            return (
+                              <option
+                                key={table.id}
+                                value={table.id}
+                                disabled={!room}
+                              >
+                                {tableLabel(table.name)}
+                                {free <= 0
+                                  ? ' · full'
+                                  : room
+                                    ? ` · ${free} free`
+                                    : ` · only ${free} free`}
+                              </option>
+                            )
+                          })}
                         </select>
                       ) : null}
                     </div>
@@ -1237,10 +1275,12 @@ function TablePicker({
       <option value="">{value ? 'Unassigned' : 'Table…'}</option>
       {plan.tables.map((table) => {
         const free = table.seats - guestsAt(plan, table.id).length
+        const here = table.id === value
+        const full = !here && free <= 0
         return (
-          <option key={table.id} value={table.id}>
+          <option key={table.id} value={table.id} disabled={full}>
             {tableLabel(table.name)}
-            {table.id === value ? '' : ` (${free} free)`}
+            {here ? '' : full ? ' · full' : ` · ${free} free`}
           </option>
         )
       })}

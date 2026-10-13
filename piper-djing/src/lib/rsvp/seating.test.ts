@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
 import {
+  autoArrange,
+  overlappingTables,
   seatNameSpot,
   tableLabelLayout,
   addTables,
@@ -342,5 +344,55 @@ describe('seat names', () => {
     const right = seatNameSpot({ x: 56, y: 0 }, centre, ['Ada O.'], 9, 12)
     // Centred, so it reaches out only half its width past the seat.
     assert.ok(right.x - 56 < 12 + 2 + 6 * 9 * 0.56)
+  })
+})
+
+describe('placing tables in a full room (127 guests, 14 tables)', () => {
+  function bigPlan(): SeatingPlan {
+    let plan = emptySeating()
+    plan.items.push({
+      id: 'floor', kind: 'dance-floor', label: 'Dance floor',
+      x: 504, y: 360, w: 192, h: 192, rotation: 0,
+    })
+    let n = 0
+    plan = addTables(plan, 14, () => `t${(n += 1)}`)
+    // Tables of 10, as a 125-guest wedding would set them.
+    plan.tables = plan.tables.map((table) => ({ ...table, seats: 10, w: 72, h: 72 }))
+    return plan
+  }
+
+  it('puts new tables only on clear floor', () => {
+    let plan = emptySeating()
+    plan.items.push({
+      id: 'floor', kind: 'dance-floor', label: 'Dance floor',
+      x: 504, y: 360, w: 192, h: 192, rotation: 0,
+    })
+    let n = 0
+    plan = addTables(plan, 10, () => `n${(n += 1)}`)
+    assert.deepEqual(overlappingTables(plan), [])
+  })
+
+  it('auto-arranges every table around the dance floor with no overlaps', () => {
+    const scattered = bigPlan()
+    // Pile them all on top of each other first.
+    scattered.tables = scattered.tables.map((table) => ({ ...table, x: 500, y: 360, rotation: 30 }))
+    assert.ok(overlappingTables(scattered).length > 0)
+    const result = autoArrange(scattered)
+    assert.equal(result.unplaced, 0)
+    assert.deepEqual(overlappingTables(result.plan), [])
+    assert.ok(result.plan.tables.every((table) => table.rotation === 0))
+    // Table 1 is the closest to the dance floor.
+    const distance = (id: string) => {
+      const table = result.plan.tables.find((item) => item.id === id)!
+      return Math.hypot(table.x - 504, table.y - 360)
+    }
+    const nearest = Math.min(...result.plan.tables.map((table) => distance(table.id)))
+    assert.equal(distance('t1'), nearest)
+  })
+
+  it('says how many tables do not fit in a room that is too small', () => {
+    const plan = resizeRoom(bigPlan(), 360, 360)
+    const result = autoArrange(plan)
+    assert.ok(result.unplaced > 0)
   })
 })

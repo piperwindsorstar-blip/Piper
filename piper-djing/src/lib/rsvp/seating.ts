@@ -385,7 +385,8 @@ export function tableSize(
   seats: number,
 ): { w: number; h: number } {
   if (shape === 'round') {
-    const d = Math.max(60, Math.round(seats * 9))
+    // A 60″ round seats 8; each extra chair adds about 7″.
+    const d = Math.max(60, Math.round(60 + (seats - 8) * 7))
     return { w: d, h: d }
   }
   if (shape === 'square') {
@@ -705,36 +706,111 @@ export function nextTableName(tables: SeatTable[]): string {
   return `Table ${tables.length + 1}`
 }
 
-/** An open spot on the floor for a new table, in a tidy grid. */
-export function nextTableSpot(
-  tables: SeatTable[],
-  room: FloorRoom = defaultRoom(),
-): { x: number; y: number } {
-  const columns = Math.max(2, Math.floor(room.width / 200))
-  const cellW = room.width / columns
-  const cellH = 170
-  for (let index = 0; index < MAX_TABLES; index += 1) {
-    const x = Math.round(cellW * ((index % columns) + 0.5))
-    const y = Math.round(150 + cellH * Math.floor(index / columns))
-    const free = tables.every(
-      (table) => Math.abs(table.x - x) > 60 || Math.abs(table.y - y) > 60,
-    )
-    if (free) return { x, y: Math.min(y, room.length - 60) }
+type Box = { x0: number; y0: number; x1: number; y1: number }
+
+/** How far seats and chairs reach past a table's edge. */
+const CHAIR_REACH = 32
+/** A walkway kept clear between tables and around room items. */
+const AISLE = 18
+
+function boxOf(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  rotation: number,
+  pad: number,
+): Box {
+  const angle = (rotation * Math.PI) / 180
+  const bw = Math.abs(w * Math.cos(angle)) + Math.abs(h * Math.sin(angle))
+  const bh = Math.abs(w * Math.sin(angle)) + Math.abs(h * Math.cos(angle))
+  return {
+    x0: x - bw / 2 - pad,
+    y0: y - bh / 2 - pad,
+    x1: x + bw / 2 + pad,
+    y1: y + bh / 2 + pad,
   }
-  return { x: Math.round(room.width / 2), y: Math.round(room.length / 2) }
 }
 
-/** A new table at the next free spot, sized for its seats. */
-export function newTable(
-  tables: SeatTable[],
-  room: FloorRoom,
-  id: string,
-): SeatTable {
-  const spot = nextTableSpot(tables, room)
+/** The floor a table takes up, its chairs included. */
+export function tableFootprint(
+  table: Pick<SeatTable, 'x' | 'y' | 'w' | 'h' | 'rotation'>,
+): Box {
+  return boxOf(table.x, table.y, table.w, table.h, table.rotation, CHAIR_REACH)
+}
+
+function itemFootprint(item: RoomItem): Box {
+  return boxOf(item.x, item.y, item.w, item.h, item.rotation, 0)
+}
+
+function overlaps(a: Box, b: Box, gap: number): boolean {
+  return (
+    a.x0 < b.x1 + gap && b.x0 < a.x1 + gap && a.y0 < b.y1 + gap && b.y0 < a.y1 + gap
+  )
+}
+
+function insideRoom(box: Box, room: FloorRoom): boolean {
+  return box.x0 >= 0 && box.y0 >= 0 && box.x1 <= room.width && box.y1 <= room.length
+}
+
+/** Everything on the floor a new table must keep clear of. */
+function obstacles(plan: SeatingPlan, ignoreTableId = ''): Box[] {
+  return [
+    ...plan.tables
+      .filter((table) => table.id !== ignoreTableId)
+      .map((table) => tableFootprint(table)),
+    ...plan.items
+      .filter((item) => item.kind !== 'label')
+      .map((item) => itemFootprint(item)),
+  ]
+}
+
+function fits(box: Box, room: FloorRoom, taken: Box[]): boolean {
+  return insideRoom(box, room) && taken.every((other) => !overlaps(box, other, AISLE))
+}
+
+/**
+ * The first open spot, reading the room top to bottom and left to right, where
+ * a table of this size and its chairs keep clear of every other table, the
+ * dance floor and every room item. Null when the room is full.
+ */
+export function findFreeSpot(
+  plan: SeatingPlan,
+  size: { w: number; h: number; rotation?: number },
+  ignoreTableId = '',
+): { x: number; y: number } | null {
+  const taken = obstacles(plan, ignoreTableId)
+  const rotation = size.rotation ?? 0
+  const step = 12
+  for (let y = 0; y <= plan.room.length; y += step) {
+    for (let x = 0; x <= plan.room.width; x += step) {
+      const box = boxOf(x, y, size.w, size.h, rotation, CHAIR_REACH)
+      if (fits(box, plan.room, taken)) return { x, y }
+    }
+  }
+  return null
+}
+
+/** An open spot on the floor for a new table, clear of everything else. */
+export function nextTableSpot(
+  plan: SeatingPlan,
+  size: { w: number; h: number } = tableSize('round', DEFAULT_SEATS),
+): { x: number; y: number } {
+  return (
+    findFreeSpot(plan, size) ?? {
+      x: Math.round(plan.room.width / 2),
+      y: Math.round(plan.room.length / 2),
+    }
+  )
+}
+
+/** A new round table for 8 in the first clear spot. */
+export function newTable(plan: SeatingPlan, id: string): SeatTable {
   const size = tableSize('round', DEFAULT_SEATS)
+  const spot = nextTableSpot(plan, size)
   return {
     id,
-    name: nextTableName(tables),
+    name: nextTableName(plan.tables),
     shape: 'round',
     seats: DEFAULT_SEATS,
     x: spot.x,
@@ -750,12 +826,132 @@ export function addTables(
   count: number,
   makeId: () => string,
 ): SeatingPlan {
-  const tables = plan.tables.slice()
-  const wanted = clamp(Math.round(count), 0, MAX_TABLES - tables.length)
+  let next = plan
+  const wanted = clamp(Math.round(count), 0, MAX_TABLES - plan.tables.length)
   for (let index = 0; index < wanted; index += 1) {
-    tables.push(newTable(tables, plan.room, makeId()))
+    next = { ...next, tables: [...next.tables, newTable(next, makeId())] }
   }
-  return { ...plan, tables }
+  return next
+}
+
+function tableOrder(a: SeatTable, b: SeatTable): number {
+  const aHead = a.shape === 'banquet' ? 0 : 1
+  const bHead = b.shape === 'banquet' ? 0 : 1
+  if (aHead !== bHead) return aHead - bHead
+  const aNumber = /^\d+$/.test(a.name.trim()) ? Number(a.name) : Number.NaN
+  const bNumber = /^\d+$/.test(b.name.trim()) ? Number(b.name) : Number.NaN
+  if (!Number.isNaN(aNumber) && !Number.isNaN(bNumber)) return aNumber - bNumber
+  if (!Number.isNaN(aNumber)) return -1
+  if (!Number.isNaN(bNumber)) return 1
+  return a.name.localeCompare(b.name)
+}
+
+/**
+ * Lays every table out in neat rows around the dance floor (or the middle of
+ * the room when there is none), nearest first: head tables, then table 1, 2…
+ * No table overlaps another table, the dance floor or any room item. Tables
+ * that cannot fit are counted so the couple can make the room bigger.
+ */
+export function autoArrange(plan: SeatingPlan): {
+  plan: SeatingPlan
+  unplaced: number
+} {
+  const floor = plan.items.find((item) => item.kind === 'dance-floor')
+  const anchor = floor
+    ? { x: floor.x, y: floor.y }
+    : { x: plan.room.width / 2, y: plan.room.length / 2 }
+  const items = plan.items
+    .filter((item) => item.kind !== 'label')
+    .map((item) => itemFootprint(item))
+  const upright = plan.tables.map((table) => ({ ...table, rotation: 0 }))
+  const ordered = upright.slice().sort(tableOrder)
+  const rows = ordered.filter((table) => table.shape !== 'banquet')
+  const cellW =
+    Math.max(0, ...rows.map((table) => table.w)) + CHAIR_REACH * 2 + AISLE
+  const cellH =
+    Math.max(0, ...rows.map((table) => table.h)) + CHAIR_REACH * 2 + AISLE
+  // A grid of table spots filling the room edge to edge, tried nearest the
+  // dance floor first, so tables come out in straight rows around it.
+  const lattice = (stepX: number, stepY: number) => {
+    const spots: { x: number; y: number; d: number }[] = []
+    const cols = Math.max(1, Math.floor(plan.room.width / stepX))
+    const rows = Math.max(1, Math.floor(plan.room.length / stepY))
+    const startX = (plan.room.width - cols * stepX) / 2 + stepX / 2
+    const startY = (plan.room.length - rows * stepY) / 2 + stepY / 2
+    for (let j = 0; j < rows; j += 1) {
+      for (let i = 0; i < cols; i += 1) {
+        const x = Math.round(startX + i * stepX)
+        const y = Math.round(startY + j * stepY)
+        // Rows read better than rings: weigh up-and-down distance a little more.
+        spots.push({ x, y, d: Math.hypot(x - anchor.x, (y - anchor.y) * 1.15) })
+      }
+    }
+    return spots.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x)
+  }
+  const tableSpots = cellW > 0 && cellH > 0 ? lattice(cellW, cellH) : []
+  const fineSpots = lattice(24, 24)
+  const placed: Box[] = []
+  const moved = new Map<string, { x: number; y: number }>()
+  let unplaced = 0
+  for (const table of ordered) {
+    const spots = table.shape === 'banquet' ? fineSpots : tableSpots
+    const taken = [...items, ...placed]
+    const spot = spots.find((candidate) =>
+      fits(tableFootprint({ ...table, x: candidate.x, y: candidate.y }), plan.room, taken),
+    )
+    const chosen =
+      spot ??
+      (() => {
+        // Off the lattice: any clear spot at all.
+        const step = 12
+        for (let y = 0; y <= plan.room.length; y += step) {
+          for (let x = 0; x <= plan.room.width; x += step) {
+            if (fits(tableFootprint({ ...table, x, y }), plan.room, taken)) {
+              return { x, y }
+            }
+          }
+        }
+        return null
+      })()
+    if (!chosen) {
+      unplaced += 1
+      continue
+    }
+    moved.set(table.id, chosen)
+    placed.push(tableFootprint({ ...table, ...chosen }))
+  }
+  return {
+    plan: {
+      ...plan,
+      tables: plan.tables.map((table) => {
+        const spot = moved.get(table.id)
+        return spot ? { ...table, ...spot, rotation: 0 } : table
+      }),
+    },
+    unplaced,
+  }
+}
+
+/** Tables whose chairs run into another table or a room item. */
+export function overlappingTables(plan: SeatingPlan): string[] {
+  const clashes = new Set<string>()
+  const boxes = plan.tables.map((table) => ({
+    id: table.id,
+    box: tableFootprint(table),
+  }))
+  const items = plan.items
+    .filter((item) => item.kind !== 'label')
+    .map((item) => itemFootprint(item))
+  for (const [index, a] of boxes.entries()) {
+    for (const b of boxes.slice(index + 1)) {
+      if (overlaps(a.box, b.box, 0)) {
+        clashes.add(a.id)
+        clashes.add(b.id)
+      }
+    }
+    if (items.some((item) => overlaps(a.box, item, 0))) clashes.add(a.id)
+  }
+  return [...clashes]
 }
 
 /** A room item of this kind in the middle of the room. */

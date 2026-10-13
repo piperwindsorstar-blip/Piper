@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { CatererSheet } from '../../lib/rsvp/caterer.ts'
 import {
   findYourSeat,
   formatLength,
@@ -235,21 +237,20 @@ export function PrintSeating({
 }
 
 /**
- * "Print / PDF": the clean print layout opens over the page, with a choice of
+ * "Print / PDF": a clean print layout opens over the page with a choice of
  * Letter or A4. Printing shows only this layout; "Save as PDF" in the
  * browser's print window makes the PDF.
  */
-export function SeatingPrintDialog({
+export function PrintDialog({
   open,
   onClose,
-  ...sheet
+  label,
+  children,
 }: {
   open: boolean
   onClose: () => void
-  plan: SeatingPlan
-  guests: SeatableGuest[]
-  couple: string
-  dateLabel: string
+  label: string
+  children: (paper: PaperSize) => ReactNode
 }) {
   const [paper, setPaper] = useState<PaperSize>('letter')
   useEffect(() => {
@@ -266,7 +267,7 @@ export function SeatingPrintDialog({
       className="fixed inset-0 z-50 overflow-auto bg-black/70 p-3 print:static print:inset-auto print:overflow-visible print:bg-white print:p-0 sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="Print seating chart"
+      aria-label={label}
     >
       <div className="mx-auto mb-3 flex max-w-5xl flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--surface)] p-3 text-[var(--text)] print:hidden">
         <fieldset className="flex items-center gap-2 text-sm">
@@ -304,9 +305,284 @@ export function SeatingPrintDialog({
         </div>
       </div>
       <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-xl print:max-w-none print:rounded-none print:p-0 print:shadow-none">
-        <PrintSeating {...sheet} paper={paper} />
+        {children(paper)}
       </div>
     </div>
+  )
+}
+
+export function SeatingPrintDialog({
+  open,
+  onClose,
+  ...sheet
+}: {
+  open: boolean
+  onClose: () => void
+  plan: SeatingPlan
+  guests: SeatableGuest[]
+  couple: string
+  dateLabel: string
+}) {
+  return (
+    <PrintDialog open={open} onClose={onClose} label="Print seating chart">
+      {(paper) => <PrintSeating {...sheet} paper={paper} />}
+    </PrintDialog>
+  )
+}
+
+/** A meal's letter in a ring, the way servers mark it on their sheet. */
+function MealMark({ code }: { code: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-grid',
+        placeItems: 'center',
+        width: 20,
+        height: 20,
+        border: '1.5px solid #111',
+        borderRadius: code === 'K' ? 4 : 999,
+        fontSize: 11,
+        fontWeight: 800,
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        lineHeight: 1,
+      }}
+      aria-hidden="true"
+    >
+      {code}
+    </span>
+  )
+}
+
+/**
+ * The caterer's printout, black on white: page 1 is the summary (who, when,
+ * where, the deadline, how many, meal totals with kids counted on their own,
+ * and every dietary or allergy note); then table by table, each guest with a
+ * meal letter so servers know who gets what.
+ */
+export function CatererPrint({
+  sheet,
+  paper = 'letter',
+}: {
+  sheet: CatererSheet
+  paper?: PaperSize
+}) {
+  const page = PAPER[paper]
+  const cell = { padding: '4px 8px', borderBottom: '1px solid #ccc' } as const
+  const head = {
+    ...cell,
+    textAlign: 'left' as const,
+    borderBottom: '2px solid #111',
+    fontSize: 11,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.04em',
+  }
+  const header = (title: string) => (
+    <header
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        borderBottom: '2px solid #111',
+        paddingBottom: 6,
+        marginBottom: 12,
+      }}
+    >
+      <h1 style={{ fontSize: 22, margin: 0 }}>{title}</h1>
+      <p style={{ margin: 0, fontSize: 13 }}>
+        <strong>{sheet.couple}</strong>
+        {sheet.dateLabel ? ` · ${sheet.dateLabel}` : ''}
+      </p>
+    </header>
+  )
+  return (
+    <div style={sheetStyle} className="caterer-print">
+      <style>{`
+        @page { size: ${page.size} portrait; margin: 0.55in 0.55in 0.75in; }
+        @media print {
+          html, body { background: #fff !important; }
+          .caterer-print .print-footer { position: fixed; bottom: 0; left: 0; right: 0; }
+          .caterer-print .sheet-gap { display: none; }
+          .caterer-print .tables-page { break-before: page; }
+        }
+      `}</style>
+      <section>
+        {header('Caterer report')}
+        <table style={{ fontSize: 13, borderCollapse: 'collapse', marginBottom: 14 }}>
+          <tbody>
+            {[
+              ['Couple', sheet.couple],
+              ['Date', sheet.dateLabel],
+              ['Venue', [sheet.venue, sheet.address].filter(Boolean).join(', ')],
+              ['RSVP deadline', sheet.deadline],
+            ].map(([label, value]) => (
+              <tr key={label}>
+                <th style={{ textAlign: 'left', padding: '2px 16px 2px 0', fontWeight: 600 }}>
+                  {label}
+                </th>
+                <td style={{ padding: '2px 0' }}>{value || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ fontSize: 20, margin: '0 0 12px' }}>
+          <strong>{sheet.attending} attending</strong>
+          <span style={{ fontSize: 14, color: '#333' }}>
+            {' '}
+            · {sheet.adults} adults · {sheet.kids} kids
+          </span>
+        </p>
+        <h2 style={{ fontSize: 15, margin: '0 0 4px' }}>Meals</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr>
+              <th style={{ ...head, width: 34 }} />
+              <th style={head}>Meal</th>
+              <th style={{ ...head, textAlign: 'right' }}>Adults</th>
+              <th style={{ ...head, textAlign: 'right' }}>Kids</th>
+              <th style={{ ...head, textAlign: 'right' }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sheet.meals.map((meal) => (
+              <tr key={meal.code + meal.meal}>
+                <td style={cell}>
+                  <MealMark code={meal.code} />
+                </td>
+                <td style={cell}>{meal.meal}</td>
+                <td style={{ ...cell, textAlign: 'right' }}>{meal.adults}</td>
+                <td style={{ ...cell, textAlign: 'right' }}>{meal.kids}</td>
+                <td style={{ ...cell, textAlign: 'right', fontWeight: 700 }}>
+                  {meal.total}
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ ...cell, borderBottom: 0 }} />
+              <td style={{ ...cell, borderBottom: 0, fontWeight: 700 }}>Total</td>
+              <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700 }}>
+                {sheet.meals.reduce((sum, meal) => sum + meal.adults, 0)}
+              </td>
+              <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700 }}>
+                {sheet.meals.reduce((sum, meal) => sum + meal.kids, 0)}
+              </td>
+              <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700 }}>
+                {sheet.attending}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <h2 style={{ fontSize: 15, margin: '18px 0 4px' }}>
+          Dietary needs and allergies ({sheet.dietary.length})
+        </h2>
+        {sheet.dietary.length === 0 ? (
+          <p style={{ fontSize: 13, color: '#555', margin: 0 }}>
+            No guest has added a dietary or allergy note.
+          </p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th style={head}>Guest</th>
+                <th style={head}>Table</th>
+                <th style={head}>Meal</th>
+                <th style={head}>Dietary / allergy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sheet.dietary.map((guest) => (
+                <tr key={guest.id} style={{ breakInside: 'avoid' }}>
+                  <td style={cell}>
+                    {guest.name}
+                    {guest.child ? ' (child)' : ''}
+                  </td>
+                  <td style={cell}>{guest.table || 'Not seated'}</td>
+                  <td style={cell}>
+                    <MealMark code={guest.code} /> {guest.meal || (guest.child ? "Kids' meal" : 'Not chosen')}
+                  </td>
+                  <td style={{ ...cell, fontWeight: 700 }}>{guest.dietary}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+      <hr
+        className="sheet-gap"
+        style={{ border: 0, borderTop: '1px dashed #bbb', margin: '16px 0' }}
+      />
+      <section className="tables-page">
+        {header('Table by table')}
+        <p style={{ fontSize: 11, color: '#444', margin: '0 0 10px' }}>
+          {sheet.meals.map((meal) => `${meal.code} = ${meal.meal}`).join(' · ')}
+        </p>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 18,
+          }}
+        >
+          {[
+            ...sheet.tables,
+            ...(sheet.unseated.length > 0
+              ? [{ table: 'Not seated yet', guests: sheet.unseated }]
+              : []),
+          ].map((group) => (
+            <div key={group.table} style={{ breakInside: 'avoid' }}>
+              <h2 style={{ fontSize: 16, margin: '0 0 4px', borderBottom: '1px solid #999' }}>
+                {group.table}{' '}
+                <span style={{ fontSize: 11, fontWeight: 400, color: '#555' }}>
+                  · {group.guests.length} guests
+                </span>
+              </h2>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <tbody>
+                  {group.guests.map((guest) => (
+                    <tr key={guest.id}>
+                      <td style={{ padding: '3px 6px 3px 0', width: 24 }}>
+                        <MealMark code={guest.code} />
+                      </td>
+                      <td style={{ padding: '3px 6px 3px 0' }}>
+                        {guest.name}
+                        {guest.child ? ' (child)' : ''}
+                      </td>
+                      <td style={{ padding: '3px 6px 3px 0', color: '#333' }}>
+                        {guest.meal || (guest.child ? "Kids' meal" : '—')}
+                      </td>
+                      <td style={{ padding: '3px 0', fontWeight: 700 }}>
+                        {guest.dietary}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      </section>
+      <footer
+        className="print-footer"
+        style={{ textAlign: 'center', fontSize: 9, color: '#555', marginTop: 16 }}
+      >
+        Prepared by DJ Piper P
+      </footer>
+    </div>
+  )
+}
+
+export function CatererPrintDialog({
+  open,
+  onClose,
+  sheet,
+}: {
+  open: boolean
+  onClose: () => void
+  sheet: CatererSheet
+}) {
+  return (
+    <PrintDialog open={open} onClose={onClose} label="Print caterer report">
+      {(paper) => <CatererPrint sheet={sheet} paper={paper} />}
+    </PrintDialog>
   )
 }
 

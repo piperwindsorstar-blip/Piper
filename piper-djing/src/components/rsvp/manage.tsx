@@ -18,7 +18,13 @@ import {
 } from '../../lib/rsvp/rsvp.functions.ts'
 import { GuestPaste } from './guest-paste.tsx'
 import { MealOptions } from './meal-options.tsx'
-import { PrintTimeline, SeatingPrintDialog, usePrintSheet } from './print.tsx'
+import {
+  CatererPrintDialog,
+  PrintTimeline,
+  SeatingPrintDialog,
+  usePrintSheet,
+} from './print.tsx'
+import type { CatererSheet } from '../../lib/rsvp/caterer.ts'
 import type { SeatingData } from './seating.tsx'
 import type { TimelineData } from './timeline.tsx'
 import type { getRsvpManage } from '../../lib/rsvp/rsvp.functions.ts'
@@ -1207,6 +1213,7 @@ export function Songs({ data }: { data: ReadyManage }) {
 export type ExportSheets = {
   seating: SeatingData | null
   timeline: TimelineData | null
+  caterer: CatererSheet | null
 }
 
 export function Exports({
@@ -1218,6 +1225,7 @@ export function Exports({
 }) {
   const { sheet, print } = usePrintSheet()
   const [seatingPrint, setSeatingPrint] = useState(false)
+  const [catererPrint, setCatererPrint] = useState(false)
   const load = useServerFn(downloadRsvpCsv)
   const router = useRouter()
   const remind = useServerFn(sendRsvpReminders)
@@ -1247,6 +1255,13 @@ export function Exports({
           dateLabel={sheets.seating.dateLabel}
         />
       ) : null}
+      {sheets.caterer ? (
+        <CatererPrintDialog
+          open={catererPrint}
+          onClose={() => setCatererPrint(false)}
+          sheet={sheets.caterer}
+        />
+      ) : null}
       {sheet === 'timeline' && sheets.timeline ? (
         <div className="hidden print:block">
           <PrintTimeline
@@ -1271,6 +1286,7 @@ export function Exports({
           title="Caterer report"
           body="Attending guests per event: name, party, meal, dietary needs, child"
           onClick={() => void grab('caterer', 'caterer-report')}
+          onPrint={sheets.caterer ? () => setCatererPrint(true) : undefined}
         />
         <ExportCard
           title="DJ song list"
