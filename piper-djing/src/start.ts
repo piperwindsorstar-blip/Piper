@@ -4,14 +4,18 @@ import {
   createMiddleware,
   createStart,
 } from '@tanstack/react-start'
-import { deskBotResponse } from './lib/bots/desk-rest.server.ts'
+import {
+  deskBotResponse,
+  deskGlanceResponse,
+} from './lib/bots/desk-rest.server.ts'
 import {
   deskBotTarget,
+  isDeskGlance,
   isDeskUsageRoot,
   rsvpBotTarget,
 } from './lib/bots/desk-rest.ts'
 import { deskUsageResponse } from './lib/bots/usage.server.ts'
-import { legacyLocation } from './lib/legacy-host.ts'
+import { legacyLocation, wwwLocation } from './lib/legacy-host.ts'
 import { applySecurityHeaders, httpsRedirectTarget } from './lib/security.ts'
 
 const legacyHost = createMiddleware().server(async ({ next, request }) => {
@@ -28,11 +32,16 @@ const legacyHost = createMiddleware().server(async ({ next, request }) => {
   }
 
   const url = new URL(request.url)
+  const www = wwwLocation(url.hostname, url.pathname, url.search)
+  if (www) throw redirect({ href: www, statusCode: 301 })
   const target = legacyLocation(url.hostname, url.pathname, url.search)
   if (target) throw redirect({ href: target, statusCode: 301 })
 
   if (isDeskUsageRoot(url.pathname)) {
     return finish(await deskUsageResponse(request))
+  }
+  if (isDeskGlance(url.pathname)) {
+    return finish(await deskGlanceResponse(request))
   }
   if (deskBotTarget(url.pathname) || rsvpBotTarget(url.pathname)) {
     return finish(await deskBotResponse(request))

@@ -159,8 +159,8 @@ export const STEPS = [
 
 // TODO: replace with real Instagram posts or a feed embed.
 export const INSTAGRAM_POSTS = [
-  PHOTOS.stack,
-  PHOTOS.beam,
-  PHOTOS.mixer,
-  PHOTOS.phones,
+  '/photos/spotlight.jpg',
+  '/photos/dance.jpg',
+  '/photos/spin.jpg',
+  '/photos/instagram-nametag.png',
 ]

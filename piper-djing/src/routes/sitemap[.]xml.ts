@@ -11,6 +11,7 @@ export const Route = createFileRoute('/sitemap.xml')({
   <url><loc>${publicUrl('/weddings')}</loc></url>
   <url><loc>${publicUrl('/book')}</loc></url>
   <url><loc>${publicUrl('/rsvp')}</loc></url>
+  <url><loc>${publicUrl('/terms')}</loc></url>
 </urlset>
 `
         return new Response(body, {

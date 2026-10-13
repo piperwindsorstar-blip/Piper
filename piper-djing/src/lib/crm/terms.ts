@@ -6,9 +6,18 @@ import { DESK_TRAVEL_COPY } from './travel-copy.ts'
  * that still has the old deposit or travel sentences is brought forward.
  */
 const DEPOSIT_PARAGRAPH =
-  'A wedding or a reception on its own is deposited at 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. Ceremony only, The Aisle, is $350 paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500.'
+  'A wedding or a reception on its own is deposited at 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. Ceremony only, The Aisle, is $350 paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500. A Custom event is deposited at 30% of the agreed price unless Piper sets another deposit.'
 
 const TRAVEL_PARAGRAPH = `Wired uplights are $15 each. ${DESK_TRAVEL_COPY}`
+
+const PAYMENT_PARAGRAPH =
+  'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card adds 13% HST, which is charged on the balance, not the deposit.'
+
+const AGREEMENT_PARAGRAPH =
+  '4.5 Sending the deposit, or paying Ceremony only in full, is agreement to these terms. A signature is extra proof of that agreement. A signature by itself does not hold and does not book a date.'
+
+const BOOKED_PARAGRAPH =
+  'Once a date is booked, later payments, refunds, and edits do not release it. Only a cancellation or a release changes that status.'
 
 const PREVIOUS_DEPOSIT =
   'The deposit is 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. Ceremony only is paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500.'
@@ -24,13 +33,24 @@ ${DEPOSIT_PARAGRAPH}
 
 ${TRAVEL_PARAGRAPH}
 
-Once a date is booked, later payments, refunds, and edits do not release it. Only a cancellation or a release changes that status.`
+${PAYMENT_PARAGRAPH}
+
+${AGREEMENT_PARAGRAPH}
+
+${BOOKED_PARAGRAPH}`
 
 export function reviseTerms(body: string): string {
-  if (!body.includes(PREVIOUS_DEPOSIT) && !body.includes(PREVIOUS_TRAVEL)) {
-    return body
+  let next = body
+  if (next.includes(PREVIOUS_DEPOSIT) || next.includes(PREVIOUS_TRAVEL)) {
+    next = next
+      .replace(PREVIOUS_DEPOSIT, DEPOSIT_PARAGRAPH)
+      .replace(PREVIOUS_TRAVEL, TRAVEL_PARAGRAPH)
   }
-  return body
-    .replace(PREVIOUS_DEPOSIT, DEPOSIT_PARAGRAPH)
-    .replace(PREVIOUS_TRAVEL, TRAVEL_PARAGRAPH)
+  if (!next.includes(PAYMENT_PARAGRAPH) || !next.includes(AGREEMENT_PARAGRAPH)) {
+    next = next.replace(
+      BOOKED_PARAGRAPH,
+      `${PAYMENT_PARAGRAPH}\n\n${AGREEMENT_PARAGRAPH}\n\n${BOOKED_PARAGRAPH}`,
+    )
+  }
+  return next
 }

@@ -50,6 +50,8 @@ function PaymentsPage() {
                 id: Number(form.get('bookingId')),
                 cents: refund ? -cents : cents,
                 note: String(form.get('note') ?? ''),
+                paidOn: String(form.get('paidOn') ?? ''),
+                method: String(form.get('method') ?? ''),
               },
             }).then(async (result) => {
               setNotice(
@@ -92,6 +94,19 @@ function PaymentsPage() {
           />
         </label>
         <label className="field">
+          Payment date
+          <input name="paidOn" type="date" />
+        </label>
+        <label className="field">
+          Method
+          <select name="method" defaultValue="">
+            <option value="">Not set</option>
+            <option value="e-transfer">e-transfer</option>
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+          </select>
+        </label>
+        <label className="field sm:col-span-2">
           Note
           <input name="note" />
         </label>
@@ -114,7 +129,14 @@ function PaymentsPage() {
 function PaymentCard({
   payment,
 }: {
-  payment: { id: number; names: string; cents: number; note: string }
+  payment: {
+    id: number
+    names: string
+    cents: number
+    note: string
+    paidOn: string
+    method: string
+  }
 }) {
   const save = useServerFn(editPayment)
   const remove = useServerFn(deletePayment)
@@ -137,6 +159,8 @@ function PaymentCard({
                 id: payment.id,
                 cents: next,
                 note: String(form.get('note') ?? ''),
+                paidOn: String(form.get('paidOn') ?? ''),
+                method: String(form.get('method') ?? ''),
               },
             }).then(async (result) => {
               setNotice(
@@ -166,6 +190,19 @@ function PaymentCard({
           <select name="kind" defaultValue={refund ? 'refund' : 'payment'}>
             <option value="payment">Payment</option>
             <option value="refund">Refund</option>
+          </select>
+        </label>
+        <label className="field">
+          Payment date
+          <input name="paidOn" type="date" defaultValue={payment.paidOn} />
+        </label>
+        <label className="field">
+          Method
+          <select name="method" defaultValue={payment.method}>
+            <option value="">Not set</option>
+            <option value="e-transfer">e-transfer</option>
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
           </select>
         </label>
         <label className="field sm:col-span-2">

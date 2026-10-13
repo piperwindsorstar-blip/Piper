@@ -19,6 +19,7 @@ const SAMPLE: RsvpWedding = {
   priceCents: 2000,
   priceKind: 'piper',
   paid: true,
+  theme: 'dark',
   bookingSlug: '',
   replyEmail: 'sarah.m@example.com',
   sample: true,

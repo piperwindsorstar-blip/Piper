@@ -26,7 +26,7 @@ describe('stored package prices', () => {
     )
     const custom = quote(
       { packageId: 'ceremony', withStag: false, uplights: 0, venueKm: [] },
-      { full: 165000, reception: 155000, stag: 70000, ceremony: 40000 },
+      { full: 165000, reception: 155000, stag: 70000, ceremony: 40000, custom: 0 },
     )
     assert.equal(custom.totalCents, 40000)
     assert.equal(custom.depositCents, 40000)

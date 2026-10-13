@@ -2,6 +2,7 @@ import type { PackageId } from './defaults.ts'
 import {
   applyDiscount,
   CEREMONY_DEPOSIT_CENTS,
+  deposit30,
   FULL_PLUS_STAG_DEPOSIT_CENTS,
   STAG_DEPOSIT_CENTS,
   holdCovers,
@@ -31,6 +32,11 @@ export type WeddingInput = {
   venueStreet: string
   sample: boolean
   discountCents?: number
+  /** A Custom booking carries the owner's agreed total and deposit. */
+  customTotalCents?: number
+  customDepositCents?: number
+  /** A locked booking keeps its agreed total and is never repriced. */
+  lockedTotal?: boolean
 }
 
 export type BookingState = Omit<WeddingInput, 'discountCents'> & {
@@ -141,6 +147,24 @@ export function figuresFor(
   discountCents: number
 } {
   const discountCents = input.discountCents ?? 0
+  if (input.packageId === 'custom') {
+    const totalCents = input.customTotalCents ?? 0
+    if (!Number.isInteger(totalCents) || totalCents <= 0) {
+      throw new Error('A Custom booking needs a price.')
+    }
+    if (discountCents > totalCents) {
+      throw new Error('That discount is larger than the total.')
+    }
+    const depositCents =
+      input.customDepositCents != null
+        ? Math.max(0, input.customDepositCents)
+        : deposit30(totalCents)
+    return {
+      totalCents: totalCents - discountCents,
+      depositCents,
+      discountCents,
+    }
+  }
   const custom = matchCustom(
     input.partnerOne,
     input.partnerTwo,

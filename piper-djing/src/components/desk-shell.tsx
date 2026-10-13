@@ -173,9 +173,16 @@ export function DeskShell({
     <div className="desk flex min-h-screen min-w-0 flex-col bg-ink-950 text-white">
       <header className="border-b border-white/10 bg-linear-to-b from-neon/10 to-transparent px-5 pt-4 pb-4 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="font-display text-xl font-extrabold">
-            PIPER <span className="text-neon text-glow">DESK</span>
-          </p>
+          <div className="flex items-center gap-3">
+            <img
+              src="/brand/dj-piper-p.png"
+              alt="DJ Piper P"
+              className="h-9 w-auto"
+            />
+            <span className="font-mono text-[10px] tracking-[0.22em] text-white/60 uppercase">
+              Desk
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1.5 text-xs text-white/65">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />

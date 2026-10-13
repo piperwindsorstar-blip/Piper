@@ -64,8 +64,9 @@ export function Packages({ packages }: { packages: PackageOffer[] }) {
       </div>
       <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-relaxed text-soft">
         The Main Event and The Pre-Party can be booked together for $250 off.
-        Travel is the one-way driving distance from Brantford. {TRAVEL_BANDS} A
-        second venue and uplighting ($15 each) are quoted separately. Overtime
+        Travel is the one-way driving distance from Brantford. {TRAVEL_BANDS} Wired
+        uplights are $15 each. A separate ceremony venue is $75. A third venue is
+        not offered. Parking is $25 if the DJ has to pay for parking. Overtime
         after 1:00 a.m. is $250 an hour.
       </p>
     </section>

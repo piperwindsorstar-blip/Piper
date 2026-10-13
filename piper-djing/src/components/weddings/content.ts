@@ -9,7 +9,7 @@ export const LINKS = {
   email: PUBLIC_EMAIL,
 } as const
 
-export const LOGO_SRC = '/photos/logo-inverted.png'
+export const LOGO_SRC = '/brand/dj-piper-p.png'
 export const LOGO_ALT = 'DJ Piper P'
 
 export const PHOTOS = {
@@ -26,7 +26,7 @@ export const TIERS = [
     price: '$1,650',
     f: [
       'Ceremony audio through the reception, up to 1:00 a.m.',
-      'Wireless microphones for the ceremony and speeches',
+      'Wireless microphones for the ceremony and the reception',
       'Two speakers',
       'Dancefloor lighting',
       'Backup equipment',
@@ -82,7 +82,7 @@ export const TIERS = [
 export const STEPS = [
   {
     t: 'Check your date',
-    d: 'Send your date and venue. You hear back within one business day.',
+    d: 'Send your date, venue name and venue address. You hear back within one business day.',
   },
   {
     t: 'Planning call',

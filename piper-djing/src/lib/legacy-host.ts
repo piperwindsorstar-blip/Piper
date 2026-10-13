@@ -18,6 +18,18 @@ export function staysOnLegacyHost(pathname: string): boolean {
   )
 }
 
+const WWW_HOST = 'www.piperpweddingdj.services'
+
+/** www goes to the bare domain. */
+export function wwwLocation(
+  hostname: string,
+  pathname: string,
+  search: string,
+): string | null {
+  if (hostname !== WWW_HOST) return null
+  return `${PUBLIC_ORIGIN}${pathname}${search}`
+}
+
 export function legacyLocation(
   hostname: string,
   pathname: string,

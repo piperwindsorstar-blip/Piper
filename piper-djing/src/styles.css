@@ -298,6 +298,36 @@ html:has(.desk) {
   overflow-x: hidden;
 }
 
+/* Couples choose a light or dark RSVP. Guests see the couple's choice. */
+.portal.light {
+  --bg: #faf7fc;
+  --surface: #ffffff;
+  --field: #ffffff;
+  --field-2: #f2ecf7;
+  --border: #e6def0;
+  --border-strong: #cabfda;
+  --line: #e6def0;
+  --text: #1c1533;
+  --text-muted: #5b5370;
+  --text-faint: #7c7488;
+  --pink: #d1006b;
+  --pink-soft: #a3005a;
+  --pink-tint: #ffe3f1;
+  color-scheme: light;
+}
+
+.portal.light .text-white,
+.portal.light .text-white\/85,
+.portal.light .text-white\/80,
+.portal.light .text-white\/70 {
+  color: var(--text);
+}
+
+.portal.light .bg-ink-950,
+.portal.light .bg-\[\#0D0D0D\] {
+  background: var(--bg);
+}
+
 .portal .portal-display {
   font-family: 'Inter Display', Inter, system-ui, sans-serif;
   font-weight: 800;

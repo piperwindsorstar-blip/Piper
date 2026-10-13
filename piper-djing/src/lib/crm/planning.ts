@@ -180,7 +180,6 @@ export type Planning = {
   requests: string
   guestCount: string
   uplightColours: string
-  photobooth: string
   genres: string
   dedications: string
   mood: string
@@ -254,7 +253,6 @@ export function blankPlanning(seed: PlanningSeed): Planning {
     requests: '',
     guestCount: '',
     uplightColours: '',
-    photobooth: '',
     genres: '',
     dedications: '',
     mood: '',
@@ -391,7 +389,6 @@ export function planningFromUnknown(
     requests: clip(raw.requests, LONG),
     guestCount: clip(raw.guestCount, 40),
     uplightColours: clip(raw.uplightColours, SHORT),
-    photobooth: clip(raw.photobooth, SHORT),
     genres: clip(raw.genres, LONG),
     dedications: clip(raw.dedications, LONG),
     mood: clip(raw.mood, LONG),

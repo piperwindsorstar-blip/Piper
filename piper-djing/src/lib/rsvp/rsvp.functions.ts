@@ -204,6 +204,7 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
     if (entry === 'unpaid') {
       return {
         entry,
+        theme: wedding.theme,
         couple: coupleTitle(wedding),
         cents: wedding.priceCents,
         kind: wedding.priceKind,
@@ -211,6 +212,7 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
     }
     return {
       entry,
+      theme: wedding.theme,
       slug: wedding.slug,
       couple: coupleTitle(wedding),
       dateLabel: longWeddingDate(wedding.eventDate),
@@ -291,6 +293,7 @@ function householdPayload(wedding: RsvpWedding, token: string) {
   if (!party) return null
   return {
     slug: wedding.slug,
+    theme: wedding.theme,
     couple: coupleTitle(wedding),
     deadline: shortMonthDay(wedding.deadline),
     locked:
@@ -514,6 +517,20 @@ async function manageView(
     questions,
   }
 }
+
+export const setRsvpTheme = createServerFn({ method: 'POST' })
+  .validator((data: { theme?: string }) => ({
+    theme: data.theme === 'light' ? ('light' as const) : ('dark' as const),
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    if (!wedding) {
+      return { ok: false as const, error: 'Open your RSVP from the sign-in link.' }
+    }
+    wedding.theme = data.theme
+    await writeRsvp(wedding)
+    return { ok: true as const, theme: wedding.theme }
+  })
 
 export const getRsvpManage = createServerFn({ method: 'GET' }).handler(
   async () => {

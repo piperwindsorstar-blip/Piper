@@ -22,7 +22,7 @@ export const WEDDING_DESCRIPTION =
 export const WEDDING_OG_IMAGE = `${site.url}/photos/brand/brand-beam.jpg`
 
 export function publicHead(opts: {
-  path: '/' | '/book' | '/weddings'
+  path: '/' | '/book' | '/weddings' | '/terms' | '/rsvp'
   title: string
   description?: string
 }) {
@@ -116,16 +116,12 @@ export function weddingLocalBusinessJsonLd(): string {
       addressRegion: 'ON',
       addressCountry: 'CA',
     },
-    areaServed: [
-      'Brantford',
-      'Paris',
-      'Hamilton',
-      'Cambridge',
-      'Woodstock',
-      'Burlington',
-      'Guelph',
-      'Oakville',
-    ].map((name) => ({ '@type': 'City', name })),
+    areaServed: ['Brantford', 'Hamilton', 'Cambridge', 'Paris'].map(
+      (name) => ({ '@type': 'City', name }),
+    ).concat({
+      '@type': 'AdministrativeArea',
+      name: 'Brant County',
+    }),
     sameAs: [INSTAGRAM_URL],
   })
 }
@@ -145,7 +141,9 @@ export function homeLocalBusinessJsonLd(): string {
       addressRegion: 'ON',
       addressCountry: 'CA',
     },
-    areaServed: { '@type': 'City', name: 'Brantford' },
+    areaServed: ['Brantford', 'Hamilton', 'Cambridge', 'Paris']
+      .map((name) => ({ '@type': 'City', name }))
+      .concat({ '@type': 'AdministrativeArea', name: 'Brant County' }),
     sameAs: [INSTAGRAM_URL],
   })
 }

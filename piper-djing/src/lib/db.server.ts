@@ -35,6 +35,8 @@ CREATE TABLE bookings (
   total_cents integer NOT NULL,
   deposit_cents integer NOT NULL,
   discount_cents integer NOT NULL DEFAULT 0,
+  custom_total_cents integer NOT NULL DEFAULT 0,
+  locked_total boolean NOT NULL DEFAULT false,
   hold_started_on text,
   stag_released boolean NOT NULL DEFAULT false,
   notes text NOT NULL DEFAULT '',
@@ -57,6 +59,8 @@ CREATE TABLE payments (
   invoice_id integer NOT NULL REFERENCES invoices (id),
   cents integer NOT NULL,
   note text NOT NULL DEFAULT '',
+  paid_on text NOT NULL DEFAULT '',
+  method text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE leads (
@@ -70,6 +74,11 @@ CREATE TABLE leads (
   with_stag integer NOT NULL DEFAULT 0,
   stag_date text,
   message text NOT NULL DEFAULT '',
+  venue_name text NOT NULL DEFAULT '',
+  venue_street text NOT NULL DEFAULT '',
+  venue_two_name text NOT NULL DEFAULT '',
+  venue_two_street text NOT NULL DEFAULT '',
+  referral text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE terms (

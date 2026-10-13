@@ -102,9 +102,6 @@ export function PlanSheet({
           <p className="mt-3 text-sm">
             Uplights · {shown(planning.uplightColours)}
           </p>
-          <p className="mt-1 text-sm">
-            Photobooth · {shown(planning.photobooth)}
-          </p>
         </Section>
 
         <Section title="Run of show">

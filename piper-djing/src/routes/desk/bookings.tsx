@@ -54,7 +54,7 @@ import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
 import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
-import { applyDiscount, PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
+import { applyDiscount, deposit30, PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
 
 const deskRoute = getRouteApi('/desk')
 
@@ -234,6 +234,8 @@ function NewBooking({
               sample: form.get('sample') === 'on',
               notes: String(form.get('notes') ?? ''),
               discountCents: discount.cents,
+              customTotalCents: customCents(form),
+              lockedTotal: form.get('lockedTotal') === 'on',
             },
           }).then(async (result) => {
             if (!result.ok) {
@@ -785,6 +787,17 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
   const rawDiscount = String(data.get('discount') ?? '').trim()
   try {
     const discountCents = rawDiscount ? dollarsToCents(rawDiscount) : 0
+    if (packageId === 'custom') {
+      const rawTotal = String(data.get('customTotal') ?? '').trim()
+      const total = rawTotal ? dollarsToCents(rawTotal) : 0
+      if (total <= 0 || discountCents > total) return null
+      return {
+        totalCents: total - discountCents,
+        depositCents: deposit30(total),
+        discountCents,
+        hotel: false,
+      }
+    }
     const quoted = quote(
       {
         packageId,
@@ -801,6 +814,12 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
   } catch {
     return null
   }
+}
+
+function customCents(form: FormData): number {
+  const raw = String(form.get('customTotal') ?? '').trim()
+  if (!raw) return 0
+  return dollarsToCents(raw)
 }
 
 function discountFrom(form: FormData): number {
@@ -853,6 +872,8 @@ function BookingCard({
     totalCents: number
     depositCents: number
     discountCents: number
+    customTotalCents: number
+    lockedTotal: boolean
     holdStartedOn: string | null
     holdLastDay: string | null
     stagReleased: boolean
@@ -1020,6 +1041,8 @@ function BookingCard({
                 sample: form.get('sample') === 'on',
                 notes: String(form.get('notes') ?? ''),
                 discountCents: discount.cents,
+                customTotalCents: customCents(form),
+                lockedTotal: form.get('lockedTotal') === 'on',
               },
             }).then(async (result) => {
               if (!result.ok) {
@@ -1056,6 +1079,8 @@ function BookingCard({
               sample: booking.sample,
               notes: booking.notes,
               discountCents: booking.discountCents,
+              customTotalCents: booking.customTotalCents,
+              lockedTotal: booking.lockedTotal,
             }}
           />
           {!booking.venueName.trim() || !booking.venueStreet.trim() ? (
@@ -1569,6 +1594,8 @@ function BookingFields({
     sample: boolean
     notes: string
     discountCents: number
+    customTotalCents: number
+    lockedTotal: boolean
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
@@ -1613,7 +1640,33 @@ function BookingFields({
               {item.name}
             </option>
           ))}
+          <option value="custom">Custom event</option>
         </select>
+      </label>
+      {packageId === 'custom' ? (
+        <label className="field">
+          Custom price
+          <input
+            name="customTotal"
+            inputMode="decimal"
+            placeholder="Piper sets it, in dollars"
+            defaultValue={
+              defaults?.customTotalCents
+                ? (defaults.customTotalCents / 100).toFixed(2)
+                : ''
+            }
+          />
+        </label>
+      ) : null}
+      <label
+        className={`flex items-center gap-3 text-sm text-white/85 ${span}`}
+      >
+        <input
+          name="lockedTotal"
+          type="checkbox"
+          defaultChecked={defaults?.lockedTotal}
+        />
+        Lock the agreed total. This booking is never repriced.
       </label>
       {packageId === 'full' ? (
         <label

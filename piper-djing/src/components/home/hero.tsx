@@ -22,7 +22,7 @@ export function Hero() {
           className="h-36 w-auto sm:h-48"
         />
         <Eyebrow className="mt-8">
-          Wedding & events DJ · Brantford, Ontario
+          Brantford wedding DJ · Ontario
         </Eyebrow>
         <h1 className="mt-6 max-w-full font-display text-[clamp(3.4rem,13vw,11rem)] font-extrabold leading-[0.88] tracking-tight text-balance">
           Hi, I’m <br />

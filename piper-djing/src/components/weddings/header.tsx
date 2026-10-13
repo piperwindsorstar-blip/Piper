@@ -10,7 +10,7 @@ export function Header({
   const { openCalendar } = useDateDraft()
   return (
     <header
-      className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur-md"
+      className="sticky top-0 z-40 border-b border-white/10 bg-ink/95 backdrop-blur-md"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
@@ -21,28 +21,28 @@ export function Header({
         >
           <img src={LOGO_SRC} alt="" className="h-12 w-auto sm:h-14" />
         </Link>
-        <nav className="hidden gap-8 text-sm font-medium text-soft md:flex">
+        <nav className="hidden gap-8 text-sm font-medium text-white/75 md:flex">
           {NAV.map(([label, href]) => (
             <a
               key={label}
               href={href.startsWith('/') ? href : `${sectionBase}${href}`}
-              className="hover:text-ink"
+              className="hover:text-white"
             >
               {label}
             </a>
           ))}
-          <Link to="/rsvp" className="hover:text-ink">
+          <Link to="/rsvp" className="hover:text-white">
             RSVP
           </Link>
         </nav>
         <div className="flex items-center gap-3">
-          <Link to="/rsvp" className="text-sm font-medium text-soft md:hidden">
+          <Link to="/rsvp" className="text-sm font-medium text-white/75 md:hidden">
             RSVP
           </Link>
           <button
             type="button"
             onClick={openCalendar}
-            className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-neon"
+            className="rounded-lg bg-neon px-4 py-2 text-sm font-semibold text-white transition hover:bg-hot"
           >
             Check Dates
           </button>

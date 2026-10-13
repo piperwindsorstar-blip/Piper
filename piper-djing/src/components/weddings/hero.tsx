@@ -23,7 +23,7 @@ export function Hero() {
             <span className="font-serif font-normal text-neon italic">
               once.
             </span>{' '}
-            Lock in the DJ.
+            Lock in your Brantford wedding DJ.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-soft">
             Packed dance floors, flawless transitions and zero stress for

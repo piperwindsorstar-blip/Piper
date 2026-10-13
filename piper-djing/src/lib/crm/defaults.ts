@@ -7,7 +7,7 @@ export const PACKAGE_BUTTON_COPY = [
       'From the ceremony through the reception, up to 1:00 a.m. Wireless microphones for the ceremony and the reception, two speakers, dancefloor lighting, and backup. Pre-planning and at least one meeting. Light MC for introducing speeches, if you ask.',
     includes: [
       'Ceremony audio through the reception, up to 1:00 a.m.',
-      'Wireless microphones for the ceremony and the speeches',
+      'Wireless microphones for the ceremony and the reception',
       'Two speakers and dancefloor lighting',
       'Backup equipment',
       'Pre-planning and at least one meeting',
@@ -56,13 +56,24 @@ export const PACKAGE_BUTTON_COPY = [
   },
 ] as const
 
-export type PackageId = (typeof PACKAGE_BUTTON_COPY)[number]['id']
+export type PackageId = (typeof PACKAGE_BUTTON_COPY)[number]['id'] | 'custom'
+
+/** The desk-only Custom package. Piper sets the price with the couple. */
+export const CUSTOM_PACKAGE = {
+  id: 'custom' as const,
+  name: 'Custom event',
+  detail:
+    'Piper sets this price with you. Tell Piper what the event needs and the date.',
+}
 
 export function isPackageId(value: string): value is PackageId {
-  return PACKAGE_BUTTON_COPY.some((item) => item.id === value)
+  return (
+    value === 'custom' || PACKAGE_BUTTON_COPY.some((item) => item.id === value)
+  )
 }
 
 export function packageName(id: PackageId): string {
+  if (id === 'custom') return CUSTOM_PACKAGE.name
   return PACKAGE_BUTTON_COPY.find((item) => item.id === id)?.name ?? id
 }
 

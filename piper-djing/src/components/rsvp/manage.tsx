@@ -12,10 +12,17 @@ import {
   saveRsvpSetup,
   saveSongStatus,
   sendRsvpReminders,
+  setRsvpTheme,
 } from '../../lib/rsvp/rsvp.functions.ts'
 import { GuestPaste } from './guest-paste.tsx'
 import type { getRsvpManage } from '../../lib/rsvp/rsvp.functions.ts'
-import { downloadText, rsvpButton, rsvpField, rsvpGhost } from './shell.tsx'
+import {
+  RsvpThemeProvider,
+  downloadText,
+  rsvpButton,
+  rsvpField,
+  rsvpGhost,
+} from './shell.tsx'
 
 export type ManageData = NonNullable<Awaited<ReturnType<typeof getRsvpManage>>>
 export type ReadyManage = Extract<ManageData, { mode: 'ready' }>
@@ -36,8 +43,20 @@ export function ManageShell({
   data: ReadyManage
   children: ReactNode
 }) {
+  const theme = data.wedding.theme
   return (
-    <div className="portal min-h-screen md:grid md:grid-cols-[240px_1fr]">
+    <RsvpThemeProvider theme={theme}>
+    <div
+      className={`portal min-h-screen md:grid md:grid-cols-[240px_1fr] ${theme === 'light' ? 'light' : ''}`}
+      style={
+        theme === 'light'
+          ? undefined
+          : {
+              backgroundImage:
+                'radial-gradient(ellipse at left, #2A1220 0%, #0D0D0D 55%)',
+            }
+      }
+    >
       <aside className="border-b border-[var(--border)] p-4 md:border-b-0 md:border-r">
         <div className="mb-6 flex items-center gap-2 text-sm font-semibold">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--pink)] font-bold text-[#0D0D0D]">
@@ -67,12 +86,34 @@ export function ManageShell({
             </Link>
           ))}
         </nav>
+        <ThemeToggle theme={theme} />
         <p className="mt-8 hidden text-sm text-[var(--text-faint)] md:block">
           DJ Piper P keeps the song requests with the wedding plan.
         </p>
       </aside>
       <div className="p-4 md:p-8">{children}</div>
     </div>
+    </RsvpThemeProvider>
+  )
+}
+
+function ThemeToggle({ theme }: { theme: 'dark' | 'light' }) {
+  const save = useServerFn(setRsvpTheme)
+  const router = useRouter()
+  return (
+    <button
+      type="button"
+      className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] px-3 text-sm font-semibold text-[var(--text)]"
+      onClick={() => {
+        void save({ data: { theme: theme === 'light' ? 'dark' : 'light' } }).then(
+          async () => {
+            await router.invalidate()
+          },
+        )
+      }}
+    >
+      {theme === 'light' ? 'Switch to dark' : 'Switch to light'}
+    </button>
   )
 }
 

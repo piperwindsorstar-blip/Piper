@@ -3,6 +3,12 @@ import type { PackageId } from '../crm/defaults.ts'
 /** Wired uplights are $15 each. */
 export const UPLIGHT_CENTS = 1500
 
+/**
+ * A separate ceremony venue is a flat $75 on top of the package. A third venue
+ * is not offered.
+ */
+export const SECOND_VENUE_CENTS = 7500
+
 /** A hold lasts 30 days, counting the day it starts. */
 export const HOLD_DAYS = 30
 
@@ -14,6 +20,7 @@ export const PACKAGE_CENTS: Record<PackageId, number> = {
   reception: 155000,
   stag: 70000,
   ceremony: 35000,
+  custom: 0,
 }
 
 /** Ceremony only is paid in full. An invoice cannot lower this. */
@@ -192,7 +199,14 @@ export function quote(
     input.packageId === 'ceremony'
       ? { cents: 0, hotel: false }
       : travelForVenues(input.venueKm)
-  const totalCents = packageCents + uplightCents(input.uplights) + travel.cents
+  const secondVenue =
+    input.packageId === 'full' || input.packageId === 'reception'
+      ? input.venueKm.length > 1
+        ? SECOND_VENUE_CENTS
+        : 0
+      : 0
+  const totalCents =
+    packageCents + uplightCents(input.uplights) + travel.cents + secondVenue
   const depositCents =
     input.packageId === 'ceremony'
       ? prices.ceremony

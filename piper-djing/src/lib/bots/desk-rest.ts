@@ -33,6 +33,10 @@ export function isDeskUsageRoot(pathname: string): boolean {
   return bareBotPath(pathname) === '/api/bots/v1'
 }
 
+export function isDeskGlance(pathname: string): boolean {
+  return bareBotPath(pathname) === '/api/bots/v1/glance'
+}
+
 export function deskBotTarget(pathname: string): DeskBotTarget | null {
   const bare = bareBotPath(pathname)
   const match = /^\/api\/bots\/v1\/([a-z]+)(?:\/([^/]+))?$/.exec(bare)

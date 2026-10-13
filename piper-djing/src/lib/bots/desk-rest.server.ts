@@ -79,6 +79,7 @@ import {
 import { legacyRole } from './desk-leads.server.ts'
 import { selectLeads, toBotLead } from './desk-leads.ts'
 import { deskBotTarget, rsvpBotTarget } from './desk-rest.ts'
+import { torontoToday } from '../piper/rules.ts'
 import type { DeskBotTarget, RsvpBotAction } from './desk-rest.ts'
 
 const DENIED = 'Send Authorization: Bearer and the token from join.'
@@ -135,6 +136,79 @@ export async function deskBotResponse(
     await remember(token, key, response)
   }
   return response
+}
+
+/** GET /api/bots/v1/glance — a JSON date summary, never the website. */
+export async function deskGlanceResponse(
+  request: Request,
+  checkLegacy: (token: string) => Promise<Verdict> = legacyRole,
+): Promise<Response> {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: HEADERS })
+  }
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return botJson({ error: 'Use GET.' }, 405)
+  }
+  const token = bearer(request)
+  if (!token) return botJson({ error: DENIED }, 401)
+  const role = await actorRole(token, checkLegacy)
+  if (role instanceof Response) return role
+  const bookings = await listBookings()
+  const externalRows = await listExternalDates()
+  const taken = bookings
+    .filter(
+      (booking) =>
+        !booking.sample &&
+        (booking.status === 'hold' || booking.status === 'booked'),
+    )
+    .map((booking) => ({
+      date: booking.eventDate,
+      status: booking.status,
+      kind: 'wedding',
+      couple: `${booking.partnerOne} and ${booking.partnerTwo}`,
+      venue: booking.venueName,
+      packageId: booking.packageId,
+    }))
+  const stag = bookings
+    .filter(
+      (booking) =>
+        booking.withStag &&
+        booking.stagDate &&
+        !booking.stagReleased &&
+        booking.status !== 'cancelled' &&
+        booking.status !== 'released',
+    )
+    .map((booking) => ({
+      date: booking.stagDate as string,
+      status: booking.status,
+      kind: 'stag',
+      couple: `${booking.partnerOne} and ${booking.partnerTwo}`,
+      venue: booking.venueName,
+      packageId: booking.packageId,
+    }))
+  const external = externalRows
+    .filter((row) => !row.released)
+    .map((row) => ({
+      date: row.eventDate,
+      status: 'booked',
+      kind: row.kind,
+      couple: [row.partnerOne, row.partnerTwo].filter(Boolean).join(' and '),
+      venue: row.venueName,
+      company: row.company,
+    }))
+  const dates = [...taken, ...stag, ...external].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  )
+  return botJson({
+    book: 'piperpweddingdj.services',
+    asOf: torontoToday(),
+    counts: {
+      taken: taken.length,
+      stag: stag.length,
+      external: external.length,
+    },
+    dates,
+  })
 }
 
 async function actorRole(
@@ -455,6 +529,9 @@ async function bookingResource(
           sample: body.sample === true || body.test === true,
           notes: str(body, 'notes'),
           discountCents: optionalDiscount(body, 0),
+          customTotalCents: customCents(body),
+          customDepositCents: customDeposit(body),
+          lockedTotal: bool(body, 'lockedTotal') || bool(body, 'locked'),
         }),
       ),
     })
@@ -515,6 +592,23 @@ async function bookingResource(
               : body.sample === true || body.test === true,
           notes: body.notes === undefined ? current.notes : str(body, 'notes'),
           discountCents: optionalDiscount(body, current.discountCents),
+          customTotalCents:
+            body.customTotalCents === undefined &&
+            body.customCents === undefined &&
+            body.totalCents === undefined
+              ? current.customTotalCents
+              : customCents(body),
+          customDepositCents:
+            body.customDepositCents === undefined &&
+            body.depositCents === undefined
+              ? current.customTotalCents > 0
+                ? current.depositCents
+                : 0
+              : customDeposit(body),
+          lockedTotal:
+            body.lockedTotal === undefined && body.locked === undefined
+              ? current.lockedTotal
+              : bool(body, 'lockedTotal') || bool(body, 'locked'),
         }),
       ),
     })
@@ -586,12 +680,24 @@ async function payments(
         intId(String(body.bookingId ?? '')),
         money(body),
         str(body, 'note'),
+        paymentDay(body),
+        paymentWay(body),
       ),
     )
   }
   if ((method === 'PATCH' || method === 'PUT') && id) {
     return botJson({
-      payment: await updatePayment(intId(id), money(body), str(body, 'note')),
+      payment: await updatePayment(
+        intId(id),
+        money(body),
+        str(body, 'note'),
+        body.paidOn === undefined && body.paymentDate === undefined
+          ? undefined
+          : paymentDay(body),
+        body.method === undefined && body.paymentMethod === undefined
+          ? undefined
+          : paymentWay(body),
+      ),
     })
   }
   if (method === 'DELETE' && id) {
@@ -1093,6 +1199,33 @@ function intId(value: string | null): number {
   const id = Number(value)
   if (!Number.isInteger(id)) throw new Error('Send an id.')
   return id
+}
+
+function customCents(body: Record<string, unknown>): number {
+  if (typeof body.customTotalCents === 'number') return body.customTotalCents
+  if (typeof body.customCents === 'number') return body.customCents
+  if (body.customTotalDollars !== undefined)
+    return dollarsToCents(String(body.customTotalDollars))
+  if (body.totalCents !== undefined) return Number(body.totalCents)
+  return 0
+}
+
+function customDeposit(body: Record<string, unknown>): number {
+  if (typeof body.customDepositCents === 'number') return body.customDepositCents
+  if (body.customDepositDollars !== undefined)
+    return dollarsToCents(String(body.customDepositDollars))
+  if (typeof body.depositCents === 'number') return body.depositCents
+  return 0
+}
+
+function paymentDay(body: Record<string, unknown>): string {
+  return (
+    str(body, 'paidOn') || str(body, 'paymentDate') || str(body, 'date') || ''
+  )
+}
+
+function paymentWay(body: Record<string, unknown>): string {
+  return str(body, 'method') || str(body, 'paymentMethod') || ''
 }
 
 function money(body: Record<string, unknown>): number {

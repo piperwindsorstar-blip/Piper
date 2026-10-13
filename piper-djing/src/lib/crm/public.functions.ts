@@ -7,11 +7,16 @@ import {
   createEventInquiry,
   createInquiry,
   dateOpen,
+  getTerms,
   listPackageOffers,
 } from './store.server.ts'
 
 export const getPublicSite = createServerFn({ method: 'GET' }).handler(
   async () => readPublicSite(),
+)
+
+export const getPublicTerms = createServerFn({ method: 'GET' }).handler(
+  async () => ({ body: await getTerms() }),
 )
 
 export const checkDate = createServerFn({ method: 'POST' })
@@ -98,6 +103,11 @@ export const sendInquiry = createServerFn({ method: 'POST' })
       withStag: boolean
       stagDate: string
       message: string
+      venueName: string
+      venueStreet: string
+      venueTwoName: string
+      venueTwoStreet: string
+      referral: string
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -125,6 +135,12 @@ export const sendInquiry = createServerFn({ method: 'POST' })
           `Wedding date: ${data.eventDate}`,
           `Package: ${packageLabel}`,
           `Stag and doe: ${stag}`,
+          `Venue: ${data.venueName.trim()}`,
+          `Venue street: ${data.venueStreet.trim()}`,
+          data.venueTwoName.trim()
+            ? `Second venue: ${data.venueTwoName.trim()} (${data.venueTwoStreet.trim()})`
+            : '',
+          data.referral.trim() ? `Referred by: ${data.referral.trim()}` : '',
           `Note: ${data.message.trim()}`,
         ].join('\n'),
       })

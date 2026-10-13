@@ -90,6 +90,8 @@ export type BookingView = {
   totalCents: number
   depositCents: number
   discountCents: number
+  customTotalCents: number
+  lockedTotal: boolean
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -118,6 +120,8 @@ export type PaymentView = {
   names: string
   cents: number
   note: string
+  paidOn: string
+  method: string
 }
 
 type BookingRow = {
@@ -142,6 +146,8 @@ type BookingRow = {
   total_cents: unknown
   deposit_cents: unknown
   discount_cents?: unknown
+  custom_total_cents?: unknown
+  locked_total?: unknown
   hold_started_on: string | null
   stag_released: unknown
   notes: string
@@ -237,6 +243,8 @@ function toState(row: BookingRow): BookingState {
     totalCents: whole(row.total_cents, 'Total'),
     depositCents: whole(row.deposit_cents, 'Deposit'),
     discountCents: whole(row.discount_cents ?? 0, 'Discount'),
+    customTotalCents: whole(row.custom_total_cents ?? 0, 'Custom price'),
+    lockedTotal: flag(row.locked_total),
     holdStartedOn: row.hold_started_on,
     stagReleased: flag(row.stag_released),
   }
@@ -289,6 +297,8 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     totalCents: state.totalCents,
     depositCents: state.depositCents,
     discountCents: state.discountCents,
+    customTotalCents: state.customTotalCents ?? 0,
+    lockedTotal: state.lockedTotal ?? false,
     holdStartedOn: state.holdStartedOn,
     holdLastDay: state.holdStartedOn ? holdLastDay(state.holdStartedOn) : null,
     stagReleased: state.stagReleased,
@@ -322,9 +332,46 @@ async function ensureDiscountColumn(): Promise<void> {
   }
 }
 
+async function ensureCustomColumns(): Promise<void> {
+  for (const [name, definition] of [
+    ['custom_total_cents', 'integer NOT NULL DEFAULT 0'],
+    ['locked_total', 'boolean NOT NULL DEFAULT false'],
+  ] as const) {
+    try {
+      await query(`SELECT ${name} FROM bookings LIMIT 0`)
+    } catch {
+      try {
+        await query(`ALTER TABLE bookings ADD COLUMN ${name} ${definition}`)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (!/duplicate column|already exists/i.test(message)) throw error
+      }
+    }
+  }
+}
+
+async function ensurePaymentColumns(): Promise<void> {
+  for (const [name, definition] of [
+    ['paid_on', "text NOT NULL DEFAULT ''"],
+    ['method', "text NOT NULL DEFAULT ''"],
+  ] as const) {
+    try {
+      await query(`SELECT ${name} FROM payments LIMIT 0`)
+    } catch {
+      try {
+        await query(`ALTER TABLE payments ADD COLUMN ${name} ${definition}`)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (!/duplicate column|already exists/i.test(message)) throw error
+      }
+    }
+  }
+}
+
 async function bookingRows(): Promise<BookingRow[]> {
   await ensurePlanningColumn()
   await ensureDiscountColumn()
+  await ensureCustomColumns()
   return query<BookingRow>('SELECT * FROM bookings ORDER BY id DESC')
 }
 
@@ -338,6 +385,7 @@ async function invoiceFor(bookingId: number): Promise<InvoiceRow | null> {
 
 async function bookingRow(id: number): Promise<BookingRow> {
   await ensureDiscountColumn()
+  await ensureCustomColumns()
   const rows = await query<BookingRow>('SELECT * FROM bookings WHERE id = $1', [
     id,
   ])
@@ -434,12 +482,23 @@ export type BookingInput = {
   sample: boolean
   notes: string
   discountCents?: number
+  customTotalCents?: number
+  customDepositCents?: number
+  lockedTotal?: boolean
 }
 
 function discountAmount(value: number | undefined): number {
   const amount = value ?? 0
   if (!Number.isInteger(amount) || amount < 0) {
     throw new Error('The discount is a whole amount.')
+  }
+  return amount
+}
+
+function wholeOrZero(value: number | undefined): number {
+  const amount = value ?? 0
+  if (!Number.isInteger(amount) || amount < 0) {
+    throw new Error('Money is whole cents.')
   }
   return amount
 }
@@ -481,6 +540,9 @@ function normalize(input: BookingInput) {
     sample: input.sample,
     notes: optional(input.notes, 2000),
     discountCents: discountAmount(input.discountCents),
+    customTotalCents: wholeOrZero(input.customTotalCents),
+    customDepositCents: wholeOrZero(input.customDepositCents),
+    lockedTotal: input.lockedTotal ?? false,
   }
 }
 
@@ -600,15 +662,18 @@ export async function ensureSavedWeddings(): Promise<void> {
     if (await isSavedWeddingDismissed(wedding)) continue
     let id = await savedWeddingId(wedding)
     if (id == null) {
+      await ensureCustomColumns()
       const inserted = await query<{ id: number }>(
         `INSERT INTO bookings (
           slug, partner_one, partner_two, email, phone, event_date, stag_date, package_id, with_stag,
           uplights, venue_km, venue_name, venue_street, venue_two_name, venue_two_street, sample,
-          status, total_cents, deposit_cents, hold_started_on, stag_released, notes
+          status, total_cents, deposit_cents, hold_started_on, stag_released, notes,
+          custom_total_cents, locked_total
         )
-        SELECT $1, $2, $3, '', '', $4, NULL, 'full', $9,
+        SELECT $1, $2, $3, '', '', $4, NULL, 'custom', $9,
           0, '[]', $5, '', '', '', $10,
-          'booked', $6, $7, NULL, $11, $8
+          'booked', $6, $7, NULL, $11, $8,
+          $6, true
         WHERE NOT EXISTS (
           SELECT 1 FROM bookings
           WHERE event_date = $4
@@ -635,6 +700,15 @@ export async function ensureSavedWeddings(): Promise<void> {
       id = inserted.at(0)?.id ?? (await savedWeddingId(wedding))
     }
     if (id == null) continue
+    // Bookings 1-4 are Custom and locked: their agreed totals, deposits,
+    // payments, and status never move.
+    await ensureCustomColumns()
+    await query(
+      `UPDATE bookings
+       SET package_id = 'custom', custom_total_cents = $1, locked_total = true
+       WHERE id = $2 AND total_cents = $1`,
+      [wedding.totalCents, id],
+    )
     await ensureSavedInvoice(id, wedding)
   }
 }
@@ -884,9 +958,10 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
     `INSERT INTO bookings (
       slug, partner_one, partner_two, email, phone, event_date, stag_date, package_id, with_stag,
       uplights, venue_km, venue_name, venue_street, venue_two_name, venue_two_street, sample,
-      status, total_cents, deposit_cents, hold_started_on, stag_released, notes, discount_cents
+      status, total_cents, deposit_cents, hold_started_on, stag_released, notes, discount_cents,
+      custom_total_cents, locked_total
     ) VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,$18,NULL,false,$19,$20
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'open',$17,$18,NULL,false,$19,$20,$21,$22
     ) RETURNING id`,
     [
       bookingSlug,
@@ -909,6 +984,8 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
       figures.depositCents,
       next.notes,
       figures.discountCents,
+      next.customTotalCents,
+      next.lockedTotal,
     ],
   )
   const id = inserted.at(0)?.id
@@ -934,6 +1011,11 @@ export type InquiryInput = {
   withStag: boolean
   stagDate: string | null
   message: string
+  venueName?: string
+  venueStreet?: string
+  venueTwoName?: string
+  venueTwoStreet?: string
+  referral?: string
 }
 
 export async function createEventInquiry(input: {
@@ -997,9 +1079,15 @@ export async function createInquiry(
       (await dateTakenByOthers(input.eventDate, null)) ||
       (stagDate != null && (await dateTakenByOthers(stagDate, null)))
     await ensureLeadColumns()
+    const venueName = optional(input.venueName ?? '', 160)
+    const venueStreet = optional(input.venueStreet ?? '', 160)
+    const venueTwoName = optional(input.venueTwoName ?? '', 160)
+    const venueTwoStreet = optional(input.venueTwoStreet ?? '', 160)
+    const referral = optional(input.referral ?? '', 160)
     await query(
-      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message,
+        venue_name, venue_street, venue_two_name, venue_two_street, referral)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
       [
         partnerOne,
         partnerTwo,
@@ -1010,6 +1098,11 @@ export async function createInquiry(
         input.withStag ? 1 : 0,
         stagDate,
         message,
+        venueName,
+        venueStreet,
+        venueTwoName,
+        venueTwoStreet,
+        referral,
       ],
     )
     if (!unavailable) {
@@ -1025,10 +1118,10 @@ export async function createInquiry(
           withStag: input.withStag,
           uplights: 0,
           venueKm: [],
-          venueName: '',
-          venueStreet: '',
-          venueTwoName: '',
-          venueTwoStreet: '',
+          venueName,
+          venueStreet,
+          venueTwoName,
+          venueTwoStreet,
           sample: false,
           notes: message,
         })
@@ -1327,18 +1420,22 @@ export type BookingPatch = {
   sample: boolean
   notes: string
   discountCents?: number
+  customTotalCents?: number
+  customDepositCents?: number
+  lockedTotal?: boolean
 }
 
 export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   const current = await bookingRow(patch.id)
   const state = toState(current)
   const next = normalize(patch)
-  const locked = matchCustom(
+  const savedWedding = matchCustom(
     state.partnerOne,
     state.partnerTwo,
     state.eventDate,
   )
-  if (locked) {
+  const locked = Boolean(state.lockedTotal) || Boolean(savedWedding)
+  if (savedWedding) {
     assertBookableNames(next.partnerOne, next.partnerTwo)
     assertBookableDate(next.eventDate, next.stagDate)
   } else {
@@ -1379,6 +1476,8 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
           venueStreet: next.venueStreet,
           sample: next.sample,
           discountCents: next.discountCents,
+          customTotalCents: next.customTotalCents,
+          customDepositCents: next.customDepositCents,
         },
         prices,
       )
@@ -1387,8 +1486,9 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
       partner_one = $1, partner_two = $2, email = $3, phone = $4, event_date = $5, stag_date = $6,
       package_id = $7, with_stag = $8, uplights = $9, venue_km = $10, venue_name = $11,
       venue_street = $12, venue_two_name = $13, venue_two_street = $14, sample = $15, notes = $16,
-      total_cents = $17, deposit_cents = $18, discount_cents = $19
-     WHERE id = $20`,
+      total_cents = $17, deposit_cents = $18, discount_cents = $19,
+      custom_total_cents = $20, locked_total = $21
+     WHERE id = $22`,
     [
       next.partnerOne,
       next.partnerTwo,
@@ -1409,6 +1509,8 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
       figures.totalCents,
       figures.depositCents,
       figures.discountCents,
+      locked ? (state.customTotalCents ?? 0) : next.customTotalCents,
+      next.lockedTotal,
       current.id,
     ],
   )
@@ -1513,13 +1615,34 @@ export async function voidBookingInvoice(
   )
 }
 
+export const PAYMENT_METHODS = ['e-transfer', 'cash', 'card'] as const
+
+function paymentMethod(value: string | undefined): string {
+  const method = (value ?? '').trim().slice(0, 20)
+  if (method === '') return ''
+  if (!(PAYMENT_METHODS as readonly string[]).includes(method)) {
+    throw new Error('Choose e-transfer, cash, or card.')
+  }
+  return method
+}
+
+function paymentDate(value: string | undefined): string {
+  const day = (value ?? '').trim()
+  if (day === '') return ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Choose a payment date.')
+  return day
+}
+
 export async function addPayment(
   bookingId: number,
   cents: number,
   note: string,
+  paidOn = '',
+  method = '',
 ): Promise<{ view: BookingView; newlyBooked: boolean }> {
   if (!Number.isInteger(cents) || cents === 0)
     throw new Error('Enter an amount.')
+  await ensurePaymentColumns()
   const row = await bookingRow(bookingId)
   const invoiceRow = await invoiceFor(bookingId)
   if (!invoiceRow) throw new Error('That booking has no invoice.')
@@ -1540,8 +1663,14 @@ export async function addPayment(
   const applied = transition.invoice.receivedCents - before.receivedCents
   if (applied !== 0) {
     await query(
-      'INSERT INTO payments (invoice_id, cents, note) VALUES ($1, $2, $3)',
-      [invoiceRow.id, applied, optional(note, 200)],
+      'INSERT INTO payments (invoice_id, cents, note, paid_on, method) VALUES ($1, $2, $3, $4, $5)',
+      [
+        invoiceRow.id,
+        applied,
+        optional(note, 200),
+        paymentDate(paidOn),
+        paymentMethod(method),
+      ],
     )
   }
   await saveBooking(bookingId, transition.booking, transition.invoice)
@@ -1556,6 +1685,11 @@ export async function addPayment(
 async function ensureLeadColumns(): Promise<void> {
   await addLeadColumn('with_stag', 'integer NOT NULL DEFAULT 0')
   await addLeadColumn('stag_date', 'text')
+  await addLeadColumn('venue_name', "text NOT NULL DEFAULT ''")
+  await addLeadColumn('venue_street', "text NOT NULL DEFAULT ''")
+  await addLeadColumn('venue_two_name', "text NOT NULL DEFAULT ''")
+  await addLeadColumn('venue_two_street', "text NOT NULL DEFAULT ''")
+  await addLeadColumn('referral', "text NOT NULL DEFAULT ''")
 }
 
 async function addLeadColumn(name: string, definition: string): Promise<void> {
@@ -1666,6 +1800,7 @@ export async function removeLead(id: number): Promise<void> {
 }
 
 export async function listPayments(): Promise<PaymentView[]> {
+  await ensurePaymentColumns()
   const rows = await query<{
     id: number
     invoice_id: number
@@ -1674,9 +1809,11 @@ export async function listPayments(): Promise<PaymentView[]> {
     partner_two: string
     cents: unknown
     note: string
+    paid_on: string
+    method: string
   }>(
     `SELECT payments.id, payments.invoice_id, invoices.booking_id, bookings.partner_one, bookings.partner_two,
-            payments.cents, payments.note
+            payments.cents, payments.note, payments.paid_on, payments.method
      FROM payments
      JOIN invoices ON invoices.id = payments.invoice_id
      JOIN bookings ON bookings.id = invoices.booking_id
@@ -1689,6 +1826,8 @@ export async function listPayments(): Promise<PaymentView[]> {
     names: `${row.partner_one} and ${row.partner_two}`,
     cents: whole(row.cents, 'Payment'),
     note: row.note,
+    paidOn: row.paid_on,
+    method: row.method,
   }))
 }
 
@@ -1697,6 +1836,8 @@ async function paymentRow(id: number): Promise<{
   invoiceId: number
   bookingId: number
   cents: number
+  paidOn: string
+  method: string
 }> {
   const paymentId = positiveId(id, 'That payment is not on the book.')
   const rows = await query<{
@@ -1704,8 +1845,11 @@ async function paymentRow(id: number): Promise<{
     invoice_id: number
     booking_id: number
     cents: unknown
+    paid_on: string
+    method: string
   }>(
-    `SELECT payments.id, payments.invoice_id, invoices.booking_id, payments.cents
+    `SELECT payments.id, payments.invoice_id, invoices.booking_id, payments.cents,
+            payments.paid_on, payments.method
      FROM payments
      JOIN invoices ON invoices.id = payments.invoice_id
      WHERE payments.id = $1`,
@@ -1718,6 +1862,8 @@ async function paymentRow(id: number): Promise<{
     invoiceId: whole(row.invoice_id, 'Invoice'),
     bookingId: whole(row.booking_id, 'Booking'),
     cents: whole(row.cents, 'Payment'),
+    paidOn: row.paid_on,
+    method: row.method,
   }
 }
 
@@ -1753,15 +1899,23 @@ export async function updatePayment(
   id: number,
   cents: number,
   note: string,
+  paidOn?: string,
+  method?: string,
 ): Promise<PaymentView> {
   if (!Number.isInteger(cents) || cents === 0)
     throw new Error('Enter an amount.')
+  await ensurePaymentColumns()
   const current = await paymentRow(id)
-  await query('UPDATE payments SET cents = $1, note = $2 WHERE id = $3', [
-    cents,
-    optional(note, 200),
-    current.id,
-  ])
+  await query(
+    'UPDATE payments SET cents = $1, note = $2, paid_on = $3, method = $4 WHERE id = $5',
+    [
+      cents,
+      optional(note, 200),
+      paidOn === undefined ? current.paidOn : paymentDate(paidOn),
+      method === undefined ? current.method : paymentMethod(method),
+      current.id,
+    ],
+  )
   await syncPaymentLedger(current.bookingId)
   const saved = (await listPayments()).find(
     (payment) => payment.id === current.id,
@@ -2241,6 +2395,7 @@ export async function packagePriceMap(): Promise<Record<PackageId, number>> {
     reception: price('reception'),
     stag: price('stag'),
     ceremony: price('ceremony'),
+    custom: price('custom'),
   }
 }
 
@@ -2978,6 +3133,11 @@ export async function invoiceBySlug(slugValue: string) {
     eventDate: view.eventDate,
     bookingSlug: view.slug,
     sample: view.sample,
+    packageName: view.packageName,
+    venueName: view.venueName,
+    venueTwoName: view.venueTwoName,
+    uplights: view.uplights,
+    depositDue: view.holdLastDay,
     status: view.invoice?.status ?? 'draft',
     totalCents: view.invoice?.totalCents ?? 0,
     depositCents: view.invoice?.depositCents ?? 0,

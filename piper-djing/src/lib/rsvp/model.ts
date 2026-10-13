@@ -95,6 +95,8 @@ export type RsvpWedding = {
   priceCents: number
   priceKind: PriceKind
   paid: boolean
+  /** The couple's chosen RSVP theme. Guests see the same one. */
+  theme: 'dark' | 'light'
   bookingSlug: string
   /** Where a confirmed guest reply is emailed. The sign-in address stays on `email`. */
   replyEmail: string
@@ -1212,6 +1214,7 @@ export function blankWedding(input: {
     priceCents: input.priceCents,
     priceKind: input.priceKind,
     paid: false,
+    theme: 'dark',
     bookingSlug: '',
     replyEmail: '',
     sample: false,
@@ -1326,6 +1329,7 @@ export function parseWedding(raw: unknown, slug: string): RsvpWedding | null {
   base.lockAfterDeadline = record.lockAfterDeadline === false ? false : true
   base.autoRemind = record.autoRemind === false ? false : true
   base.paid = asFlag(record.paid)
+  base.theme = record.theme === 'light' ? 'light' : 'dark'
   base.bookingSlug = asText(record.bookingSlug, 80)
   base.replyEmail = asText(record.replyEmail, 120)
   base.sample = asFlag(record.sample)

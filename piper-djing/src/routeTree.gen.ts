@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WeddingsRouteImport } from './routes/weddings'
 import { Route as CSlugRouteImport } from './routes/c/$slug'
 import { Route as DeskIndexRouteImport } from './routes/desk/index'
@@ -94,6 +95,11 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WeddingsRoute = WeddingsRouteImport.update({
@@ -325,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/weddings': typeof WeddingsRoute
   '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/weddings': typeof WeddingsRoute
   '/c/$slug': typeof CSlugRoute
   '/desk/bookings': typeof DeskBookingsRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/weddings': typeof WeddingsRoute
   '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
@@ -484,6 +493,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/terms'
     | '/weddings'
     | '/rsvp/manage'
     | '/c/$slug'
@@ -535,6 +545,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/terms'
     | '/weddings'
     | '/c/$slug'
     | '/desk/bookings'
@@ -587,6 +598,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/terms'
     | '/weddings'
     | '/rsvp/manage'
     | '/c/$slug'
@@ -641,6 +653,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermsRoute: typeof TermsRoute
   WeddingsRoute: typeof WeddingsRoute
   RsvpManageRouteRoute: typeof RsvpManageRouteRouteWithChildren
   CSlugRoute: typeof CSlugRoute
@@ -706,6 +719,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/weddings': {
@@ -1117,6 +1137,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermsRoute: TermsRoute,
   WeddingsRoute: WeddingsRoute,
   RsvpManageRouteRoute: RsvpManageRouteRouteWithChildren,
   CSlugRoute: CSlugRoute,

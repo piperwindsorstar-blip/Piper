@@ -1,20 +1,46 @@
+import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
+
+const RsvpThemeContext = createContext<'dark' | 'light'>('dark')
+
+export function RsvpThemeProvider({
+  theme,
+  children,
+}: {
+  theme: 'dark' | 'light'
+  children: ReactNode
+}) {
+  return (
+    <RsvpThemeContext.Provider value={theme}>
+      {children}
+    </RsvpThemeContext.Provider>
+  )
+}
+
+export function useRsvpTheme(): 'dark' | 'light' {
+  return useContext(RsvpThemeContext)
+}
 
 export const rsvpButton =
   'inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--pink)] px-5 text-base font-semibold text-[#0D0D0D] disabled:opacity-60'
 export const rsvpGhost =
-  'inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border-strong)] bg-transparent px-5 text-base font-semibold text-white'
+  'inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border-strong)] bg-transparent px-5 text-base font-semibold text-[var(--text)]'
 export const rsvpField =
-  'min-h-12 w-full rounded-2xl border border-[var(--border-strong)] bg-[var(--field)] px-4 text-base text-white outline-none'
+  'min-h-12 w-full rounded-2xl border border-[var(--border-strong)] bg-[var(--field)] px-4 text-base text-[var(--text)] outline-none'
 
 export function RsvpFrame({ children }: { children: ReactNode }) {
+  const theme = useRsvpTheme()
   return (
     <main
-      className="portal min-h-screen px-4 py-6"
-      style={{
-        backgroundImage:
-          'radial-gradient(ellipse at top, #2A1220 0%, #0D0D0D 45%)',
-      }}
+      className={`portal min-h-screen px-4 py-6 ${theme === 'light' ? 'light' : ''}`}
+      style={
+        theme === 'light'
+          ? undefined
+          : {
+              backgroundImage:
+                'radial-gradient(ellipse at top, #2A1220 0%, #0D0D0D 45%)',
+            }
+      }
     >
       <div className="mx-auto w-full max-w-[430px]">{children}</div>
     </main>

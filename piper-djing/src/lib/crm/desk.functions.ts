@@ -588,11 +588,25 @@ export const markVoid = createServerFn({ method: 'POST' })
   })
 
 export const recordPayment = createServerFn({ method: 'POST' })
-  .validator((data: { id: number; cents: number; note: string }) => data)
+  .validator(
+    (data: {
+      id: number
+      cents: number
+      note: string
+      paidOn?: string
+      method?: string
+    }) => data,
+  )
   .handler(async ({ data }) => {
     await requireDesk()
     try {
-      const result = await addPayment(data.id, data.cents, data.note)
+      const result = await addPayment(
+        data.id,
+        data.cents,
+        data.note,
+        data.paidOn,
+        data.method,
+      )
       return { ok: true as const, newlyBooked: result.newlyBooked }
     } catch (error) {
       return fail(error)
@@ -742,13 +756,27 @@ export const editPartner = createServerFn({ method: 'POST' })
   })
 
 export const editPayment = createServerFn({ method: 'POST' })
-  .validator((data: { id: number; cents: number; note: string }) => data)
+  .validator(
+    (data: {
+      id: number
+      cents: number
+      note: string
+      paidOn?: string
+      method?: string
+    }) => data,
+  )
   .handler(async ({ data }) => {
     await requireDesk()
     try {
       return {
         ok: true as const,
-        payment: await updatePayment(data.id, data.cents, data.note),
+        payment: await updatePayment(
+          data.id,
+          data.cents,
+          data.note,
+          data.paidOn,
+          data.method,
+        ),
       }
     } catch (error) {
       return fail(error)

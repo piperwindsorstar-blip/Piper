@@ -282,16 +282,6 @@ const DETAIL_QUESTIONS: Question[] = [
     rail: 'Uplights',
   },
   {
-    id: 'photobooth',
-    section: 'details',
-    subsection: 'DJ setup',
-    group: 'DJ setup',
-    type: 'text',
-    label: 'What are the photobooth hours?',
-    helper: 'If you have one.',
-    rail: 'Photobooth',
-  },
-  {
     id: 'requests',
     section: 'details',
     subsection: 'DJ setup',
@@ -612,8 +602,6 @@ export function textValue(planning: Planning, id: string): string {
       return planning.power
     case 'uplightColours':
       return planning.uplightColours
-    case 'photobooth':
-      return planning.photobooth
     case 'requests':
       return planning.requests
     case 'mood':

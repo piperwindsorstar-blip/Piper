@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { HouseholdForm } from '../../../../../components/rsvp/household.tsx'
+import { RsvpThemeProvider } from '../../../../../components/rsvp/shell.tsx'
 import { rsvpHead } from '../../../../../lib/rsvp/head.ts'
 import { getHousehold } from '../../../../../lib/rsvp/rsvp.functions.ts'
 
@@ -18,6 +19,10 @@ export const Route = createFileRoute('/rsvp/$slug/p/$token/')({
         </main>
       )
     }
-    return <HouseholdForm data={data} />
+    return (
+      <RsvpThemeProvider theme={data.theme}>
+        <HouseholdForm data={data} />
+      </RsvpThemeProvider>
+    )
   },
 })

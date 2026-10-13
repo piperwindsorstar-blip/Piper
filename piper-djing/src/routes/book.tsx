@@ -12,7 +12,7 @@ import {
   sendInquiry,
 } from '../lib/crm/public.functions.ts'
 import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
-import { publicHead } from '../lib/seo.ts'
+import { WEDDING_OG_IMAGE, publicHead } from '../lib/seo.ts'
 import type { PackageId } from '../lib/crm/defaults.ts'
 
 const FONTS =
@@ -23,6 +23,7 @@ const PACKAGE_TITLES: Record<PackageId, string> = {
   reception: 'The After Party (Reception Only',
   stag: 'The Pre-Party (Stag and Doe',
   ceremony: 'The Aisle (Ceremony Only',
+  custom: 'Custom event',
 }
 
 export const Route = createFileRoute('/book')({
@@ -47,12 +48,19 @@ export const Route = createFileRoute('/book')({
   head: () => {
     const head = publicHead({
       path: '/book',
-      title: 'Book a wedding DJ in Brantford | Piper DJing',
+      title: 'Book a wedding DJ in Brantford | DJ Piper P',
     })
     return {
       ...head,
       links: [...head.links, { rel: 'stylesheet', href: FONTS }],
-      meta: [...head.meta, { name: 'theme-color', content: '#FFFFFF' }],
+      meta: [
+        ...head.meta.map((item) =>
+          'property' in item && item.property === 'og:image'
+            ? { property: 'og:image', content: WEDDING_OG_IMAGE }
+            : item,
+        ),
+        { name: 'theme-color', content: '#FFFFFF' },
+      ],
     }
   },
   loader: () => getPublicSite(),
@@ -69,6 +77,8 @@ const PACKAGE_FOR_EVENT: Record<string, string> = {
   'Ceremony only': 'ceremony',
 }
 
+const STAG_ELIGIBLE = new Set(['full', 'reception', 'custom'])
+
 const WEDDING_INQUIRY = new Set([
   '',
   'Wedding',
@@ -82,8 +92,9 @@ function BookPage() {
   const { date: requestedDate = '', event: requestedEvent = '' } =
     Route.useSearch()
   const packageChoices = (
-    ['full', 'reception', 'stag', 'ceremony'] as const
+    ['full', 'reception', 'stag', 'ceremony', 'custom'] as const
   ).map((id) => {
+    if (id === 'custom') return { id, label: 'Custom event' }
     const cents =
       packages.find((item) => item.id === id)?.cents ?? PACKAGE_CENTS[id]
     return {
@@ -115,9 +126,13 @@ function BookPage() {
             {general ? 'Events' : 'Weddings'}
           </p>
           <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-balance md:text-5xl">
-            Book me
+            Book your Brantford wedding DJ
           </h1>
           <p className="mt-4 text-lg text-soft">
+            Welcome to your first step of finding a DJ that truly cares about
+            every aspect of your wedding.
+          </p>
+          <p className="mt-2 text-lg text-soft">
             Tell Piper the date. The reply comes by email.
           </p>
           {done ? (
@@ -219,16 +234,29 @@ function BookPage() {
               onSubmit={(event) => {
                 event.preventDefault()
                 const form = new FormData(event.currentTarget)
+                const joined = (first: string, last: string) =>
+                  [first.trim(), last.trim()].filter(Boolean).join(' ')
                 void send({
                   data: {
-                    partnerOne: String(form.get('partnerOne') ?? ''),
-                    partnerTwo: String(form.get('partnerTwo') ?? ''),
+                    partnerOne: joined(
+                      String(form.get('partnerOneFirst') ?? ''),
+                      String(form.get('partnerOneLast') ?? ''),
+                    ),
+                    partnerTwo: joined(
+                      String(form.get('partnerTwoFirst') ?? ''),
+                      String(form.get('partnerTwoLast') ?? ''),
+                    ),
                     email: String(form.get('email') ?? ''),
                     phone: String(form.get('phone') ?? ''),
                     eventDate: String(form.get('eventDate') ?? ''),
                     packageId: String(form.get('packageId') ?? ''),
                     withStag: form.get('withStag') === 'on',
                     stagDate: String(form.get('stagDate') ?? ''),
+                    venueName: String(form.get('venueName') ?? ''),
+                    venueStreet: String(form.get('venueStreet') ?? ''),
+                    venueTwoName: String(form.get('venueTwoName') ?? ''),
+                    venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+                    referral: String(form.get('referral') ?? ''),
                     message: String(form.get('message') ?? ''),
                   },
                 })
@@ -249,19 +277,48 @@ function BookPage() {
                   })
               }}
             >
-              <label className="text-sm font-medium">
-                First partner
-                <input
-                  name="partnerOne"
-                  required
-                  autoComplete="given-name"
-                  className={field}
-                />
-              </label>
-              <label className="text-sm font-medium">
-                Second partner
-                <input name="partnerTwo" required className={field} />
-              </label>
+              <fieldset className="grid gap-4 sm:grid-cols-2">
+                <legend className="text-sm font-medium">First partner</legend>
+                <label className="text-sm font-medium">
+                  First name
+                  <input
+                    name="partnerOneFirst"
+                    required
+                    autoComplete="given-name"
+                    className={field}
+                  />
+                </label>
+                <label className="text-sm font-medium">
+                  Last name
+                  <input
+                    name="partnerOneLast"
+                    required
+                    autoComplete="family-name"
+                    className={field}
+                  />
+                </label>
+              </fieldset>
+              <fieldset className="grid gap-4 sm:grid-cols-2">
+                <legend className="text-sm font-medium">Second partner</legend>
+                <label className="text-sm font-medium">
+                  First name
+                  <input
+                    name="partnerTwoFirst"
+                    required
+                    autoComplete="given-name"
+                    className={field}
+                  />
+                </label>
+                <label className="text-sm font-medium">
+                  Last name
+                  <input
+                    name="partnerTwoLast"
+                    required
+                    autoComplete="family-name"
+                    className={field}
+                  />
+                </label>
+              </fieldset>
               <label className="text-sm font-medium">
                 Email
                 <input
@@ -277,6 +334,7 @@ function BookPage() {
                 <input
                   name="phone"
                   type="tel"
+                  required
                   autoComplete="tel"
                   className={field}
                 />
@@ -293,14 +351,34 @@ function BookPage() {
                 />
               </label>
               <label className="text-sm font-medium">
+                Venue name
+                <input name="venueName" required className={field} />
+              </label>
+              <label className="text-sm font-medium">
+                Venue street address
+                <input name="venueStreet" required className={field} />
+              </label>
+              <label className="text-sm font-medium">
+                Second (ceremony) venue name — optional
+                <input name="venueTwoName" className={field} />
+              </label>
+              <label className="text-sm font-medium">
+                Second (ceremony) venue address — optional
+                <input name="venueTwoStreet" className={field} />
+              </label>
+              <p className="text-sm text-soft">
+                A separate ceremony venue adds a $75 second-venue fee.
+              </p>
+              <label className="text-sm font-medium">
                 Package
                 <select
                   name="packageId"
                   value={packageId}
                   className={field}
                   onChange={(event) => {
-                    setPackageId(event.target.value)
-                    if (event.target.value !== 'full') setWithStag(false)
+                    const next = event.target.value
+                    setPackageId(next)
+                    if (!STAG_ELIGIBLE.has(next)) setWithStag(false)
                   }}
                 >
                   {packageChoices.map((item) => (
@@ -310,7 +388,7 @@ function BookPage() {
                   ))}
                 </select>
               </label>
-              {packageId === 'full' ? (
+              {STAG_ELIGIBLE.has(packageId) ? (
                 <div className="grid gap-2">
                   <label className="flex items-center gap-3 text-sm">
                     <input
@@ -339,6 +417,10 @@ function BookPage() {
                   />
                 </label>
               ) : null}
+              <label className="text-sm font-medium">
+                Did someone refer you? If so, who? — optional
+                <input name="referral" className={field} />
+              </label>
               <label className="text-sm font-medium">
                 Note
                 <textarea

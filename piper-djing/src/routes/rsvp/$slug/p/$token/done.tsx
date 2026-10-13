@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ReplyDone } from '../../../../../components/rsvp/household.tsx'
+import { RsvpThemeProvider } from '../../../../../components/rsvp/shell.tsx'
 import { rsvpHead } from '../../../../../lib/rsvp/head.ts'
 import { getHousehold } from '../../../../../lib/rsvp/rsvp.functions.ts'
 
@@ -16,6 +17,10 @@ export const Route = createFileRoute('/rsvp/$slug/p/$token/done')({
     const data = Route.useLoaderData()
     const { sent } = Route.useSearch()
     if (!data) return null
-    return <ReplyDone data={data} sent={sent === '1'} />
+    return (
+      <RsvpThemeProvider theme={data.theme}>
+        <ReplyDone data={data} sent={sent === '1'} />
+      </RsvpThemeProvider>
+    )
   },
 })

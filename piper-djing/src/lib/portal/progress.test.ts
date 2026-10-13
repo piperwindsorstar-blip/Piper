@@ -44,7 +44,6 @@ describe('portal progress', () => {
         'outside',
         'power',
         'uplightColours',
-        'photobooth',
         'requests',
       ],
     )
