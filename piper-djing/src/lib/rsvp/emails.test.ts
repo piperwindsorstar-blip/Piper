@@ -6,9 +6,11 @@ import {
   confirmationEmail,
   deadlineSummaryEmail,
   formalDate,
+  guestSender,
   invitationEmail,
   partyNames,
   piperPaymentEmail,
+  piperQuestionEmail,
   piperSignupEmail,
   reminderEmail,
   replyNoticeEmail,
@@ -291,5 +293,46 @@ describe('the other guest emails', () => {
     const paid = piperPaymentEmail(sampleWedding(), '$20')
     assert.equal(paid.subject, 'RSVP paid · Sarah & Michael')
     assert.match(paid.text, /\$20/)
+  })
+})
+
+describe('who RSVP emails are from', () => {
+  it('guest emails come from the couple, couple emails from the RSVP desk', () => {
+    const wedding = sampleWedding()
+    wedding.partnerOne = 'Mark'
+    wedding.partnerTwo = 'Mya'
+    const party = wedding.parties[0]
+    assert.ok(party)
+    const url = 'https://piperpweddingdj.services/rsvp/x/p/y'
+    assert.equal(invitationEmail(wedding, party, url).fromName, 'Mark & Mya · RSVP')
+    assert.equal(confirmationEmail(wedding, party, url).fromName, 'Mark & Mya · RSVP')
+    assert.equal(reminderEmail(wedding, party, url).fromName, 'Mark & Mya · RSVP')
+    const stats = overviewStats(wedding, Date.now())
+    assert.equal(
+      replyNoticeEmail(wedding, party, stats, url).fromName,
+      'RSVP by DJ Piper P',
+    )
+    assert.equal(
+      deadlineSummaryEmail(wedding, stats, 'a,b').fromName,
+      'RSVP by DJ Piper P',
+    )
+    assert.equal(signInEmail(url).fromName, 'RSVP by DJ Piper P')
+    assert.equal(
+      welcomeEmail(wedding, { amountLabel: '$20', dashboardUrl: url, guestUrl: url }).fromName,
+      'RSVP by DJ Piper P',
+    )
+  })
+
+  it('falls back to "RSVP" without names and leaves owner notices alone', () => {
+    assert.equal(guestSender({ partnerOne: ' ', partnerTwo: '' }), 'RSVP')
+    assert.equal(
+      piperQuestionEmail({
+        rsvpId: 'x',
+        couple: 'Mark & Mya',
+        text: 'Hi',
+        askedAt: '2026-10-13T20:00:00Z',
+      }).fromName,
+      undefined,
+    )
   })
 })

@@ -48,6 +48,11 @@ export type Letter = {
   /** Optional rich card. Falls back to the plain text when absent. */
   html?: string
   attachments?: LetterAttachment[]
+  /**
+   * The From name for this letter. The address never changes. Left out, the
+   * letter goes as the site's usual sender.
+   */
+  fromName?: string
 }
 
 const STATUS_LABEL: Record<string, string> = {

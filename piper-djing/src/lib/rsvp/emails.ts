@@ -37,6 +37,25 @@ export type RsvpEmail = {
   text: string
   html: string
   attachments?: LetterAttachment[]
+  /** The From name. Owner notices leave it out and keep the usual sender. */
+  fromName?: string
+}
+
+/** Couple-facing emails: reply notices, the welcome receipt, summaries, sign-in. */
+export const COUPLE_SENDER = 'RSVP by DJ Piper P'
+
+/**
+ * Guest-facing emails come from the couple: "Mark & Mya · RSVP". Without
+ * names it is simply "RSVP".
+ */
+export function guestSender(wedding: {
+  partnerOne: string
+  partnerTwo: string
+}): string {
+  const names = [wedding.partnerOne, wedding.partnerTwo]
+    .map((name) => name.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+  return names.length > 0 ? `${names.join(' & ')} · RSVP` : 'RSVP'
 }
 
 export const SITE_HOST = 'piperpweddingdj.services'
@@ -358,6 +377,7 @@ export function invitationEmail(
   blocks.push({ t: 'code', text: `For: ${forLine}` })
   return {
     kind: 'invitation',
+    fromName: guestSender(wedding),
     subject:
       `You're invited · ${title} · ${shortDate(wedding.eventDate)}`.trim(),
     text: invitationText(wedding, forLine, deadline, url),
@@ -439,6 +459,7 @@ export function confirmationEmail(
   if (party.note) blocks.push({ t: 'note', text: `Your note: ${party.note}` })
   return {
     kind: 'confirmation',
+    fromName: guestSender(wedding),
     subject: `Your RSVP for ${title} is in`,
     text: confirmationText(wedding, party, lead.firstName, editUrl),
     html: layout({
@@ -510,6 +531,7 @@ export function reminderEmail(
   ]
   return {
     kind: 'reminder',
+    fromName: guestSender(wedding),
     subject: `A gentle reminder · RSVP for ${title} by ${deadline || 'the deadline'}`,
     text: [
       `Dear ${party.name},`,
@@ -567,6 +589,7 @@ export function replyNoticeEmail(
   blocks.push({ t: 'button', label: 'Open the dashboard', href: dashboardUrl })
   return {
     kind: 'reply-notice',
+    fromName: COUPLE_SENDER,
     subject: `${party.name} replied · ${title}`,
     text: [
       `${party.name} replied for ${title}.`,
@@ -627,6 +650,7 @@ export function welcomeEmail(
   )
   return {
     kind: 'welcome',
+    fromName: COUPLE_SENDER,
     subject: `Your RSVP page is live · ${title}`,
     text: [
       `Thank you — your RSVP page for ${title} is live.`,
@@ -701,6 +725,7 @@ export function deadlineSummaryEmail(
   blocks.push({ t: 'note', text: 'The caterer report is attached as a CSV.' })
   return {
     kind: 'deadline-summary',
+    fromName: COUPLE_SENDER,
     subject: `RSVP deadline today · ${title}`,
     text: [
       `RSVP deadline today for ${title}.`,
@@ -884,6 +909,7 @@ export function signInEmail(url: string): RsvpEmail {
   const skin = templateFor('ivory').skin
   return {
     kind: 'sign-in',
+    fromName: COUPLE_SENDER,
     subject: 'Your Piper RSVP sign-in link',
     text: [
       'Here is your one-time sign-in link. It works for 24 hours.',

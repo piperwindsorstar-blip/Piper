@@ -1,4 +1,5 @@
 import type { Letter } from './mail-copy.ts'
+import { encodeWords } from './mime-header.ts'
 
 type MailSocket = {
   readable: ReadableStream<Uint8Array>
@@ -56,7 +57,7 @@ export function smtpData(input: {
     `From: ${escapeHeader(input.from)}`,
     `To: ${input.to}`,
     input.replyTo ? `Reply-To: ${input.replyTo}` : '',
-    `Subject: ${escapeHeader(input.letter.subject)}`,
+    `Subject: ${encodeWords(escapeHeader(input.letter.subject))}`,
     'MIME-Version: 1.0',
   ].filter(Boolean)
   const text = encodeBody(input.letter.text)

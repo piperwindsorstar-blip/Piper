@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 import { query, usesEdgeBook } from '../db.server.ts'
 import { PUBLIC_EMAIL } from './defaults.ts'
+import { addressHeader } from './mime-header.ts'
 import { bookingLetter, coupleAddress, invoiceLetter } from './mail-copy.ts'
 import type { Letter, LetterBooking } from './mail-copy.ts'
 import { publicUrl } from './safe-origin.ts'
@@ -196,9 +197,15 @@ async function deliver(to: string, letter: Letter): Promise<MailResult> {
       detail: `The ${PUBLIC_EMAIL} inbox needs its Gmail app password before it can send. ${saved}`,
     }
   }
+  const name = letter.fromName?.trim()
+  const address = senderAddress(smtp.from)
   if (usesEdgeBook()) {
     const { sendEdgeMail } = await import('./smtp-edge.ts')
-    return sendEdgeMail(smtp, to, letter)
+    return sendEdgeMail(
+      name ? { ...smtp, from: addressHeader(name, address) } : smtp,
+      to,
+      letter,
+    )
   }
   try {
     const transport = nodemailer.createTransport({
@@ -208,7 +215,8 @@ async function deliver(to: string, letter: Letter): Promise<MailResult> {
       auth: { user: smtp.user, pass: smtp.pass },
     })
     await transport.sendMail({
-      from: smtp.from,
+      // Nodemailer writes the RFC 2047 encoding for a named sender itself.
+      from: name ? { name, address } : smtp.from,
       to,
       replyTo: smtp.replyTo ?? undefined,
       subject: letter.subject,
@@ -289,6 +297,12 @@ function fromAddress(): string {
 
 function defaultFrom(): string {
   return `Piper DJing <${PUBLIC_EMAIL}>`
+}
+
+/** The bare address inside "Name <address>"; the address never changes. */
+export function senderAddress(from: string): string {
+  const wrapped = from.match(/<([^<>\s]+)>/u)
+  return (wrapped?.[1] ?? from).trim() || PUBLIC_EMAIL
 }
 
 function asHtml(body: string): string {
