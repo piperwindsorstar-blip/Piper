@@ -19,6 +19,7 @@ import {
   rsvpField,
   rsvpGhost,
 } from './shell.tsx'
+import { TheDay } from './timeline.tsx'
 
 export type HouseholdData = NonNullable<
   Awaited<ReturnType<typeof getHousehold>>
@@ -373,6 +374,7 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
       >
         Review my RSVP →
       </ActionButton>
+      <TheDay moments={data.day} />
     </RsvpFrame>
   )
 }
@@ -727,6 +729,7 @@ export function ReplyDone({
         The email also has a private link to change your reply later — no
         searching needed.
       </p>
+      <TheDay moments={data.day} />
     </RsvpFrame>
   )
 }

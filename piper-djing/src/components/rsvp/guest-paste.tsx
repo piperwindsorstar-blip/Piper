@@ -6,7 +6,7 @@ import { useRef, useState } from 'react'
 import { foldName } from '../../lib/rsvp/model.ts'
 import { partyLabel, splitGuestPaste } from '../../lib/rsvp/guest-list.ts'
 import { saveRsvpGuestList } from '../../lib/rsvp/rsvp.functions.ts'
-import { rsvpButton, rsvpField, rsvpGhost } from './shell.tsx'
+import { rsvpButton, rsvpField, rsvpGhost, useRsvpTheme } from './shell.tsx'
 
 type Row = {
   key: string
@@ -33,19 +33,17 @@ type Party = {
 
 export function GuestPaste({
   parties,
-  meals,
   publicLink,
 }: {
   parties: Party[]
-  meals: string[]
   publicLink: string
 }) {
   const save = useServerFn(saveRsvpGuestList)
   const router = useRouter()
+  const surface = useRsvpTheme()
   const draft = useRef(0)
   const [rows, setRows] = useState<Row[]>(() => rowsFrom(parties))
   const [paste, setPaste] = useState('')
-  const [mealText, setMealText] = useState(meals.join(', '))
   const [picked, setPicked] = useState<string[]>([])
   const [notice, setNotice] = useState('')
 
@@ -298,18 +296,9 @@ export function GuestPaste({
           <p className="text-sm text-[var(--text-muted)]">No guests yet.</p>
         ) : null}
       </div>
-      <label className="mt-4 block text-sm" htmlFor="meal-options">
-        Meal options
-        <input
-          id="meal-options"
-          className={`${rsvpField} mt-1`}
-          value={mealText}
-          onChange={(event) => setMealText(event.target.value)}
-        />
-      </label>
-      <p className="mt-2 text-sm text-[var(--text-muted)]">
-        Each guest who says yes picks their own meal and can add a dietary or
-        allergy note. A party does not share one meal.
+      <p className="mt-4 text-sm text-[var(--text-muted)]">
+        Each guest who says yes picks their own meal. A party does not share one
+        meal.
       </p>
       {parties.length > 0 ? (
         <ul className="mt-4 grid gap-2 text-sm">
@@ -334,7 +323,7 @@ export function GuestPaste({
         wrapperClassName="inline-grid w-auto"
         busy="Saving…"
         done="Saved"
-        surface="dark"
+        surface={surface}
         onRun={async (): Promise<RunResult> => {
           const result = await save({
             data: {
@@ -344,7 +333,6 @@ export function GuestPaste({
                 partyId: row.partyKey,
                 plusOneAllowed: row.plusOneAllowed,
               })),
-              meals: mealText,
             },
           })
           if (!result.ok) {

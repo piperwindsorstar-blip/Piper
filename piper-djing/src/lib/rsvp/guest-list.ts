@@ -70,6 +70,41 @@ function fullName(guest: RsvpGuest): string {
   return `${guest.firstName} ${guest.lastName}`.trim()
 }
 
+export const MAX_MEALS = 12
+export const MEAL_MAX_LENGTH = 40
+
+/**
+ * The meal boxes as the couple typed them: one meal per box, so a comma inside
+ * a name ("Chicken, lemon herb") stays part of that meal. Blank boxes drop out,
+ * spaces are trimmed, and the same meal twice is refused rather than merged.
+ */
+export function cleanMealList(
+  raw: string[],
+): { ok: true; meals: string[] } | { ok: false; error: string } {
+  const meals: string[] = []
+  const seen = new Map<string, string>()
+  for (const item of raw) {
+    const name = item.trim().replace(/\s+/g, ' ')
+    if (!name) continue
+    if (name.length > MEAL_MAX_LENGTH) {
+      return {
+        ok: false,
+        error: `Keep each meal to ${MEAL_MAX_LENGTH} characters. "${name.slice(0, 24)}…" is longer.`,
+      }
+    }
+    const key = name.toLowerCase()
+    if (seen.has(key)) {
+      return { ok: false, error: `"${name}" is listed twice. Remove one.` }
+    }
+    seen.set(key, name)
+    meals.push(name)
+  }
+  if (meals.length > MAX_MEALS) {
+    return { ok: false, error: `Up to ${MAX_MEALS} meals can be offered.` }
+  }
+  return { ok: true, meals }
+}
+
 export function setMealOptions(wedding: RsvpWedding, raw: string[]): void {
   const seen = new Set<string>()
   const options: string[] = []
@@ -108,7 +143,8 @@ export function setMealOptions(wedding: RsvpWedding, raw: string[]): void {
 export function confirmGuestList(
   wedding: RsvpWedding,
   rows: GuestListRow[],
-  meals: string[],
+  /** Null leaves the meal options exactly as they are. */
+  meals: string[] | null,
   fresh: () => string,
 ): { ok: true; wedding: RsvpWedding } | { ok: false; error: string } {
   const cleaned: GuestListRow[] = []
@@ -208,7 +244,7 @@ export function confirmGuestList(
     kept.guests.push(structuredClone(extra))
   }
   next.parties = parties
-  setMealOptions(next, meals)
+  if (meals) setMealOptions(next, meals)
   return { ok: true, wedding: next }
 }
 

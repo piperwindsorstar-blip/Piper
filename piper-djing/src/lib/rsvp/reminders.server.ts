@@ -10,7 +10,7 @@ import {
   rsvpPath,
 } from './model.ts'
 import type { RsvpParty, RsvpWedding } from './model.ts'
-import { sendRsvpEmail } from './mailer.server.ts'
+import { sendKey, sendRsvpEmail } from './mailer.server.ts'
 import { coupleBookings, writeRsvp } from './store.server.ts'
 
 /** The one invitation link a party replies on. */
@@ -22,11 +22,12 @@ export function partyUrl(wedding: RsvpWedding, party: RsvpParty): string {
 export async function mailPartyReminder(
   wedding: RsvpWedding,
   party: RsvpParty,
-): Promise<{ delivered: boolean; detail: string }> {
+): Promise<{ delivered: boolean; detail: string; duplicate?: boolean }> {
   return sendRsvpEmail({
     slug: wedding.slug,
     kind: 'reminder',
     partyId: party.id,
+    guard: sendKey(wedding.slug, 'reminder', party.id),
     to: party.email,
     email: reminderEmail(wedding, party, partyUrl(wedding, party)),
   })
@@ -42,7 +43,7 @@ export async function mailParties(
   for (const party of parties) {
     const result = await mailPartyReminder(wedding, party)
     if (result.delivered) sent += 1
-    else detail = result.detail
+    else if (!result.duplicate) detail = result.detail
   }
   return { sent, detail }
 }
@@ -70,7 +71,7 @@ export async function deliverDueReminders(wedding: RsvpWedding): Promise<void> {
 
   for (const party of due) {
     const result = await mailPartyReminder(wedding, party)
-    if (!result.delivered) {
+    if (!result.delivered && !result.duplicate) {
       // Let a later run try again for the parties that did not go out.
       wedding.remindedIds = wedding.remindedIds.filter((id) => id !== party.id)
     }

@@ -105,9 +105,63 @@ function RsvpDesk() {
                 Delete
               </button>
             </div>
+            <DeskTimeline moments={row.timeline} />
           </li>
         ))}
       </ul>
     </div>
+  )
+}
+
+/**
+ * The couple's full day for DJ Piper P, private moments included. Read-only:
+ * the couple edits it on their own Timeline tab.
+ */
+function DeskTimeline({
+  moments,
+}: {
+  moments: {
+    id: string
+    time: string
+    title: string
+    location: string
+    note: string
+    guests: boolean
+  }[]
+}) {
+  return (
+    <details className="w-full">
+      <summary className="min-h-11 cursor-pointer py-2 text-sm text-white/70">
+        Timeline · {moments.length === 0 ? 'not started' : `${moments.length} moments`}
+      </summary>
+      {moments.length === 0 ? (
+        <p className="pb-2 text-sm text-white/50">
+          The couple has not added their day yet.
+        </p>
+      ) : (
+        <ol className="grid gap-2 pb-2">
+          {moments.map((moment) => (
+            <li
+              key={moment.id}
+              className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 text-sm"
+            >
+              <span className="font-semibold">{moment.time}</span>
+              <span>
+                <span className="font-semibold">{moment.title}</span>
+                {moment.guests ? null : (
+                  <span className="ml-2 rounded-full border border-white/30 px-2 py-0.5 text-xs text-white/70">
+                    Private
+                  </span>
+                )}
+                <span className="block text-white/60">
+                  {moment.location}
+                  {moment.note ? ` · ${moment.note}` : ''}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </details>
   )
 }

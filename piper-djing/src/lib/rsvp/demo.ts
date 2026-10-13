@@ -301,6 +301,7 @@ const SAMPLE: RsvpWedding = {
   remindedOn: '',
   remindedIds: [],
   remindedManualAt: '',
+  invitedAllAt: '',
   deadlineSummaryOn: '',
 }
 

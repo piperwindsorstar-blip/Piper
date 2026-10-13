@@ -55,6 +55,8 @@ import { Route as RsvpManageEventsRouteImport } from './routes/rsvp/manage/event
 import { Route as RsvpManageExportsRouteImport } from './routes/rsvp/manage/exports'
 import { Route as RsvpManageGuestsRouteImport } from './routes/rsvp/manage/guests'
 import { Route as RsvpManageSettingsRouteImport } from './routes/rsvp/manage/settings'
+import { Route as RsvpManageSeatingRouteImport } from './routes/rsvp/manage/seating'
+import { Route as RsvpManageTimelineRouteImport } from './routes/rsvp/manage/timeline'
 import { Route as RsvpManageSongsRouteImport } from './routes/rsvp/manage/songs'
 import { Route as RsvpOpenTokenRouteImport } from './routes/rsvp/open/$token'
 import { Route as ApiRsvpSlugPhotoRouteImport } from './routes/api/rsvp/$slug/photo'
@@ -294,6 +296,16 @@ const RsvpManageSettingsRoute = RsvpManageSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => RsvpManageRouteRoute,
 } as any)
+const RsvpManageSeatingRoute = RsvpManageSeatingRouteImport.update({
+  id: '/seating',
+  path: '/seating',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpManageTimelineRoute = RsvpManageTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
 const RsvpManageSongsRoute = RsvpManageSongsRouteImport.update({
   id: '/songs',
   path: '/songs',
@@ -379,6 +391,8 @@ export interface FileRoutesByFullPath {
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
   '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
+  '/rsvp/manage/seating': typeof RsvpManageSeatingRoute
+  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
   '/rsvp/manage/songs': typeof RsvpManageSongsRoute
   '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
@@ -432,6 +446,8 @@ export interface FileRoutesByTo {
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
   '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
+  '/rsvp/manage/seating': typeof RsvpManageSeatingRoute
+  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
   '/rsvp/manage/songs': typeof RsvpManageSongsRoute
   '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals': typeof DeskPortalsIndexRoute
@@ -489,6 +505,8 @@ export interface FileRoutesById {
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
   '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
+  '/rsvp/manage/seating': typeof RsvpManageSeatingRoute
+  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
   '/rsvp/manage/songs': typeof RsvpManageSongsRoute
   '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
@@ -547,6 +565,8 @@ export interface FileRouteTypes {
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
     | '/rsvp/manage/settings'
+    | '/rsvp/manage/seating'
+    | '/rsvp/manage/timeline'
     | '/rsvp/manage/songs'
     | '/rsvp/open/$token'
     | '/desk/portals/'
@@ -600,6 +620,8 @@ export interface FileRouteTypes {
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
     | '/rsvp/manage/settings'
+    | '/rsvp/manage/seating'
+    | '/rsvp/manage/timeline'
     | '/rsvp/manage/songs'
     | '/rsvp/open/$token'
     | '/desk/portals'
@@ -656,6 +678,8 @@ export interface FileRouteTypes {
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
     | '/rsvp/manage/settings'
+    | '/rsvp/manage/seating'
+    | '/rsvp/manage/timeline'
     | '/rsvp/manage/songs'
     | '/rsvp/open/$token'
     | '/desk/portals/'
@@ -1019,6 +1043,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RsvpManageSettingsRouteImport
       parentRoute: typeof RsvpManageRouteRoute
     }
+    '/rsvp/manage/seating': {
+      id: '/rsvp/manage/seating'
+      path: '/seating'
+      fullPath: '/rsvp/manage/seating'
+      preLoaderRoute: typeof RsvpManageSeatingRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/manage/timeline': {
+      id: '/rsvp/manage/timeline'
+      path: '/timeline'
+      fullPath: '/rsvp/manage/timeline'
+      preLoaderRoute: typeof RsvpManageTimelineRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
     '/rsvp/manage/songs': {
       id: '/rsvp/manage/songs'
       path: '/songs'
@@ -1152,6 +1190,8 @@ interface RsvpManageRouteRouteChildren {
   RsvpManageExportsRoute: typeof RsvpManageExportsRoute
   RsvpManageGuestsRoute: typeof RsvpManageGuestsRoute
   RsvpManageSettingsRoute: typeof RsvpManageSettingsRoute
+  RsvpManageSeatingRoute: typeof RsvpManageSeatingRoute
+  RsvpManageTimelineRoute: typeof RsvpManageTimelineRoute
   RsvpManageSongsRoute: typeof RsvpManageSongsRoute
   RsvpManageIndexRoute: typeof RsvpManageIndexRoute
 }
@@ -1162,6 +1202,8 @@ const RsvpManageRouteRouteChildren: RsvpManageRouteRouteChildren = {
   RsvpManageExportsRoute: RsvpManageExportsRoute,
   RsvpManageGuestsRoute: RsvpManageGuestsRoute,
   RsvpManageSettingsRoute: RsvpManageSettingsRoute,
+  RsvpManageSeatingRoute: RsvpManageSeatingRoute,
+  RsvpManageTimelineRoute: RsvpManageTimelineRoute,
   RsvpManageSongsRoute: RsvpManageSongsRoute,
   RsvpManageIndexRoute: RsvpManageIndexRoute,
 }

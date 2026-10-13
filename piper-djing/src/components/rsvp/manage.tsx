@@ -17,6 +17,10 @@ import {
   setRsvpTheme,
 } from '../../lib/rsvp/rsvp.functions.ts'
 import { GuestPaste } from './guest-paste.tsx'
+import { MealOptions } from './meal-options.tsx'
+import { PrintSeating, PrintTimeline, usePrintSheet } from './print.tsx'
+import type { SeatingData } from './seating.tsx'
+import type { TimelineData } from './timeline.tsx'
 import type { getRsvpManage } from '../../lib/rsvp/rsvp.functions.ts'
 import {
   RsvpLogo,
@@ -38,6 +42,8 @@ const LINKS = [
   { to: '/rsvp/manage/design', label: 'Invitations' },
   { to: '/rsvp/manage/guests', label: 'Guests & parties' },
   { to: '/rsvp/manage/events', label: 'Events & questions' },
+  { to: '/rsvp/manage/seating', label: 'Seating chart' },
+  { to: '/rsvp/manage/timeline', label: 'Timeline' },
   { to: '/rsvp/manage/songs', label: 'Song requests' },
   { to: '/rsvp/manage/exports', label: 'Exports' },
   { to: '/rsvp/manage/settings', label: 'Site settings' },
@@ -54,7 +60,7 @@ export function ManageShell({
   return (
     <RsvpThemeProvider theme={theme}>
       <div
-        className={`portal min-h-screen md:grid md:grid-cols-[240px_1fr] ${theme === 'light' ? 'light' : ''}`}
+        className={`portal min-h-screen print:block print:min-h-0 print:!bg-none md:grid md:grid-cols-[240px_1fr] ${theme === 'light' ? 'light' : ''}`}
         style={
           theme === 'light'
             ? undefined
@@ -64,7 +70,7 @@ export function ManageShell({
               }
         }
       >
-        <aside className="border-b border-[var(--border)] p-4 md:border-b-0 md:border-r">
+        <aside className="border-b border-[var(--border)] p-4 print:hidden md:border-b-0 md:border-r">
           <div className="mb-6">
             <RsvpLogo />
           </div>
@@ -95,7 +101,7 @@ export function ManageShell({
             DJ Piper P keeps the song requests with the wedding plan.
           </p>
         </aside>
-        <div className="p-4 md:p-8">{children}</div>
+        <div className="min-w-0 p-4 print:p-0 md:p-8">{children}</div>
       </div>
     </RsvpThemeProvider>
   )
@@ -174,12 +180,13 @@ export function Overview({ data }: { data: ReadyManage }) {
             )
             .join('|')}
           parties={data.wedding.parties}
-          meals={
-            data.wedding.questions.find(
-              (question) => question.type === 'choice',
-            )?.options ?? []
-          }
           publicLink={data.publicLink}
+        />
+      </div>
+      <div className="mt-4">
+        <MealOptions
+          key={mealsOf(data).join('\u0000')}
+          meals={mealsOf(data)}
         />
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
@@ -266,6 +273,13 @@ export function Overview({ data }: { data: ReadyManage }) {
         </section>
       </div>
     </div>
+  )
+}
+
+function mealsOf(data: ReadyManage): string[] {
+  return (
+    data.wedding.questions.find((question) => question.type === 'choice')
+      ?.options ?? []
   )
 }
 
@@ -517,8 +531,13 @@ export function Guests({ data }: { data: ReadyManage }) {
                     .join(', ')}
                 </span>
               </span>
-              <span className="text-sm text-[var(--text-faint)]">
-                {party.lastRepliedAt ? 'Replied' : 'Waiting'}
+              <span className="grid justify-items-end text-sm text-[var(--text-faint)]">
+                <span>{party.lastRepliedAt ? 'Replied' : 'Waiting'}</span>
+                {data.invited[party.id] ? (
+                  <span className="text-xs text-emerald-500">
+                    ✓ Sent {shortWhen(data.invited[party.id] ?? '')}
+                  </span>
+                ) : null}
               </span>
             </button>
           </li>
@@ -822,9 +841,13 @@ function EmailAllButton({ data }: { data: ReadyManage }) {
       lastUsed={data.invitedAt ? `Sent ${shortWhen(data.invitedAt)}` : ''}
       confirmMessage={`Email the invitation to ${label}?`}
       onRun={async (): Promise<RunResult> => {
-        const result = await send({ data: { all: true } })
-        await router.invalidate()
-        return { ok: result.ok, message: result.detail }
+        try {
+          const result = await send({ data: { all: true } })
+          await router.invalidate()
+          return { ok: result.ok, message: result.detail }
+        } catch {
+          return { ok: false, message: 'The invitations did not send.' }
+        }
       }}
     >
       Email all invitations
@@ -842,24 +865,39 @@ function EmailPartyButton({
   invitedAt: string
 }) {
   const send = useServerFn(emailRsvpInvitations)
+  const router = useRouter()
   const surface = useSurface()
+  const [sentAt, setSentAt] = useState(invitedAt)
   const hasEmail = email.includes('@')
+  const last = sentAt || invitedAt
   return (
-    <ActionButton
-      className={`${rsvpGhost} w-auto`}
-      busy="Sending…"
-      done="Invited"
-      surface={surface}
-      disabled={!hasEmail}
-      disabledHint="Add an email for this party first."
-      lastUsed={invitedAt ? `Invited ✓ ${shortWhen(invitedAt)}` : ''}
-      onRun={async (): Promise<RunResult> => {
-        const result = await send({ data: { partyId } })
-        return { ok: result.ok, message: result.detail }
-      }}
-    >
-      Email invitation
-    </ActionButton>
+    <div className="mt-4 flex flex-wrap items-center gap-3">
+      <ActionButton
+        className={`${rsvpGhost} w-auto`}
+        busy="Sending…"
+        done="Sent"
+        surface={surface}
+        disabled={!hasEmail}
+        disabledHint="Add an email for this party first."
+        onRun={async (): Promise<RunResult> => {
+          try {
+            const result = await send({ data: { partyId } })
+            if (result.ok && result.sentAt) setSentAt(result.sentAt)
+            await router.invalidate()
+            return { ok: result.ok, message: result.detail }
+          } catch {
+            return { ok: false, message: 'The invitation did not send.' }
+          }
+        }}
+      >
+        Email invitation
+      </ActionButton>
+      {last ? (
+        <span className="text-sm text-emerald-500" role="status">
+          ✓ Sent {shortWhen(last)}
+        </span>
+      ) : null}
+    </div>
   )
 }
 
@@ -875,6 +913,13 @@ const EMAIL_LABELS: Record<string, string> = {
   'piper-payment': 'Payment to Piper',
   'sign-in': 'Sign-in link',
   test: 'Test',
+}
+
+function emailLabel(row: { kind: string; testOf?: string }): string {
+  if (row.kind === 'test' && row.testOf) {
+    return `Test · ${EMAIL_LABELS[row.testOf] ?? row.testOf}`
+  }
+  return EMAIL_LABELS[row.kind] ?? row.kind
 }
 
 /** The portal's own light/dark choice, for the feedback colours. */
@@ -948,28 +993,14 @@ export function Events({ data }: { data: ReadyManage }) {
   const [caterer, setCaterer] = useState(data.wedding.catererDeadline)
   const [lockAfter, setLock] = useState(data.wedding.lockAfterDeadline)
   const [autoRemind, setRemind] = useState(data.wedding.autoRemind)
-  const [options, setOptions] = useState(
-    data.wedding.questions
-      .find((question) => question.type === 'choice')
-      ?.options.join(', ') ?? '',
-  )
   const [notice, setNotice] = useState('')
   return (
     <form
       className="grid gap-4"
       onSubmit={(event) => {
         event.preventDefault()
-        const questions = data.wedding.questions.map((question) =>
-          question.type === 'choice'
-            ? {
-                ...question,
-                options: options
-                  .split(',')
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-              }
-            : question,
-        )
+        // The meals keep their own boxes and their own save below.
+        const questions = data.wedding.questions
         void save({
           data: {
             deadline,
@@ -1083,21 +1114,17 @@ export function Events({ data }: { data: ReadyManage }) {
           onChange={(event) => setLock(event.target.checked)}
         />
       </label>
-      <label className="text-sm" htmlFor="meals">
-        Dinner options
-        <input
-          id="meals"
-          className={`${rsvpField} mt-1`}
-          value={options}
-          onChange={(event) => setOptions(event.target.value)}
-        />
-      </label>
       <button className={`${rsvpButton} w-auto`} type="submit">
         Save changes
       </button>
       {notice ? (
         <p className="text-sm text-[var(--text-muted)]">{notice}</p>
       ) : null}
+      <MealOptions
+        key={mealsOf(data).join('\u0000')}
+        meals={mealsOf(data)}
+        title="Dinner options"
+      />
     </form>
   )
 }
@@ -1177,7 +1204,19 @@ export function Songs({ data }: { data: ReadyManage }) {
   )
 }
 
-export function Exports({ data }: { data: ReadyManage }) {
+export type ExportSheets = {
+  seating: SeatingData | null
+  timeline: TimelineData | null
+}
+
+export function Exports({
+  data,
+  sheets,
+}: {
+  data: ReadyManage
+  sheets: ExportSheets
+}) {
+  const { sheet, print } = usePrintSheet()
   const load = useServerFn(downloadRsvpCsv)
   const router = useRouter()
   const remind = useServerFn(sendRsvpReminders)
@@ -1187,7 +1226,7 @@ export function Exports({ data }: { data: ReadyManage }) {
   const canRemind = data.reminderManual.allowed
   const today = data.wedding.eventDate || 'rsvp'
   async function grab(
-    kind: 'caterer' | 'songs' | 'guests' | 'seating',
+    kind: 'caterer' | 'songs' | 'guests' | 'seating' | 'timeline',
     name: string,
   ) {
     const body = await load({ data: { kind } })
@@ -1196,6 +1235,27 @@ export function Exports({ data }: { data: ReadyManage }) {
   }
   return (
     <div>
+      {sheet === 'seating' && sheets.seating ? (
+        <div className="hidden print:block">
+          <PrintSeating
+            plan={sheets.seating.plan}
+            guests={sheets.seating.guests}
+            couple={sheets.seating.couple}
+            dateLabel={sheets.seating.dateLabel}
+          />
+        </div>
+      ) : null}
+      {sheet === 'timeline' && sheets.timeline ? (
+        <div className="hidden print:block">
+          <PrintTimeline
+            timeline={sheets.timeline.timeline}
+            venue={sheets.timeline.venue}
+            couple={sheets.timeline.couple}
+            dateLabel={sheets.timeline.dateLabel}
+          />
+        </div>
+      ) : null}
+      <div className="print:hidden">
       <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
         EXPORTS
       </p>
@@ -1221,9 +1281,16 @@ export function Exports({ data }: { data: ReadyManage }) {
           onClick={() => void grab('guests', 'guest-list')}
         />
         <ExportCard
-          title="Seating starter"
-          body="Attending guests grouped by party, with children flagged"
-          onClick={() => void grab('seating', 'seating')}
+          title="Seating chart"
+          body="Table, seat, party, guest, child, meal, event. Unseated attending guests are listed last."
+          onClick={() => void grab('seating', 'seating-chart')}
+          onPrint={sheets.seating ? () => print('seating') : undefined}
+        />
+        <ExportCard
+          title="Timeline"
+          body="Every moment of the day, private ones included, for you and the DJ"
+          onClick={() => void grab('timeline', 'timeline')}
+          onPrint={sheets.timeline ? () => print('timeline') : undefined}
         />
       </div>
       <div className="mt-4 flex flex-wrap items-start gap-3">
@@ -1282,10 +1349,18 @@ export function Exports({ data }: { data: ReadyManage }) {
             surface={surface}
             lastUsed={data.testedAt ? `Sent ${shortWhen(data.testedAt)}` : ''}
             onRun={async (): Promise<RunResult> => {
-              const result = await test({ data: { kind: testKind } })
-              return {
-                ok: result.ok,
-                message: result.detail || 'The email was not sent.',
+              try {
+                const result = await test({ data: { kind: testKind } })
+                await router.invalidate()
+                return {
+                  ok: result.ok,
+                  message: result.detail || 'The test did not send.',
+                }
+              } catch {
+                return {
+                  ok: false,
+                  message: 'The test did not send. Check your connection.',
+                }
               }
             }}
           >
@@ -1307,9 +1382,7 @@ export function Exports({ data }: { data: ReadyManage }) {
                 className="flex flex-wrap items-center justify-between gap-2"
               >
                 <span>
-                  <span className="font-semibold">
-                    {EMAIL_LABELS[row.kind] ?? row.kind}
-                  </span>{' '}
+                  <span className="font-semibold">{emailLabel(row)}</span>{' '}
                   <span className="text-[var(--text-muted)]">→ {row.to}</span>
                 </span>
                 <span
@@ -1327,6 +1400,7 @@ export function Exports({ data }: { data: ReadyManage }) {
           </ul>
         )}
       </section>
+      </div>
     </div>
   )
 }
@@ -1335,10 +1409,12 @@ function ExportCard({
   title,
   body,
   onClick,
+  onPrint,
 }: {
   title: string
   body: string
   onClick: () => void
+  onPrint?: () => void
 }) {
   return (
     <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -1347,13 +1423,24 @@ function ExportCard({
           <h2 className="font-semibold">{title}</h2>
           <p className="mt-1 text-sm text-[var(--text-muted)]">{body}</p>
         </div>
-        <button
-          type="button"
-          className="min-h-11 rounded-full border border-[var(--border-strong)] px-3 text-sm"
-          onClick={onClick}
-        >
-          CSV
-        </button>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            className="min-h-11 rounded-full border border-[var(--border-strong)] px-3 text-sm"
+            onClick={onClick}
+          >
+            CSV
+          </button>
+          {onPrint ? (
+            <button
+              type="button"
+              className="min-h-11 rounded-full border border-[var(--border-strong)] px-3 text-sm"
+              onClick={onPrint}
+            >
+              Print / PDF
+            </button>
+          ) : null}
+        </div>
       </div>
     </section>
   )

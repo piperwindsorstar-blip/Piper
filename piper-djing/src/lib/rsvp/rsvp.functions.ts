@@ -44,7 +44,7 @@ import type {
   RsvpWedding,
   SongStatus,
 } from './model.ts'
-import { confirmGuestList } from './guest-list.ts'
+import { cleanMealList, confirmGuestList, setMealOptions } from './guest-list.ts'
 import type { GuestListRow } from './guest-list.ts'
 import {
   confirmationEmail,
@@ -57,10 +57,32 @@ import {
   welcomeEmail,
 } from './emails.ts'
 import type { RsvpEmail } from './emails.ts'
-import { listRsvpEmails, sendRsvpEmail } from './mailer.server.ts'
+import { listRsvpEmails, sendKey, sendRsvpEmail } from './mailer.server.ts'
 import { parsePhotoUpload } from './photo.ts'
 import { photoPath, parseTemplateId } from './templates.ts'
 import { notifyCouplePaid, notifyPiperSignup } from './notify.server.ts'
+import {
+  listTimelines,
+  readSeating,
+  readTimeline,
+  writeSeating,
+  writeTimeline,
+} from './plans.server.ts'
+import {
+  parseSeating,
+  pruneSeating,
+  seatableGuests,
+  seatingChartCsv,
+  validateSeating,
+} from './seating.ts'
+import {
+  guestMoments,
+  orderedMoments,
+  parseTimeline,
+  timeLabel,
+  timelineCsv,
+  validateTimeline,
+} from './timeline.ts'
 import {
   coupleBookings,
   createRsvpWedding,
@@ -239,6 +261,7 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
       daysLeft: daysUntil(wedding.deadline, torontoToday()),
       caterer: shortMonthDay(wedding.catererDeadline),
       schedule: wedding.schedule,
+      day: guestMoments(await readTimeline(wedding.slug), wedding.venue),
       notes: wedding.notes,
       showContact: wedding.showContact,
       contactPhone: wedding.showContact ? wedding.contactPhone : '',
@@ -306,7 +329,11 @@ export const findInvitation = createServerFn({ method: 'POST' })
     }
   })
 
-function householdPayload(wedding: RsvpWedding, token: string) {
+function householdPayload(
+  wedding: RsvpWedding,
+  token: string,
+  day: ReturnType<typeof guestMoments> = [],
+) {
   const party = partyByToken(wedding, token)
   if (!party) return null
   return {
@@ -356,6 +383,7 @@ function householdPayload(wedding: RsvpWedding, token: string) {
     address: wedding.address,
     eventDate: wedding.eventDate,
     dateLabel: longWeddingDate(wedding.eventDate),
+    day,
   }
 }
 
@@ -367,7 +395,12 @@ export const getHousehold = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const wedding = await readRsvp(data.slug)
     if (!wedding || !wedding.paid) return null
-    return householdPayload(wedding, data.token)
+    if (!partyByToken(wedding, data.token)) return null
+    return householdPayload(
+      wedding,
+      data.token,
+      guestMoments(await readTimeline(wedding.slug), wedding.venue),
+    )
   })
 
 export const saveHouseholdReply = createServerFn({ method: 'POST' })
@@ -549,17 +582,15 @@ function photoView(wedding: RsvpWedding) {
 /** When each once-only email last went out, read from the desk's own log. */
 function lastSends(emails: Awaited<ReturnType<typeof listRsvpEmails>>) {
   const invited: Record<string, string> = {}
-  let invitedAt = ''
   let testedAt = ''
   for (const row of emails) {
-    if (row.kind === 'invitation') {
-      if (!invitedAt) invitedAt = row.sentAt
-      if (row.partyId && !invited[row.partyId])
-        invited[row.partyId] = row.sentAt
+    if (!row.delivered) continue
+    if (row.kind === 'invitation' && row.partyId && !invited[row.partyId]) {
+      invited[row.partyId] = row.sentAt
     }
     if (row.kind === 'test' && !testedAt) testedAt = row.sentAt
   }
-  return { invited, invitedAt, testedAt }
+  return { invited, testedAt }
 }
 
 async function manageView(
@@ -576,7 +607,8 @@ async function manageView(
   return {
     photo: photoView(copy),
     invited: sends.invited,
-    invitedAt: sends.invitedAt,
+    /** Only "Email all invitations" sets this, never a single party's send. */
+    invitedAt: copy.invitedAllAt,
     testedAt: sends.testedAt,
     mode: 'ready' as const,
     desk,
@@ -751,6 +783,8 @@ export const askRsvpQuestion = createServerFn({ method: 'POST' })
 export const saveRsvpGuestList = createServerFn({ method: 'POST' })
   .validator((data: { guests?: unknown; meals?: unknown }) => ({
     guests: guestRows(data.guests),
+    // The meals have their own boxes and their own save now. A list that
+    // still sends them (an older open tab) keeps working.
     meals:
       typeof data.meals === 'string'
         ? data.meals.split(',')
@@ -758,7 +792,7 @@ export const saveRsvpGuestList = createServerFn({ method: 'POST' })
           ? data.meals.filter(
               (item): item is string => typeof item === 'string',
             )
-          : [],
+          : null,
   }))
   .handler(async ({ data }) => {
     const wedding = await ownedWedding()
@@ -776,6 +810,36 @@ export const saveRsvpGuestList = createServerFn({ method: 'POST' })
     if (!saved.ok) return saved
     await writeRsvp(saved.wedding)
     return { ok: true as const }
+  })
+
+/**
+ * The dinner choices guests pick from, one meal per box. This is the same list
+ * the guest dinner dropdown reads, so guests see exactly these options.
+ */
+export const saveRsvpMeals = createServerFn({ method: 'POST' })
+  .validator((data: { meals?: unknown }) => ({
+    meals: Array.isArray(data.meals)
+      ? data.meals
+          .filter((item): item is string => typeof item === 'string')
+          .slice(0, 60)
+          .map((item) => item.slice(0, 200))
+      : null,
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    if (!data.meals) return { ok: false as const, error: 'Send the meals.' }
+    const cleaned = cleanMealList(data.meals)
+    if (!cleaned.ok) return cleaned
+    setMealOptions(wedding, cleaned.meals)
+    await writeRsvp(wedding)
+    return { ok: true as const, meals: mealOptions(wedding) }
   })
 
 export const saveRsvpReplyEmail = createServerFn({ method: 'POST' })
@@ -932,13 +996,21 @@ export const downloadRsvpCsv = createServerFn({ method: 'GET' })
     kind:
       data.kind === 'caterer' ||
       data.kind === 'songs' ||
-      data.kind === 'seating'
+      data.kind === 'seating' ||
+      data.kind === 'timeline'
         ? data.kind
         : 'guests',
   }))
   .handler(async ({ data }) => {
     const wedding = await ownedWedding()
     if (!wedding) return ''
+    if (data.kind === 'seating') {
+      const seating = await loadSeating(wedding)
+      return seatingChartCsv(seating, wedding)
+    }
+    if (data.kind === 'timeline') {
+      return timelineCsv(await readTimeline(wedding.slug), wedding.venue)
+    }
     return csvFor(wedding, data.kind as CsvKind)
   })
 
@@ -993,7 +1065,18 @@ export const getRsvpDesk = createServerFn({ method: 'GET' }).handler(
     const weddings = await listRsvps()
     const { deliverDueReminders } = await import('./reminders.server.ts')
     for (const wedding of weddings) await deliverDueReminders(wedding)
+    const timelines = await listTimelines()
     return weddings.map((wedding) => ({
+      timeline: orderedMoments(
+        timelines.get(wedding.slug) ?? { moments: [], manualOrder: false },
+      ).map((moment) => ({
+        id: moment.id,
+        time: timeLabel(moment.time),
+        title: moment.title,
+        location: moment.location || wedding.venue,
+        note: moment.note,
+        guests: moment.guests,
+      })),
       slug: wedding.slug,
       couple: coupleTitle(wedding),
       eventDate: wedding.eventDate,
@@ -1091,7 +1174,12 @@ export const emailRsvpInvitations = createServerFn({ method: 'POST' })
     const wedding = await ownedWedding()
     const desk = await isDesk()
     if (!wedding || (!wedding.paid && !desk)) {
-      return { ok: false as const, sent: 0, detail: 'This RSVP is not open.' }
+      return {
+        ok: false as const,
+        sent: 0,
+        sentAt: '',
+        detail: 'This RSVP is not open.',
+      }
     }
     const targets = wedding.parties.filter((party) => {
       if (!party.email.includes('@')) return false
@@ -1100,33 +1188,63 @@ export const emailRsvpInvitations = createServerFn({ method: 'POST' })
     })
     if (targets.length === 0) {
       return {
-        ok: true as const,
+        ok: false as const,
         sent: 0,
-        detail: 'No party has an email address yet.',
+        sentAt: '',
+        detail: data.all
+          ? 'No party has an email address yet.'
+          : 'Add an email for this party first.',
       }
     }
     let sent = 0
+    let skipped = 0
     let detail = ''
     for (const party of targets) {
       const result = await sendRsvpEmail({
         slug: wedding.slug,
         kind: 'invitation',
         partyId: party.id,
+        guard: sendKey(wedding.slug, 'invitation', party.id),
         to: party.email,
         email: invitationEmail(wedding, party, partyLink(wedding, party)),
       })
       if (result.delivered) sent += 1
+      else if (result.duplicate) skipped += 1
       else detail = result.detail
     }
-    return {
-      ok: sent > 0,
-      sent,
-      detail:
-        sent > 0 ? `Sent ${sent} invitation${sent === 1 ? '' : 's'}.` : detail,
+    const sentAt = sent > 0 ? new Date().toISOString() : ''
+    if (data.all && sent > 0) {
+      // Read again so a guest reply saved during the sends is kept.
+      const fresh = (await readRsvp(wedding.slug)) ?? wedding
+      fresh.invitedAllAt = sentAt
+      await writeRsvp(fresh)
     }
+    if (sent === 0) {
+      return {
+        ok: false as const,
+        sent,
+        sentAt,
+        detail:
+          skipped > 0 && !detail
+            ? 'That invitation went out moments ago, so it was not sent twice.'
+            : detail || 'The invitation was not sent.',
+      }
+    }
+    const parts = [`Sent ${sent} invitation${sent === 1 ? '' : 's'}.`]
+    if (skipped > 0) {
+      parts.push(
+        `${skipped} had just gone out and ${skipped === 1 ? 'was' : 'were'} not sent twice.`,
+      )
+    }
+    if (detail) parts.push(`Some did not send: ${detail}`)
+    return { ok: true as const, sent, sentAt, detail: parts.join(' ') }
   })
 
-/** Sends any one email type to the couple's own address only. */
+/**
+ * Sends any one email type to the couple's own address only. Test sends never
+ * count against the daily reminder limit and never mark anything as sent; a
+ * short guard per email type stops a double click from sending it twice.
+ */
 export const sendTestRsvpEmail = createServerFn({ method: 'POST' })
   .validator((data: { kind?: string } | undefined) => ({
     kind: isTestKind(data?.kind) ? data.kind : ('invitation' as TestKind),
@@ -1163,17 +1281,36 @@ export const sendTestRsvpEmail = createServerFn({ method: 'POST' })
         detail: 'Add a party with a name before testing that email.',
       }
     }
-    const result = await sendRsvpEmail({
-      slug: wedding.slug,
-      kind: 'test',
-      to,
-      email: built,
-    })
+    let result: Awaited<ReturnType<typeof sendRsvpEmail>>
+    try {
+      result = await sendRsvpEmail({
+        slug: wedding.slug,
+        kind: 'test',
+        testOf: data.kind,
+        guard: sendKey(wedding.slug, 'test', data.kind),
+        to,
+        email: built,
+      })
+    } catch (error) {
+      return {
+        ok: false as const,
+        detail:
+          error instanceof Error && error.message
+            ? `The test did not send: ${error.message.slice(0, 200)}`
+            : 'The test did not send.',
+      }
+    }
+    if (result.duplicate) {
+      return {
+        ok: false as const,
+        detail: 'That test went out moments ago, so it was not sent twice.',
+      }
+    }
     return {
       ok: result.delivered,
       detail: result.delivered
-        ? `Test ${data.kind} sent to ${to}.`
-        : result.detail,
+        ? `Test sent to ${to}.`
+        : `The test did not send: ${result.detail}`,
     }
   })
 
@@ -1202,4 +1339,129 @@ export const removeRsvpDesk = createServerFn({ method: 'POST' })
     if (!(await isDesk())) return { ok: false as const }
     await deleteRsvp(data.slug)
     return { ok: true as const }
+  })
+
+// --- seating chart ---------------------------------------------------------
+
+/** The couple's own RSVP, open to them once paid (and always to the desk). */
+async function openWedding(): Promise<RsvpWedding | null> {
+  const wedding = await ownedWedding()
+  if (!wedding) return null
+  if (!wedding.paid && !(await isDesk())) return null
+  return wedding
+}
+
+/**
+ * The stored plan with anyone no longer attending taken off their seat. The
+ * change is saved straight away, with a notice the couple sees on the tab.
+ */
+async function loadSeating(wedding: RsvpWedding) {
+  const stored = await readSeating(wedding.slug)
+  const pruned = pruneSeating(
+    stored,
+    wedding,
+    new Date().toISOString(),
+    newToken,
+  )
+  if (pruned.changed) {
+    try {
+      await writeSeating(wedding.slug, pruned.plan)
+    } catch {
+      // Shown pruned either way; the next load saves it.
+    }
+  }
+  return pruned.plan
+}
+
+function seatingGuestView(wedding: RsvpWedding) {
+  return seatableGuests(wedding)
+}
+
+export const getRsvpSeating = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const wedding = await openWedding()
+    if (!wedding) return null
+    return {
+      plan: await loadSeating(wedding),
+      guests: seatingGuestView(wedding),
+      couple: coupleTitle(wedding),
+      dateLabel: longWeddingDate(wedding.eventDate),
+      venue: wedding.venue,
+    }
+  },
+)
+
+export const saveRsvpSeating = createServerFn({ method: 'POST' })
+  .validator((data: { tables?: unknown; seats?: unknown }) => ({
+    plan: parseSeating({ tables: data.tables, seats: data.seats }),
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await openWedding()
+    if (!wedding) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    const stored = await readSeating(wedding.slug)
+    const checked = validateSeating(
+      { ...data.plan, notices: stored.notices },
+      wedding,
+    )
+    if (!checked.ok) return checked
+    const savedAt = await writeSeating(wedding.slug, checked.plan)
+    return { ok: true as const, savedAt, plan: checked.plan }
+  })
+
+export const dismissSeatingNotices = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const wedding = await openWedding()
+    if (!wedding) return { ok: false as const }
+    const stored = await readSeating(wedding.slug)
+    await writeSeating(wedding.slug, { ...stored, notices: [] })
+    return { ok: true as const }
+  },
+)
+
+// --- the day's timeline ----------------------------------------------------
+
+export const getRsvpTimeline = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const wedding = await openWedding()
+    if (!wedding) return null
+    return {
+      timeline: await readTimeline(wedding.slug),
+      venue: wedding.venue,
+      couple: coupleTitle(wedding),
+      dateLabel: longWeddingDate(wedding.eventDate),
+    }
+  },
+)
+
+export const saveRsvpTimeline = createServerFn({ method: 'POST' })
+  .validator((data: { moments?: unknown; manualOrder?: unknown }) => ({
+    timeline: parseTimeline({
+      moments: data.moments,
+      manualOrder: data.manualOrder,
+    }),
+    sent: Array.isArray(data.moments) ? data.moments.length : 0,
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await openWedding()
+    if (!wedding) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    if (data.timeline.moments.length < Math.min(data.sent, 40)) {
+      return {
+        ok: false as const,
+        error: 'Every moment needs a time and a title before saving.',
+      }
+    }
+    const checked = validateTimeline(data.timeline)
+    if (!checked.ok) return checked
+    const savedAt = await writeTimeline(wedding.slug, checked.timeline)
+    return { ok: true as const, savedAt, timeline: checked.timeline }
   })

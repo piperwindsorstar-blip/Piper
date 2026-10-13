@@ -124,6 +124,8 @@ export type RsvpWedding = {
   remindedManualAt: string
   /** Date the deadline summary went to the couple. */
   deadlineSummaryOn: string
+  /** ISO time "Email all invitations" last sent at least one invitation. */
+  invitedAllAt: string
 }
 
 export type PaidCouple = {
@@ -1187,6 +1189,7 @@ export function blankWedding(input: {
     remindedIds: [],
     remindedManualAt: '',
     deadlineSummaryOn: '',
+    invitedAllAt: '',
   }
 }
 
@@ -1288,6 +1291,7 @@ export function parseWedding(raw: unknown, slug: string): RsvpWedding | null {
     : []
   base.remindedManualAt = asText(record.remindedManualAt, 40)
   base.deadlineSummaryOn = asText(record.deadlineSummaryOn, 10)
+  base.invitedAllAt = asText(record.invitedAllAt, 40)
   base.slug = slug
   return base
 }

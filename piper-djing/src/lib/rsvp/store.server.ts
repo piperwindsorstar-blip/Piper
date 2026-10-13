@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { query, queryBatch } from '../db.server.ts'
 import { sampleWedding } from './demo.ts'
+import { deletePlans } from './plans.server.ts'
 import { blankWedding, coupleSlug, parseWedding, quoteRsvp } from './model.ts'
 import type { CoupleBooking, PriceQuote, RsvpWedding } from './model.ts'
 import { chunkBase64, decodeBase64, encodeBase64, joinBase64 } from './photo.ts'
@@ -148,6 +149,7 @@ export async function deleteRsvp(slug: string): Promise<void> {
   await ensureRsvpDesk()
   await removeRsvpPhoto(slug)
   await query('DELETE FROM rsvp_questions WHERE slug = $1', [slug])
+  await deletePlans(slug)
   await query('DELETE FROM rsvp_weddings WHERE slug = $1', [slug])
 }
 

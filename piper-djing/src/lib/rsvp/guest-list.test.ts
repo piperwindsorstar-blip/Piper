@@ -2,13 +2,15 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
 import {
+  cleanMealList,
   confirmGuestList,
   partyLabel,
+  setMealOptions,
   splitGuestPaste,
   tidyGuestNames,
   toBotGuests,
 } from './guest-list.ts'
-import { overviewStats } from './model.ts'
+import { mealOptions, overviewStats } from './model.ts'
 
 describe('guest list paste', () => {
   it('splits lines and commas and drops blanks and duplicates', () => {
@@ -93,5 +95,48 @@ describe('guest list paste', () => {
     assert.equal(jordan.plusOneOf, 'liz')
     assert.equal(jordan.isPlusOne, true)
     assert.equal(jordan.partyId, 'miller')
+  })
+})
+
+describe('meal boxes', () => {
+  it('keeps commas inside a meal and trims spaces', () => {
+    const result = cleanMealList([
+      '  Prime rib ',
+      'Chicken, lemon herb',
+      '',
+      '   ',
+      'Vegetarian   risotto',
+    ])
+    assert.deepEqual(result, {
+      ok: true,
+      meals: ['Prime rib', 'Chicken, lemon herb', 'Vegetarian risotto'],
+    })
+  })
+
+  it('refuses the same meal twice', () => {
+    const result = cleanMealList(['Wild salmon', 'wild  SALMON'])
+    assert.equal(result.ok, false)
+    assert.match(result.ok ? '' : result.error, /listed twice/)
+  })
+
+  it('saves to the dinner question guests choose from', () => {
+    const wedding = sampleWedding()
+    const cleaned = cleanMealList(['Prime rib', 'Chicken, lemon herb'])
+    assert.ok(cleaned.ok)
+    if (cleaned.ok) setMealOptions(wedding, cleaned.meals)
+    assert.deepEqual(mealOptions(wedding), ['Prime rib', 'Chicken, lemon herb'])
+  })
+
+  it('leaves meals alone when the guest list is saved without them', () => {
+    const wedding = sampleWedding()
+    const before = mealOptions(wedding)
+    const saved = confirmGuestList(
+      wedding,
+      [{ id: '', name: 'New Person', partyId: 'solo-1', plusOneAllowed: false }],
+      null,
+      () => 'fresh',
+    )
+    assert.ok(saved.ok)
+    if (saved.ok) assert.deepEqual(mealOptions(saved.wedding), before)
   })
 })

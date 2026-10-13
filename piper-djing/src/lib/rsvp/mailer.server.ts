@@ -10,6 +10,8 @@ export type RsvpEmailRecord = {
   slug: string
   partyId: string
   kind: RsvpEmailKind
+  /** For a test send, which email was tested ("reminder", "invitation"…). */
+  testOf: string
   to: string
   subject: string
   delivered: boolean
@@ -30,6 +32,20 @@ CREATE TABLE IF NOT EXISTS rsvp_emails (
   sent_at text NOT NULL
 )`
 
+/**
+ * One row per email that is going out right now. A second send of the same
+ * email to the same party inside the window is refused, so a double click, a
+ * retry or two open tabs can never mail a guest twice.
+ */
+const GUARD = `
+CREATE TABLE IF NOT EXISTS rsvp_send_guard (
+  key text PRIMARY KEY,
+  at bigint NOT NULL
+)`
+
+/** How long one email to one party blocks the same email again. */
+export const SEND_GUARD_MS = 60_000
+
 let ready: Promise<void> | null = null
 
 function ensure(): Promise<void> {
@@ -39,6 +55,7 @@ function ensure(): Promise<void> {
       await query(
         'CREATE INDEX IF NOT EXISTS rsvp_emails_slug ON rsvp_emails (slug)',
       )
+      await query(GUARD)
     })().catch((error: unknown) => {
       ready = null
       throw error
@@ -70,11 +87,13 @@ type Row = {
 }
 
 function record(row: Row): RsvpEmailRecord {
+  const test = row.kind.startsWith('test')
   return {
     id: row.id,
     slug: row.slug,
     partyId: row.party_id,
-    kind: row.kind as RsvpEmailKind,
+    kind: (test ? 'test' : row.kind) as RsvpEmailKind,
+    testOf: test ? row.kind.slice(5) : '',
     to: row.to_address,
     subject: row.subject,
     delivered: flag(row.delivered),
@@ -99,7 +118,7 @@ export async function listRsvpEmails(slug: string): Promise<RsvpEmailRecord[]> {
 async function remember(input: {
   slug: string
   partyId: string
-  kind: RsvpEmailKind
+  kind: string
   to: string
   subject: string
   result: MailResult
@@ -123,9 +142,52 @@ async function remember(input: {
   )
 }
 
+/** The guard key for one email type to one party (or one test type). */
+export function sendKey(slug: string, kind: string, target: string): string {
+  return `${slug}|${kind}|${target}`.slice(0, 200)
+}
+
+/**
+ * Takes the send slot for this key. False means the same email to the same
+ * party started less than SEND_GUARD_MS ago. A guard that cannot be read never
+ * blocks a send.
+ */
+export async function claimSend(key: string, now = Date.now()): Promise<boolean> {
+  try {
+    await ensure()
+    const rows = await query<{ key: string }>(
+      `INSERT INTO rsvp_send_guard (key, at) VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET at = EXCLUDED.at
+       WHERE rsvp_send_guard.at < $3
+       RETURNING key`,
+      [key, now, now - SEND_GUARD_MS],
+    )
+    return rows.length > 0
+  } catch {
+    return true
+  }
+}
+
+/** Frees the slot after a failed send, so the couple can retry at once. */
+async function releaseSend(key: string): Promise<void> {
+  try {
+    await query('DELETE FROM rsvp_send_guard WHERE key = $1', [key])
+  } catch {
+    // The slot runs out on its own.
+  }
+}
+
+export type RsvpSendResult = MailResult & { duplicate?: boolean }
+
+export const DUPLICATE_DETAIL =
+  'That email went out moments ago, so it was not sent twice.'
+
 /**
  * Sends one RSVP email and writes it to the desk's log. The log write never
  * breaks the send: a missing table still returns the delivery result.
+ *
+ * With `guard`, the same email to the same party cannot go out twice inside
+ * SEND_GUARD_MS. `testOf` records which email a test send was.
  */
 export async function sendRsvpEmail(input: {
   slug: string
@@ -133,13 +195,22 @@ export async function sendRsvpEmail(input: {
   to: string
   email: Letter
   partyId?: string
-}): Promise<MailResult> {
+  guard?: string
+  testOf?: string
+}): Promise<RsvpSendResult> {
+  if (input.guard && !(await claimSend(input.guard))) {
+    return { delivered: false, duplicate: true, detail: DUPLICATE_DETAIL }
+  }
   const result = await emailLetter(input.to, input.email)
+  if (input.guard && !result.delivered) await releaseSend(input.guard)
   try {
     await remember({
       slug: input.slug,
       partyId: input.partyId ?? '',
-      kind: input.kind,
+      kind:
+        input.kind === 'test' && input.testOf
+          ? `test:${input.testOf}`.slice(0, 40)
+          : input.kind,
       to: input.to,
       subject: input.email.subject,
       result,
