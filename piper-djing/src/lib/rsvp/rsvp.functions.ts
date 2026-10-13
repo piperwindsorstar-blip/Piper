@@ -2,16 +2,15 @@ import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import { isDesk } from '../auth/session.server.ts'
 import { PUBLIC_EMAIL } from '../crm/defaults.ts'
-import { emailLetter } from '../crm/mail.server.ts'
 import { publicUrl } from '../crm/safe-origin.ts'
 import { torontoToday } from '../piper/rules.ts'
 import {
+  catererCsv,
+  priceLabel,
   applyHousehold,
   applyPartyDraft,
   asksSong,
   calendarIcs,
-  confirmationLetter,
-  coupleNotice,
   coupleReplyAddress,
   coupleTitle,
   csvFor,
@@ -28,14 +27,12 @@ import {
   noteLookup,
   overviewStats,
   parseWedding,
-  partiesToRemind,
   partiesWaiting,
   partyByToken,
   partyLine,
   rsvpPath,
   setSongStatus,
   shortMonthDay,
-  signInLetter,
   songRows,
 } from './model.ts'
 import type {
@@ -49,7 +46,19 @@ import type {
 } from './model.ts'
 import { confirmGuestList } from './guest-list.ts'
 import type { GuestListRow } from './guest-list.ts'
-import { questionLetter } from './questions.ts'
+import {
+  confirmationEmail,
+  deadlineSummaryEmail,
+  invitationEmail,
+  piperQuestionEmail,
+  reminderEmail,
+  replyNoticeEmail,
+  signInEmail,
+  welcomeEmail,
+} from './emails.ts'
+import type { RsvpEmail } from './emails.ts'
+import { listRsvpEmails, sendRsvpEmail } from './mailer.server.ts'
+import { notifyCouplePaid, notifyPiperSignup } from './notify.server.ts'
 import {
   coupleBookings,
   createRsvpWedding,
@@ -183,6 +192,7 @@ export const startRsvp = createServerFn({ method: 'POST' })
     }
     const wedding = await createRsvpWedding(data)
     rememberRsvpSlug(wedding.slug)
+    await notifyPiperSignup(wedding)
     return {
       ok: true as const,
       slug: wedding.slug,
@@ -419,13 +429,27 @@ export const saveHouseholdReply = createServerFn({ method: 'POST' })
       }
     }
     const url = editUrl(result.wedding.slug, result.party.token)
-    const guest = await emailLetter(
-      result.party.email,
-      confirmationLetter(result.wedding, result.party, url),
-    )
+    const guest = await sendRsvpEmail({
+      slug: result.wedding.slug,
+      kind: 'confirmation',
+      partyId: result.party.id,
+      to: result.party.email,
+      email: confirmationEmail(result.wedding, result.party, url),
+    })
     const couple = coupleReplyAddress(result.wedding, await coupleBookings())
     if (couple.includes('@')) {
-      await emailLetter(couple, coupleNotice(result.wedding, result.party))
+      await sendRsvpEmail({
+        slug: result.wedding.slug,
+        kind: 'reply-notice',
+        partyId: result.party.id,
+        to: couple,
+        email: replyNoticeEmail(
+          result.wedding,
+          result.party,
+          overviewStats(result.wedding, Date.now()),
+          publicUrl('/rsvp/manage'),
+        ),
+      })
     }
     if (!guest.delivered) {
       return { ok: true as const, mailed: false, detail: guest.detail }
@@ -461,10 +485,12 @@ export const requestRsvpSignIn = createServerFn({ method: 'POST' })
       wedding.signInToken = token
       wedding.signInExpires = new Date(Date.now() + 86_400_000).toISOString()
       await writeRsvp(wedding)
-      const mailed = await emailLetter(
-        email,
-        signInLetter(publicUrl(`/rsvp/open/${token}`)),
-      )
+      const mailed = await sendRsvpEmail({
+        slug: wedding.slug,
+        kind: 'sign-in',
+        to: email,
+        email: signInEmail(publicUrl(`/rsvp/open/${token}`)),
+      })
       if (!mailed.delivered) {
         return {
           ok: false as const,
@@ -501,6 +527,7 @@ async function manageView(
   copy.signInToken = ''
   copy.signInExpires = ''
   const questions = await listCoupleQuestions(copy.slug)
+  const emails = await listRsvpEmails(copy.slug)
   return {
     mode: 'ready' as const,
     desk,
@@ -514,6 +541,11 @@ async function manageView(
     path: rsvpPath(copy.slug),
     publicLink: publicUrl(rsvpPath(copy.slug)),
     replyTarget,
+    reminderManual: {
+      allowed: manualReminderAllowed(copy.remindedManualAt),
+      lastAt: copy.remindedManualAt,
+    },
+    emails: emails.slice(0, 25),
     questions,
   }
 }
@@ -525,7 +557,10 @@ export const setRsvpTheme = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const wedding = await ownedWedding()
     if (!wedding) {
-      return { ok: false as const, error: 'Open your RSVP from the sign-in link.' }
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
     }
     wedding.theme = data.theme
     await writeRsvp(wedding)
@@ -575,7 +610,12 @@ export const askRsvpQuestion = createServerFn({ method: 'POST' })
       text: data.text,
       askedAt: new Date().toISOString(),
     })
-    const mailed = await emailLetter(PUBLIC_EMAIL, questionLetter(question))
+    const mailed = await sendRsvpEmail({
+      slug: wedding.slug,
+      kind: 'piper-question',
+      to: PUBLIC_EMAIL,
+      email: piperQuestionEmail(question),
+    })
     return {
       ok: true as const,
       notice: mailed.delivered
@@ -788,9 +828,21 @@ export const sendRsvpReminders = createServerFn({ method: 'POST' })
     if (!wedding || (!wedding.paid && !desk)) {
       return { ok: false as const, sent: 0, detail: 'This RSVP is not open.' }
     }
-    const parties = data.now
-      ? partiesWaiting(wedding)
-      : partiesToRemind(wedding, torontoToday())
+    if (!data.now) {
+      return {
+        ok: false as const,
+        sent: 0,
+        detail: 'That reminder is automatic.',
+      }
+    }
+    if (!manualReminderAllowed(wedding.remindedManualAt)) {
+      return {
+        ok: false as const,
+        sent: 0,
+        detail: 'A manual reminder went out in the last 24 hours.',
+      }
+    }
+    const parties = partiesWaiting(wedding)
     if (parties.length === 0) {
       return {
         ok: true as const,
@@ -800,8 +852,8 @@ export const sendRsvpReminders = createServerFn({ method: 'POST' })
     }
     const { mailParties } = await import('./reminders.server.ts')
     const result = await mailParties(wedding, parties)
-    if (!data.now && result.sent === parties.length) {
-      wedding.remindedOn = torontoToday()
+    if (result.sent > 0) {
+      wedding.remindedManualAt = new Date().toISOString()
       await writeRsvp(wedding)
     }
     return {
@@ -841,9 +893,164 @@ export const markRsvpPaid = createServerFn({ method: 'POST' })
     if (!(await isDesk())) return { ok: false as const }
     const wedding = await readRsvp(data.slug)
     if (!wedding) return { ok: false as const }
+    const wasPaid = wedding.paid
     wedding.paid = data.paid
     await writeRsvp(wedding)
+    if (wedding.paid && !wasPaid) await notifyCouplePaid(wedding)
     return { ok: true as const }
+  })
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function manualReminderAllowed(lastAt: string): boolean {
+  const last = Date.parse(lastAt)
+  if (Number.isNaN(last)) return true
+  return Date.now() - last >= DAY_MS
+}
+
+function partyLink(wedding: RsvpWedding, party: { token: string }): string {
+  return publicUrl(`${rsvpPath(wedding.slug)}/p/${party.token}`)
+}
+
+const TEST_KINDS = [
+  'invitation',
+  'confirmation',
+  'reminder',
+  'reply-notice',
+  'welcome',
+  'deadline-summary',
+  'sign-in',
+] as const
+
+type TestKind = (typeof TEST_KINDS)[number]
+
+function isTestKind(value: unknown): value is TestKind {
+  return (
+    typeof value === 'string' &&
+    (TEST_KINDS as readonly string[]).includes(value)
+  )
+}
+
+function buildTestEmail(
+  kind: TestKind,
+  wedding: RsvpWedding,
+  party: RsvpWedding['parties'][number] | undefined,
+  url: string,
+  dashboardUrl: string,
+): RsvpEmail | null {
+  const stats = overviewStats(wedding, Date.now())
+  if (kind === 'welcome') {
+    return welcomeEmail(wedding, {
+      amountLabel: priceLabel(wedding.priceCents),
+      dashboardUrl,
+      guestUrl: publicUrl(rsvpPath(wedding.slug)),
+    })
+  }
+  if (kind === 'deadline-summary') {
+    return deadlineSummaryEmail(wedding, stats, catererCsv(wedding))
+  }
+  if (kind === 'sign-in') return signInEmail(url)
+  if (!party) return null
+  if (kind === 'invitation') return invitationEmail(wedding, party, url)
+  if (kind === 'confirmation') return confirmationEmail(wedding, party, url)
+  if (kind === 'reminder') return reminderEmail(wedding, party, url)
+  return replyNoticeEmail(wedding, party, stats, dashboardUrl)
+}
+
+/** Emails the invitation card to each party with an address. Never automatic. */
+export const emailRsvpInvitations = createServerFn({ method: 'POST' })
+  .validator((data: { partyId?: string; all?: boolean } | undefined) => ({
+    partyId: text(data?.partyId, 40),
+    all: data?.all === true,
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return { ok: false as const, sent: 0, detail: 'This RSVP is not open.' }
+    }
+    const targets = wedding.parties.filter((party) => {
+      if (!party.email.includes('@')) return false
+      if (data.all) return true
+      return data.partyId !== '' && party.id === data.partyId
+    })
+    if (targets.length === 0) {
+      return {
+        ok: true as const,
+        sent: 0,
+        detail: 'No party has an email address yet.',
+      }
+    }
+    let sent = 0
+    let detail = ''
+    for (const party of targets) {
+      const result = await sendRsvpEmail({
+        slug: wedding.slug,
+        kind: 'invitation',
+        partyId: party.id,
+        to: party.email,
+        email: invitationEmail(wedding, party, partyLink(wedding, party)),
+      })
+      if (result.delivered) sent += 1
+      else detail = result.detail
+    }
+    return {
+      ok: sent > 0,
+      sent,
+      detail:
+        sent > 0 ? `Sent ${sent} invitation${sent === 1 ? '' : 's'}.` : detail,
+    }
+  })
+
+/** Sends any one email type to the couple's own address only. */
+export const sendTestRsvpEmail = createServerFn({ method: 'POST' })
+  .validator((data: { kind?: string } | undefined) => ({
+    kind: isTestKind(data?.kind) ? data.kind : ('invitation' as TestKind),
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        detail: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    const to = (wedding.replyEmail || wedding.email).trim()
+    if (!to.includes('@')) {
+      return { ok: false as const, detail: "Add the couple's email first." }
+    }
+    const party =
+      wedding.parties.find((item) => item.email.includes('@')) ??
+      wedding.parties.at(0)
+    const url = party
+      ? partyLink(wedding, party)
+      : publicUrl(rsvpPath(wedding.slug))
+    const built = buildTestEmail(
+      data.kind,
+      wedding,
+      party,
+      url,
+      publicUrl('/rsvp/manage'),
+    )
+    if (!built) {
+      return {
+        ok: false as const,
+        detail: 'Add a party with a name before testing that email.',
+      }
+    }
+    const result = await sendRsvpEmail({
+      slug: wedding.slug,
+      kind: 'test',
+      to,
+      email: built,
+    })
+    return {
+      ok: result.delivered,
+      detail: result.delivered
+        ? `Test ${data.kind} sent to ${to}.`
+        : result.detail,
+    }
   })
 
 export const openRsvpDesk = createServerFn({ method: 'POST' })

@@ -168,6 +168,18 @@ CREATE TABLE IF NOT EXISTS rsvp_weddings (
   body text NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS rsvp_weddings_email ON rsvp_weddings (lower(email));
+CREATE TABLE IF NOT EXISTS rsvp_emails (
+  id text PRIMARY KEY,
+  slug text NOT NULL,
+  party_id text NOT NULL DEFAULT '',
+  kind text NOT NULL,
+  to_address text NOT NULL,
+  subject text NOT NULL,
+  delivered integer NOT NULL DEFAULT 0,
+  detail text NOT NULL DEFAULT '',
+  sent_at text NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rsvp_emails_slug ON rsvp_emails (slug);
 `
 
 export type SqlStatement = { sql: string; params?: unknown[] }

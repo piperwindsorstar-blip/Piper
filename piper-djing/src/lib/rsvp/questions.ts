@@ -1,3 +1,6 @@
+import { piperQuestionEmail } from './emails.ts'
+import type { RsvpEmail } from './emails.ts'
+
 export type CoupleQuestion = {
   id: string
   rsvpId: string
@@ -13,16 +16,6 @@ export function questionLetter(question: {
   couple: string
   text: string
   askedAt: string
-}): { subject: string; text: string } {
-  return {
-    subject: `Question from ${question.couple}`,
-    text: [
-      `${question.couple} asked a question on their RSVP.`,
-      '',
-      `RSVP: ${question.rsvpId}`,
-      `Time: ${question.askedAt}`,
-      '',
-      question.text,
-    ].join('\n'),
-  }
+}): RsvpEmail {
+  return piperQuestionEmail(question)
 }

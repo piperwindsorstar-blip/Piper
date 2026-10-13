@@ -54,6 +54,7 @@ const RSVP_SLUG = '([a-z0-9]+(?:-[a-z0-9]+)*)'
 const RSVP_TOKEN = '([A-Za-z0-9_-]+)'
 
 export type RsvpBotAction =
+  | { kind: 'emails'; id: string }
   | { kind: 'questions'; id: string }
   | { kind: 'question-reply'; id: string; questionId: string }
   | { kind: 'guests'; id: string }
@@ -62,6 +63,10 @@ export type RsvpBotAction =
 /** Nested RSVP paths. The two-segment desk routes stay on deskBotTarget. */
 export function rsvpBotTarget(pathname: string): RsvpBotAction | null {
   const bare = bareBotPath(pathname)
+  const emails = new RegExp(`^/api/bots/v1/rsvps/${RSVP_SLUG}/emails$`).exec(
+    bare,
+  )
+  if (emails?.[1]) return { kind: 'emails', id: emails[1] }
   const questions = new RegExp(
     `^/api/bots/v1/rsvps/${RSVP_SLUG}/questions$`,
   ).exec(bare)

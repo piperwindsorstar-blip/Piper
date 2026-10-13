@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
+import { confirmationEmail } from './emails.ts'
 import type { LookupResult, RsvpParty } from './model.ts'
 import {
   PIPER_RSVP_CENTS,
@@ -10,7 +11,6 @@ import {
   catererCsv,
   codesMatch,
   csvCell,
-  confirmationLetter,
   coupleReplyAddress,
   coupleSlug,
   findParty,
@@ -391,18 +391,22 @@ describe('rsvp songs, mail, and csv', () => {
     )
   })
 
-  it('builds a confirmation that stays inside the party', () => {
+  it('builds a confirmation that names the couple and stays inside the party', () => {
     const wedding = sampleWedding()
     const party = wedding.parties[0]
     assert.ok(party)
-    const letter = confirmationLetter(
+    const letter = confirmationEmail(
       wedding,
       party,
       'https://piperpweddingdj.services/rsvp/sarah-and-michael/p/miller',
     )
+    assert.equal(letter.subject, 'Your RSVP for Sarah & Michael is in')
     assert.match(letter.text, /Elizabeth Miller/)
+    assert.match(letter.text, /Sarah & Michael/)
     assert.match(letter.text, /\/rsvp\/sarah-and-michael/)
+    assert.match(letter.text, /Wild salmon/)
     assert.doesNotMatch(letter.text, /Okafor/)
+    assert.doesNotMatch(letter.text, /the Piper/i)
   })
 
   it('prefixes formula cells and round-trips the saved wedding', () => {

@@ -35,9 +35,19 @@ export type LetterBooking = {
   invoice: LetterInvoice | null
 }
 
+export type LetterAttachment = {
+  filename: string
+  /** Raw file contents. Base64 for binary, plain text for CSV and the like. */
+  content: string
+  contentType: string
+}
+
 export type Letter = {
   subject: string
   text: string
+  /** Optional rich card. Falls back to the plain text when absent. */
+  html?: string
+  attachments?: LetterAttachment[]
 }
 
 const STATUS_LABEL: Record<string, string> = {

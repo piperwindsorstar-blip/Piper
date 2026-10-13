@@ -76,6 +76,8 @@ import {
   replyCoupleQuestion,
   writeRsvp,
 } from '../rsvp/store.server.ts'
+import { listRsvpEmails } from '../rsvp/mailer.server.ts'
+import { notifyCouplePaid } from '../rsvp/notify.server.ts'
 import { legacyRole } from './desk-leads.server.ts'
 import { selectLeads, toBotLead } from './desk-leads.ts'
 import { deskBotTarget, rsvpBotTarget } from './desk-rest.ts'
@@ -972,8 +974,10 @@ async function rsvps(
         400,
       )
     }
+    const wasPaid = wedding.paid
     wedding.paid = open
     await writeRsvp(wedding)
+    if (wedding.paid && !wasPaid) await notifyCouplePaid(wedding)
     return botJson({ rsvp: toBotRsvp(wedding) })
   }
   return botJson({ error: 'That action is not on the desk.' }, 405)
@@ -1030,6 +1034,12 @@ async function rsvpNested(
 ): Promise<Response> {
   const wedding = await readRsvp(action.id)
   if (!wedding) return botJson({ error: 'That RSVP is not on the desk.' }, 404)
+  if (action.kind === 'emails') {
+    if (method !== 'GET') {
+      return botJson({ error: 'Emails are a record of what was sent.' }, 405)
+    }
+    return botJson({ emails: await listRsvpEmails(action.id) })
+  }
   if (action.kind === 'questions') {
     if (method !== 'GET') {
       return botJson({ error: 'That action is not on the desk.' }, 405)
@@ -1211,7 +1221,8 @@ function customCents(body: Record<string, unknown>): number {
 }
 
 function customDeposit(body: Record<string, unknown>): number {
-  if (typeof body.customDepositCents === 'number') return body.customDepositCents
+  if (typeof body.customDepositCents === 'number')
+    return body.customDepositCents
   if (body.customDepositDollars !== undefined)
     return dollarsToCents(String(body.customDepositDollars))
   if (typeof body.depositCents === 'number') return body.depositCents

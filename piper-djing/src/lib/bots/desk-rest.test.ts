@@ -398,3 +398,50 @@ describe('desk bot edits', { skip: liveBook }, () => {
     }
   })
 })
+
+describe('rsvp email log over the bot API', { skip: liveBook }, () => {
+  it('lists the emails sent for one RSVP at /rsvps/{id}/emails', async () => {
+    const ceo = await inviteBot('Email Log Ceo', 'ceo')
+    const wedding = sampleWedding()
+    wedding.slug = 'email-log-api'
+    await writeRsvp(wedding)
+    const party = wedding.parties[0]
+    assert.ok(party)
+    const { sendRsvpEmail } = await import('../rsvp/mailer.server.ts')
+    const { invitationEmail } = await import('../rsvp/emails.ts')
+    await sendRsvpEmail({
+      slug: wedding.slug,
+      kind: 'invitation',
+      partyId: party.id,
+      to: party.email,
+      email: invitationEmail(wedding, party, 'https://x/y'),
+    })
+    const listed = await deskBotResponse(
+      new Request(`http://localhost/api/bots/v1/rsvps/${wedding.slug}/emails`, {
+        headers: { authorization: `Bearer ${ceo.token}` },
+      }),
+      async () => 'no',
+    )
+    assert.equal(listed.status, 200)
+    const body = (await listed.json()) as {
+      emails: { kind: string; to: string; partyId: string }[]
+    }
+    assert.equal(body.emails.length, 1)
+    assert.equal(body.emails[0]?.kind, 'invitation')
+    assert.equal(body.emails[0]?.to, party.email)
+    assert.equal(body.emails[0]?.partyId, party.id)
+    await deleteRsvp(wedding.slug)
+  })
+
+  it('refuses to write to the email record', async () => {
+    const ceo = await inviteBot('Email Log Writer', 'ceo')
+    const denied = await deskBotResponse(
+      new Request('http://localhost/api/bots/v1/rsvps/anything/emails', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${ceo.token}` },
+      }),
+      async () => 'no',
+    )
+    assert.equal(denied.status, 404)
+  })
+})

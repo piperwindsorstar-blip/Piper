@@ -13,29 +13,117 @@ export function mailbox(from: string): string {
   return (wrapped?.[1] ?? from).trim()
 }
 
+function escapeHeader(value: string): string {
+  return value.replace(/[\r\n]+/gu, ' ').trim()
+}
+
+function encodeBody(text: string): string {
+  return text
+    .replace(/\r\n/gu, '\n')
+    .replace(/\r/gu, '\n')
+    .split('\n')
+    .map((line) => (line.startsWith('.') ? `.${line}` : line))
+    .join('\r\n')
+}
+
+function randomBoundary(prefix: string): string {
+  const noise =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID().replace(/-/gu, '')
+      : `${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`
+  return `${prefix}_${noise}`
+}
+
+function toBase64(content: string): string {
+  const bytes = new TextEncoder().encode(content)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary)
+}
+
+function foldedBase64(content: string): string {
+  const encoded = toBase64(content)
+  return (encoded.match(/.{1,76}/gu) ?? []).join('\r\n')
+}
+
 export function smtpData(input: {
   from: string
   to: string
   replyTo: string | null
   letter: Letter
 }): string {
-  const subject = input.letter.subject.replace(/[\r\n]+/gu, ' ').trim()
-  const headers = [
-    `From: ${input.from.replace(/[\r\n]+/gu, ' ').trim()}`,
+  const base = [
+    `From: ${escapeHeader(input.from)}`,
     `To: ${input.to}`,
     input.replyTo ? `Reply-To: ${input.replyTo}` : '',
-    `Subject: ${subject}`,
+    `Subject: ${escapeHeader(input.letter.subject)}`,
     'MIME-Version: 1.0',
+  ].filter(Boolean)
+  const text = encodeBody(input.letter.text)
+  const html = input.letter.html ?? ''
+  const files = input.letter.attachments ?? []
+  const asText = [
     'Content-Type: text/plain; charset=utf-8',
     'Content-Transfer-Encoding: 8bit',
-  ].filter(Boolean)
-  const body = input.letter.text
-    .replace(/\r\n/gu, '\n')
-    .replace(/\r/gu, '\n')
-    .split('\n')
-    .map((line) => (line.startsWith('.') ? `.${line}` : line))
-    .join('\r\n')
-  return `${headers.join('\r\n')}\r\n\r\n${body}\r\n`
+  ]
+  const asHtml = [
+    'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: 8bit',
+  ]
+
+  if (!html && files.length === 0) {
+    return `${[...base, ...asText].join('\r\n')}\r\n\r\n${text}\r\n`
+  }
+
+  if (files.length === 0) {
+    const boundary = randomBoundary('piper')
+    const parts = [
+      `--${boundary}`,
+      ...asText,
+      '',
+      text,
+      `--${boundary}`,
+      ...asHtml,
+      '',
+      html,
+      `--${boundary}--`,
+    ]
+    return `${[...base, `Content-Type: multipart/alternative; boundary="${boundary}"`].join('\r\n')}\r\n\r\n${parts.join('\r\n')}\r\n`
+  }
+
+  const outer = randomBoundary('piper-mixed')
+  const parts: string[] = []
+  if (html) {
+    const inner = randomBoundary('piper-alt')
+    parts.push(
+      `--${outer}`,
+      `Content-Type: multipart/alternative; boundary="${inner}"`,
+      '',
+      `--${inner}`,
+      ...asText,
+      '',
+      text,
+      `--${inner}`,
+      ...asHtml,
+      '',
+      html,
+      `--${inner}--`,
+    )
+  } else {
+    parts.push(`--${outer}`, ...asText, '', text)
+  }
+  for (const file of files) {
+    parts.push(
+      `--${outer}`,
+      `Content-Type: ${file.contentType}; name="${escapeHeader(file.filename)}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${escapeHeader(file.filename)}"`,
+      '',
+      foldedBase64(file.content),
+    )
+  }
+  parts.push(`--${outer}--`)
+  return `${[...base, `Content-Type: multipart/mixed; boundary="${outer}"`].join('\r\n')}\r\n\r\n${parts.join('\r\n')}\r\n`
 }
 
 async function readReply(reader: ReadableStreamDefaultReader<Uint8Array>) {

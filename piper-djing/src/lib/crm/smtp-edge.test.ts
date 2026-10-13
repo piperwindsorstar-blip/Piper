@@ -58,6 +58,41 @@ describe('edge smtp', () => {
     assert.match(data, /Subject: You are confirmed/)
     assert.match(data, /To: guest@example.com/)
     assert.match(data, /\r\n\.\.secret\r\n/)
+    assert.match(data, /Content-Type: text\/plain; charset=utf-8/)
+  })
+
+  it('wraps an HTML card and a CSV attachment in one message', () => {
+    const data = smtpData({
+      from: 'Piper DJing <PiperPWeddingDJ@gmail.com>',
+      to: 'guest@example.com',
+      replyTo: null,
+      letter: {
+        subject: 'You are invited',
+        text: 'You are invited',
+        html: '<table><tr><td>Cream card</td></tr></table>',
+        attachments: [
+          {
+            filename: 'caterer-report.csv',
+            content: 'Name,Meal\nAda,Salmon\n',
+            contentType: 'text/csv; charset=utf-8',
+          },
+        ],
+      },
+    })
+    assert.match(data, /Content-Type: multipart\/mixed; boundary="piper-mixed_/)
+    assert.match(
+      data,
+      /Content-Type: multipart\/alternative; boundary="piper-alt_/,
+    )
+    assert.match(data, /Content-Type: text\/html; charset=utf-8/)
+    assert.match(data, /<td>Cream card<\/td>/)
+    assert.match(data, /Content-Type: text\/csv; charset=utf-8/)
+    assert.match(
+      data,
+      /Content-Disposition: attachment; filename="caterer-report.csv"/,
+    )
+    const encoded = Buffer.from('Name,Meal\nAda,Salmon\n').toString('base64')
+    assert.ok(data.includes(encoded))
   })
 
   it('authenticates and accepts the message', async () => {

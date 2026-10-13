@@ -213,7 +213,12 @@ async function deliver(to: string, letter: Letter): Promise<MailResult> {
       replyTo: smtp.replyTo ?? undefined,
       subject: letter.subject,
       text: letter.text,
-      html: asHtml(letter.text),
+      html: letter.html ?? asHtml(letter.text),
+      attachments: letter.attachments?.map((file) => ({
+        filename: file.filename,
+        content: file.content,
+        contentType: file.contentType,
+      })),
     })
     return { delivered: true, detail: 'Sent.' }
   } catch (error) {

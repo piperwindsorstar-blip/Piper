@@ -109,7 +109,14 @@ export type RsvpWedding = {
   songStatus: Record<string, SongStatus>
   signInToken: string
   signInExpires: string
+  /** Date the last automatic reminder run covered this wedding. */
   remindedOn: string
+  /** Party ids that already had the automatic 7-day reminder. */
+  remindedIds: string[]
+  /** ISO time of the last manual "email parties still waiting" send. */
+  remindedManualAt: string
+  /** Date the deadline summary went to the couple. */
+  deadlineSummaryOn: string
 }
 
 export type PaidCouple = {
@@ -1058,90 +1065,6 @@ export function csvFor(wedding: RsvpWedding, kind: CsvKind): string {
   return guestCsv(wedding)
 }
 
-export function confirmationLetter(
-  wedding: RsvpWedding,
-  party: RsvpParty,
-  editUrl: string,
-): { subject: string; text: string } {
-  const lead = party.guests.find((guest) => !guest.isPlusOne) ?? party.guests[0]
-  const lines = party.guests.map((guest) => {
-    const bits = invitedEvents(wedding, party).map((event) => {
-      const reply = replyFor(guest, event.id)
-      const mark =
-        reply === 'attending' ? 'yes' : reply === 'declined' ? 'no' : 'not yet'
-      const meal = reply === 'attending' && guest.meal ? ` (${guest.meal})` : ''
-      return `${event.name}: ${mark}${meal}`
-    })
-    return `${guest.firstName} ${guest.lastName} — ${bits.join('; ')}`
-  })
-  return {
-    subject: `You're confirmed for ${shortMonthDay(wedding.eventDate) || 'the wedding'}`,
-    text: [
-      `Thanks, ${lead.firstName || 'there'}!`,
-      '',
-      `Here's what you told us for the ${party.name}:`,
-      ...lines,
-      '',
-      party.note ? `Note: ${party.note}` : '',
-      `Change your reply: ${editUrl}`,
-      `This private link works until ${shortMonthDay(wedding.deadline) || 'the deadline'}.`,
-      longWeddingDate(wedding.eventDate),
-      [wedding.venue, wedding.address].filter(Boolean).join(' · '),
-      '',
-      'RSVP powered by DJ Piper P · piperpweddingdj.services',
-    ]
-      .filter((line) => line !== '')
-      .join('\n'),
-  }
-}
-
-export function reminderLetter(
-  wedding: RsvpWedding,
-  party: RsvpParty,
-  url: string,
-): { subject: string; text: string } {
-  return {
-    subject: `RSVP for ${coupleTitle(wedding)} by ${shortMonthDay(wedding.deadline) || 'the deadline'}`,
-    text: [
-      `Hi ${party.name},`,
-      '',
-      `${coupleTitle(wedding)} are still hoping to hear from you.`,
-      `Please reply by ${shortMonthDay(wedding.deadline) || 'the deadline'}: ${url}`,
-      '',
-      'RSVP powered by DJ Piper P · piperpweddingdj.services',
-    ].join('\n'),
-  }
-}
-
-export function signInLetter(url: string): { subject: string; text: string } {
-  return {
-    subject: 'Your Piper RSVP sign-in link',
-    text: [
-      'Here is your one-time sign-in link. It works for 24 hours.',
-      url,
-      '',
-      'If you did not ask for this, you can ignore it.',
-    ].join('\n'),
-  }
-}
-
-export function coupleNotice(
-  wedding: RsvpWedding,
-  party: RsvpParty,
-): { subject: string; text: string } {
-  const tally = draftTally(party)
-  return {
-    subject: `${party.name} replied · ${coupleTitle(wedding)}`,
-    text: [
-      `${party.name} sent an RSVP.`,
-      `${tally.attending} attending, ${tally.declined} can't make it.`,
-      party.note ? `Note: ${party.note}` : '',
-    ]
-      .filter((line) => line !== '')
-      .join('\n'),
-  }
-}
-
 export function calendarIcs(wedding: RsvpWedding): string {
   const stamp = wedding.eventDate.replaceAll('-', '')
   const summary = icsText(coupleTitle(wedding))
@@ -1252,6 +1175,9 @@ export function blankWedding(input: {
     signInToken: '',
     signInExpires: '',
     remindedOn: '',
+    remindedIds: [],
+    remindedManualAt: '',
+    deadlineSummaryOn: '',
   }
 }
 
@@ -1344,6 +1270,13 @@ export function parseWedding(raw: unknown, slug: string): RsvpWedding | null {
   base.signInToken = asText(record.signInToken, 80)
   base.signInExpires = asText(record.signInExpires, 40)
   base.remindedOn = asText(record.remindedOn, 10)
+  base.remindedIds = Array.isArray(record.remindedIds)
+    ? record.remindedIds
+        .map((item) => asText(item, 40))
+        .filter((item) => item !== '')
+    : []
+  base.remindedManualAt = asText(record.remindedManualAt, 40)
+  base.deadlineSummaryOn = asText(record.deadlineSummaryOn, 10)
   base.slug = slug
   return base
 }

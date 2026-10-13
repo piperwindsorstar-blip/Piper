@@ -6,12 +6,14 @@ import { priceLabel } from '../../lib/rsvp/model.ts'
 import {
   askRsvpQuestion,
   downloadRsvpCsv,
+  emailRsvpInvitations,
   removeRsvpParty,
   saveRsvpParty,
   saveRsvpReplyEmail,
   saveRsvpSetup,
   saveSongStatus,
   sendRsvpReminders,
+  sendTestRsvpEmail,
   setRsvpTheme,
 } from '../../lib/rsvp/rsvp.functions.ts'
 import { GuestPaste } from './guest-paste.tsx'
@@ -47,50 +49,50 @@ export function ManageShell({
   const theme = data.wedding.theme
   return (
     <RsvpThemeProvider theme={theme}>
-    <div
-      className={`portal min-h-screen md:grid md:grid-cols-[240px_1fr] ${theme === 'light' ? 'light' : ''}`}
-      style={
-        theme === 'light'
-          ? undefined
-          : {
-              backgroundImage:
-                'radial-gradient(ellipse at left, #2A1220 0%, #0D0D0D 55%)',
-            }
-      }
-    >
-      <aside className="border-b border-[var(--border)] p-4 md:border-b-0 md:border-r">
-        <div className="mb-6">
-          <RsvpLogo />
-        </div>
-        <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
-          WEDDING
-        </p>
-        <p className="mt-1 font-semibold">
-          {data.wedding.partnerOne} & {data.wedding.partnerTwo}
-        </p>
-        <p className="text-sm text-[var(--text-muted)]">
-          {data.wedding.eventDate}
-          {data.daysLeft !== null ? ` · ${data.daysLeft} days` : ''}
-        </p>
-        <nav className="mt-6 flex gap-2 overflow-x-auto md:grid">
-          {LINKS.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className="min-h-11 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-[var(--text-muted)] data-[status=active]:bg-[var(--field)] data-[status=active]:text-white"
-              activeOptions={{ exact: link.to === '/rsvp/manage' }}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-        <ThemeToggle theme={theme} />
-        <p className="mt-8 hidden text-sm text-[var(--text-faint)] md:block">
-          DJ Piper P keeps the song requests with the wedding plan.
-        </p>
-      </aside>
-      <div className="p-4 md:p-8">{children}</div>
-    </div>
+      <div
+        className={`portal min-h-screen md:grid md:grid-cols-[240px_1fr] ${theme === 'light' ? 'light' : ''}`}
+        style={
+          theme === 'light'
+            ? undefined
+            : {
+                backgroundImage:
+                  'radial-gradient(ellipse at left, #2A1220 0%, #0D0D0D 55%)',
+              }
+        }
+      >
+        <aside className="border-b border-[var(--border)] p-4 md:border-b-0 md:border-r">
+          <div className="mb-6">
+            <RsvpLogo />
+          </div>
+          <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
+            WEDDING
+          </p>
+          <p className="mt-1 font-semibold">
+            {data.wedding.partnerOne} & {data.wedding.partnerTwo}
+          </p>
+          <p className="text-sm text-[var(--text-muted)]">
+            {data.wedding.eventDate}
+            {data.daysLeft !== null ? ` · ${data.daysLeft} days` : ''}
+          </p>
+          <nav className="mt-6 flex gap-2 overflow-x-auto md:grid">
+            {LINKS.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="min-h-11 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-[var(--text-muted)] data-[status=active]:bg-[var(--field)] data-[status=active]:text-white"
+                activeOptions={{ exact: link.to === '/rsvp/manage' }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <ThemeToggle theme={theme} />
+          <p className="mt-8 hidden text-sm text-[var(--text-faint)] md:block">
+            DJ Piper P keeps the song requests with the wedding plan.
+          </p>
+        </aside>
+        <div className="p-4 md:p-8">{children}</div>
+      </div>
     </RsvpThemeProvider>
   )
 }
@@ -103,11 +105,11 @@ function ThemeToggle({ theme }: { theme: 'dark' | 'light' }) {
       type="button"
       className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] px-3 text-sm font-semibold text-[var(--text)]"
       onClick={() => {
-        void save({ data: { theme: theme === 'light' ? 'dark' : 'light' } }).then(
-          async () => {
-            await router.invalidate()
-          },
-        )
+        void save({
+          data: { theme: theme === 'light' ? 'dark' : 'light' },
+        }).then(async () => {
+          await router.invalidate()
+        })
       }}
     >
       {theme === 'light' ? 'Switch to dark' : 'Switch to light'}
@@ -454,13 +456,16 @@ export function Guests({ data }: { data: ReadyManage }) {
             {data.stats.guests} guests in {data.stats.parties} parties
           </h1>
         </div>
-        <button
-          type="button"
-          className={`${rsvpButton} w-auto`}
-          onClick={() => setEditing('new')}
-        >
-          + Add party
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <EmailAllButton data={data} />
+          <button
+            type="button"
+            className={`${rsvpButton} w-auto`}
+            onClick={() => setEditing('new')}
+          >
+            + Add party
+          </button>
+        </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <input
@@ -751,6 +756,9 @@ function PartyDrawer({
             })}
           </div>
         </fieldset>
+        {party ? (
+          <EmailPartyButton partyId={party.id} email={party.email} />
+        ) : null}
         {error ? (
           <p className="mt-3 text-sm text-[var(--pink-soft)]">{error}</p>
         ) : null}
@@ -778,6 +786,116 @@ function PartyDrawer({
     )
   }
 }
+
+function EmailAllButton({ data }: { data: ReadyManage }) {
+  const send = useServerFn(emailRsvpInvitations)
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+  const ready = data.wedding.parties.filter((party) =>
+    party.email.includes('@'),
+  ).length
+  const sendAll = () => {
+    if (ready === 0) return
+    const label = ready === 1 ? '1 party' : `${ready} parties`
+    if (!window.confirm(`Email the invitation to ${label}?`)) return
+    setBusy(true)
+    setNotice('')
+    void send({ data: { all: true } }).then(async (result) => {
+      setBusy(false)
+      setNotice(result.detail)
+      await router.invalidate()
+    })
+  }
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        className={`${rsvpGhost} w-auto`}
+        disabled={busy || ready === 0}
+        onClick={sendAll}
+      >
+        {busy ? 'Sending…' : 'Email all invitations'}
+      </button>
+      {notice ? (
+        <span className="text-sm text-[var(--text-muted)]">{notice}</span>
+      ) : null}
+    </div>
+  )
+}
+
+function EmailPartyButton({
+  partyId,
+  email,
+}: {
+  partyId: string
+  email: string
+}) {
+  const send = useServerFn(emailRsvpInvitations)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+  const hasEmail = email.includes('@')
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className={`${rsvpGhost} w-auto`}
+        disabled={busy || !hasEmail}
+        onClick={() => {
+          setBusy(true)
+          setNotice('')
+          void send({ data: { partyId } }).then((result) => {
+            setBusy(false)
+            setNotice(result.detail)
+          })
+        }}
+      >
+        {busy ? 'Sending…' : 'Email invitation'}
+      </button>
+      {notice ? (
+        <span className="text-sm text-[var(--text-muted)]">{notice}</span>
+      ) : !hasEmail ? (
+        <span className="text-sm text-[var(--text-muted)]">
+          Add an email for this party first.
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+const EMAIL_LABELS: Record<string, string> = {
+  invitation: 'Invitation',
+  confirmation: 'Guest confirmation',
+  reminder: 'Reminder',
+  'reply-notice': 'Reply notice',
+  welcome: 'Welcome receipt',
+  'deadline-summary': 'Deadline summary',
+  'piper-question': 'Question to Piper',
+  'piper-signup': 'Signup to Piper',
+  'piper-payment': 'Payment to Piper',
+  'sign-in': 'Sign-in link',
+  test: 'Test',
+}
+
+function emailWhen(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
+
+const TEST_EMAILS = [
+  ['invitation', 'Invitation'],
+  ['confirmation', 'Guest confirmation'],
+  ['reminder', 'Reminder'],
+  ['reply-notice', 'Reply notice'],
+  ['welcome', 'Welcome receipt'],
+  ['deadline-summary', 'Deadline summary'],
+  ['sign-in', 'Sign-in link'],
+] as const
 
 export function Events({ data }: { data: ReadyManage }) {
   const save = useServerFn(saveRsvpSetup)
@@ -1019,8 +1137,11 @@ export function Songs({ data }: { data: ReadyManage }) {
 export function Exports({ data }: { data: ReadyManage }) {
   const load = useServerFn(downloadRsvpCsv)
   const remind = useServerFn(sendRsvpReminders)
+  const test = useServerFn(sendTestRsvpEmail)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [testKind, setTestKind] = useState<string>('invitation')
+  const canRemind = data.reminderManual.allowed
   const today = data.wedding.eventDate || 'rsvp'
   async function grab(
     kind: 'caterer' | 'songs' | 'guests' | 'seating',
@@ -1065,28 +1186,101 @@ export function Exports({ data }: { data: ReadyManage }) {
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          className="min-h-11 rounded-full bg-[var(--pink)] px-4 text-sm font-semibold text-[#0D0D0D]"
-          disabled={busy}
+          className="min-h-11 rounded-full bg-[var(--pink)] px-4 text-sm font-semibold text-[#0D0D0D] disabled:opacity-60"
+          disabled={busy || !canRemind}
           onClick={() => {
+            const count = data.stats.waitingParties
+            if (
+              !window.confirm(
+                `Email the reminder to ${count} part${count === 1 ? 'y' : 'ies'} still waiting?`,
+              )
+            )
+              return
             setBusy(true)
             setNotice('')
             void remind({ data: { now: true } }).then((result) => {
               setBusy(false)
-              setNotice(
-                result.ok
-                  ? result.detail
-                  : result.detail || 'The email was not sent.',
-              )
+              setNotice(result.detail || 'The email was not sent.')
             })
           }}
         >
           Email parties still waiting
         </button>
         <p className="text-sm text-[var(--text-muted)]">
-          Still waiting on {data.stats.waitingParties} parties. The automatic
-          note goes out 7 days before the deadline.
+          {canRemind
+            ? `Still waiting on ${data.stats.waitingParties} parties. The automatic note goes out 7 days before the deadline.`
+            : 'A manual reminder already went out in the last 24 hours.'}
         </p>
       </div>
+      <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <h2 className="font-semibold">Send me a test</h2>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
+          Any email goes to the couple&apos;s own address only.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            className={`${rsvpField} max-w-xs`}
+            aria-label="Email to test"
+            value={testKind}
+            onChange={(event) => setTestKind(event.target.value)}
+          >
+            {TEST_EMAILS.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={`${rsvpGhost} w-auto`}
+            disabled={busy}
+            onClick={() => {
+              setBusy(true)
+              setNotice('')
+              void test({ data: { kind: testKind } }).then((result) => {
+                setBusy(false)
+                setNotice(result.detail)
+              })
+            }}
+          >
+            Send test
+          </button>
+        </div>
+      </section>
+      <section className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <h2 className="font-semibold">Emails sent</h2>
+        {data.emails.length === 0 ? (
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            Nothing sent yet.
+          </p>
+        ) : (
+          <ul className="mt-3 grid gap-2 text-sm">
+            {data.emails.map((row) => (
+              <li
+                key={row.id}
+                className="flex flex-wrap items-center justify-between gap-2"
+              >
+                <span>
+                  <span className="font-semibold">
+                    {EMAIL_LABELS[row.kind] ?? row.kind}
+                  </span>{' '}
+                  <span className="text-[var(--text-muted)]">→ {row.to}</span>
+                </span>
+                <span
+                  className={
+                    row.delivered
+                      ? 'text-emerald-300'
+                      : 'text-[var(--text-faint)]'
+                  }
+                >
+                  {row.delivered ? 'Sent' : 'Not sent'} ·{' '}
+                  {emailWhen(row.sentAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       {notice ? (
         <p className="mt-3 text-sm text-[var(--text-muted)]">{notice}</p>
       ) : null}

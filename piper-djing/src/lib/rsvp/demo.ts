@@ -297,6 +297,9 @@ const SAMPLE: RsvpWedding = {
   signInToken: '',
   signInExpires: '',
   remindedOn: '',
+  remindedIds: [],
+  remindedManualAt: '',
+  deadlineSummaryOn: '',
 }
 
 export function sampleWedding(): RsvpWedding {
