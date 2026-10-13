@@ -19,7 +19,7 @@ import type { ReviewDraft, ReviewView } from '../../lib/crm/reviews.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/reviews')({
-  head: () => deskHead('Reviews · Piper DJing'),
+  head: () => deskHead('Reviews · DJ Piper P'),
   loader: () => getReviews(),
   component: ReviewsPage,
 })

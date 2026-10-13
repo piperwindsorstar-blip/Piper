@@ -6,7 +6,7 @@ import { getTermsPage, saveTerms } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/terms')({
-  head: () => deskHead('Terms · Piper DJing'),
+  head: () => deskHead('Terms · DJ Piper P'),
   loader: () => getTermsPage(),
   component: TermsPage,
 })

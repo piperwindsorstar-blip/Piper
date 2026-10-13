@@ -16,7 +16,7 @@ import {
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/questions')({
-  head: () => deskHead('Questions · Piper DJing'),
+  head: () => deskHead('Questions · DJ Piper P'),
   loader: () => getQuestions(),
   component: QuestionsPage,
 })

@@ -19,7 +19,7 @@ import { SECTION_LABEL, SECTION_ORDER } from '../../../lib/portal/questions.ts'
 import type { MasterDraft } from '../../../lib/portal/master.ts'
 
 export const Route = createFileRoute('/desk/portals/')({
-  head: () => deskHead('Portals · Piper DJing'),
+  head: () => deskHead('Portals · DJ Piper P'),
   loader: () => getPortalDesk(),
   component: PortalsPage,
 })

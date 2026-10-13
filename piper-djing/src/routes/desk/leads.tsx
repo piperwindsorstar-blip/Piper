@@ -15,7 +15,7 @@ import { deskHead } from '../../lib/desk-head.ts'
 const deskRoute = getRouteApi('/desk')
 
 export const Route = createFileRoute('/desk/leads')({
-  head: () => deskHead('Leads · Piper DJing'),
+  head: () => deskHead('Leads · DJ Piper P'),
   loader: () => getLeads(),
   component: LeadsPage,
 })

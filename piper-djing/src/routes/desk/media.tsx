@@ -16,7 +16,7 @@ import {
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/media')({
-  head: () => deskHead('Media · Piper DJing'),
+  head: () => deskHead('Media · DJ Piper P'),
   loader: () => getMedia(),
   component: MediaPage,
 })

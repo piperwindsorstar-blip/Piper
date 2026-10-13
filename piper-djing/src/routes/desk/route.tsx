@@ -6,7 +6,7 @@ import { getDesk } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk')({
-  head: () => deskHead('Desk · Piper DJing'),
+  head: () => deskHead('Desk · DJ Piper P'),
   beforeLoad: () => requireDeskPage(),
   loader: () => getDesk(),
   staleTime: 15_000,

@@ -7,7 +7,7 @@ import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/settings')({
-  head: () => deskHead('Settings · Piper DJing'),
+  head: () => deskHead('Settings · DJ Piper P'),
   loader: () => getSettings(),
   component: SettingsPage,
 })

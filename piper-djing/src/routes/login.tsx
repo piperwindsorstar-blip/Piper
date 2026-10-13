@@ -5,7 +5,7 @@ import { deskAuthed, signIn } from '../lib/auth/server.ts'
 import { privateHead } from '../lib/seo.ts'
 
 export const Route = createFileRoute('/login')({
-  head: () => privateHead('Sign in · Piper DJing'),
+  head: () => privateHead('Sign in · DJ Piper P'),
   loader: async () => {
     if (await deskAuthed()) {
       const { redirect } = await import('@tanstack/react-router')

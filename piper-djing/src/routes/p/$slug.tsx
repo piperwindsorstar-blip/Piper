@@ -7,7 +7,7 @@ import { PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
 import { privateHead } from '../../lib/seo.ts'
 
 export const Route = createFileRoute('/p/$slug')({
-  head: () => privateHead('Invoice · Piper DJing'),
+  head: () => privateHead('Invoice · DJ Piper P'),
   loader: async ({ params }) => {
     const invoice = await getInvoicePage({ data: { slug: params.slug } })
     if (!invoice) throw notFound()

@@ -29,7 +29,7 @@ import {
 import type { SectionId } from '../../../../lib/portal/questions.ts'
 
 export const Route = createFileRoute('/desk/portals/$slug/')({
-  head: () => deskHead('Couple portal · Piper DJing'),
+  head: () => deskHead('Couple portal · DJ Piper P'),
   loader: async ({ params }) => {
     const page = await getCouplePortalDesk({ data: { slug: params.slug } })
     if (!page) throw notFound()

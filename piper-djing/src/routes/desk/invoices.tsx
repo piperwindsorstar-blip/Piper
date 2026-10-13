@@ -22,7 +22,7 @@ import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
 import { cad } from '../../lib/crm/money.ts'
 
 export const Route = createFileRoute('/desk/invoices')({
-  head: () => deskHead('Invoices · Piper DJing'),
+  head: () => deskHead('Invoices · DJ Piper P'),
   loader: () => getInvoices(),
   component: InvoicesPage,
 })

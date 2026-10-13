@@ -18,7 +18,7 @@ import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents } from '../../lib/crm/money.ts'
 
 export const Route = createFileRoute('/desk/payments')({
-  head: () => deskHead('Payments · Piper DJing'),
+  head: () => deskHead('Payments · DJ Piper P'),
   loader: () => getPayments(),
   component: PaymentsPage,
 })

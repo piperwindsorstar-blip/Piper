@@ -67,7 +67,7 @@ const FILTERS = [
 ] as const
 
 export const Route = createFileRoute('/desk/bookings')({
-  head: () => deskHead('Bookings · Piper DJing'),
+  head: () => deskHead('Bookings · DJ Piper P'),
   loader: () => getBookings(),
   component: BookingsPage,
 })

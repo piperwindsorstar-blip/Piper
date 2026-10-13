@@ -19,7 +19,7 @@ import {
 const deskRoute = getRouteApi('/desk')
 
 export const Route = createFileRoute('/desk/')({
-  head: () => deskHead('Overview · Piper DJing'),
+  head: () => deskHead('Overview · DJ Piper P'),
   component: OverviewPage,
 })
 

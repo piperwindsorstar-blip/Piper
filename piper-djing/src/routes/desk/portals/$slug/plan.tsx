@@ -10,7 +10,7 @@ const FONTS =
 
 export const Route = createFileRoute('/desk/portals/$slug/plan')({
   head: () => {
-    const head = deskHead('Wedding plan · Piper DJing')
+    const head = deskHead('Wedding plan · DJ Piper P')
     return {
       ...head,
       links: [{ rel: 'stylesheet', href: FONTS }],

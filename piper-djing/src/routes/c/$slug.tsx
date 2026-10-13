@@ -4,7 +4,7 @@ import { openCouplePortal } from '../../lib/portal/portal.functions.ts'
 import { privateHead } from '../../lib/seo.ts'
 
 export const Route = createFileRoute('/c/$slug')({
-  head: () => privateHead('Your date · Piper DJing'),
+  head: () => privateHead('Your date · DJ Piper P'),
   loader: async ({ params }) => {
     const booking = await getCouple({ data: { slug: params.slug } })
     if (!booking) throw notFound()

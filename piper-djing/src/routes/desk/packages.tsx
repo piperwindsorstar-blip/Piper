@@ -9,7 +9,7 @@ import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import type { PackageOffer } from '../../lib/crm/packages.ts'
 
 export const Route = createFileRoute('/desk/packages')({
-  head: () => deskHead('Packages · Piper DJing'),
+  head: () => deskHead('Packages · DJ Piper P'),
   loader: () => getPackages(),
   component: PackagesPage,
 })

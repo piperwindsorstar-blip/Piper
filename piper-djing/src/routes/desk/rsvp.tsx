@@ -18,7 +18,7 @@ import {
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/rsvp')({
-  head: () => deskHead('RSVP · Piper DJing'),
+  head: () => deskHead('RSVP · DJ Piper P'),
   loader: () => getRsvpDesk(),
   component: RsvpDesk,
 })
