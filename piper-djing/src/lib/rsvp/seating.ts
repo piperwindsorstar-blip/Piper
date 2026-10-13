@@ -251,6 +251,40 @@ export function seatPositions(
   ]
 }
 
+const LABEL_LINE = 14
+
+/**
+ * A guest's name as it sits beside their seat: the whole name, wrapped onto a
+ * second line when it is long, so "Test Guest One" and "Test Guest Two" stay
+ * told apart. Only a name too long for two lines is shortened, and the full
+ * name is always on hover and tap.
+ */
+export function seatLabelLines(name: string): string[] {
+  const words = name.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
+  if (words.length === 0) return []
+  const lines: string[] = []
+  let line = ''
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word
+    if (next.length <= LABEL_LINE || !line) {
+      line = next
+      continue
+    }
+    lines.push(line)
+    line = word
+  }
+  if (line) lines.push(line)
+  const shown = lines.slice(0, 2).map((item) =>
+    item.length > LABEL_LINE ? `${item.slice(0, LABEL_LINE - 1)}…` : item,
+  )
+  if (lines.length > 2) {
+    const last = shown[1] ?? ''
+    shown[1] =
+      last.length >= LABEL_LINE ? `${last.slice(0, LABEL_LINE - 1)}…` : `${last}…`
+  }
+  return shown
+}
+
 /** The smallest table number not already on the plan. */
 export function nextTableName(tables: SeatTable[]): string {
   const taken = new Set(tables.map((table) => foldName(table.name)))

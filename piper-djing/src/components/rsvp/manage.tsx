@@ -1223,6 +1223,7 @@ export function Exports({
   const test = useServerFn(sendTestRsvpEmail)
   const surface = useSurface()
   const [testKind, setTestKind] = useState<string>('invitation')
+  const [testNote, setTestNote] = useState('')
   const canRemind = data.reminderManual.allowed
   const today = data.wedding.eventDate || 'rsvp'
   async function grab(
@@ -1334,7 +1335,10 @@ export function Exports({
             className={`${rsvpField} max-w-xs`}
             aria-label="Email to test"
             value={testKind}
-            onChange={(event) => setTestKind(event.target.value)}
+            onChange={(event) => {
+              setTestKind(event.target.value)
+              setTestNote('')
+            }}
           >
             {TEST_EMAILS.map(([id, label]) => (
               <option key={id} value={id}>
@@ -1347,14 +1351,26 @@ export function Exports({
             busy="Sending…"
             done="Sent"
             surface={surface}
-            lastUsed={data.testedAt ? `Sent ${shortWhen(data.testedAt)}` : ''}
+            lastUsed={
+              !testNote && data.testedAt
+                ? `Last test sent ${shortWhen(data.testedAt)}`
+                : ''
+            }
             onRun={async (): Promise<RunResult> => {
+              setTestNote('')
               try {
                 const result = await test({ data: { kind: testKind } })
+                if (result.ok) {
+                  const label =
+                    TEST_EMAILS.find(([id]) => id === testKind)?.[1] ?? 'Test'
+                  setTestNote(
+                    `✓ ${result.detail.replace(/\.$/, '')} · ${label} · ${shortWhen(new Date().toISOString())}`,
+                  )
+                }
                 await router.invalidate()
                 return {
                   ok: result.ok,
-                  message: result.detail || 'The test did not send.',
+                  message: result.ok ? '' : result.detail || 'The test did not send.',
                 }
               } catch {
                 return {
@@ -1367,6 +1383,15 @@ export function Exports({
             Send me a test
           </ActionButton>
         </div>
+        {testNote ? (
+          <p
+            className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${surface === 'light' ? 'border-emerald-600/40 text-emerald-700' : 'border-emerald-400/40 text-emerald-300'}`}
+            role="status"
+            aria-live="polite"
+          >
+            {testNote}
+          </p>
+        ) : null}
       </section>
       <section className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <h2 className="font-semibold">Emails sent</h2>

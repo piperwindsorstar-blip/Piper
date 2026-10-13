@@ -9,6 +9,7 @@ import {
   pruneSeating,
   removeTable,
   resizeTable,
+  seatLabelLines,
   seatParty,
   seatPositions,
   seatableGuests,
@@ -199,5 +200,21 @@ describe('the floor plan', () => {
     assert.equal(plan.tables[0]?.y, 700)
     assert.deepEqual(Object.keys(plan.seats), ['liz'])
     assert.deepEqual(plan.notices, [])
+  })
+})
+
+describe('names beside a seat', () => {
+  it('keeps the whole name, wrapping long ones so guests stay told apart', () => {
+    assert.deepEqual(seatLabelLines('Test Guest One'), ['Test Guest One'])
+    assert.deepEqual(seatLabelLines('Test Guest Two'), ['Test Guest Two'])
+    assert.deepEqual(seatLabelLines('Elizabeth Miller'), ['Elizabeth', 'Miller'])
+    assert.deepEqual(seatLabelLines('Ada Okafor'), ['Ada Okafor'])
+    assert.deepEqual(seatLabelLines('Maximiliana Wolfeschlegelsteinhausen'), [
+      'Maximiliana',
+      'Wolfeschlegel…',
+    ])
+    const many = seatLabelLines('Anna Maria Louisa de la Cruz Fernandez')
+    assert.equal(many.length, 2)
+    assert.ok(many[1]?.endsWith('…'))
   })
 })

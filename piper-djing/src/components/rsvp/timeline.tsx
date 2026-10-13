@@ -1,7 +1,5 @@
 import { useServerFn } from '@tanstack/react-start'
-import { useRef, useState } from 'react'
-import { ActionButton } from '../action-button.tsx'
-import type { RunResult } from '../action-button.tsx'
+import { useEffect, useRef, useState } from 'react'
 import {
   LOCATION_MAX,
   MAX_MOMENTS,
@@ -19,7 +17,7 @@ import { saveRsvpTimeline } from '../../lib/rsvp/rsvp.functions.ts'
 import type { getRsvpTimeline } from '../../lib/rsvp/rsvp.functions.ts'
 import { SaveStatus, useAutosave } from './autosave.tsx'
 import { PrintTimeline, usePrintSheet } from './print.tsx'
-import { rsvpButton, rsvpGhost, useRsvpTheme } from './shell.tsx'
+import { rsvpButton, rsvpGhost } from './shell.tsx'
 
 export type TimelineData = NonNullable<
   Awaited<ReturnType<typeof getRsvpTimeline>>
@@ -42,12 +40,12 @@ function ready(moments: Moment[]): boolean {
 }
 
 /**
- * The couple's run of the day. Changes save on their own once every moment
- * has a time and a title; a sample day stays a draft until "Save" is pressed.
+ * The couple's run of the day. Every change saves on its own once each moment
+ * has a time and a title; there is no Save button to forget. A sample day is
+ * the one exception: it stays a draft until the couple keeps it.
  */
 export function TimelineEditor({ data }: { data: TimelineData }) {
   const save = useServerFn(saveRsvpTimeline)
-  const surface = useRsvpTheme()
   const [timeline, setTimeline] = useState<Timeline>(() => ({
     manualOrder: data.timeline.manualOrder,
     moments: orderedMoments(data.timeline),
@@ -58,6 +56,46 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
   const { sheet, print } = usePrintSheet()
   const current = useRef(timeline)
   current.current = timeline
+  // Re-sorting moves rows. Doing it while a finger or mouse button is down
+  // would slide a different row under the click, so it waits for the release.
+  const pointerDown = useRef(false)
+  const sortPending = useRef(false)
+
+  useEffect(() => {
+    const down = () => {
+      pointerDown.current = true
+    }
+    const up = () => {
+      pointerDown.current = false
+      if (!sortPending.current) return
+      sortPending.current = false
+      // After the click this release belongs to has landed.
+      window.setTimeout(() => sortNow(), 0)
+    }
+    document.addEventListener('pointerdown', down, true)
+    document.addEventListener('pointerup', up, true)
+    document.addEventListener('pointercancel', up, true)
+    return () => {
+      document.removeEventListener('pointerdown', down, true)
+      document.removeEventListener('pointerup', up, true)
+      document.removeEventListener('pointercancel', up, true)
+    }
+  })
+
+  function sortNow() {
+    const now = current.current
+    if (now.manualOrder) return
+    const sorted = sortMoments(now.moments)
+    if (sorted.every((moment, index) => moment === now.moments[index])) return
+    const next = { ...now, moments: sorted }
+    current.current = next
+    setTimeline(next)
+  }
+
+  function sortSoon() {
+    if (pointerDown.current) sortPending.current = true
+    else sortNow()
+  }
 
   async function send(next: Timeline) {
     const checked = validateTimeline(next)
@@ -152,7 +190,37 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
             role="status"
           >
             This is a sample day for you to edit. Nothing is saved until you
-            press Save.
+            keep it.
+            <span className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`${rsvpButton} w-auto`}
+                onClick={() => {
+                  if (!ready(current.current.moments)) {
+                    autosave.hold(
+                      'Add a time and a title to every moment first.',
+                    )
+                    return
+                  }
+                  setDraft(false)
+                  autosave.flush(current.current)
+                }}
+              >
+                Keep this day
+              </button>
+              <button
+                type="button"
+                className={`${rsvpGhost} w-auto`}
+                onClick={() => {
+                  const empty = { manualOrder: false, moments: [] }
+                  current.current = empty
+                  setTimeline(empty)
+                  setDraft(false)
+                }}
+              >
+                Discard sample
+              </button>
+            </span>
           </p>
         ) : null}
 
@@ -258,11 +326,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
                         onChange={(event) =>
                           patch(moment.id, { time: event.target.value })
                         }
-                        onBlur={() => {
-                          if (!current.current.manualOrder) {
-                            commit(current.current, { resort: true })
-                          }
-                        }}
+                        onBlur={sortSoon}
                       />
                     </label>
                     <label className="text-sm">
@@ -378,33 +442,12 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
           >
             + Add moment
           </button>
-          <ActionButton
-            className={`${rsvpButton} w-auto`}
-            wrapperClassName="inline-grid w-auto"
-            busy="Saving…"
-            done="Saved"
-            surface={surface}
-            onRun={async (): Promise<RunResult> => {
-              const next = current.current
-              const sorted = next.manualOrder
-                ? next
-                : { ...next, moments: sortMoments(next.moments) }
-              try {
-                const result = await send(sorted)
-                if (!result.ok) return { ok: false, message: result.error }
-                current.current = sorted
-                setTimeline(sorted)
-                return {
-                  ok: true,
-                  message: `Saved. Guests see ${sorted.moments.filter((moment) => moment.guests).length} moment${sorted.moments.filter((moment) => moment.guests).length === 1 ? '' : 's'}.`,
-                }
-              } catch {
-                return { ok: false, message: 'The timeline did not save.' }
-              }
-            }}
-          >
-            Save
-          </ActionButton>
+          <span className="flex min-h-11 items-center gap-3 text-sm text-[var(--text-muted)]">
+            {draft ? null : 'Changes save on their own.'}
+            {!draft && ready(timeline.moments) ? (
+              <SaveStatus phase={autosave.phase} error={autosave.error} />
+            ) : null}
+          </span>
         </div>
       </div>
       {sheet === 'timeline' ? (

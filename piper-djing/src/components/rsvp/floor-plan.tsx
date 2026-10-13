@@ -4,6 +4,7 @@ import {
   FLOOR_H,
   FLOOR_W,
   guestsAt,
+  seatLabelLines,
   seatPositions,
   tableLabel,
   tableSize,
@@ -55,11 +56,6 @@ export type FloorPlanProps = {
 
 const SEAT_R = 13
 
-function firstName(guest: SeatableGuest | undefined): string {
-  if (!guest) return ''
-  const name = guest.firstName || guest.name
-  return name.length > 11 ? `${name.slice(0, 10)}…` : name
-}
 
 function initials(guest: SeatableGuest | undefined): string {
   if (!guest) return ''
@@ -299,16 +295,15 @@ export function FloorPlan({
                       >
                         {initials(guest)}
                       </text>
-                      <text
+                      <SeatName
+                        lines={seatLabelLines(guest.name)}
                         x={nameX}
                         y={nameY}
-                        textAnchor={anchor}
-                        dominantBaseline="middle"
-                        fontSize={11}
+                        anchor={anchor}
+                        above={out.y < -0.35}
+                        side={Math.abs(out.y) <= 0.35}
                         fill={colours.name}
-                      >
-                        {firstName(guest)}
-                      </text>
+                      />
                     </>
                   ) : null}
                 </g>
@@ -318,5 +313,43 @@ export function FloorPlan({
         )
       })}
     </svg>
+  )
+}
+
+const LINE_HEIGHT = 11
+
+/** The name beside a seat, one or two lines, stacked away from the table. */
+function SeatName({
+  lines,
+  x,
+  y,
+  anchor,
+  above,
+  side,
+  fill,
+}: {
+  lines: string[]
+  x: number
+  y: number
+  anchor: 'start' | 'middle' | 'end'
+  above: boolean
+  side: boolean
+  fill: string
+}) {
+  const spread = (lines.length - 1) * LINE_HEIGHT
+  const top = above ? y - spread : side ? y - spread / 2 : y
+  return (
+    <text
+      textAnchor={anchor}
+      dominantBaseline="middle"
+      fontSize={lines.length > 1 ? 10 : 11}
+      fill={fill}
+    >
+      {lines.map((line, index) => (
+        <tspan key={index} x={x} y={top + index * LINE_HEIGHT}>
+          {line}
+        </tspan>
+      ))}
+    </text>
   )
 }
