@@ -1,3 +1,5 @@
+import { ActionButton } from '../action-button.tsx'
+import type { RunResult } from '../action-button.tsx'
 import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useRef, useState } from 'react'
@@ -46,7 +48,6 @@ export function GuestPaste({
   const [mealText, setMealText] = useState(meals.join(', '))
   const [picked, setPicked] = useState<string[]>([])
   const [notice, setNotice] = useState('')
-  const [busy, setBusy] = useState(false)
 
   function addNames(raw: string) {
     const parsed = splitGuestPaste(raw)
@@ -328,14 +329,14 @@ export function GuestPaste({
           ))}
         </ul>
       ) : null}
-      <button
-        type="button"
+      <ActionButton
         className={`${rsvpButton} mt-4 w-auto`}
-        disabled={busy}
-        onClick={() => {
-          setBusy(true)
-          setNotice('')
-          void save({
+        wrapperClassName="inline-grid w-auto"
+        busy="Saving…"
+        done="Saved"
+        surface="dark"
+        onRun={async (): Promise<RunResult> => {
+          const result = await save({
             data: {
               guests: rows.map((row) => ({
                 id: row.id,
@@ -345,21 +346,18 @@ export function GuestPaste({
               })),
               meals: mealText,
             },
-          }).then(async (result) => {
-            setBusy(false)
-            if (!result.ok) {
-              setNotice(
-                'error' in result ? result.error : 'Could not save the list.',
-              )
-              return
-            }
-            setNotice('Saved.')
-            await router.invalidate()
           })
+          if (!result.ok) {
+            const message =
+              'error' in result ? result.error : 'Could not save the list.'
+            return { ok: false, message }
+          }
+          await router.invalidate()
+          return { ok: true, message: 'Saved.' }
         }}
       >
         Save guest list
-      </button>
+      </ActionButton>
       {notice ? (
         <p className="mt-3 text-sm text-[var(--text-muted)]">{notice}</p>
       ) : null}

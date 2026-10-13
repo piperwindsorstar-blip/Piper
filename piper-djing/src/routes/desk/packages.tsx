@@ -1,12 +1,19 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
+import {
+  DeskTitle,
+  deskCard,
+  deskPrimary,
+  deskSurface,
+} from '../../components/desk-ui.tsx'
 import { getPackages, savePackage } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { cad, dollarsToCents } from '../../lib/crm/money.ts'
 import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import type { PackageOffer } from '../../lib/crm/packages.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/packages')({
   head: () => deskHead('Packages · DJ Piper P'),
@@ -48,26 +55,7 @@ function PackageCard({ item }: { item: PackageOffer }) {
   return (
     <form
       className={`${deskCard} grid gap-3`}
-      onSubmit={(event) => {
-        event.preventDefault()
-        const form = new FormData(event.currentTarget)
-        try {
-          const cents = dollarsToCents(String(form.get('price') ?? ''))
-          void save({
-            data: {
-              id: item.id,
-              name: String(form.get('name') ?? ''),
-              detail: String(form.get('detail') ?? ''),
-              cents,
-            },
-          }).then(async (result) => {
-            setNotice(result.ok ? 'Saved.' : result.error)
-            if (result.ok) await router.invalidate()
-          })
-        } catch (error) {
-          setNotice(error instanceof Error ? error.message : 'Enter a price.')
-        }
-      }}
+      onSubmit={(event) => event.preventDefault()}
     >
       <label className="field">
         Name
@@ -86,9 +74,39 @@ function PackageCard({ item }: { item: PackageOffer }) {
         Detail
         <textarea name="detail" required rows={5} defaultValue={item.detail} />
       </label>
-      <button type="submit" className={`${deskPrimary} w-fit`}>
+      <ActionButton
+        className={`${deskPrimary} w-fit`}
+        checkForm
+        busy="Saving…"
+        done="Saved"
+        surface={deskSurface}
+        onRun={async (form: FormData): Promise<RunResult | undefined> => {
+          try {
+            const cents = dollarsToCents(String(form.get('price') ?? ''))
+            const result = await save({
+              data: {
+                id: item.id,
+                name: String(form.get('name') ?? ''),
+                detail: String(form.get('detail') ?? ''),
+                cents,
+              },
+            })
+            setNotice(result.ok ? 'Saved.' : result.error)
+            if (result.ok) await router.invalidate()
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Saved.' : result.error,
+            }
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : 'Enter a price.'
+            setNotice(message)
+            return { ok: false, message }
+          }
+        }}
+      >
         Save the package
-      </button>
+      </ActionButton>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
     </form>
   )

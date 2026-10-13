@@ -1,5 +1,8 @@
 /** Pure RSVP rules. Guest links are /rsvp/:slug. Paid Piper couples are $20; everyone else is $30. */
 
+import { DEFAULT_TEMPLATE, parsePhoto, parseTemplateId } from './templates.ts'
+import type { RsvpPhoto, RsvpTemplateId } from './templates.ts'
+
 export const PIPER_RSVP_CENTS = 2000
 export const STANDALONE_RSVP_CENTS = 3000
 export const LOOKUP_LIMIT = 8
@@ -97,6 +100,10 @@ export type RsvpWedding = {
   paid: boolean
   /** The couple's chosen RSVP theme. Guests see the same one. */
   theme: 'dark' | 'light'
+  /** The invitation template the couple picked. Classic Ivory by default. */
+  template: RsvpTemplateId
+  /** The couple's photo, or null when the template runs without one. */
+  photo: RsvpPhoto | null
   bookingSlug: string
   /** Where a confirmed guest reply is emailed. The sign-in address stays on `email`. */
   replyEmail: string
@@ -1138,6 +1145,8 @@ export function blankWedding(input: {
     priceKind: input.priceKind,
     paid: false,
     theme: 'dark',
+    template: DEFAULT_TEMPLATE,
+    photo: null,
     bookingSlug: '',
     replyEmail: '',
     sample: false,
@@ -1256,6 +1265,8 @@ export function parseWedding(raw: unknown, slug: string): RsvpWedding | null {
   base.autoRemind = record.autoRemind === false ? false : true
   base.paid = asFlag(record.paid)
   base.theme = record.theme === 'light' ? 'light' : 'dark'
+  base.template = parseTemplateId(record.template)
+  base.photo = parsePhoto(record.photo)
   base.bookingSlug = asText(record.bookingSlug, 80)
   base.replyEmail = asText(record.replyEmail, 120)
   base.sample = asFlag(record.sample)

@@ -20,6 +20,8 @@ const SAMPLE: RsvpWedding = {
   priceKind: 'piper',
   paid: true,
   theme: 'dark',
+  template: 'ivory',
+  photo: null,
   bookingSlug: '',
   replyEmail: 'sarah.m@example.com',
   sample: true,

@@ -1,7 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
+import {
+  DeskTitle,
+  deskCard,
+  deskPrimary,
+  deskSurface,
+} from '../../components/desk-ui.tsx'
 import {
   deletePartner,
   editPartner,
@@ -9,6 +14,8 @@ import {
   savePartner,
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/partners')({
   head: () => deskHead('Partners · DJ Piper P'),
@@ -49,35 +56,7 @@ function PartnersPage() {
       </DeskTitle>
       <form
         className={`${deskCard} grid gap-3`}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = event.currentTarget
-          const name = String(new FormData(form).get('name') ?? '')
-          const href = String(new FormData(form).get('href') ?? '')
-          const file = form.elements.namedItem('logo')
-          const logo =
-            file instanceof HTMLInputElement ? file.files?.[0] : undefined
-          if (!logo) {
-            setNotice('Choose a logo.')
-            return
-          }
-          void readLogo(logo)
-            .then((data) => save({ data: { name, href, logo: data } }))
-            .then(async (result) => {
-              setNotice(result.ok ? 'Added.' : result.error)
-              if (result.ok) {
-                form.reset()
-                await router.invalidate()
-              }
-            })
-            .catch((error: unknown) => {
-              setNotice(
-                error instanceof Error
-                  ? error.message
-                  : 'That logo did not load.',
-              )
-            })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="field">
           Brand name
@@ -96,9 +75,41 @@ function PartnersPage() {
             required
           />
         </label>
-        <button type="submit" className={`${deskPrimary} w-fit`}>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (
+            form: FormData,
+            formElement: HTMLFormElement | null,
+          ): Promise<RunResult | undefined> => {
+            const name = String(form.get('name') ?? '')
+            const href = String(form.get('href') ?? '')
+            const file = formElement?.elements.namedItem('logo')
+            const logo =
+              file instanceof HTMLInputElement ? file.files?.[0] : undefined
+            if (!logo) {
+              setNotice('Choose a logo.')
+              return
+            }
+            const result = await readLogo(logo).then((data) =>
+              save({ data: { name, href, logo: data } }),
+            )
+            setNotice(result.ok ? 'Added.' : result.error)
+            if (result.ok) {
+              formElement?.reset()
+              await router.invalidate()
+            }
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Added.' : result.error,
+            }
+          }}
+        >
           Add the brand
-        </button>
+        </ActionButton>
       </form>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       {partners.length === 0 ? (
@@ -138,8 +149,8 @@ function PartnerCard({
         onSubmit={(event) => {
           event.preventDefault()
           const form = event.currentTarget
-          const name = String(new FormData(form).get('name') ?? '')
-          const href = String(new FormData(form).get('href') ?? '')
+          const name = String(form.get('name') ?? '')
+          const href = String(form.get('href') ?? '')
           const file = form.elements.namedItem('logo')
           const logo =
             file instanceof HTMLInputElement ? file.files?.[0] : undefined

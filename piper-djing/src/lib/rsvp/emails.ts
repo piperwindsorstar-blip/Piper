@@ -15,6 +15,8 @@ import type {
   RsvpParty,
   RsvpWedding,
 } from './model.ts'
+import { photoPath, shapeRadius, templateFor } from './templates.ts'
+import type { PhotoShape, RsvpSkin } from './templates.ts'
 
 export type RsvpEmailKind =
   | 'invitation'
@@ -40,19 +42,9 @@ export type RsvpEmail = {
 export const SITE_HOST = 'piperpweddingdj.services'
 const LOGO_URL = `https://${SITE_HOST}/brand/dj-piper-p.png`
 
-const CARD = '#FBF7F0'
-const INK = '#2B2B2B'
-const BODY = '#4A4744'
-const QUIET = '#6B6661'
-const BACKDROP = '#EFEAE2'
-
-type Palette = { accent: string; border: string }
-
-/** The couple's theme is only an accent; the card always reads like paper. */
-function palette(theme: 'dark' | 'light'): Palette {
-  return theme === 'light'
-    ? { accent: '#B08D57', border: '#E2D3B4' }
-    : { accent: '#B76E79', border: '#E6C9CE' }
+/** The couple's template drives every colour, rule and face in the letter. */
+function skinOf(wedding: RsvpWedding): RsvpSkin {
+  return templateFor(wedding.template).skin
 }
 
 function esc(value: string): string {
@@ -204,66 +196,102 @@ type Block =
   | { t: 'row'; label: string; value: string }
   | { t: 'space' }
   | { t: 'heading'; text: string }
+  | { t: 'photo'; url: string; alt: string; shape: PhotoShape }
 
-function renderBlock(block: Block, colors: Palette): string {
-  const accent = colors.accent
+/** The couple's photo sits at the top of the card when they have one. */
+export function photoBlock(wedding: RsvpWedding): Block[] {
+  const photo = wedding.photo
+  if (!photo) return []
+  const path = photoPath(wedding.slug, photo)
+  if (!path) return []
+  return [
+    {
+      t: 'photo',
+      url: `https://${SITE_HOST}${path}`,
+      alt: `${coupleTitle(wedding)} photo`,
+      shape: photo.shape,
+    },
+  ]
+}
+
+function dividerFor(skin: RsvpSkin): string {
+  switch (skin.divider) {
+    case 'hairline':
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:30px 0;"><div style="border-top:1px solid ${skin.accent};font-size:0;line-height:0;">&nbsp;</div></td></tr></table>`
+    case 'floral':
+      return `<div style="margin:28px auto 26px;width:220px;font-size:15px;letter-spacing:0.42em;color:${skin.accent};">&#8212;&#10047;&#8212;</div>`
+    case 'deckle':
+      return `<div style="margin:30px 0 26px;border-top:2px dashed ${skin.hairline};font-size:0;line-height:0;">&nbsp;</div>`
+    case 'gold-rule':
+      return `<div style="margin:30px auto 10px;width:120px;border-top:1px solid ${skin.accent};font-size:0;line-height:0;">&nbsp;</div><div style="font-size:11px;line-height:1;color:${skin.accent};">&#9670;</div>`
+    default:
+      return `<div style="margin:28px auto 24px;width:64px;border-top:1px solid ${skin.hairline};"><div style="position:relative;top:-9px;font-size:12px;color:${skin.accent};">&#10022;</div></div>`
+  }
+}
+
+function renderBlock(block: Block, skin: RsvpSkin): string {
   switch (block.t) {
     case 'eyebrow':
-      return `<p style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:${accent};">${esc(block.text)}</p>`
+      return `<p style="margin:0 0 18px;font-family:${skin.displayFont};font-size:12px;letter-spacing:${skin.labelLetter};text-transform:${skin.labelTransform};font-style:${skin.labelStyle};color:${skin.accent};">${esc(block.text)}</p>`
     case 'heading':
-      return `<p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:20px;color:${INK};">${esc(block.text)}</p>`
+      return `<p style="margin:0 0 14px;font-family:${skin.displayFont};font-weight:${skin.headingWeight};font-size:20px;color:${skin.ink};">${esc(block.text)}</p>`
     case 'names':
-      return `<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:34px;line-height:1.25;color:${INK};">${esc(block.text)}</p>`
+      return `<p style="margin:0;font-family:${skin.displayFont};font-weight:${skin.nameWeight};font-style:${skin.scriptNames ? 'italic' : 'normal'};font-size:${skin.nameSize};line-height:1.3;color:${skin.ink};">${esc(block.text)}</p>`
     case 'line':
-      return `<p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.7;color:${BODY};">${block.text}</p>`
+      return `<p style="margin:14px 0 0;font-family:${skin.bodyFont};font-size:16px;line-height:1.7;color:${skin.body};">${block.text}</p>`
     case 'note':
-      return `<p style="margin:18px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-style:italic;line-height:1.6;color:${QUIET};">${esc(block.text)}</p>`
+      return `<p style="margin:18px 0 0;font-family:${skin.bodyFont};font-size:15px;font-style:italic;line-height:1.6;color:${skin.quiet};">${esc(block.text)}</p>`
     case 'divider':
-      return `<div style="margin:28px auto 24px;width:64px;border-top:1px solid ${colors.border};"><div style="position:relative;top:-9px;font-size:12px;color:${accent};">&#10022;</div></div>`
+      return dividerFor(skin)
     case 'button':
-      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:26px auto 0;"><tr><td bgcolor="${accent}" style="border-radius:999px;"><a href="${esc(block.href)}" style="display:inline-block;padding:14px 42px;font-family:Georgia,'Times New Roman',serif;font-size:16px;letter-spacing:0.04em;color:#FFFFFF;text-decoration:none;border-radius:999px;">${esc(block.label)}</a></td></tr></table>`
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:26px auto 0;"><tr><td bgcolor="${skin.button.bg}" style="border-radius:${skin.button.radius};border:${skin.button.border};"><a href="${esc(block.href)}" style="display:inline-block;padding:14px 40px;font-family:${skin.displayFont};font-size:16px;letter-spacing:0.04em;color:${skin.button.fg};text-decoration:none;border-radius:${skin.button.radius};">${esc(block.label)}</a></td></tr></table>`
     case 'code':
-      return `<p style="margin:22px 0 0;font-family:'Courier New',Courier,monospace;font-size:13px;letter-spacing:0.14em;color:${QUIET};">${esc(block.text)}</p>`
+      return `<p style="margin:22px 0 0;font-family:'Courier New',Courier,monospace;font-size:13px;letter-spacing:0.14em;color:${skin.quiet};">${esc(block.text)}</p>`
     case 'guest':
-      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0;text-align:left;"><tr><td style="padding:13px 0;border-top:1px solid #E9DFCB;"><p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:16px;color:${INK};">${esc(block.name)}</p><p style="margin:4px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:1.6;color:${QUIET};">${esc(block.detail)}</p></td></tr></table>`
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0;text-align:left;"><tr><td style="padding:13px 0;border-top:1px solid ${skin.hairline};"><p style="margin:0;font-family:${skin.displayFont};font-size:16px;color:${skin.ink};">${esc(block.name)}</p><p style="margin:4px 0 0;font-family:${skin.bodyFont};font-size:14px;line-height:1.6;color:${skin.quiet};">${esc(block.detail)}</p></td></tr></table>`
     case 'row':
-      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align:left;"><tr><td style="padding:9px 0;border-top:1px solid #E9DFCB;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:${BODY};">${esc(block.label)}</td><td style="padding:9px 0;border-top:1px solid #E9DFCB;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:${INK};text-align:right;">${esc(block.value)}</td></tr></table>`
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align:left;"><tr><td style="padding:9px 0;border-top:1px solid ${skin.hairline};font-family:${skin.bodyFont};font-size:15px;color:${skin.body};">${esc(block.label)}</td><td style="padding:9px 0;border-top:1px solid ${skin.hairline};font-family:${skin.bodyFont};font-size:15px;color:${skin.ink};text-align:right;">${esc(block.value)}</td></tr></table>`
     case 'space':
       return `<div style="height:14px;line-height:14px;">&nbsp;</div>`
+    case 'photo':
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px;"><tr><td align="center"><img src="${esc(block.url)}" alt="${esc(block.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:${shapeRadius(block.shape)};"><div style="height:30px;line-height:30px;">&nbsp;</div></td></tr></table>`
   }
 }
 
 function layout(input: {
   title: string
   preheader: string
-  palette: Palette
+  skin: RsvpSkin
   blocks: Block[]
   footerNote?: string
 }): string {
-  const body = input.blocks
-    .map((block) => renderBlock(block, input.palette))
-    .join('\n')
+  const skin = input.skin
+  const body = input.blocks.map((block) => renderBlock(block, skin)).join('\n')
+  const inner = skin.innerRule
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border:${skin.innerRule};border-radius:${skin.cardRadius};padding:34px 26px;">${body}</td></tr></table>`
+    : body
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
 <title>${esc(input.title)}</title>
 </head>
-<body style="margin:0;padding:0;background:${BACKDROP};">
+<body style="margin:0;padding:0;background:${skin.backdrop};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(input.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BACKDROP};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${skin.backdrop};">
 <tr><td align="center" style="padding:30px 12px;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;">
-<tr><td style="background:${CARD};border:1px solid ${input.palette.border};padding:52px 44px 46px;font-family:Georgia,'Times New Roman',serif;text-align:center;">
-${body}
+<tr><td style="background:${skin.card};border:${skin.cardBorder};border-radius:${skin.cardRadius};padding:52px 44px 46px;font-family:${skin.bodyFont};text-align:center;${skin.texture}">
+${inner}
 </td></tr>
 </table>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;">
 <tr><td align="center" style="padding:22px 12px 8px;">
 <img src="${LOGO_URL}" width="72" alt="DJ Piper P" style="display:block;margin:0 auto 10px;width:72px;height:auto;border:0;">
-<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:0.08em;color:#9A938A;">${esc(input.footerNote ?? `RSVP by DJ Piper P · ${SITE_HOST}`)}</p>
+<p style="margin:0;font-family:${skin.bodyFont};font-size:12px;letter-spacing:0.08em;color:${skin.footerInk};">${esc(input.footerNote ?? `RSVP by DJ Piper P · ${SITE_HOST}`)}</p>
 </td></tr>
 </table>
 </td></tr>
@@ -290,7 +318,7 @@ export function invitationEmail(
   party: RsvpParty,
   url: string,
 ): RsvpEmail {
-  const colors = palette(wedding.theme)
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const date = formalDate(wedding.eventDate)
   const time = ceremonyTime(wedding)
@@ -298,6 +326,7 @@ export function invitationEmail(
   const deadline = shortMonthDay(wedding.deadline)
   const forLine = partyNames(party)
   const blocks: Block[] = [
+    ...photoBlock(wedding),
     { t: 'eyebrow', text: 'Together with their families' },
     { t: 'names', text: title },
     { t: 'line', text: 'request the pleasure of your company' },
@@ -323,7 +352,7 @@ export function invitationEmail(
     html: layout({
       title: `You're invited · ${title}`,
       preheader: `${title} · ${date}`,
-      palette: colors,
+      skin,
       blocks,
     }),
   }
@@ -367,7 +396,7 @@ export function confirmationEmail(
   party: RsvpParty,
   editUrl: string,
 ): RsvpEmail {
-  const colors = palette(wedding.theme)
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const lead = party.guests.find((guest) => !guest.isPlusOne) ?? party.guests[0]
   const guests = party.guests.map((guest) => ({
@@ -402,7 +431,7 @@ export function confirmationEmail(
     html: layout({
       title: `Your RSVP for ${title} is in`,
       preheader: `Thank you, ${lead.firstName || 'there'}!`,
-      palette: colors,
+      skin,
       blocks,
     }),
   }
@@ -444,7 +473,7 @@ export function reminderEmail(
   party: RsvpParty,
   url: string,
 ): RsvpEmail {
-  const colors = palette(wedding.theme)
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const deadline = shortMonthDay(wedding.deadline)
   const blocks: Block[] = [
@@ -482,7 +511,7 @@ export function reminderEmail(
     html: layout({
       title: `A gentle reminder · ${title}`,
       preheader: deadline ? `Kindly reply by ${deadline}` : 'Kindly reply',
-      palette: colors,
+      skin,
       blocks,
     }),
   }
@@ -496,7 +525,7 @@ export function replyNoticeEmail(
   stats: OverviewStats,
   dashboardUrl: string,
 ): RsvpEmail {
-  const colors = palette(wedding.theme)
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const guests = party.guests.map((guest) => ({
     name: guestFullName(guest),
@@ -545,7 +574,7 @@ export function replyNoticeEmail(
     html: layout({
       title: `${party.name} replied · ${title}`,
       preheader: `${stats.attending} attending · ${stats.declined} can't make it`,
-      palette: colors,
+      skin,
       blocks,
     }),
   }
@@ -557,7 +586,7 @@ export function welcomeEmail(
   wedding: RsvpWedding,
   input: { amountLabel: string; dashboardUrl: string; guestUrl: string },
 ): RsvpEmail {
-  const colors = palette(wedding.theme)
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const { name, town } = venueParts(wedding)
   const blocks: Block[] = [
@@ -600,7 +629,7 @@ export function welcomeEmail(
     html: layout({
       title: `Your RSVP page is live · ${title}`,
       preheader: `Paid ${input.amountLabel}`,
-      palette: colors,
+      skin,
       blocks,
     }),
   }
@@ -613,7 +642,7 @@ export function deadlineSummaryEmail(
   stats: OverviewStats,
   catererCsv: string,
 ): RsvpEmail {
-  const colors = palette(wedding.theme)
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const waiting = wedding.parties.filter(
     (party) => party.email.includes('@') && !party.lastRepliedAt,
@@ -685,7 +714,7 @@ export function deadlineSummaryEmail(
     html: layout({
       title: `RSVP deadline today · ${title}`,
       preheader: `${stats.attending} attending`,
-      palette: colors,
+      skin,
       blocks,
     }),
     attachments: [
@@ -710,7 +739,7 @@ export function piperQuestionEmail(question: {
   text: string
   askedAt: string
 }): RsvpEmail {
-  const colors = palette('dark')
+  const skin = templateFor('ivory').skin
   return {
     kind: 'piper-question',
     subject: `Question from ${question.couple}`,
@@ -728,7 +757,7 @@ export function piperQuestionEmail(question: {
     html: layout({
       title: `Question from ${question.couple}`,
       preheader: question.text.slice(0, 80),
-      palette: colors,
+      skin,
       footerNote: piperFooter(),
       blocks: [
         { t: 'eyebrow', text: 'RSVP question' },
@@ -752,7 +781,7 @@ export function piperQuestionEmail(question: {
 }
 
 export function piperSignupEmail(wedding: RsvpWedding): RsvpEmail {
-  const colors = palette('dark')
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const price = wedding.priceKind === 'piper' ? '$20' : '$30'
   return {
@@ -774,7 +803,7 @@ export function piperSignupEmail(wedding: RsvpWedding): RsvpEmail {
     html: layout({
       title: `New RSVP signup · ${title}`,
       preheader: `${wedding.email} · ${wedding.eventDate}`,
-      palette: colors,
+      skin,
       footerNote: piperFooter(),
       blocks: [
         { t: 'eyebrow', text: 'New RSVP signup' },
@@ -796,7 +825,7 @@ export function piperPaymentEmail(
   wedding: RsvpWedding,
   amountLabel: string,
 ): RsvpEmail {
-  const colors = palette('dark')
+  const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   return {
     kind: 'piper-payment',
@@ -816,7 +845,7 @@ export function piperPaymentEmail(
     html: layout({
       title: `RSVP paid · ${title}`,
       preheader: `${amountLabel} received`,
-      palette: colors,
+      skin,
       footerNote: piperFooter(),
       blocks: [
         { t: 'eyebrow', text: 'RSVP payment' },
@@ -837,7 +866,7 @@ export function piperPaymentEmail(
 // --- sign-in link ---------------------------------------------------------
 
 export function signInEmail(url: string): RsvpEmail {
-  const colors = palette('dark')
+  const skin = templateFor('ivory').skin
   return {
     kind: 'sign-in',
     subject: 'Your Piper RSVP sign-in link',
@@ -853,7 +882,7 @@ export function signInEmail(url: string): RsvpEmail {
     html: layout({
       title: 'Your Piper RSVP sign-in link',
       preheader: 'Your one-time sign-in link',
-      palette: colors,
+      skin,
       blocks: [
         { t: 'eyebrow', text: 'Sign in' },
         { t: 'heading', text: 'Your sign-in link' },

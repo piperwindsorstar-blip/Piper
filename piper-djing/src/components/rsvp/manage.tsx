@@ -25,13 +25,17 @@ import {
   rsvpButton,
   rsvpField,
   rsvpGhost,
+  useRsvpTheme,
 } from './shell.tsx'
+import { ActionButton } from '../action-button.tsx'
+import type { RunResult } from '../action-button.tsx'
 
 export type ManageData = NonNullable<Awaited<ReturnType<typeof getRsvpManage>>>
 export type ReadyManage = Extract<ManageData, { mode: 'ready' }>
 
 const LINKS = [
   { to: '/rsvp/manage', label: 'Overview' },
+  { to: '/rsvp/manage/design', label: 'Invitations' },
   { to: '/rsvp/manage/guests', label: 'Guests & parties' },
   { to: '/rsvp/manage/events', label: 'Events & questions' },
   { to: '/rsvp/manage/songs', label: 'Song requests' },
@@ -269,7 +273,7 @@ function ReplyEmail({ data }: { data: ReadyManage }) {
   const save = useServerFn(saveRsvpReplyEmail)
   const router = useRouter()
   const [email, setEmail] = useState(data.wedding.replyEmail)
-  const [notice, setNotice] = useState('')
+  const surface = useSurface()
   const hint = data.wedding.replyEmail
     ? 'A confirmed RSVP is emailed to the couple at this address.'
     : data.replyTarget
@@ -278,14 +282,7 @@ function ReplyEmail({ data }: { data: ReadyManage }) {
   return (
     <form
       className="mt-6 grid gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4"
-      onSubmit={(event) => {
-        event.preventDefault()
-        setNotice('')
-        void save({ data: { email } }).then(async (result) => {
-          setNotice(result.ok ? 'Saved.' : result.error)
-          if (result.ok) await router.invalidate()
-        })
-      }}
+      onSubmit={(event) => event.preventDefault()}
     >
       <label className="text-sm" htmlFor="reply-email">
         Couple's email
@@ -299,15 +296,22 @@ function ReplyEmail({ data }: { data: ReadyManage }) {
         />
       </label>
       <p className="text-sm text-[var(--text-muted)]">{hint}</p>
-      <button
+      <ActionButton
         className={`${rsvpButton} w-auto justify-self-start px-6`}
-        type="submit"
+        busy="Saving…"
+        done="Saved"
+        surface={surface}
+        onRun={async () => {
+          const result = await save({ data: { email } })
+          if (result.ok) await router.invalidate()
+          return {
+            ok: result.ok,
+            message: result.ok ? 'Saved.' : result.error,
+          }
+        }}
       >
         Save
-      </button>
-      {notice ? (
-        <p className="text-sm text-[var(--text-muted)]">{notice}</p>
-      ) : null}
+      </ActionButton>
     </form>
   )
 }
@@ -524,6 +528,7 @@ export function Guests({ data }: { data: ReadyManage }) {
         <PartyDrawer
           party={current}
           events={data.wedding.events}
+          invitedAt={current ? (data.invited[current.id] ?? '') : ''}
           error={error}
           onClose={() => setEditing(null)}
           onDelete={() => {
@@ -532,20 +537,18 @@ export function Guests({ data }: { data: ReadyManage }) {
               router.invalidate(),
             )
           }}
-          onSave={(draft) => {
+          onSave={async (draft) => {
             setError('')
-            void save({ data: draft }).then(async (result) => {
-              if (!result.ok) {
-                setError(
-                  'error' in result
-                    ? result.error
-                    : 'Could not save that party.',
-                )
-                return
-              }
-              setEditing(null)
-              await router.invalidate()
-            })
+            const result = await save({ data: draft })
+            if (!result.ok) {
+              const message =
+                'error' in result ? result.error : 'Could not save that party.'
+              setError(message)
+              return { ok: false, message }
+            }
+            setEditing(null)
+            await router.invalidate()
+            return { ok: true, message: 'Party saved.' }
           }}
         />
       ) : null}
@@ -556,6 +559,7 @@ export function Guests({ data }: { data: ReadyManage }) {
 function PartyDrawer({
   party,
   events,
+  invitedAt,
   error,
   onClose,
   onSave,
@@ -563,10 +567,11 @@ function PartyDrawer({
 }: {
   party: ReadyManage['wedding']['parties'][number] | null
   events: ReadyManage['wedding']['events']
+  invitedAt: string
   error: string
   onClose: () => void
   onDelete: () => void
-  onSave: (draft: Record<string, unknown>) => void
+  onSave: (draft: Record<string, unknown>) => Promise<RunResult>
 }) {
   const [name, setName] = useState(party?.name ?? '')
   const [email, setEmail] = useState(party?.email ?? '')
@@ -574,6 +579,7 @@ function PartyDrawer({
   const [eventIds, setEventIds] = useState<string[]>(
     party?.eventIds ?? events.map((event) => event.id),
   )
+  const surface = useSurface()
   const [guests, setGuests] = useState(
     party?.guests.map((guest) => ({
       id: guest.id,
@@ -599,17 +605,7 @@ function PartyDrawer({
     <div className="fixed inset-0 z-40 grid items-end bg-black/60 sm:items-center sm:justify-center">
       <form
         className="max-h-[90vh] w-full overflow-auto rounded-t-3xl bg-[var(--surface)] p-5 sm:max-w-lg sm:rounded-3xl"
-        onSubmit={(event) => {
-          event.preventDefault()
-          onSave({
-            id: party?.id ?? '',
-            name,
-            email,
-            plusOneAllowed,
-            eventIds,
-            guests,
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">
@@ -757,7 +753,11 @@ function PartyDrawer({
           </div>
         </fieldset>
         {party ? (
-          <EmailPartyButton partyId={party.id} email={party.email} />
+          <EmailPartyButton
+            partyId={party.id}
+            email={party.email}
+            invitedAt={invitedAt}
+          />
         ) : null}
         {error ? (
           <p className="mt-3 text-sm text-[var(--pink-soft)]">{error}</p>
@@ -770,9 +770,25 @@ function PartyDrawer({
           ) : (
             <span />
           )}
-          <button className={rsvpButton} type="submit">
+          <ActionButton
+            className={rsvpButton}
+            wrapperClassName="grid"
+            busy="Saving…"
+            done="Saved"
+            surface={surface}
+            onRun={() =>
+              onSave({
+                id: party?.id ?? '',
+                name,
+                email,
+                plusOneAllowed,
+                eventIds,
+                guests,
+              })
+            }
+          >
             Save
-          </button>
+          </ActionButton>
         </div>
       </form>
     </div>
@@ -790,76 +806,60 @@ function PartyDrawer({
 function EmailAllButton({ data }: { data: ReadyManage }) {
   const send = useServerFn(emailRsvpInvitations)
   const router = useRouter()
-  const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState('')
+  const surface = useSurface()
   const ready = data.wedding.parties.filter((party) =>
     party.email.includes('@'),
   ).length
-  const sendAll = () => {
-    if (ready === 0) return
-    const label = ready === 1 ? '1 party' : `${ready} parties`
-    if (!window.confirm(`Email the invitation to ${label}?`)) return
-    setBusy(true)
-    setNotice('')
-    void send({ data: { all: true } }).then(async (result) => {
-      setBusy(false)
-      setNotice(result.detail)
-      await router.invalidate()
-    })
-  }
+  const label = ready === 1 ? '1 party' : `${ready} parties`
   return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        className={`${rsvpGhost} w-auto`}
-        disabled={busy || ready === 0}
-        onClick={sendAll}
-      >
-        {busy ? 'Sending…' : 'Email all invitations'}
-      </button>
-      {notice ? (
-        <span className="text-sm text-[var(--text-muted)]">{notice}</span>
-      ) : null}
-    </div>
+    <ActionButton
+      className={`${rsvpGhost} w-auto`}
+      busy="Sending…"
+      done="Sent"
+      surface={surface}
+      disabled={ready === 0}
+      disabledHint="Add an email to a party first."
+      lastUsed={data.invitedAt ? `Sent ${shortWhen(data.invitedAt)}` : ''}
+      confirmMessage={`Email the invitation to ${label}?`}
+      onRun={async (): Promise<RunResult> => {
+        const result = await send({ data: { all: true } })
+        await router.invalidate()
+        return { ok: result.ok, message: result.detail }
+      }}
+    >
+      Email all invitations
+    </ActionButton>
   )
 }
 
 function EmailPartyButton({
   partyId,
   email,
+  invitedAt,
 }: {
   partyId: string
   email: string
+  invitedAt: string
 }) {
   const send = useServerFn(emailRsvpInvitations)
-  const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState('')
+  const surface = useSurface()
   const hasEmail = email.includes('@')
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        className={`${rsvpGhost} w-auto`}
-        disabled={busy || !hasEmail}
-        onClick={() => {
-          setBusy(true)
-          setNotice('')
-          void send({ data: { partyId } }).then((result) => {
-            setBusy(false)
-            setNotice(result.detail)
-          })
-        }}
-      >
-        {busy ? 'Sending…' : 'Email invitation'}
-      </button>
-      {notice ? (
-        <span className="text-sm text-[var(--text-muted)]">{notice}</span>
-      ) : !hasEmail ? (
-        <span className="text-sm text-[var(--text-muted)]">
-          Add an email for this party first.
-        </span>
-      ) : null}
-    </div>
+    <ActionButton
+      className={`${rsvpGhost} w-auto`}
+      busy="Sending…"
+      done="Invited"
+      surface={surface}
+      disabled={!hasEmail}
+      disabledHint="Add an email for this party first."
+      lastUsed={invitedAt ? `Invited ✓ ${shortWhen(invitedAt)}` : ''}
+      onRun={async (): Promise<RunResult> => {
+        const result = await send({ data: { partyId } })
+        return { ok: result.ok, message: result.detail }
+      }}
+    >
+      Email invitation
+    </ActionButton>
   )
 }
 
@@ -875,6 +875,49 @@ const EMAIL_LABELS: Record<string, string> = {
   'piper-payment': 'Payment to Piper',
   'sign-in': 'Sign-in link',
   test: 'Test',
+}
+
+/** The portal's own light/dark choice, for the feedback colours. */
+function useSurface(): 'dark' | 'light' {
+  return useRsvpTheme()
+}
+
+const TORONTO = 'America/Toronto'
+
+function dayStamp(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TORONTO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+/** "today 8:15 AM", "yesterday 6:02 PM" or "Oct 13". */
+function shortWhen(iso: string): string {
+  const then = new Date(iso)
+  if (Number.isNaN(then.getTime())) return ''
+  const now = new Date()
+  const stamp = dayStamp(then)
+  if (stamp === dayStamp(now)) {
+    return `today ${new Intl.DateTimeFormat('en-US', {
+      timeZone: TORONTO,
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(then)}`
+  }
+  if (stamp === dayStamp(new Date(now.getTime() - 86_400_000))) {
+    return `yesterday ${new Intl.DateTimeFormat('en-US', {
+      timeZone: TORONTO,
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(then)}`
+  }
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: TORONTO,
+    month: 'short',
+    day: 'numeric',
+  }).format(then)
 }
 
 function emailWhen(iso: string): string {
@@ -1136,10 +1179,10 @@ export function Songs({ data }: { data: ReadyManage }) {
 
 export function Exports({ data }: { data: ReadyManage }) {
   const load = useServerFn(downloadRsvpCsv)
+  const router = useRouter()
   const remind = useServerFn(sendRsvpReminders)
   const test = useServerFn(sendTestRsvpEmail)
-  const [notice, setNotice] = useState('')
-  const [busy, setBusy] = useState(false)
+  const surface = useSurface()
   const [testKind, setTestKind] = useState<string>('invitation')
   const canRemind = data.reminderManual.allowed
   const today = data.wedding.eventDate || 'rsvp'
@@ -1183,33 +1226,35 @@ export function Exports({ data }: { data: ReadyManage }) {
           onClick={() => void grab('seating', 'seating')}
         />
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          className="min-h-11 rounded-full bg-[var(--pink)] px-4 text-sm font-semibold text-[#0D0D0D] disabled:opacity-60"
-          disabled={busy || !canRemind}
-          onClick={() => {
-            const count = data.stats.waitingParties
-            if (
-              !window.confirm(
-                `Email the reminder to ${count} part${count === 1 ? 'y' : 'ies'} still waiting?`,
-              )
-            )
-              return
-            setBusy(true)
-            setNotice('')
-            void remind({ data: { now: true } }).then((result) => {
-              setBusy(false)
-              setNotice(result.detail || 'The email was not sent.')
-            })
+      <div className="mt-4 flex flex-wrap items-start gap-3">
+        <ActionButton
+          className={rsvpButton}
+          wrapperClassName="inline-grid w-auto"
+          busy="Sending…"
+          done="Sent"
+          surface={surface}
+          disabled={!canRemind}
+          disabledHint="A manual reminder already went out in the last 24 hours."
+          lastUsed={
+            data.wedding.remindedManualAt
+              ? `Sent ${shortWhen(data.wedding.remindedManualAt)}`
+              : ''
+          }
+          confirmMessage={`Email the reminder to ${data.stats.waitingParties} parties still waiting?`}
+          onRun={async (): Promise<RunResult> => {
+            const result = await remind({ data: { now: true } })
+            await router.invalidate()
+            return {
+              ok: result.ok,
+              message: result.detail || 'The email was not sent.',
+            }
           }}
         >
           Email parties still waiting
-        </button>
-        <p className="text-sm text-[var(--text-muted)]">
-          {canRemind
-            ? `Still waiting on ${data.stats.waitingParties} parties. The automatic note goes out 7 days before the deadline.`
-            : 'A manual reminder already went out in the last 24 hours.'}
+        </ActionButton>
+        <p className="max-w-xs text-sm text-[var(--text-muted)]">
+          Still waiting on {data.stats.waitingParties} parties. The automatic
+          note goes out 7 days before the deadline.
         </p>
       </div>
       <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -1230,21 +1275,22 @@ export function Exports({ data }: { data: ReadyManage }) {
               </option>
             ))}
           </select>
-          <button
-            type="button"
+          <ActionButton
             className={`${rsvpGhost} w-auto`}
-            disabled={busy}
-            onClick={() => {
-              setBusy(true)
-              setNotice('')
-              void test({ data: { kind: testKind } }).then((result) => {
-                setBusy(false)
-                setNotice(result.detail)
-              })
+            busy="Sending…"
+            done="Sent"
+            surface={surface}
+            lastUsed={data.testedAt ? `Sent ${shortWhen(data.testedAt)}` : ''}
+            onRun={async (): Promise<RunResult> => {
+              const result = await test({ data: { kind: testKind } })
+              return {
+                ok: result.ok,
+                message: result.detail || 'The email was not sent.',
+              }
             }}
           >
-            Send test
-          </button>
+            Send me a test
+          </ActionButton>
         </div>
       </section>
       <section className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -1281,9 +1327,6 @@ export function Exports({ data }: { data: ReadyManage }) {
           </ul>
         )}
       </section>
-      {notice ? (
-        <p className="mt-3 text-sm text-[var(--text-muted)]">{notice}</p>
-      ) : null}
     </div>
   )
 }
@@ -1323,35 +1366,12 @@ export function Settings({ data }: { data: ReadyManage }) {
   const [inviteCode, setCode] = useState(data.wedding.inviteCode)
   const [showContact, setShow] = useState(data.wedding.showContact)
   const [contactPhone, setPhone] = useState(data.wedding.contactPhone)
-  const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
+  const surface = useSurface()
   return (
     <form
       className="grid max-w-xl gap-4"
-      onSubmit={(event) => {
-        event.preventDefault()
-        void save({
-          data: {
-            accessMode,
-            inviteCode,
-            showContact,
-            contactPhone,
-            deadline: data.wedding.deadline,
-            catererDeadline: data.wedding.catererDeadline,
-            lockAfterDeadline: data.wedding.lockAfterDeadline,
-            autoRemind: data.wedding.autoRemind,
-            events: data.wedding.events,
-            questions: data.wedding.questions,
-            schedule: data.wedding.schedule,
-            notes: data.wedding.notes,
-            venue: data.wedding.venue,
-            address: data.wedding.address,
-          },
-        }).then(async (result) => {
-          setNotice(result.ok ? 'Saved.' : 'Could not save.')
-          if (result.ok) await router.invalidate()
-        })
-      }}
+      onSubmit={(event) => event.preventDefault()}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -1360,9 +1380,39 @@ export function Settings({ data }: { data: ReadyManage }) {
           </p>
           <h1 className="portal-display text-4xl">Share & privacy</h1>
         </div>
-        <button className={`${rsvpButton} w-auto`} type="submit">
+        <ActionButton
+          className={`${rsvpButton} w-auto`}
+          busy="Saving…"
+          done="Saved"
+          surface={surface}
+          onRun={async () => {
+            const result = await save({
+              data: {
+                accessMode,
+                inviteCode,
+                showContact,
+                contactPhone,
+                deadline: data.wedding.deadline,
+                catererDeadline: data.wedding.catererDeadline,
+                lockAfterDeadline: data.wedding.lockAfterDeadline,
+                autoRemind: data.wedding.autoRemind,
+                events: data.wedding.events,
+                questions: data.wedding.questions,
+                schedule: data.wedding.schedule,
+                notes: data.wedding.notes,
+                venue: data.wedding.venue,
+                address: data.wedding.address,
+              },
+            })
+            if (result.ok) await router.invalidate()
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Saved.' : 'Could not save.',
+            }
+          }}
+        >
           Save changes
-        </button>
+        </ActionButton>
       </div>
       <fieldset className="grid gap-2">
         <legend className="text-sm text-[var(--text-muted)]">
@@ -1443,9 +1493,6 @@ export function Settings({ data }: { data: ReadyManage }) {
             onChange={(event) => setPhone(event.target.value)}
           />
         </label>
-      ) : null}
-      {notice ? (
-        <p className="text-sm text-[var(--text-muted)]">{notice}</p>
       ) : null}
     </form>
   )

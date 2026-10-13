@@ -1,10 +1,17 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
+import {
+  DeskTitle,
+  deskCard,
+  deskPrimary,
+  deskSurface,
+} from '../../components/desk-ui.tsx'
 import { getSettings, saveSettings } from '../../lib/crm/desk.functions.ts'
 import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/settings')({
   head: () => deskHead('Settings · DJ Piper P'),
@@ -23,19 +30,7 @@ function SettingsPage() {
       <DeskTitle kicker="Settings" title="Settings" />
       <form
         className={`${deskCard} grid gap-3`}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = new FormData(event.currentTarget)
-          void save({
-            data: {
-              email: String(form.get('email') ?? ''),
-              homeBase: String(form.get('homeBase') ?? ''),
-            },
-          }).then(async (result) => {
-            setNotice(result.ok ? 'Saved.' : result.error)
-            if (result.ok) await router.invalidate()
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="field">
           Desk owner
@@ -50,9 +45,29 @@ function SettingsPage() {
           Home base for travel
           <input name="homeBase" required defaultValue={settings.homeBase} />
         </label>
-        <button type="submit" className={`${deskPrimary} w-fit`}>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (form: FormData): Promise<RunResult | undefined> => {
+            const result = await save({
+              data: {
+                email: String(form.get('email') ?? ''),
+                homeBase: String(form.get('homeBase') ?? ''),
+              },
+            })
+            setNotice(result.ok ? 'Saved.' : result.error)
+            if (result.ok) await router.invalidate()
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Saved.' : result.error,
+            }
+          }}
+        >
           Save
-        </button>
+        </ActionButton>
         {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       </form>
       <section className={deskCard}>

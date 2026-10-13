@@ -7,6 +7,7 @@ import {
   deskCard,
   deskDanger,
   deskPrimary,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
 import {
   deleteBot,
@@ -15,6 +16,8 @@ import {
   saveBot,
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/bots')({
   head: () => deskHead('Bots · DJ Piper P'),
@@ -41,27 +44,7 @@ function BotsPage() {
       </DeskTitle>
       <form
         className={`${deskCard} grid gap-3 sm:grid-cols-2`}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = event.currentTarget
-          const data = new FormData(form)
-          void save({
-            data: {
-              name: String(data.get('name') ?? ''),
-              role: String(data.get('role') ?? ''),
-            },
-          }).then(async (result) => {
-            if (!result.ok) {
-              setError(result.error)
-              setToken(null)
-              return
-            }
-            setError(null)
-            setToken(result.token)
-            form.reset()
-            await router.invalidate()
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="field">
           Name
@@ -75,9 +58,37 @@ function BotsPage() {
             <option value="ceo">Ceo</option>
           </select>
         </label>
-        <button type="submit" className={`${deskPrimary} w-fit`}>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (
+            form: FormData,
+            formElement: HTMLFormElement | null,
+          ): Promise<RunResult | undefined> => {
+            const data = form
+            const result = await save({
+              data: {
+                name: String(data.get('name') ?? ''),
+                role: String(data.get('role') ?? ''),
+              },
+            })
+            if (!result.ok) {
+              setError(result.error)
+              setToken(null)
+              return
+            }
+            setError(null)
+            setToken(result.token)
+            formElement?.reset()
+            await router.invalidate()
+            return { ok: result.ok, message: 'Saved.' }
+          }}
+        >
           Invite
-        </button>
+        </ActionButton>
         {token ? (
           <div className="rounded-xl border border-neon/40 bg-neon/10 p-4 sm:col-span-2">
             <p className="text-sm">
@@ -114,20 +125,7 @@ function BotCard({ bot }: { bot: { id: number; name: string; role: string } }) {
     <li className="rounded-xl border border-white/10 bg-ink-900 px-4 py-3">
       <form
         className="grid gap-3 sm:grid-cols-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = new FormData(event.currentTarget)
-          void save({
-            data: {
-              id: bot.id,
-              name: String(form.get('name') ?? ''),
-              role: String(form.get('role') ?? ''),
-            },
-          }).then(async (result) => {
-            setNotice(result.ok ? 'Saved.' : result.error)
-            if (result.ok) await router.invalidate()
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="field">
           Name
@@ -153,9 +151,30 @@ function BotCard({ bot }: { bot: { id: number; name: string; role: string } }) {
           >
             {bot.role === 'ceo' ? 'Ceo' : bot.role}
           </Chip>
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (form: FormData): Promise<RunResult | undefined> => {
+              const result = await save({
+                data: {
+                  id: bot.id,
+                  name: String(form.get('name') ?? ''),
+                  role: String(form.get('role') ?? ''),
+                },
+              })
+              setNotice(result.ok ? 'Saved.' : result.error)
+              if (result.ok) await router.invalidate()
+              return {
+                ok: result.ok,
+                message: result.ok ? 'Saved.' : result.error,
+              }
+            }}
+          >
             Save
-          </button>
+          </ActionButton>
           <button
             type="button"
             className={deskDanger}

@@ -6,6 +6,7 @@ import {
   ShowSwitch,
   deskCard,
   deskPrimary,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
 import {
   deleteReview,
@@ -17,6 +18,8 @@ import {
 import { REVIEW_SOURCES, reviewSourceLabel } from '../../lib/crm/reviews.ts'
 import type { ReviewDraft, ReviewView } from '../../lib/crm/reviews.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/reviews')({
   head: () => deskHead('Reviews · DJ Piper P'),
@@ -190,25 +193,37 @@ function ReviewsPage() {
       </DeskTitle>
       <form
         className={`${deskCard} grid gap-3`}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = event.currentTarget
-          void add({ data: draftFrom(form) }).then(async (result) => {
-            setNotice(result.ok ? 'Review added.' : result.error)
-            if (result.ok) {
-              form.reset()
-              setShow(false)
-              await router.invalidate()
-            }
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <h2 className="font-display text-xl font-bold">Add a review</h2>
         <ReviewFields />
         <ShowSwitch checked={show} onChange={setShow} />
-        <button type="submit" className={`${deskPrimary} w-fit`}>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (
+            _form: FormData,
+            formElement: HTMLFormElement | null,
+          ): Promise<RunResult | undefined> => {
+            if (!formElement) return { ok: false, message: 'Try again.' }
+            const result = await add({ data: draftFrom(formElement) })
+            setNotice(result.ok ? 'Review added.' : result.error)
+            if (result.ok) {
+              formElement.reset()
+              setShow(false)
+              await router.invalidate()
+            }
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Review added.' : result.error,
+            }
+          }}
+        >
           Add the review
-        </button>
+        </ActionButton>
       </form>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       {reviews.length === 0 ? (

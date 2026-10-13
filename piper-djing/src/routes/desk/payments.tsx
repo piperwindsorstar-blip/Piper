@@ -7,6 +7,7 @@ import {
   deskDanger,
   deskGhost,
   deskPrimary,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
 import {
   deletePayment,
@@ -16,6 +17,8 @@ import {
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents } from '../../lib/crm/money.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/payments')({
   head: () => deskHead('Payments · DJ Piper P'),
@@ -148,32 +151,7 @@ function PaymentCard({
     <li className="rounded-2xl border border-white/10 bg-ink-900 px-4 py-3">
       <form
         className="grid gap-3 sm:grid-cols-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = new FormData(event.currentTarget)
-          try {
-            const cents = dollarsToCents(String(form.get('amount') ?? ''))
-            const next = form.get('kind') === 'refund' ? -cents : cents
-            void save({
-              data: {
-                id: payment.id,
-                cents: next,
-                note: String(form.get('note') ?? ''),
-                paidOn: String(form.get('paidOn') ?? ''),
-                method: String(form.get('method') ?? ''),
-              },
-            }).then(async (result) => {
-              setNotice(
-                result.ok ? 'Saved. A booked date stays booked.' : result.error,
-              )
-              if (result.ok) await router.invalidate()
-            })
-          } catch (error) {
-            setNotice(
-              error instanceof Error ? error.message : 'Enter an amount.',
-            )
-          }
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <p className="font-semibold sm:col-span-2">{payment.names}</p>
         <label className="field">
@@ -210,9 +188,45 @@ function PaymentCard({
           <input name="note" defaultValue={payment.note} />
         </label>
         <div className="flex flex-wrap gap-3 sm:col-span-2">
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (form: FormData): Promise<RunResult | undefined> => {
+              try {
+                const cents = dollarsToCents(String(form.get('amount') ?? ''))
+                const next = form.get('kind') === 'refund' ? -cents : cents
+                const result = await save({
+                  data: {
+                    id: payment.id,
+                    cents: next,
+                    note: String(form.get('note') ?? ''),
+                    paidOn: String(form.get('paidOn') ?? ''),
+                    method: String(form.get('method') ?? ''),
+                  },
+                })
+                setNotice(
+                  result.ok
+                    ? 'Saved. A booked date stays booked.'
+                    : result.error,
+                )
+                if (result.ok) await router.invalidate()
+                return {
+                  ok: result.ok,
+                  message: result.ok ? 'Saved.' : result.error,
+                }
+              } catch (error) {
+                const message =
+                  error instanceof Error ? error.message : 'Enter an amount.'
+                setNotice(message)
+                return { ok: false, message }
+              }
+            }}
+          >
             Save
-          </button>
+          </ActionButton>
           <button
             type="button"
             className={deskDanger}

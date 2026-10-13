@@ -58,6 +58,13 @@ import {
 } from './emails.ts'
 import type { RsvpEmail } from './emails.ts'
 import { listRsvpEmails, sendRsvpEmail } from './mailer.server.ts'
+import { parsePhotoUpload } from './photo.ts'
+import {
+  photoPath,
+  parsePhotoShape,
+  parseTemplateId,
+  templateFor,
+} from './templates.ts'
 import { notifyCouplePaid, notifyPiperSignup } from './notify.server.ts'
 import {
   coupleBookings,
@@ -70,6 +77,8 @@ import {
   newToken,
   quoteRsvpPrice,
   readRsvp,
+  removeRsvpPhoto as dropRsvpPhoto,
+  saveRsvpPhoto as storeRsvpPhoto,
   writeRsvp,
 } from './store.server.ts'
 import {
@@ -215,6 +224,8 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
       return {
         entry,
         theme: wedding.theme,
+        template: wedding.template,
+        photo: photoView(wedding),
         couple: coupleTitle(wedding),
         cents: wedding.priceCents,
         kind: wedding.priceKind,
@@ -223,6 +234,8 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
     return {
       entry,
       theme: wedding.theme,
+      template: wedding.template,
+      photo: photoView(wedding),
       slug: wedding.slug,
       couple: coupleTitle(wedding),
       dateLabel: longWeddingDate(wedding.eventDate),
@@ -304,6 +317,8 @@ function householdPayload(wedding: RsvpWedding, token: string) {
   return {
     slug: wedding.slug,
     theme: wedding.theme,
+    template: wedding.template,
+    photo: photoView(wedding),
     couple: coupleTitle(wedding),
     deadline: shortMonthDay(wedding.deadline),
     locked:
@@ -518,6 +533,35 @@ export const openRsvpSignIn = createServerFn({ method: 'POST' })
     return { ok: true as const, slug: wedding.slug }
   })
 
+/** The photo as the guest pages and the dashboard show it. */
+function photoView(wedding: RsvpWedding) {
+  const photo = wedding.photo
+  if (!photo) return null
+  return {
+    url: publicUrl(photoPath(wedding.slug, photo)),
+    shape: photo.shape,
+    alt: `${coupleTitle(wedding)} photo`,
+    bytes: photo.bytes,
+    version: photo.version,
+  }
+}
+
+/** When each once-only email last went out, read from the desk's own log. */
+function lastSends(emails: Awaited<ReturnType<typeof listRsvpEmails>>) {
+  const invited: Record<string, string> = {}
+  let invitedAt = ''
+  let testedAt = ''
+  for (const row of emails) {
+    if (row.kind === 'invitation') {
+      if (!invitedAt) invitedAt = row.sentAt
+      if (row.partyId && !invited[row.partyId])
+        invited[row.partyId] = row.sentAt
+    }
+    if (row.kind === 'test' && !testedAt) testedAt = row.sentAt
+  }
+  return { invited, invitedAt, testedAt }
+}
+
 async function manageView(
   wedding: RsvpWedding,
   desk: boolean,
@@ -528,7 +572,12 @@ async function manageView(
   copy.signInExpires = ''
   const questions = await listCoupleQuestions(copy.slug)
   const emails = await listRsvpEmails(copy.slug)
+  const sends = lastSends(emails)
   return {
+    photo: photoView(copy),
+    invited: sends.invited,
+    invitedAt: sends.invitedAt,
+    testedAt: sends.testedAt,
     mode: 'ready' as const,
     desk,
     wedding: copy,
@@ -566,6 +615,110 @@ export const setRsvpTheme = createServerFn({ method: 'POST' })
     await writeRsvp(wedding)
     return { ok: true as const, theme: wedding.theme }
   })
+
+/** The couple picks one of the five invitation templates. */
+export const saveRsvpTemplate = createServerFn({ method: 'POST' })
+  .validator((data: { template?: string }) => ({
+    template: parseTemplateId(data.template),
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    wedding.template = data.template
+    await writeRsvp(wedding)
+    return { ok: true as const, template: wedding.template }
+  })
+
+/**
+ * The trimmed JPEG the browser made. It lands in the site's own storage and is
+ * served from the site's own domain, so no third party ever holds a guest's
+ * photo. A new upload replaces the old one and changes the version, so the
+ * image guests fetch is never stale.
+ */
+export const saveRsvpPhoto = createServerFn({ method: 'POST' })
+  .validator(
+    (data: {
+      dataUrl?: unknown
+      shape?: unknown
+      width?: unknown
+      height?: unknown
+    }) => ({
+      dataUrl: typeof data.dataUrl === 'string' ? data.dataUrl : '',
+      shape: typeof data.shape === 'string' ? data.shape : '',
+      width: data.width,
+      height: data.height,
+    }),
+  )
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    const parsed = parsePhotoUpload(
+      data.dataUrl,
+      data.shape ||
+        wedding.photo?.shape ||
+        templateFor(wedding.template).skin.photoShape,
+      data.width,
+      data.height,
+    )
+    if (!parsed.ok) return { ok: false as const, error: parsed.error }
+    const photo = await storeRsvpPhoto({
+      slug: wedding.slug,
+      mime: parsed.photo.mime,
+      bytes: parsed.photo.bytes,
+      shape: parsed.photo.shape,
+      width: parsed.photo.width,
+      height: parsed.photo.height,
+    })
+    wedding.photo = photo
+    await writeRsvp(wedding)
+    return { ok: true as const, photo }
+  })
+
+/** Banner, circle or arch — the couple can change their mind any time. */
+export const saveRsvpPhotoShape = createServerFn({ method: 'POST' })
+  .validator((data: { shape?: unknown }) => ({
+    shape: parsePhotoShape(data.shape),
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk) || !wedding.photo) {
+      return { ok: false as const, error: 'Add a photo first.' }
+    }
+    wedding.photo = { ...wedding.photo, shape: data.shape }
+    await writeRsvp(wedding)
+    return { ok: true as const, shape: data.shape }
+  })
+
+/** "Remove photo" puts the invitation back to its template without one. */
+export const clearRsvpPhoto = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    await dropRsvpPhoto(wedding.slug)
+    wedding.photo = null
+    await writeRsvp(wedding)
+    return { ok: true as const }
+  },
+)
 
 export const getRsvpManage = createServerFn({ method: 'GET' }).handler(
   async () => {

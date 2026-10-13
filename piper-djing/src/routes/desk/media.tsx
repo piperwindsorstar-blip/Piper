@@ -6,6 +6,7 @@ import {
   deskCard,
   deskDanger,
   deskPrimary,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
 import {
   deleteMedia,
@@ -14,6 +15,8 @@ import {
   saveMedia,
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/media')({
   head: () => deskHead('Media · DJ Piper P'),
@@ -32,23 +35,7 @@ function MediaPage() {
       <DeskTitle kicker="Media" title="Media" />
       <form
         className={`${deskCard} grid gap-3`}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = event.currentTarget
-          const data = new FormData(form)
-          void save({
-            data: {
-              title: String(data.get('title') ?? ''),
-              url: String(data.get('url') ?? ''),
-            },
-          }).then(async (result) => {
-            setNotice(result.ok ? 'Added.' : result.error)
-            if (result.ok) {
-              form.reset()
-              await router.invalidate()
-            }
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="field">
           Title
@@ -58,9 +45,36 @@ function MediaPage() {
           Link
           <input name="url" required placeholder="https://" />
         </label>
-        <button type="submit" className={`${deskPrimary} w-fit`}>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (
+            form: FormData,
+            formElement: HTMLFormElement | null,
+          ): Promise<RunResult | undefined> => {
+            const data = form
+            const result = await save({
+              data: {
+                title: String(data.get('title') ?? ''),
+                url: String(data.get('url') ?? ''),
+              },
+            })
+            setNotice(result.ok ? 'Added.' : result.error)
+            if (result.ok) {
+              formElement?.reset()
+              await router.invalidate()
+            }
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Added.' : result.error,
+            }
+          }}
+        >
           Add the link
-        </button>
+        </ActionButton>
       </form>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       <ul className="grid gap-2">
@@ -84,23 +98,7 @@ function MediaCard({
 
   return (
     <li className="rounded-xl border border-white/10 bg-ink-900 px-4 py-3">
-      <form
-        className="grid gap-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = new FormData(event.currentTarget)
-          void save({
-            data: {
-              id: item.id,
-              title: String(form.get('title') ?? ''),
-              url: String(form.get('url') ?? ''),
-            },
-          }).then(async (result) => {
-            setNotice(result.ok ? 'Saved.' : result.error)
-            if (result.ok) await router.invalidate()
-          })
-        }}
-      >
+      <form className="grid gap-3" onSubmit={(event) => event.preventDefault()}>
         <label className="field">
           Title
           <input name="title" required defaultValue={item.title} />
@@ -118,9 +116,30 @@ function MediaCard({
           Open the link
         </a>
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (form: FormData): Promise<RunResult | undefined> => {
+              const result = await save({
+                data: {
+                  id: item.id,
+                  title: String(form.get('title') ?? ''),
+                  url: String(form.get('url') ?? ''),
+                },
+              })
+              setNotice(result.ok ? 'Saved.' : result.error)
+              if (result.ok) await router.invalidate()
+              return {
+                ok: result.ok,
+                message: result.ok ? 'Saved.' : result.error,
+              }
+            }}
+          >
             Save
-          </button>
+          </ActionButton>
           <button
             type="button"
             className={deskDanger}

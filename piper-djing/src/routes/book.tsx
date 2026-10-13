@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useEffect, useState } from 'react'
+import { ActionButton } from '../components/action-button.tsx'
+import type { RunResult } from '../components/action-button.tsx'
+import { useEffect, useState, useRef } from 'react'
 import { DateCalendarDialog } from '../components/weddings/date-calendar.tsx'
 import { DateDraftProvider } from '../components/weddings/date-draft.tsx'
 import { Header } from '../components/weddings/header.tsx'
@@ -115,6 +117,74 @@ function BookPage() {
   const [withStag, setWithStag] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const eventForm = useRef<HTMLFormElement | null>(null)
+  const weddingForm = useRef<HTMLFormElement | null>(null)
+
+  /** The event inquiry: a message to the couple, never a number. */
+  async function sendTheEvent(form: FormData): Promise<RunResult> {
+    const result = await sendEvent({
+      data: {
+        name: String(form.get('name') ?? ''),
+        email: String(form.get('email') ?? ''),
+        phone: String(form.get('phone') ?? ''),
+        eventDate: String(form.get('eventDate') ?? ''),
+        event: requestedEvent,
+        message: String(form.get('message') ?? ''),
+      },
+    })
+    if (!result.ok) {
+      setMessage(result.error)
+      return { ok: false, message: result.error }
+    }
+    setDone(true)
+    setMessage(
+      result.unavailable
+        ? 'That date is already held. Piper has your note.'
+        : 'Thank you. Piper will write back.',
+    )
+    return { ok: true, message: 'Sent.' }
+  }
+
+  /** The wedding inquiry: names, date, package and both venues. */
+  async function sendTheWedding(form: FormData): Promise<RunResult> {
+    const joined = (first: string, last: string) =>
+      [first.trim(), last.trim()].filter(Boolean).join(' ')
+    const result = await send({
+      data: {
+        partnerOne: joined(
+          String(form.get('partnerOneFirst') ?? ''),
+          String(form.get('partnerOneLast') ?? ''),
+        ),
+        partnerTwo: joined(
+          String(form.get('partnerTwoFirst') ?? ''),
+          String(form.get('partnerTwoLast') ?? ''),
+        ),
+        email: String(form.get('email') ?? ''),
+        phone: String(form.get('phone') ?? ''),
+        eventDate: String(form.get('eventDate') ?? ''),
+        packageId: String(form.get('packageId') ?? ''),
+        withStag: form.get('withStag') === 'on',
+        stagDate: String(form.get('stagDate') ?? ''),
+        venueName: String(form.get('venueName') ?? ''),
+        venueStreet: String(form.get('venueStreet') ?? ''),
+        venueTwoName: String(form.get('venueTwoName') ?? ''),
+        venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+        referral: String(form.get('referral') ?? ''),
+        message: String(form.get('message') ?? ''),
+      },
+    })
+    if (!result.ok) {
+      setMessage(result.error)
+      return { ok: false, message: result.error }
+    }
+    setDone(true)
+    setMessage(
+      result.unavailable
+        ? 'That date is already held. Piper has your note.'
+        : 'Thank you. Piper will write back.',
+    )
+    return { ok: true, message: 'Sent.' }
+  }
 
   return (
     <DateDraftProvider>
@@ -141,35 +211,11 @@ function BookPage() {
             </p>
           ) : general ? (
             <form
+              ref={eventForm}
               className="mt-10 grid gap-4 rounded-2xl border border-ink bg-paper p-7 shadow-[8px_8px_0_0_#EEE8FF]"
               onSubmit={(event) => {
                 event.preventDefault()
-                const form = new FormData(event.currentTarget)
-                void sendEvent({
-                  data: {
-                    name: String(form.get('name') ?? ''),
-                    email: String(form.get('email') ?? ''),
-                    phone: String(form.get('phone') ?? ''),
-                    eventDate: String(form.get('eventDate') ?? ''),
-                    event: requestedEvent,
-                    message: String(form.get('message') ?? ''),
-                  },
-                })
-                  .then((result) => {
-                    if (!result.ok) {
-                      setMessage(result.error)
-                      return
-                    }
-                    setDone(true)
-                    setMessage(
-                      result.unavailable
-                        ? 'That date is already held. Piper has your note.'
-                        : 'Thank you. Piper will write back.',
-                    )
-                  })
-                  .catch(() => {
-                    setMessage('That inquiry was not saved.')
-                  })
+                void sendTheEvent(new FormData(event.currentTarget))
               }}
             >
               <p className="font-display text-2xl font-bold">
@@ -221,60 +267,31 @@ function BookPage() {
               {message ? (
                 <p className="text-sm text-danger">{message}</p>
               ) : null}
-              <button
-                type="submit"
-                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)] transition hover:bg-hot"
+              <ActionButton
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)]"
+                wrapperClassName="grid"
+                busy="Sending…"
+                done="Sent"
+                surface="light"
+                onRun={async (): Promise<RunResult> => {
+                  const form = eventForm.current
+                  if (!form) return { ok: false, message: 'Try again.' }
+                  if (!form.reportValidity()) {
+                    return { ok: false, message: 'Fill in the fields above.' }
+                  }
+                  return sendTheEvent(new FormData(form))
+                }}
               >
                 Send the inquiry
-              </button>
+              </ActionButton>
             </form>
           ) : (
             <form
+              ref={weddingForm}
               className="mt-10 grid gap-4 rounded-2xl border border-ink bg-paper p-7 shadow-[8px_8px_0_0_#EEE8FF]"
               onSubmit={(event) => {
                 event.preventDefault()
-                const form = new FormData(event.currentTarget)
-                const joined = (first: string, last: string) =>
-                  [first.trim(), last.trim()].filter(Boolean).join(' ')
-                void send({
-                  data: {
-                    partnerOne: joined(
-                      String(form.get('partnerOneFirst') ?? ''),
-                      String(form.get('partnerOneLast') ?? ''),
-                    ),
-                    partnerTwo: joined(
-                      String(form.get('partnerTwoFirst') ?? ''),
-                      String(form.get('partnerTwoLast') ?? ''),
-                    ),
-                    email: String(form.get('email') ?? ''),
-                    phone: String(form.get('phone') ?? ''),
-                    eventDate: String(form.get('eventDate') ?? ''),
-                    packageId: String(form.get('packageId') ?? ''),
-                    withStag: form.get('withStag') === 'on',
-                    stagDate: String(form.get('stagDate') ?? ''),
-                    venueName: String(form.get('venueName') ?? ''),
-                    venueStreet: String(form.get('venueStreet') ?? ''),
-                    venueTwoName: String(form.get('venueTwoName') ?? ''),
-                    venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
-                    referral: String(form.get('referral') ?? ''),
-                    message: String(form.get('message') ?? ''),
-                  },
-                })
-                  .then((result) => {
-                    if (!result.ok) {
-                      setMessage(result.error)
-                      return
-                    }
-                    setDone(true)
-                    setMessage(
-                      result.unavailable
-                        ? 'That date is already held. Piper has your note.'
-                        : 'Thank you. Piper will write back.',
-                    )
-                  })
-                  .catch(() => {
-                    setMessage('That inquiry was not saved.')
-                  })
+                void sendTheWedding(new FormData(event.currentTarget))
               }}
             >
               <fieldset className="grid gap-4 sm:grid-cols-2">
@@ -437,12 +454,23 @@ function BookPage() {
               {message ? (
                 <p className="text-sm text-danger">{message}</p>
               ) : null}
-              <button
-                type="submit"
-                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)] transition hover:bg-hot"
+              <ActionButton
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)]"
+                wrapperClassName="grid"
+                busy="Sending…"
+                done="Sent"
+                surface="light"
+                onRun={async (): Promise<RunResult> => {
+                  const form = weddingForm.current
+                  if (!form) return { ok: false, message: 'Try again.' }
+                  if (!form.reportValidity()) {
+                    return { ok: false, message: 'Fill in the fields above.' }
+                  }
+                  return sendTheWedding(new FormData(form))
+                }}
               >
                 Send the inquiry
-              </button>
+              </ActionButton>
             </form>
           )}
         </main>

@@ -79,18 +79,63 @@ describe('invitation style', () => {
     assert.doesNotMatch(email.html, /fonts\.googleapis/)
   })
 
-  it('follows the theme only as an accent', () => {
+  it('dresses the card in the couple template', () => {
     const wedding = sampleWedding()
     const party = wedding.parties[0]
     assert.ok(party)
-    const dark = invitationEmail(wedding, party, url)
-    wedding.theme = 'light'
-    const light = invitationEmail(wedding, party, url)
-    assert.match(dark.html, /#B76E79/)
-    assert.match(light.html, /#B08D57/)
-    // the card stays ivory either way
-    assert.match(dark.html, /background:#FBF7F0/)
-    assert.match(light.html, /background:#FBF7F0/)
+    const ivory = invitationEmail(wedding, party, url)
+    assert.match(ivory.html, /#B08D57/)
+    assert.match(ivory.html, /background:#FBF7F0/)
+    wedding.template = 'minimal'
+    const minimal = invitationEmail(wedding, party, url)
+    assert.match(minimal.html, /background:#FFFFFF/)
+    assert.match(minimal.html, /border:1px solid #111111/)
+    assert.match(minimal.html, /Helvetica/)
+    wedding.template = 'blush'
+    const blush = invitationEmail(wedding, party, url)
+    assert.match(blush.html, /background:#FFF7F5/)
+    assert.match(blush.html, /Snell Roundhand/)
+    assert.match(blush.html, /&#10047;/)
+    wedding.template = 'kraft'
+    const kraft = invitationEmail(wedding, party, url)
+    assert.match(kraft.html, /background:#EADFC6/)
+    assert.match(kraft.html, /border:2px dashed #BFAE8A/)
+    assert.match(kraft.html, /border:1px solid #D3C4A2/)
+    wedding.template = 'black-tie'
+    const black = invitationEmail(wedding, party, url)
+    assert.match(black.html, /background:#111111/)
+    assert.match(black.html, /#C9A227/)
+    assert.match(black.html, /&#9670;/)
+    for (const letter of [ivory, minimal, blush, kraft, black]) {
+      assert.doesNotMatch(letter.html, /fonts\.googleapis/)
+      assert.match(letter.html, /max-width:600px/)
+      assert.match(letter.html, /RSVP<\/a>/)
+    }
+  })
+
+  it('puts the couple photo at the top of the invitation once they add one', () => {
+    const wedding = sampleWedding()
+    const party = wedding.parties[0]
+    assert.ok(party)
+    assert.doesNotMatch(
+      invitationEmail(wedding, party, url).html,
+      /\/api\/rsvp\//,
+    )
+    wedding.photo = {
+      shape: 'circle',
+      version: '42',
+      width: 1000,
+      height: 1000,
+      bytes: 120_000,
+    }
+    const withPhoto = invitationEmail(wedding, party, url)
+    assert.match(withPhoto.html, /\/api\/rsvp\/sarah-and-michael\/photo\?v=42/)
+    assert.match(withPhoto.html, /alt="Sarah &amp; Michael photo"/)
+    assert.match(withPhoto.html, /border-radius:50%/)
+    // the template still reads complete without one
+    const plain = sampleWedding()
+    plain.photo = null
+    assert.match(invitationEmail(plain, party, url).html, /background:#FBF7F0/)
   })
 })
 

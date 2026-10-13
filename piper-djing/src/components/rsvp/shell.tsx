@@ -1,49 +1,115 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
+import { shapeSize, templateFor } from '../../lib/rsvp/templates.ts'
+import type { PhotoShape, RsvpTemplateId } from '../../lib/rsvp/templates.ts'
 
-const RsvpThemeContext = createContext<'dark' | 'light'>('dark')
+/** The couple's photo, as the guest pages show it. */
+export type GuestPhoto = {
+  url: string
+  shape: PhotoShape
+  alt: string
+}
+
+export type RsvpStyle = {
+  theme: 'dark' | 'light'
+  template: RsvpTemplateId
+  photo: GuestPhoto | null
+}
+
+const RsvpStyleContext = createContext<RsvpStyle>({
+  theme: 'dark',
+  template: 'ivory',
+  photo: null,
+})
 
 export function RsvpThemeProvider({
   theme,
+  template = 'ivory',
+  photo = null,
   children,
 }: {
   theme: 'dark' | 'light'
+  template?: RsvpTemplateId
+  photo?: GuestPhoto | null
   children: ReactNode
 }) {
   return (
-    <RsvpThemeContext.Provider value={theme}>
+    <RsvpStyleContext.Provider value={{ theme, template, photo }}>
       {children}
-    </RsvpThemeContext.Provider>
+    </RsvpStyleContext.Provider>
   )
 }
 
 export function useRsvpTheme(): 'dark' | 'light' {
-  return useContext(RsvpThemeContext)
+  return useContext(RsvpStyleContext).theme
+}
+
+export function useRsvpStyle(): RsvpStyle {
+  return useContext(RsvpStyleContext)
 }
 
 export const rsvpButton =
-  'inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--pink)] px-5 text-base font-semibold text-[#0D0D0D] disabled:opacity-60'
+  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--pink)] px-5 text-base font-semibold text-[#0D0D0D] transition hover:brightness-110 active:brightness-90 disabled:opacity-60'
 export const rsvpGhost =
-  'inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border-strong)] bg-transparent px-5 text-base font-semibold text-[var(--text)]'
+  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-transparent px-5 text-base font-semibold text-[var(--text)] transition hover:border-[var(--pink)] active:brightness-90'
 export const rsvpField =
   'min-h-12 w-full rounded-2xl border border-[var(--border-strong)] bg-[var(--field)] px-4 text-base text-[var(--text)] outline-none'
 
+/**
+ * The guest page wears the couple's template: the same paper tint, the same
+ * accent, the same display face as the letter, plus their photo at the top.
+ */
 export function RsvpFrame({ children }: { children: ReactNode }) {
-  const theme = useRsvpTheme()
+  const { theme, template, photo } = useRsvpStyle()
+  const { skin } = templateFor(template)
+  const web = skin.web
+  const light = web ? web.light : theme === 'light'
+  const backdrop = web
+    ? web.backdrop
+    : theme === 'light'
+      ? undefined
+      : 'radial-gradient(ellipse at top, #2A1220 0%, #0D0D0D 45%)'
   return (
     <main
-      className={`portal min-h-screen px-4 py-6 ${theme === 'light' ? 'light' : ''}`}
+      className={`portal min-h-screen px-4 py-6 ${light ? 'light' : ''}`}
       style={
-        theme === 'light'
-          ? undefined
-          : {
-              backgroundImage:
-                'radial-gradient(ellipse at top, #2A1220 0%, #0D0D0D 45%)',
-            }
+        {
+          ...(web?.vars ?? {}),
+          '--display-font': skin.displayFont,
+          backgroundImage: backdrop,
+        } as React.CSSProperties
       }
     >
-      <div className="mx-auto w-full max-w-[430px]">{children}</div>
+      <div className="mx-auto w-full max-w-[430px]">
+        {photo ? <RsvpPhoto photo={photo} /> : null}
+        {children}
+      </div>
     </main>
+  )
+}
+
+/** The couple's photo, cropped by shape so it reads as banner, circle or arch. */
+export function RsvpPhoto({ photo }: { photo: GuestPhoto }) {
+  const size = shapeSize(photo.shape)
+  const radius =
+    photo.shape === 'circle'
+      ? '50%'
+      : photo.shape === 'arch'
+        ? '999px 999px 0 0'
+        : '14px'
+  const width =
+    photo.shape === 'circle' ? '64%' : photo.shape === 'arch' ? '76%' : '100%'
+  return (
+    <img
+      src={photo.url}
+      alt={photo.alt}
+      className="mx-auto mb-6 block h-auto object-cover"
+      style={{
+        width,
+        borderRadius: radius,
+        aspectRatio: `${size.width} / ${size.height}`,
+      }}
+    />
   )
 }
 
@@ -52,14 +118,12 @@ export function RsvpFrame({ children }: { children: ReactNode }) {
  * light pages the ink mark.
  */
 export function RsvpLogo({ className = 'h-9 w-auto' }: { className?: string }) {
-  const theme = useRsvpTheme()
+  const { theme, template } = useRsvpStyle()
+  const web = templateFor(template).skin.web
+  const light = web ? web.light : theme === 'light'
   return (
     <img
-      src={
-        theme === 'light'
-          ? '/photos/logo-inverted.png'
-          : '/brand/dj-piper-p.png'
-      }
+      src={light ? '/photos/logo-inverted.png' : '/brand/dj-piper-p.png'}
       alt="DJ Piper P"
       className={className}
     />

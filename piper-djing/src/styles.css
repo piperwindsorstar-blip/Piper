@@ -410,7 +410,8 @@ html:has(.desk) {
 }
 
 .portal .portal-display {
-  font-family: 'Inter Display', Inter, system-ui, sans-serif;
+  font-family:
+    var(--display-font, 'Inter Display'), Inter, system-ui, sans-serif;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -555,5 +556,52 @@ html:has(.desk) {
 
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* Every button on the site answers the pointer and the keyboard the same way:
+   a lift on hover, a press that sinks in, and a ring when tabbed to. Touch
+   devices get no sticky hover, and a disabled button never looks alive. */
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    filter 140ms ease,
+    transform 90ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+button:disabled,
+button[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+}
+
+button:not(:disabled):active {
+  filter: brightness(0.93);
+  transform: translateY(1px);
+}
+
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+
+  button:not(:disabled):active {
+    transform: none;
   }
 }

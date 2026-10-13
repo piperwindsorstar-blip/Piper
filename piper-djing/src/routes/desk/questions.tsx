@@ -6,6 +6,7 @@ import {
   deskCard,
   deskDanger,
   deskPrimary,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
 import {
   deleteQuestion,
@@ -14,6 +15,8 @@ import {
   saveQuestion,
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/questions')({
   head: () => deskHead('Questions · DJ Piper P'),
@@ -32,26 +35,37 @@ function QuestionsPage() {
       <DeskTitle kicker="Questions" title="Questions" />
       <form
         className={`${deskCard} grid gap-3`}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = event.currentTarget
-          const prompt = String(new FormData(form).get('prompt') ?? '')
-          void save({ data: { prompt } }).then(async (result) => {
-            setNotice(result.ok ? 'Added.' : result.error)
-            if (result.ok) {
-              form.reset()
-              await router.invalidate()
-            }
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="field">
           Question
           <input name="prompt" required />
         </label>
-        <button type="submit" className={`${deskPrimary} w-fit`}>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (
+            form: FormData,
+            formElement: HTMLFormElement | null,
+          ): Promise<RunResult | undefined> => {
+            const prompt = String(form.get('prompt') ?? '')
+            const result = await save({ data: { prompt } })
+            setNotice(result.ok ? 'Added.' : result.error)
+            if (result.ok) {
+              formElement?.reset()
+              await router.invalidate()
+            }
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Added.' : result.error,
+            }
+          }}
+        >
           Add the question
-        </button>
+        </ActionButton>
       </form>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       <ul className="grid gap-2">

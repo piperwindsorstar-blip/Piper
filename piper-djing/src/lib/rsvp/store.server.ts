@@ -1,8 +1,11 @@
 import { randomBytes } from 'node:crypto'
-import { query } from '../db.server.ts'
+import { query, queryBatch } from '../db.server.ts'
 import { sampleWedding } from './demo.ts'
 import { blankWedding, coupleSlug, parseWedding, quoteRsvp } from './model.ts'
 import type { CoupleBooking, PriceQuote, RsvpWedding } from './model.ts'
+import { chunkBase64, decodeBase64, encodeBase64, joinBase64 } from './photo.ts'
+import type { RsvpPhoto } from './templates.ts'
+import { parsePhotoShape } from './templates.ts'
 import type { CoupleQuestion } from './questions.ts'
 
 const TABLE = `
@@ -13,6 +16,26 @@ CREATE TABLE IF NOT EXISTS rsvp_weddings (
   sample integer NOT NULL DEFAULT 0,
   price_cents integer NOT NULL DEFAULT 3000,
   body text NOT NULL DEFAULT '{}'
+)`
+
+const PHOTOS = `
+CREATE TABLE IF NOT EXISTS rsvp_photos (
+  slug text PRIMARY KEY,
+  mime text NOT NULL,
+  shape text NOT NULL DEFAULT 'banner',
+  version text NOT NULL,
+  width integer NOT NULL DEFAULT 0,
+  height integer NOT NULL DEFAULT 0,
+  bytes integer NOT NULL DEFAULT 0,
+  updated_at text NOT NULL
+)`
+
+const PHOTO_PARTS = `
+CREATE TABLE IF NOT EXISTS rsvp_photo_parts (
+  slug text NOT NULL,
+  idx integer NOT NULL,
+  data text NOT NULL,
+  PRIMARY KEY (slug, idx)
 )`
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -106,6 +129,7 @@ export async function listRsvps(): Promise<RsvpWedding[]> {
 
 export async function deleteRsvp(slug: string): Promise<void> {
   await ensureRsvpDesk()
+  await removeRsvpPhoto(slug)
   await query('DELETE FROM rsvp_questions WHERE slug = $1', [slug])
   await query('DELETE FROM rsvp_weddings WHERE slug = $1', [slug])
 }
@@ -296,6 +320,125 @@ export async function createRsvpWedding(input: {
   wedding.replyEmail = input.email.trim().slice(0, 120)
   await writeRsvp(wedding)
   return wedding
+}
+
+// --- the couple's photo, kept in the site's own storage --------------------
+
+export async function ensureRsvpPhotos(): Promise<void> {
+  await ensureRsvp()
+  await query(PHOTOS)
+  await query(PHOTO_PARTS)
+}
+
+type PhotoRow = {
+  slug: string
+  mime: string
+  shape: string
+  version: string
+  width: unknown
+  height: unknown
+  bytes: unknown
+  updated_at: string
+}
+
+/**
+ * Stores the trimmed JPEG the browser produced. The base64 is written in rows,
+ * so a photo never has to fit in one row on either database.
+ */
+export async function saveRsvpPhoto(input: {
+  slug: string
+  mime: string
+  bytes: Uint8Array
+  shape: string
+  width: number
+  height: number
+}): Promise<RsvpPhoto> {
+  await ensureRsvpPhotos()
+  const slug = input.slug.trim().toLowerCase()
+  const version = String(Date.now())
+  const rows = chunkBase64(encodeBase64(input.bytes))
+  const statements = [
+    { sql: 'DELETE FROM rsvp_photo_parts WHERE slug = $1', params: [slug] },
+    ...rows.map((data, index) => ({
+      sql: 'INSERT INTO rsvp_photo_parts (slug, idx, data) VALUES ($1, $2, $3)',
+      params: [slug, index, data],
+    })),
+    {
+      sql: `INSERT INTO rsvp_photos
+              (slug, mime, shape, version, width, height, bytes, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (slug) DO UPDATE SET
+              mime = EXCLUDED.mime,
+              shape = EXCLUDED.shape,
+              version = EXCLUDED.version,
+              width = EXCLUDED.width,
+              height = EXCLUDED.height,
+              bytes = EXCLUDED.bytes,
+              updated_at = EXCLUDED.updated_at`,
+      params: [
+        slug,
+        input.mime,
+        parsePhotoShape(input.shape),
+        version,
+        Math.round(input.width),
+        Math.round(input.height),
+        input.bytes.length,
+        new Date().toISOString(),
+      ],
+    },
+  ]
+  await queryBatch(statements)
+  return {
+    shape: parsePhotoShape(input.shape),
+    version,
+    width: Math.round(input.width),
+    height: Math.round(input.height),
+    bytes: input.bytes.length,
+  }
+}
+
+export async function readRsvpPhotoMeta(slug: string): Promise<{
+  mime: string
+  shape: string
+  version: string
+  bytes: number
+} | null> {
+  await ensureRsvpPhotos()
+  const rows = await query<PhotoRow>(
+    'SELECT * FROM rsvp_photos WHERE slug = $1',
+    [slug.trim().toLowerCase()],
+  )
+  if (rows.length === 0) return null
+  const row = rows[0]
+  return {
+    mime: row.mime,
+    shape: parsePhotoShape(row.shape),
+    version: row.version,
+    bytes: whole(row.bytes),
+  }
+}
+
+/** The stored JPEG, reassembled from its rows. */
+export async function readRsvpPhoto(
+  slug: string,
+): Promise<{ mime: string; version: string; bytes: Uint8Array } | null> {
+  const meta = await readRsvpPhotoMeta(slug)
+  if (!meta) return null
+  const rows = await query<{ data: string }>(
+    'SELECT data FROM rsvp_photo_parts WHERE slug = $1 ORDER BY idx',
+    [slug.trim().toLowerCase()],
+  )
+  if (rows.length === 0) return null
+  const bytes = decodeBase64(joinBase64(rows.map((row) => row.data)))
+  if (!bytes || bytes.length === 0) return null
+  return { mime: meta.mime, version: meta.version, bytes }
+}
+
+export async function removeRsvpPhoto(slug: string): Promise<void> {
+  await ensureRsvpPhotos()
+  const clean = slug.trim().toLowerCase()
+  await query('DELETE FROM rsvp_photo_parts WHERE slug = $1', [clean])
+  await query('DELETE FROM rsvp_photos WHERE slug = $1', [clean])
 }
 
 export async function ensureSampleRsvp(): Promise<RsvpWedding> {

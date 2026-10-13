@@ -7,10 +7,13 @@ import {
   deskDanger,
   deskGhost,
   deskPrimary,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
 import { deleteLead, getLeads, saveLead } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 const deskRoute = getRouteApi('/desk')
 
@@ -70,28 +73,7 @@ function LeadCard({
   return (
     <form
       className={`${deskCard} grid gap-3`}
-      onSubmit={(event) => {
-        event.preventDefault()
-        const form = new FormData(event.currentTarget)
-        const stag = form.get('withStag') === 'on'
-        void save({
-          data: {
-            id: lead.id,
-            partnerOne: String(form.get('partnerOne') ?? ''),
-            partnerTwo: String(form.get('partnerTwo') ?? ''),
-            email: String(form.get('email') ?? ''),
-            phone: String(form.get('phone') ?? ''),
-            eventDate: String(form.get('eventDate') ?? ''),
-            packageId: String(form.get('packageId') ?? lead.packageId),
-            withStag: stag,
-            stagDate: stag ? String(form.get('stagDate') ?? '') : '',
-            message: String(form.get('message') ?? ''),
-          },
-        }).then(async (result) => {
-          setNotice(result.ok ? 'Saved.' : result.error)
-          if (result.ok) await router.invalidate()
-        })
-      }}
+      onSubmit={(event) => event.preventDefault()}
     >
       <h2 className="font-display text-xl font-bold">
         {lead.partnerTwo
@@ -166,9 +148,38 @@ function LeadCard({
         <textarea name="message" rows={3} defaultValue={lead.message} />
       </label>
       <div className="flex flex-wrap gap-3">
-        <button type="submit" className={deskPrimary}>
+        <ActionButton
+          className={deskPrimary}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (form: FormData): Promise<RunResult | undefined> => {
+            const stag = form.get('withStag') === 'on'
+            const result = await save({
+              data: {
+                id: lead.id,
+                partnerOne: String(form.get('partnerOne') ?? ''),
+                partnerTwo: String(form.get('partnerTwo') ?? ''),
+                email: String(form.get('email') ?? ''),
+                phone: String(form.get('phone') ?? ''),
+                eventDate: String(form.get('eventDate') ?? ''),
+                packageId: String(form.get('packageId') ?? lead.packageId),
+                withStag: stag,
+                stagDate: stag ? String(form.get('stagDate') ?? '') : '',
+                message: String(form.get('message') ?? ''),
+              },
+            })
+            setNotice(result.ok ? 'Saved.' : result.error)
+            if (result.ok) await router.invalidate()
+            return {
+              ok: result.ok,
+              message: result.ok ? 'Saved.' : result.error,
+            }
+          }}
+        >
           Save
-        </button>
+        </ActionButton>
         {confirmDelete ? (
           <>
             <button

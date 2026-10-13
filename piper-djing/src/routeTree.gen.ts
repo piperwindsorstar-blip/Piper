@@ -50,12 +50,14 @@ import { Route as DeskPortalsIndexRouteImport } from './routes/desk/portals/inde
 import { Route as RsvpSlugIndexRouteImport } from './routes/rsvp/$slug/index'
 import { Route as RsvpSlugFindRouteImport } from './routes/rsvp/$slug/find'
 import { Route as RsvpManageIndexRouteImport } from './routes/rsvp/manage/index'
+import { Route as RsvpManageDesignRouteImport } from './routes/rsvp/manage/design'
 import { Route as RsvpManageEventsRouteImport } from './routes/rsvp/manage/events'
 import { Route as RsvpManageExportsRouteImport } from './routes/rsvp/manage/exports'
 import { Route as RsvpManageGuestsRouteImport } from './routes/rsvp/manage/guests'
 import { Route as RsvpManageSettingsRouteImport } from './routes/rsvp/manage/settings'
 import { Route as RsvpManageSongsRouteImport } from './routes/rsvp/manage/songs'
 import { Route as RsvpOpenTokenRouteImport } from './routes/rsvp/open/$token'
+import { Route as ApiRsvpSlugPhotoRouteImport } from './routes/api/rsvp/$slug/photo'
 import { Route as DeskPortalsSlugIndexRouteImport } from './routes/desk/portals/$slug/index'
 import { Route as DeskPortalsSlugPlanRouteImport } from './routes/desk/portals/$slug/plan'
 import { Route as RsvpSlugPTokenIndexRouteImport } from './routes/rsvp/$slug/p/$token/index'
@@ -267,6 +269,11 @@ const RsvpManageIndexRoute = RsvpManageIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RsvpManageRouteRoute,
 } as any)
+const RsvpManageDesignRoute = RsvpManageDesignRouteImport.update({
+  id: '/design',
+  path: '/design',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
 const RsvpManageEventsRoute = RsvpManageEventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -295,6 +302,11 @@ const RsvpManageSongsRoute = RsvpManageSongsRouteImport.update({
 const RsvpOpenTokenRoute = RsvpOpenTokenRouteImport.update({
   id: '/rsvp/open/$token',
   path: '/rsvp/open/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRsvpSlugPhotoRoute = ApiRsvpSlugPhotoRouteImport.update({
+  id: '/api/rsvp/$slug/photo',
+  path: '/api/rsvp/$slug/photo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeskPortalsSlugIndexRoute = DeskPortalsSlugIndexRouteImport.update({
@@ -362,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/rsvp/': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
   '/rsvp/$slug/find': typeof RsvpSlugFindRoute
+  '/rsvp/manage/design': typeof RsvpManageDesignRoute
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
@@ -371,6 +384,7 @@ export interface FileRoutesByFullPath {
   '/desk/portals/': typeof DeskPortalsIndexRoute
   '/rsvp/$slug/': typeof RsvpSlugIndexRoute
   '/rsvp/manage/': typeof RsvpManageIndexRoute
+  '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -413,6 +427,7 @@ export interface FileRoutesByTo {
   '/rsvp': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
   '/rsvp/$slug/find': typeof RsvpSlugFindRoute
+  '/rsvp/manage/design': typeof RsvpManageDesignRoute
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
@@ -422,6 +437,7 @@ export interface FileRoutesByTo {
   '/desk/portals': typeof DeskPortalsIndexRoute
   '/rsvp/$slug': typeof RsvpSlugIndexRoute
   '/rsvp/manage': typeof RsvpManageIndexRoute
+  '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -468,6 +484,7 @@ export interface FileRoutesById {
   '/rsvp/': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
   '/rsvp/$slug/find': typeof RsvpSlugFindRoute
+  '/rsvp/manage/design': typeof RsvpManageDesignRoute
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
@@ -477,6 +494,7 @@ export interface FileRoutesById {
   '/desk/portals/': typeof DeskPortalsIndexRoute
   '/rsvp/$slug/': typeof RsvpSlugIndexRoute
   '/rsvp/manage/': typeof RsvpManageIndexRoute
+  '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -524,6 +542,7 @@ export interface FileRouteTypes {
     | '/rsvp/'
     | '/api/bots/v1'
     | '/rsvp/$slug/find'
+    | '/rsvp/manage/design'
     | '/rsvp/manage/events'
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
@@ -533,6 +552,7 @@ export interface FileRouteTypes {
     | '/desk/portals/'
     | '/rsvp/$slug/'
     | '/rsvp/manage/'
+    | '/api/rsvp/$slug/photo'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -575,6 +595,7 @@ export interface FileRouteTypes {
     | '/rsvp'
     | '/api/bots/v1'
     | '/rsvp/$slug/find'
+    | '/rsvp/manage/design'
     | '/rsvp/manage/events'
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
@@ -584,6 +605,7 @@ export interface FileRouteTypes {
     | '/desk/portals'
     | '/rsvp/$slug'
     | '/rsvp/manage'
+    | '/api/rsvp/$slug/photo'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug'
     | '/rsvp/$slug/p/$token/done'
@@ -629,6 +651,7 @@ export interface FileRouteTypes {
     | '/rsvp/'
     | '/api/bots/v1'
     | '/rsvp/$slug/find'
+    | '/rsvp/manage/design'
     | '/rsvp/manage/events'
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
@@ -638,6 +661,7 @@ export interface FileRouteTypes {
     | '/desk/portals/'
     | '/rsvp/$slug/'
     | '/rsvp/manage/'
+    | '/api/rsvp/$slug/photo'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -665,6 +689,7 @@ export interface RootRouteChildren {
   RsvpSlugFindRoute: typeof RsvpSlugFindRoute
   RsvpOpenTokenRoute: typeof RsvpOpenTokenRoute
   RsvpSlugIndexRoute: typeof RsvpSlugIndexRoute
+  ApiRsvpSlugPhotoRoute: typeof ApiRsvpSlugPhotoRoute
   RsvpSlugPTokenDoneRoute: typeof RsvpSlugPTokenDoneRoute
   RsvpSlugPTokenReviewRoute: typeof RsvpSlugPTokenReviewRoute
   RsvpSlugPTokenIndexRoute: typeof RsvpSlugPTokenIndexRoute
@@ -959,6 +984,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RsvpManageIndexRouteImport
       parentRoute: typeof RsvpManageRouteRoute
     }
+    '/rsvp/manage/design': {
+      id: '/rsvp/manage/design'
+      path: '/design'
+      fullPath: '/rsvp/manage/design'
+      preLoaderRoute: typeof RsvpManageDesignRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
     '/rsvp/manage/events': {
       id: '/rsvp/manage/events'
       path: '/events'
@@ -999,6 +1031,13 @@ declare module '@tanstack/react-router' {
       path: '/rsvp/open/$token'
       fullPath: '/rsvp/open/$token'
       preLoaderRoute: typeof RsvpOpenTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/rsvp/$slug/photo': {
+      id: '/api/rsvp/$slug/photo'
+      path: '/api/rsvp/$slug/photo'
+      fullPath: '/api/rsvp/$slug/photo'
+      preLoaderRoute: typeof ApiRsvpSlugPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/desk/portals/$slug/': {
@@ -1108,6 +1147,7 @@ const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
 )
 
 interface RsvpManageRouteRouteChildren {
+  RsvpManageDesignRoute: typeof RsvpManageDesignRoute
   RsvpManageEventsRoute: typeof RsvpManageEventsRoute
   RsvpManageExportsRoute: typeof RsvpManageExportsRoute
   RsvpManageGuestsRoute: typeof RsvpManageGuestsRoute
@@ -1117,6 +1157,7 @@ interface RsvpManageRouteRouteChildren {
 }
 
 const RsvpManageRouteRouteChildren: RsvpManageRouteRouteChildren = {
+  RsvpManageDesignRoute: RsvpManageDesignRoute,
   RsvpManageEventsRoute: RsvpManageEventsRoute,
   RsvpManageExportsRoute: RsvpManageExportsRoute,
   RsvpManageGuestsRoute: RsvpManageGuestsRoute,
@@ -1149,6 +1190,7 @@ const rootRouteChildren: RootRouteChildren = {
   RsvpSlugFindRoute: RsvpSlugFindRoute,
   RsvpOpenTokenRoute: RsvpOpenTokenRoute,
   RsvpSlugIndexRoute: RsvpSlugIndexRoute,
+  ApiRsvpSlugPhotoRoute: ApiRsvpSlugPhotoRoute,
   RsvpSlugPTokenDoneRoute: RsvpSlugPTokenDoneRoute,
   RsvpSlugPTokenReviewRoute: RsvpSlugPTokenReviewRoute,
   RsvpSlugPTokenIndexRoute: RsvpSlugPTokenIndexRoute,

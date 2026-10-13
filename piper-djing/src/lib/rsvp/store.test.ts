@@ -13,6 +13,10 @@ import {
   deleteRsvp,
   quoteRsvpPrice,
   readRsvp,
+  readRsvpPhoto,
+  readRsvpPhotoMeta,
+  removeRsvpPhoto,
+  saveRsvpPhoto,
 } from './store.server.ts'
 
 const liveBook = Boolean(process.env.DATABASE_URL)
@@ -65,5 +69,70 @@ describe('rsvp store', { skip: liveBook }, () => {
     await deleteRsvp(created.slug)
     await removeBooking(booking.id)
     assert.equal(await countedTotal(), before)
+  })
+})
+
+describe('the couple photo store', { skip: liveBook }, () => {
+  it('keeps a 400 KB photo in rows and hands it back whole', async () => {
+    const wedding = await createRsvpWedding({
+      partnerOne: 'Photo',
+      partnerTwo: 'Trial',
+      email: 'photo-rsvp@example.com',
+      eventDate: '2030-09-09',
+      venue: 'The Hall',
+    })
+    const bytes = new Uint8Array(400_000)
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = (index * 13) % 256
+    }
+    const photo = await saveRsvpPhoto({
+      slug: wedding.slug,
+      mime: 'image/jpeg',
+      bytes,
+      shape: 'circle',
+      width: 1000,
+      height: 1000,
+    })
+    assert.equal(photo.bytes, 400_000)
+    assert.equal(photo.shape, 'circle')
+    const meta = await readRsvpPhotoMeta(wedding.slug)
+    assert.ok(meta && meta.mime === 'image/jpeg' && meta.shape === 'circle')
+
+    const back = await readRsvpPhoto(wedding.slug)
+    const backBytes = back === null ? new Uint8Array() : back.bytes
+    assert.equal(backBytes.length, bytes.length)
+    assert.equal(back === null ? '' : back.mime, 'image/jpeg')
+    assert.deepEqual(backBytes.slice(0, 64), bytes.slice(0, 64))
+    assert.deepEqual(backBytes.slice(-64), bytes.slice(-64))
+
+    // a second upload replaces the first, and the version moves with it
+    const second = await saveRsvpPhoto({
+      slug: wedding.slug,
+      mime: 'image/jpeg',
+      bytes: new Uint8Array(1000).fill(7),
+      shape: 'arch',
+      width: 1000,
+      height: 1250,
+    })
+    assert.notEqual(second.version, photo.version)
+    const replaced = await readRsvpPhoto(wedding.slug)
+    assert.equal(replaced === null ? 0 : replaced.bytes.length, 1000)
+    assert.equal(replaced === null ? 0 : replaced.bytes[999], 7)
+
+    await removeRsvpPhoto(wedding.slug)
+    assert.equal(await readRsvpPhoto(wedding.slug), null)
+    assert.equal(await readRsvpPhotoMeta(wedding.slug), null)
+
+    // removing the whole RSVP takes the photo rows with it
+    await saveRsvpPhoto({
+      slug: wedding.slug,
+      mime: 'image/jpeg',
+      bytes: new Uint8Array(2048),
+      shape: 'banner',
+      width: 1200,
+      height: 420,
+    })
+    await deleteRsvp(wedding.slug)
+    assert.equal(await readRsvpPhoto(wedding.slug), null)
   })
 })

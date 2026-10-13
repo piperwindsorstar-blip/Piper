@@ -18,7 +18,11 @@ export const Route = createFileRoute('/rsvp/$slug/p/$token/done')({
     const { sent } = Route.useSearch()
     if (!data) return null
     return (
-      <RsvpThemeProvider theme={data.theme}>
+      <RsvpThemeProvider
+        theme={data.theme}
+        template={data.template}
+        photo={data.photo}
+      >
         <ReplyDone data={data} sent={sent === '1'} />
       </RsvpThemeProvider>
     )

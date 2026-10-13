@@ -10,6 +10,9 @@ const TONE = {
 
 export type ChipTone = keyof typeof TONE
 
+/** The desk is a light paper theme, so its feedback lines read dark. */
+export const deskSurface = 'light' as const
+
 export const deskPrimary =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-neon px-4 py-2 text-sm font-bold text-white shadow-[0_0_20px_rgba(255,0,127,.4)] transition hover:bg-hot disabled:opacity-40 desk-motion'
 export const deskGhost =

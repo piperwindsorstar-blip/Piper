@@ -7,6 +7,8 @@ import {
   saveHouseholdReply,
 } from '../../lib/rsvp/rsvp.functions.ts'
 import type { getHousehold } from '../../lib/rsvp/rsvp.functions.ts'
+import { ActionButton } from '../action-button.tsx'
+import type { RunResult } from '../action-button.tsx'
 import {
   Field,
   RsvpFrame,
@@ -45,7 +47,7 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
   const [guests, setGuests] = useState(data.party.guests)
   const email = data.party.email
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+
   const hosts = guests.filter((guest) => !guest.isPlusOne)
   const tally = tallyGuests(data.events, guests)
   const [plus, setPlus] = useState(() => initialPlus(data))
@@ -330,11 +332,15 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
       <p className="mt-4 text-sm text-[var(--text-muted)]">
         {tally.attending} attending · {tally.declined} can&apos;t make it
       </p>
-      <button
-        type="button"
+      <ActionButton
         className={`${rsvpButton} mt-3`}
-        disabled={busy || data.locked}
-        onClick={() => {
+        wrapperClassName="grid"
+        busy="Saving…"
+        done="Saved"
+        surface="dark"
+        disabled={data.locked}
+        disabledHint="Replies are closed."
+        onRun={async (): Promise<RunResult> => {
           const missing = hosts.find((guest) => {
             const draft = plus[guest.id]
             const coming = data.events.some(
@@ -346,35 +352,27 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
           })
           if (missing) {
             const draft = plus[missing.id]
-            setError(
-              draft.name.trim()
-                ? `Choose a meal for ${draft.name.trim().split(/\s+/)[0]}.`
-                : "Enter the plus-one's name.",
-            )
-            return
+            const message = draft.name.trim()
+              ? `Choose a meal for ${draft.name.trim().split(/\s+/)[0]}.`
+              : "Enter the plus-one's name."
+            setError(message)
+            return { ok: false, message }
           }
-          setBusy(true)
           setError('')
-          void save(patch(false)).then(async (result) => {
-            if (!result.ok) {
-              setError(result.error)
-              setBusy(false)
-              return
-            }
-            await router.navigate({
-              to: '/rsvp/$slug/p/$token/review',
-              params: { slug: data.slug, token: data.party.token },
-            })
+          const result = await save(patch(false))
+          if (!result.ok) {
+            setError(result.error)
+            return { ok: false, message: result.error }
+          }
+          await router.navigate({
+            to: '/rsvp/$slug/p/$token/review',
+            params: { slug: data.slug, token: data.party.token },
           })
+          return { ok: true, message: 'Saved.' }
         }}
       >
         Review my RSVP →
-      </button>
-      {data.locked ? (
-        <p className="mt-3 text-sm text-[var(--text-muted)]">
-          Replies are closed.
-        </p>
-      ) : null}
+      </ActionButton>
     </RsvpFrame>
   )
 }
@@ -512,7 +510,7 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
   const [email, setEmail] = useState(data.party.email)
   const [note, setNote] = useState(data.party.note)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+
   return (
     <RsvpFrame>
       <RsvpHeader step="Step 3 of 3" />
@@ -577,48 +575,48 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
       </div>
       <form
         className="mt-6 grid gap-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          setBusy(true)
-          setError('')
-          void save({
-            data: {
-              slug: data.slug,
-              token: data.party.token,
-              email,
-              note,
-              final: true,
-              guests: data.party.guests.map((guest) => ({
-                id: guest.id,
-                replies: guest.replies,
-                meal: guest.meal,
-                dietary: guest.dietary,
-                dietaryNote: guest.dietaryNote,
-                song: guest.song,
-                plusOneName: '',
-              })),
-              removePlusOneIds: [],
-              addPlusOne: null,
-            },
-          }).then(async (result) => {
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <SaveReply
+          onRun={async () => {
+            setError('')
+            const result = await save({
+              data: {
+                slug: data.slug,
+                token: data.party.token,
+                email,
+                note,
+                final: true,
+                guests: data.party.guests.map((guest) => ({
+                  id: guest.id,
+                  replies: guest.replies,
+                  meal: guest.meal,
+                  dietary: guest.dietary,
+                  dietaryNote: guest.dietaryNote,
+                  song: guest.song,
+                  plusOneName: '',
+                })),
+                removePlusOneIds: [],
+                addPlusOne: null,
+              },
+            })
             if (!result.ok) {
               setError(result.error)
-              setBusy(false)
-              return
+              return { ok: false, message: result.error }
             }
             if (!result.mailed) {
-              setError(result.detail || 'The email was not sent.')
-              setBusy(false)
-              return
+              const message = result.detail || 'The email was not sent.'
+              setError(message)
+              return { ok: false, message }
             }
             await router.navigate({
               to: '/rsvp/$slug/p/$token/done',
               params: { slug: data.slug, token: data.party.token },
               search: { sent: '1' },
             })
-          })
-        }}
-      >
+            return { ok: true, message: 'Sent.' }
+          }}
+        />
         <Field id="confirm-email" label="Confirmation email">
           <input
             id="confirm-email"
@@ -642,15 +640,23 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
             {error}
           </p>
         ) : null}
-        <button
-          className={rsvpButton}
-          type="submit"
-          disabled={busy || data.locked}
-        >
-          Send RSVP
-        </button>
       </form>
     </RsvpFrame>
+  )
+}
+
+function SaveReply({ onRun }: { onRun: () => Promise<RunResult> }) {
+  return (
+    <ActionButton
+      className={rsvpButton}
+      wrapperClassName="grid"
+      busy="Sending…"
+      done="Sent"
+      surface="dark"
+      onRun={onRun}
+    >
+      Send RSVP
+    </ActionButton>
   )
 }
 

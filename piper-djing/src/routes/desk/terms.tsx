@@ -1,9 +1,16 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { DeskTitle, deskCard, deskPrimary } from '../../components/desk-ui.tsx'
+import {
+  DeskTitle,
+  deskCard,
+  deskPrimary,
+  deskSurface,
+} from '../../components/desk-ui.tsx'
 import { getTermsPage, saveTerms } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/terms')({
   head: () => deskHead('Terms · DJ Piper P'),
@@ -18,17 +25,7 @@ function TermsPage() {
   const [notice, setNotice] = useState<string | null>(null)
 
   return (
-    <form
-      className="grid gap-5"
-      onSubmit={(event) => {
-        event.preventDefault()
-        const body = String(new FormData(event.currentTarget).get('body') ?? '')
-        void save({ data: { body } }).then(async (result) => {
-          setNotice(result.ok ? 'The terms are updated.' : result.error)
-          if (result.ok) await router.invalidate()
-        })
-      }}
-    >
+    <form className="grid gap-5" onSubmit={(event) => event.preventDefault()}>
       <DeskTitle kicker="Terms" title="Terms">
         <p className="mt-1 text-sm text-white/65">
           One document. Change it here. Do not add a second.
@@ -45,9 +42,25 @@ function TermsPage() {
           defaultValue={data.body}
           className="leading-relaxed"
         />
-        <button type="submit" className={`${deskPrimary} mt-4`}>
+        <ActionButton
+          className={`${deskPrimary} mt-4`}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (form: FormData): Promise<RunResult | undefined> => {
+            const body = String(form.get('body') ?? '')
+            const result = await save({ data: { body } })
+            setNotice(result.ok ? 'The terms are updated.' : result.error)
+            if (result.ok) await router.invalidate()
+            return {
+              ok: result.ok,
+              message: result.ok ? 'The terms are updated.' : result.error,
+            }
+          }}
+        >
           Save the terms
-        </button>
+        </ActionButton>
       </div>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
     </form>

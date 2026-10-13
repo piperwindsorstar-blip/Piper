@@ -17,6 +17,7 @@ import {
   deskPrimary,
   invoiceTone,
   statusTone,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
 import { isPackageId } from '../../lib/crm/defaults.ts'
 import {
@@ -54,7 +55,14 @@ import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
 import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
-import { applyDiscount, deposit30, PACKAGE_CENTS, quote } from '../../lib/piper/rules.ts'
+import {
+  applyDiscount,
+  deposit30,
+  PACKAGE_CENTS,
+  quote,
+} from '../../lib/piper/rules.ts'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 
 const deskRoute = getRouteApi('/desk')
 
@@ -205,63 +213,7 @@ function NewBooking({
           if (next) setPreview(next)
           setError(null)
         }}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const formElement = event.currentTarget
-          const form = new FormData(formElement)
-          const withStag = form.get('withStag') === 'on'
-          const discount = readDiscount(form)
-          if (!discount.ok) {
-            setError(discount.error)
-            return
-          }
-          void add({
-            data: {
-              partnerOne: String(form.get('partnerOne') ?? ''),
-              partnerTwo: String(form.get('partnerTwo') ?? ''),
-              email: String(form.get('email') ?? ''),
-              phone: String(form.get('phone') ?? ''),
-              eventDate: String(form.get('eventDate') ?? ''),
-              stagDate: withStag ? String(form.get('stagDate') ?? '') : null,
-              packageId: String(form.get('packageId') ?? 'full'),
-              withStag,
-              uplights: Number(form.get('uplights') ?? 0),
-              venueKm: kilometres(form),
-              venueName: String(form.get('venueName') ?? ''),
-              venueStreet: String(form.get('venueStreet') ?? ''),
-              venueTwoName: String(form.get('venueTwoName') ?? ''),
-              venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
-              sample: form.get('sample') === 'on',
-              notes: String(form.get('notes') ?? ''),
-              discountCents: discount.cents,
-              customTotalCents: customCents(form),
-              lockedTotal: form.get('lockedTotal') === 'on',
-            },
-          }).then(async (result) => {
-            if (!result.ok) {
-              setError(result.error)
-              return
-            }
-            setError(null)
-            setOpen(false)
-            formElement.reset()
-            setDraft((value) => value + 1)
-            setPackageId('full')
-            setPreview({
-              ...quote(
-                {
-                  packageId: 'full',
-                  withStag: false,
-                  uplights: 0,
-                  venueKm: [],
-                },
-                prices,
-              ),
-              discountCents: 0,
-            })
-            await router.invalidate()
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <BookingFields
           key={draft}
@@ -301,9 +253,74 @@ function NewBooking({
               ? ' A hotel is also required for this distance.'
               : ''}
           </p>
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (
+              form: FormData,
+              formElement: HTMLFormElement | null,
+            ): Promise<RunResult | undefined> => {
+              const withStag = form.get('withStag') === 'on'
+              const discount = readDiscount(form)
+              if (!discount.ok) {
+                setError(discount.error)
+                return
+              }
+              const result = await add({
+                data: {
+                  partnerOne: String(form.get('partnerOne') ?? ''),
+                  partnerTwo: String(form.get('partnerTwo') ?? ''),
+                  email: String(form.get('email') ?? ''),
+                  phone: String(form.get('phone') ?? ''),
+                  eventDate: String(form.get('eventDate') ?? ''),
+                  stagDate: withStag
+                    ? String(form.get('stagDate') ?? '')
+                    : null,
+                  packageId: String(form.get('packageId') ?? 'full'),
+                  withStag,
+                  uplights: Number(form.get('uplights') ?? 0),
+                  venueKm: kilometres(form),
+                  venueName: String(form.get('venueName') ?? ''),
+                  venueStreet: String(form.get('venueStreet') ?? ''),
+                  venueTwoName: String(form.get('venueTwoName') ?? ''),
+                  venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+                  sample: form.get('sample') === 'on',
+                  notes: String(form.get('notes') ?? ''),
+                  discountCents: discount.cents,
+                  customTotalCents: customCents(form),
+                  lockedTotal: form.get('lockedTotal') === 'on',
+                },
+              })
+              if (!result.ok) {
+                setError(result.error)
+                return
+              }
+              setError(null)
+              setOpen(false)
+              formElement?.reset()
+              setDraft((value) => value + 1)
+              setPackageId('full')
+              setPreview({
+                ...quote(
+                  {
+                    packageId: 'full',
+                    withStag: false,
+                    uplights: 0,
+                    venueKm: [],
+                  },
+                  prices,
+                ),
+                discountCents: 0,
+              })
+              await router.invalidate()
+              return { ok: result.ok, message: 'Saved.' }
+            }}
+          >
             Save as open
-          </button>
+          </ActionButton>
         </div>
       </form>
     </section>
@@ -354,38 +371,7 @@ function ExternalDates({
       </p>
       <form
         className={open ? 'mt-5 grid gap-4' : 'hidden'}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const formElement = event.currentTarget
-          const form = new FormData(formElement)
-          void add({
-            data: {
-              eventDate: String(form.get('eventDate') ?? ''),
-              kind: String(form.get('kind') ?? ''),
-              company: String(form.get('company') ?? ''),
-              label: String(form.get('label') ?? ''),
-              partnerOne: String(form.get('partnerOne') ?? ''),
-              partnerTwo: String(form.get('partnerTwo') ?? ''),
-              venueName: String(form.get('venueName') ?? ''),
-              venueStreet: String(form.get('venueStreet') ?? ''),
-              venueTwoName: String(form.get('venueTwoName') ?? ''),
-              venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
-              notes: String(form.get('notes') ?? ''),
-            },
-          }).then(async (result) => {
-            if (!result.ok) {
-              setNotice(null)
-              setError(result.error)
-              return
-            }
-            setError(null)
-            setNotice('Booked. The date is taken.')
-            setOpen(false)
-            formElement.reset()
-            setDraft((value) => value + 1)
-            await router.invalidate()
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-1 text-sm">
@@ -469,9 +455,47 @@ function ExternalDates({
           />
         </label>
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
-        <button type="submit" className={deskPrimary}>
+        <ActionButton
+          className={deskPrimary}
+          checkForm
+          busy="Saving…"
+          done="Saved"
+          surface={deskSurface}
+          onRun={async (
+            form: FormData,
+            formElement: HTMLFormElement | null,
+          ): Promise<RunResult | undefined> => {
+            const result = await add({
+              data: {
+                eventDate: String(form.get('eventDate') ?? ''),
+                kind: String(form.get('kind') ?? ''),
+                company: String(form.get('company') ?? ''),
+                label: String(form.get('label') ?? ''),
+                partnerOne: String(form.get('partnerOne') ?? ''),
+                partnerTwo: String(form.get('partnerTwo') ?? ''),
+                venueName: String(form.get('venueName') ?? ''),
+                venueStreet: String(form.get('venueStreet') ?? ''),
+                venueTwoName: String(form.get('venueTwoName') ?? ''),
+                venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+                notes: String(form.get('notes') ?? ''),
+              },
+            })
+            if (!result.ok) {
+              setNotice(null)
+              setError(result.error)
+              return
+            }
+            setError(null)
+            setNotice('Booked. The date is taken.')
+            setOpen(false)
+            formElement?.reset()
+            setDraft((value) => value + 1)
+            await router.invalidate()
+            return { ok: result.ok, message: 'Saved.' }
+          }}
+        >
           Book this date
-        </button>
+        </ActionButton>
       </form>
       {notice ? <p className="mt-4 text-sm text-white">{notice}</p> : null}
       {dates.length === 0 ? (
@@ -631,27 +655,7 @@ function VenueRow({
       {open ? (
         <form
           className="mt-3 grid gap-3 sm:grid-cols-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            const form = new FormData(event.currentTarget)
-            void edit({
-              data: {
-                id: venue.id,
-                name: String(form.get('name') ?? ''),
-                street: String(form.get('street') ?? ''),
-              },
-            }).then(async (result) => {
-              if (!result.ok) {
-                onNotice(null)
-                onError(result.error)
-                return
-              }
-              onError(null)
-              onNotice('Saved. That venue is updated.')
-              setOpen(false)
-              await router.invalidate()
-            })
-          }}
+          onSubmit={(event) => event.preventDefault()}
         >
           <label className="grid gap-1 text-sm">
             Venue name
@@ -673,9 +677,34 @@ function VenueRow({
             />
           </label>
           <div className="sm:col-span-2">
-            <button type="submit" className={deskPrimary}>
+            <ActionButton
+              className={deskPrimary}
+              checkForm
+              busy="Saving…"
+              done="Saved"
+              surface={deskSurface}
+              onRun={async (form: FormData): Promise<RunResult | undefined> => {
+                const result = await edit({
+                  data: {
+                    id: venue.id,
+                    name: String(form.get('name') ?? ''),
+                    street: String(form.get('street') ?? ''),
+                  },
+                })
+                if (!result.ok) {
+                  onNotice(null)
+                  onError(result.error)
+                  return
+                }
+                onError(null)
+                onNotice('Saved. That venue is updated.')
+                setOpen(false)
+                await router.invalidate()
+                return { ok: result.ok, message: 'Saved.' }
+              }}
+            >
               Save changes
-            </button>
+            </ActionButton>
           </div>
         </form>
       ) : null}
@@ -700,27 +729,7 @@ function SavedVenues({ venues }: { venues: SavedVenue[] }) {
       </p>
       <form
         className="mt-5 grid gap-4 sm:grid-cols-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const formElement = event.currentTarget
-          const form = new FormData(formElement)
-          void add({
-            data: {
-              name: String(form.get('name') ?? ''),
-              street: String(form.get('street') ?? ''),
-            },
-          }).then(async (result) => {
-            if (!result.ok) {
-              setNotice(null)
-              setError(result.error)
-              return
-            }
-            setError(null)
-            setNotice('Saved. That venue is on the list.')
-            formElement.reset()
-            await router.invalidate()
-          })
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="grid gap-1 text-sm">
           Venue name
@@ -740,9 +749,36 @@ function SavedVenues({ venues }: { venues: SavedVenue[] }) {
           />
         </label>
         <div className="sm:col-span-2">
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (
+              form: FormData,
+              formElement: HTMLFormElement | null,
+            ): Promise<RunResult | undefined> => {
+              const result = await add({
+                data: {
+                  name: String(form.get('name') ?? ''),
+                  street: String(form.get('street') ?? ''),
+                },
+              })
+              if (!result.ok) {
+                setNotice(null)
+                setError(result.error)
+                return
+              }
+              setError(null)
+              setNotice('Saved. That venue is on the list.')
+              formElement?.reset()
+              await router.invalidate()
+              return { ok: result.ok, message: 'Saved.' }
+            }}
+          >
             Save venue
-          </button>
+          </ActionButton>
         </div>
       </form>
       {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
@@ -1012,48 +1048,7 @@ function BookingCard({
           key={formKey}
           className="grid gap-3"
           onChange={() => setError(null)}
-          onSubmit={(event) => {
-            event.preventDefault()
-            const form = new FormData(event.currentTarget)
-            const withStag = form.get('withStag') === 'on'
-            const discount = readDiscount(form)
-            if (!discount.ok) {
-              setError(discount.error)
-              return
-            }
-            void save({
-              data: {
-                id: booking.id,
-                partnerOne: String(form.get('partnerOne') ?? ''),
-                partnerTwo: String(form.get('partnerTwo') ?? ''),
-                email: String(form.get('email') ?? ''),
-                phone: String(form.get('phone') ?? ''),
-                eventDate: String(form.get('eventDate') ?? ''),
-                stagDate: withStag ? String(form.get('stagDate') ?? '') : null,
-                packageId: String(form.get('packageId') ?? booking.packageId),
-                withStag,
-                uplights: Number(form.get('uplights') ?? 0),
-                venueKm: kilometres(form),
-                venueName: String(form.get('venueName') ?? ''),
-                venueStreet: String(form.get('venueStreet') ?? ''),
-                venueTwoName: String(form.get('venueTwoName') ?? ''),
-                venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
-                sample: form.get('sample') === 'on',
-                notes: String(form.get('notes') ?? ''),
-                discountCents: discount.cents,
-                customTotalCents: customCents(form),
-                lockedTotal: form.get('lockedTotal') === 'on',
-              },
-            }).then(async (result) => {
-              if (!result.ok) {
-                setError(result.error)
-                return
-              }
-              setError(null)
-              setNotice('Saved.')
-              await router.invalidate()
-            })
-          }}
+          onSubmit={(event) => event.preventDefault()}
         >
           <BookingFields
             packageId={packageId}
@@ -1089,9 +1084,57 @@ function BookingCard({
               sent and both are filled in.
             </p>
           ) : null}
-          <button type="submit" className={`${deskGhost} w-fit`}>
+          <ActionButton
+            className={`${deskGhost} w-fit`}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (form: FormData): Promise<RunResult | undefined> => {
+              const withStag = form.get('withStag') === 'on'
+              const discount = readDiscount(form)
+              if (!discount.ok) {
+                setError(discount.error)
+                return
+              }
+              const result = await save({
+                data: {
+                  id: booking.id,
+                  partnerOne: String(form.get('partnerOne') ?? ''),
+                  partnerTwo: String(form.get('partnerTwo') ?? ''),
+                  email: String(form.get('email') ?? ''),
+                  phone: String(form.get('phone') ?? ''),
+                  eventDate: String(form.get('eventDate') ?? ''),
+                  stagDate: withStag
+                    ? String(form.get('stagDate') ?? '')
+                    : null,
+                  packageId: String(form.get('packageId') ?? booking.packageId),
+                  withStag,
+                  uplights: Number(form.get('uplights') ?? 0),
+                  venueKm: kilometres(form),
+                  venueName: String(form.get('venueName') ?? ''),
+                  venueStreet: String(form.get('venueStreet') ?? ''),
+                  venueTwoName: String(form.get('venueTwoName') ?? ''),
+                  venueTwoStreet: String(form.get('venueTwoStreet') ?? ''),
+                  sample: form.get('sample') === 'on',
+                  notes: String(form.get('notes') ?? ''),
+                  discountCents: discount.cents,
+                  customTotalCents: customCents(form),
+                  lockedTotal: form.get('lockedTotal') === 'on',
+                },
+              })
+              if (!result.ok) {
+                setError(result.error)
+                return
+              }
+              setError(null)
+              setNotice('Saved.')
+              await router.invalidate()
+              return { ok: result.ok, message: 'Saved.' }
+            }}
+          >
             Save details
-          </button>
+          </ActionButton>
         </form>
         <div className="flex flex-wrap gap-2">
           {controls.send ? (
