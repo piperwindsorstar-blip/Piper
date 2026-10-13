@@ -570,6 +570,93 @@ export function snapTo(value: number, step: number): number {
   return Math.round(Math.round(value / step) * step)
 }
 
+/**
+ * Where a table's number and its "6 / 8 seated" line go, relative to the
+ * table's centre. Both stay upright and stacked inside the table's footprint
+ * however it is turned; the count is left off when the two cannot fit
+ * without touching. `minTitle` and `minCount` are the smallest sizes that
+ * stay readable at the current zoom, in floor units.
+ */
+export function tableLabelLayout(
+  table: Pick<SeatTable, 'shape' | 'w' | 'h' | 'rotation' | 'name'>,
+  minTitle: number,
+  minCount: number,
+): {
+  titleSize: number
+  titleY: number
+  countSize: number
+  countY: number
+  showCount: boolean
+} {
+  const turn = ((table.rotation % 180) + 180) % 180
+  let innerW: number
+  let innerH: number
+  if (table.shape === 'round') {
+    innerW = table.w * 0.7
+    innerH = table.w * 0.7
+  } else if (turn < 10 || turn > 170) {
+    innerW = table.w
+    innerH = table.h
+  } else if (turn > 80 && turn < 100) {
+    innerW = table.h
+    innerH = table.w
+  } else {
+    innerW = Math.min(table.w, table.h) * 0.9
+    innerH = innerW
+  }
+  innerW = Math.max(1, innerW - 6)
+  innerH = Math.max(1, innerH - 4)
+  const name = table.name.trim() || '?'
+  const fitWidth = innerW / Math.max(1, name.length * 0.6)
+  const titleSize =
+    name.length <= 3
+      ? Math.max(minTitle, Math.min(30, innerH * 0.6, fitWidth))
+      : Math.max(minTitle * 0.85, Math.min(22, innerH * 0.6, fitWidth))
+  const countSize = Math.max(minCount, 10)
+  const gap = Math.max(2, countSize * 0.25)
+  const showCount = titleSize + gap + countSize <= innerH + 2
+  if (!showCount) {
+    return { titleSize, titleY: 0, countSize, countY: 0, showCount }
+  }
+  return {
+    titleSize,
+    titleY: -(countSize + gap) / 2,
+    countSize,
+    countY: (titleSize + gap) / 2,
+    showCount,
+  }
+}
+
+/**
+ * Where a guest's name sits beside their seat: just outside the seat along
+ * the line from the table's centre, centred on that line and pulled in as
+ * close as its width allows, so names stay evenly spaced and off their
+ * neighbours.
+ */
+export function seatNameSpot(
+  seat: { x: number; y: number },
+  centre: { x: number; y: number },
+  lines: string[],
+  fontSize: number,
+  seatRadius: number,
+): { x: number; y: number; lineHeight: number } {
+  const dx = seat.x - centre.x
+  const dy = seat.y - centre.y
+  const length = Math.hypot(dx, dy) || 1
+  const ux = dx / length
+  const uy = dy / length
+  const lineHeight = fontSize * 1.15
+  const longest = Math.max(1, ...lines.map((line) => line.length))
+  const halfW = (longest * fontSize * 0.56) / 2
+  const halfH = (Math.max(1, lines.length) * lineHeight) / 2
+  const reach = seatRadius + 2 + Math.abs(ux) * halfW + Math.abs(uy) * halfH
+  return {
+    x: seat.x + ux * reach,
+    y: seat.y + uy * reach - ((lines.length - 1) * lineHeight) / 2,
+    lineHeight,
+  }
+}
+
 const LABEL_LINE = 14
 
 /**

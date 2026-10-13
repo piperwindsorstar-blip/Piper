@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
 import {
+  seatNameSpot,
+  tableLabelLayout,
   addTables,
   crowdingWarning,
   findYourSeat,
@@ -297,5 +299,48 @@ describe('find your seat', () => {
       list.map((row) => `${row.name} → ${row.table}`),
       ['Elizabeth Miller → Table 1', 'Chidi Okafor → Table 1'],
     )
+  })
+})
+
+describe('table labels', () => {
+  it('stacks the name and count without overlap, upright when turned', () => {
+    const head = { shape: 'banquet' as const, w: 120, h: 30, rotation: 0, name: 'Head table' }
+    const flat = tableLabelLayout(head, 12, 10)
+    // A 30″ deep head table cannot hold both lines, so the count steps aside.
+    assert.equal(flat.showCount, false)
+    const turned = tableLabelLayout({ ...head, rotation: 90 }, 12, 10)
+    if (turned.showCount) {
+      assert.ok(turned.titleY + turned.titleSize / 2 <= turned.countY - turned.countSize / 2)
+    }
+    const round = tableLabelLayout(
+      { shape: 'round', w: 72, h: 72, rotation: 0, name: '1' },
+      12,
+      10,
+    )
+    assert.equal(round.showCount, true)
+    assert.ok(round.titleY + round.titleSize / 2 <= round.countY - round.countSize / 2 + 0.01)
+  })
+
+  it('never goes below the readable minimum', () => {
+    const small = tableLabelLayout(
+      { shape: 'rectangle', w: 72, h: 36, rotation: 0, name: '2' },
+      30,
+      22,
+    )
+    assert.ok(small.titleSize >= 30)
+    assert.ok(small.countSize >= 22)
+    assert.equal(small.showCount, false)
+  })
+})
+
+describe('seat names', () => {
+  it('sit just outside each seat, centred on the line from the table', () => {
+    const centre = { x: 0, y: 0 }
+    const below = seatNameSpot({ x: 0, y: 56 }, centre, ['Ada O.'], 9, 12)
+    assert.equal(Math.round(below.x), 0)
+    assert.ok(below.y > 56 + 12 && below.y < 56 + 12 + 12)
+    const right = seatNameSpot({ x: 56, y: 0 }, centre, ['Ada O.'], 9, 12)
+    // Centred, so it reaches out only half its width past the seat.
+    assert.ok(right.x - 56 < 12 + 2 + 6 * 9 * 0.56)
   })
 })

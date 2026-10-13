@@ -12,8 +12,10 @@ import {
   placedSeats,
   rotatePoint,
   seatLabelLines,
+  seatNameSpot,
   snapTo,
   tableLabel,
+  tableLabelLayout,
 } from '../../lib/rsvp/seating.ts'
 import type {
   RoomItem,
@@ -141,7 +143,7 @@ type Gesture =
     }
 
 const SEAT_R = 12
-const NAME_LINE = 11
+const NAME_SIZE = 9
 
 function fitView(plan: SeatingPlan): View {
   const pad = Math.max(36, Math.min(plan.room.width, plan.room.length) * 0.05)
@@ -224,6 +226,20 @@ export function FloorPlan({
     element.addEventListener('wheel', wheel, { passive: false })
     return () => element.removeEventListener('wheel', wheel)
   })
+
+  // How many floor units one screen pixel covers, so labels never shrink
+  // below a readable size however far the couple zooms out.
+  const [box, setBox] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const element = svg.current
+    if (!element || print || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return
+      setBox({ w: entry.contentRect.width, h: entry.contentRect.height })
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [print])
 
   function toRoom(clientX: number, clientY: number) {
     const element = svg.current
@@ -514,6 +530,10 @@ export function FloorPlan({
   }
 
   const shown = print ? fitView(plan) : view
+  const perPixel =
+    print || box.w === 0 || box.h === 0
+      ? 0
+      : Math.max(shown.w / box.w, shown.h / box.h)
   const handleR = print ? 0 : Math.max(6, view.w / 90)
   const selectedTable =
     selection?.kind === 'table'
@@ -643,6 +663,7 @@ export function FloorPlan({
             selectedGuest={selectedGuest}
             placing={placing}
             interactive={!print}
+            perPixel={perPixel}
           />
         ))}
 
@@ -807,6 +828,7 @@ function TableShape({
   selectedGuest,
   placing,
   interactive,
+  perPixel,
 }: {
   table: SeatTable
   plan: SeatingPlan
@@ -816,6 +838,8 @@ function TableShape({
   selectedGuest: string
   placing: boolean
   interactive: boolean
+  /** Floor units per screen pixel; 0 in print. */
+  perPixel: number
 }) {
   const sitting = guestsAt(plan, table.id)
   const bySeat = new Map<number, string>()
@@ -824,11 +848,13 @@ function TableShape({
     if (spot) bySeat.set(spot.seat, guestId)
   }
   const label = table.name.trim() || '?'
-  const short = label.length <= 3
   const spots = placedSeats(table)
-  const numberSize = print
-    ? Math.min(table.w, table.h) * 0.42
-    : Math.min(28, Math.max(12, Math.min(table.w, table.h) * 0.32))
+  // At least 14 px for the number and 11 px for the count on screen.
+  const layout = tableLabelLayout(
+    table,
+    print ? 14 : Math.max(12, perPixel * 14),
+    print ? 0 : Math.max(10, perPixel * 11),
+  )
   return (
     <g>
       <g
@@ -858,52 +884,48 @@ function TableShape({
           />
         )}
       </g>
-      {/* Numbers stay upright however the table is turned. */}
+      {/* Number and count stay upright, stacked, however the table turns. */}
       <text
         x={table.x}
-        y={table.y - (print ? 0 : numberSize * 0.2)}
+        y={table.y + layout.titleY}
         textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={short ? numberSize : Math.max(10, numberSize * 0.55)}
+        dominantBaseline="central"
+        fontSize={layout.titleSize}
         fontWeight={800}
         fill={colours.label}
+        stroke={print ? undefined : colours.table}
+        strokeWidth={print ? undefined : layout.titleSize * 0.18}
+        paintOrder="stroke"
         pointerEvents="none"
       >
         {label.length > 16 ? `${label.slice(0, 15)}…` : label}
       </text>
-      {print ? null : (
+      {!print && layout.showCount ? (
         <text
           x={table.x}
-          y={table.y + numberSize * 0.55}
+          y={table.y + layout.countY}
           textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={10}
+          dominantBaseline="central"
+          fontSize={layout.countSize}
+          fontWeight={600}
           fill={colours.muted}
           pointerEvents="none"
         >
           {sitting.length} / {table.seats} seated
         </text>
-      )}
+      ) : null}
       {spots.map((spot, seat) => {
         const guestId = bySeat.get(seat) ?? null
         const guest = guestId ? guests.get(guestId) : undefined
         const chosen = guestId !== null && guestId === selectedGuest
-        const outX = spot.x - table.x
-        const outY = spot.y - table.y
-        const length = Math.hypot(outX, outY) || 1
-        const out = { x: outX / length, y: outY / length }
-        const nameX = spot.x + out.x * (SEAT_R + 5)
-        const nameY = spot.y + out.y * (SEAT_R + 5)
-        const anchor =
-          Math.abs(out.x) < 0.35 ? 'middle' : out.x > 0 ? 'start' : 'end'
         const lines = guest ? seatLabelLines(guest.name) : []
-        const spread = (lines.length - 1) * NAME_LINE
-        const top =
-          out.y < -0.35
-            ? nameY - spread
-            : Math.abs(out.y) <= 0.35
-              ? nameY - spread / 2
-              : nameY
+        const name = seatNameSpot(
+          spot,
+          { x: table.x, y: table.y },
+          lines,
+          NAME_SIZE,
+          SEAT_R,
+        )
         return (
           <g
             key={seat}
@@ -950,14 +972,18 @@ function TableShape({
                   {initials(guest)}
                 </text>
                 <text
-                  textAnchor={anchor}
-                  dominantBaseline="middle"
-                  fontSize={lines.length > 1 ? 9 : 10}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={NAME_SIZE}
                   fill={colours.name}
                   pointerEvents="none"
                 >
                   {lines.map((line, index) => (
-                    <tspan key={index} x={nameX} y={top + index * NAME_LINE}>
+                    <tspan
+                      key={index}
+                      x={name.x}
+                      y={name.y + index * name.lineHeight}
+                    >
                       {line}
                     </tspan>
                   ))}

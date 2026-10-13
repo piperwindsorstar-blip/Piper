@@ -40,8 +40,10 @@ const sheetStyle = {
 export type PaperSize = 'letter' | 'a4'
 
 const PAPER = {
-  letter: { name: 'Letter', size: 'letter', planHeight: '6.4in' },
-  a4: { name: 'A4', size: 'A4', planHeight: '160mm' },
+  // Kept a little under the landscape page's height so the plan, header and
+  // caption always fit on page 1 and never spill onto a near-empty page.
+  letter: { name: 'Letter', size: 'letter', planHeight: '5.9in' },
+  a4: { name: 'A4', size: 'A4', planHeight: '148mm' },
 } as const
 
 /**
@@ -103,7 +105,9 @@ export function PrintSeating({
         @media print {
           html, body { background: #fff !important; }
           .seating-print .plan-page { page: seating-plan; break-after: page; }
-          .seating-print .plan-page svg { height: ${page.planHeight} !important; width: 100% !important; }
+          .seating-print .plan-page { break-inside: avoid; }
+          .seating-print .plan-page svg { height: auto !important; max-height: ${page.planHeight} !important; width: 100% !important; }
+          .seating-print .tables-page { break-before: page; margin-top: 0 !important; }
           .seating-print .print-footer { position: fixed; bottom: 0; left: 0; right: 0; }
           .seating-print .sheet-gap { display: none; }
         }
@@ -120,8 +124,11 @@ export function PrintSeating({
           {guests.length - unassigned.length} of {guests.length} guests seated
         </p>
       </section>
-      <div className="sheet-gap" style={{ height: 24 }} />
-      <section>
+      <hr
+        className="sheet-gap"
+        style={{ border: 0, borderTop: '1px dashed #bbb', margin: '16px 0' }}
+      />
+      <section className="tables-page">
         {header('Tables')}
         <div
           style={{
@@ -174,7 +181,11 @@ export function PrintSeating({
           </div>
         ) : null}
       </section>
-      <section style={{ breakBefore: 'page', marginTop: 24 }}>
+      <hr
+        className="sheet-gap"
+        style={{ border: 0, borderTop: '1px dashed #bbb', margin: '16px 0' }}
+      />
+      <section style={{ breakBefore: 'page' }}>
         {header('Find your seat')}
         {escort.length === 0 ? (
           <p style={{ fontSize: 12, color: '#777' }}>No one is seated yet.</p>
