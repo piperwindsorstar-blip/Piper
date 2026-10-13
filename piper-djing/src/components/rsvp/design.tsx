@@ -1,38 +1,22 @@
 import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useState } from 'react'
 import { longWeddingDate } from '../../lib/rsvp/model.ts'
 import {
   PHOTO_WIDTH_MAX,
   compressSteps,
-  cropFrame,
-  frameStyle,
+  fullFrame,
   isHeicFile,
   photoInputError,
   photoSizeLabel,
-  sourceRect,
-  uploadFrames,
 } from '../../lib/rsvp/photo.ts'
 import {
   clearRsvpPhoto,
   saveRsvpPhoto,
-  saveRsvpPhotoCrop,
   saveRsvpTemplate,
 } from '../../lib/rsvp/rsvp.functions.ts'
-import {
-  CENTRE_CROP,
-  PHOTO_SHAPES,
-  RSVP_TEMPLATES,
-  shapeLabel,
-  shapeSize,
-  templateFor,
-} from '../../lib/rsvp/templates.ts'
-import type {
-  PhotoCrop,
-  PhotoShape,
-  RsvpTemplateId,
-} from '../../lib/rsvp/templates.ts'
+import { RSVP_TEMPLATES, templateFor } from '../../lib/rsvp/templates.ts'
+import type { RsvpTemplateId } from '../../lib/rsvp/templates.ts'
 import { ActionButton, Spinner } from '../action-button.tsx'
 import type { RunResult } from '../action-button.tsx'
 import { rsvpButton, rsvpGhost, useRsvpTheme } from './shell.tsx'
@@ -43,63 +27,32 @@ type Draft = {
   width: number
   height: number
   url: string
-  name: string
-  /** A new upload stores the whole photo; opening a saved one only moves the crop. */
-  fresh: boolean
 }
 
 /**
- * The couple's own invitation: pick one of the five templates, add a photo and
- * crop it. Every card shows their real names, date and photo, so what they see
- * is what guests get.
+ * The couple's own invitation: pick one of the five templates and add a photo.
+ * Every card shows their real names, date and photo, so what they see is what
+ * guests get.
+ *
+ * The photo is always the whole picture at its own proportions — there is no
+ * cropping step, no shape to choose and nothing to reposition. The couple
+ * uploads, sees the result on their own card, and can replace or remove it.
  */
 export function Design({ data }: { data: ReadyManage }) {
   const surface = useRsvpTheme()
   const useTemplate = useServerFn(saveRsvpTemplate)
   const upload = useServerFn(saveRsvpPhoto)
-  const saveCrop = useServerFn(saveRsvpPhotoCrop)
   const dropPhoto = useServerFn(clearRsvpPhoto)
   const router = useRouter()
   const [draft, setDraft] = useState<Draft | null>(null)
-  // Starts centred on the middle of the photo and zoomed all the way out, so
-  // the whole picture is visible before the couple moves anything.
-  const [crop, setCrop] = useState<PhotoCrop>(data.photo?.crop ?? CENTRE_CROP)
-  const [shape, setShape] = useState<PhotoShape>(
-    data.photo?.shape ?? templateFor(data.wedding.template).skin.photoShape,
-  )
   const [fileNote, setFileNote] = useState('')
   const [reading, setReading] = useState(false)
-  const drag = useRef<{
-    x: number
-    y: number
-    rectWidth: number
-    rectHeight: number
-    boxW: number
-    boxH: number
-  } | null>(null)
 
   const couple = `${data.wedding.partnerOne} & ${data.wedding.partnerTwo}`
   const dateLine = longWeddingDate(data.wedding.eventDate)
-  const frame = draft
-    ? cropFrame({
-        imageWidth: draft.width,
-        imageHeight: draft.height,
-        shape,
-        zoom: crop.zoom,
-        panX: crop.panX,
-        panY: crop.panY,
-      })
-    : null
-  const rect = draft
-    ? sourceRect({
-        imageWidth: draft.width,
-        imageHeight: draft.height,
-        shape,
-        zoom: crop.zoom,
-        panX: crop.panX,
-        panY: crop.panY,
-      })
-    : null
+  const photoUrl = draft ? draft.url : (data.photo?.url ?? '')
+  const naturalWidth = draft?.width ?? data.photo?.width ?? 0
+  const naturalHeight = draft?.height ?? data.photo?.height ?? 0
 
   async function readFile(file: File) {
     const problem = photoInputError({
@@ -139,10 +92,7 @@ export function Design({ data }: { data: ReadyManage }) {
         width: image.width,
         height: image.height,
         url,
-        name: file.name,
-        fresh: true,
       })
-      setCrop(CENTRE_CROP)
     } catch {
       setFileNote('That photo could not be opened. Try a JPG or PNG.')
     } finally {
@@ -150,26 +100,11 @@ export function Design({ data }: { data: ReadyManage }) {
     }
   }
 
-  /** The frames an upload stores: the whole photo, and the crop when shaped. */
-  function draftFrames() {
-    if (!draft) return null
-    return uploadFrames({
-      imageWidth: draft.width,
-      imageHeight: draft.height,
-      shape,
-      zoom: crop.zoom,
-      panX: crop.panX,
-      panY: crop.panY,
-    })
-  }
-
   /**
-   * The JPEG the site stores: the couple's whole photo, always, drawn at the
-   * photo's own shape so nothing is trimmed here. A shape adds a second,
-   * shaped rendition beside it, which is why switching back to Full photo can
-   * show the picture the couple uploaded rather than a crop of it. Either way
-   * it is 1200px wide at most, under 300 KB, and re-encoded, which is what
-   * drops the camera's location metadata.
+   * The JPEG the site stores: the couple's whole photo, drawn at the photo's
+   * own shape, so a portrait stays a portrait and a landscape stays a
+   * landscape and nothing is trimmed. It is 1200px wide at most, under 300 KB,
+   * and re-encoded, which is what drops the camera's location metadata.
    */
   function trimmedPhoto(): {
     dataUrl: string
@@ -177,140 +112,12 @@ export function Design({ data }: { data: ReadyManage }) {
     width: number
     height: number
   } | null {
-    const frames = draftFrames()
-    if (!draft || !frames) return null
-    const encoded = encodeFrame(draft.image, frames.whole)
+    if (!draft) return null
+    const frame = fullFrame(draft.width, draft.height)
+    const encoded = encodeFrame(draft.image, frame)
     return encoded
-      ? {
-          ...encoded,
-          width: frames.whole.width,
-          height: frames.whole.height,
-        }
+      ? { ...encoded, width: frame.width, height: frame.height }
       : null
-  }
-
-  /** The shaped rendition: the same photo drawn through the couple's crop. */
-  function trimmedCrop(): { dataUrl: string; bytes: number } | null {
-    const frames = draftFrames()
-    if (!draft || !frames?.crop) return null
-    return encodeFrame(draft.image, frames.crop)
-  }
-
-  /** Opens the couple's saved photo in the editor, so they can move its crop. */
-  async function openSaved(): Promise<Draft | null> {
-    if (!data.photo) return null
-    setReading(true)
-    try {
-      const response = await fetch(data.photo.wholeUrl)
-      const blob = await response.blob()
-      let image: ImageBitmap | HTMLImageElement
-      try {
-        image = await createImageBitmap(blob, {
-          imageOrientation: 'from-image',
-        })
-      } catch {
-        image = await loadImage(blob)
-      }
-      const url = URL.createObjectURL(blob)
-      if (draft) URL.revokeObjectURL(draft.url)
-      const opened: Draft = {
-        image,
-        width: image.width,
-        height: image.height,
-        url,
-        name: 'your photo',
-        fresh: false,
-      }
-      setDraft(opened)
-      return opened
-    } catch {
-      setFileNote('That photo could not be opened. Try uploading it again.')
-      return null
-    } finally {
-      setReading(false)
-    }
-  }
-
-  /**
-   * Picking a shape opens the crop tool on the whole photo, centred and zoomed
-   * out. Nothing is saved until the couple presses Save photo, so they always
-   * see the crop before it reaches a guest.
-   */
-  async function chooseShape(item: PhotoShape) {
-    setFileNote('')
-    setShape(item)
-    setCrop(CENTRE_CROP)
-    if (!draft && data.photo) await openSaved()
-  }
-
-  /** Saves only the crop: the whole photo already stored is left untouched. */
-  async function saveCropOnly(): Promise<RunResult> {
-    if (!frame) return { ok: false, message: 'That photo could not be read.' }
-    const shaped = trimmedCrop()
-    if (shape !== 'full' && !shaped) {
-      return { ok: false, message: 'That crop could not be read.' }
-    }
-    const result = await saveCrop({
-      data: {
-        shape,
-        cropUrl: shaped?.dataUrl ?? '',
-        zoom: crop.zoom,
-        panX: crop.panX,
-        panY: crop.panY,
-      },
-    })
-    if (!result.ok) return { ok: false, message: result.error }
-    if (draft) URL.revokeObjectURL(draft.url)
-    setDraft(null)
-    await router.invalidate()
-    return { ok: true, message: `Saved · ${shapeLabel(shape)}` }
-  }
-
-  function nudge(step: { panX?: number; panY?: number }) {
-    setCrop((current) => ({
-      zoom: current.zoom,
-      panX: clampPan(current.panX + (step.panX ?? 0)),
-      panY: clampPan(current.panY + (step.panY ?? 0)),
-    }))
-  }
-
-  function startDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!draft || !rect || shape === 'full') return
-    event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    drag.current = {
-      x: event.clientX,
-      y: event.clientY,
-      rectWidth: rect.width,
-      rectHeight: rect.height,
-      boxW: event.currentTarget.parentElement?.clientWidth ?? 1,
-      boxH: event.currentTarget.parentElement?.clientHeight ?? 1,
-    }
-  }
-
-  /**
-   * Dragging the rectangle moves what the shape keeps. Moving it right shows
-   * more of the photo's right-hand side, which is what a couple expects when
-   * they push a frame around a picture.
-   */
-  function moveDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    const start = drag.current
-    if (!start || !draft) return
-    const perX = draft.width / Math.max(1, start.boxW)
-    const perY = draft.height / Math.max(1, start.boxH)
-    const slackX = (draft.width - start.rectWidth) / 2
-    const slackY = (draft.height - start.rectHeight) / 2
-    setCrop((current) => ({
-      zoom: current.zoom,
-      panX:
-        slackX > 1
-          ? clampPan(current.panX + ((event.clientX - start.x) * perX) / slackX)
-          : 0,
-      panY:
-        slackY > 1
-          ? clampPan(current.panY + ((event.clientY - start.y) * perY) / slackY)
-          : 0,
-    }))
   }
 
   return (
@@ -336,11 +143,9 @@ export function Design({ data }: { data: ReadyManage }) {
               templateId={template.id}
               couple={couple}
               dateLine={dateLine}
-              photoUrl={draft ? draft.url : (data.photo?.url ?? '')}
-              shape={shape}
-              frame={frame}
-              naturalWidth={draft?.width ?? data.photo?.width ?? 0}
-              naturalHeight={draft?.height ?? data.photo?.height ?? 0}
+              photoUrl={photoUrl}
+              naturalWidth={naturalWidth}
+              naturalHeight={naturalHeight}
               active={active}
               surface={surface}
               onUse={async (): Promise<RunResult> => {
@@ -363,145 +168,55 @@ export function Design({ data }: { data: ReadyManage }) {
       <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <h2 className="font-semibold">Your photo</h2>
         <p className="mt-1 text-sm text-[var(--text-muted)]">
-          JPG, PNG or HEIC up to 10 MB. It is resized to 1200px and kept under
-          300 KB, the rotation is fixed and the location data is stripped. The
-          photo is stored on this site and served from piperpweddingdj.services.
+          JPG, PNG or HEIC up to 10 MB. Your whole photo is used, at its own
+          shape — nothing is cropped. It is resized to 1200px and kept under 300
+          KB, the rotation is fixed and the location data is stripped. The photo
+          is stored on this site and served from piperpweddingdj.services.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="grid content-start gap-3">
-            {draft && frame ? (
+            {draft ? (
               <div className="grid gap-2">
-                {/* The whole photo, with the frame drawn over it. Nothing is
-                    hidden, so a couple can see exactly what a shape keeps. */}
-                <div
-                  className="relative w-full touch-none overflow-hidden border border-[var(--border-strong)] bg-black/40 select-none"
-                  style={{ cursor: shape === 'full' ? 'default' : 'grab' }}
-                  onPointerMove={moveDrag}
-                  onPointerUp={() => {
-                    drag.current = null
-                  }}
-                  onPointerCancel={() => {
-                    drag.current = null
-                  }}
-                >
-                  <img
-                    src={draft.url}
-                    alt="Your whole photo"
-                    draggable={false}
-                    className="block h-auto w-full"
-                  />
-                  {rect && shape !== 'full' ? (
-                    <div
-                      role="slider"
-                      tabIndex={0}
-                      aria-label={`${shapeLabel(shape)} frame`}
-                      aria-valuetext="Drag to reposition, or use the arrow keys"
-                      onPointerDown={startDrag}
-                      onKeyDown={(event) => {
-                        const step = event.shiftKey ? 0.2 : 0.05
-                        if (event.key === 'ArrowLeft') nudge({ panX: -step })
-                        else if (event.key === 'ArrowRight')
-                          nudge({ panX: step })
-                        else if (event.key === 'ArrowUp') nudge({ panY: -step })
-                        else if (event.key === 'ArrowDown')
-                          nudge({ panY: step })
-                        else return
-                        event.preventDefault()
-                      }}
-                      className="absolute cursor-grab border-2 border-white/90 outline-none focus-visible:border-[var(--pink)]"
-                      style={{
-                        left: `${((rect.x / draft.width) * 100).toFixed(4)}%`,
-                        top: `${((rect.y / draft.height) * 100).toFixed(4)}%`,
-                        width: `${((rect.width / draft.width) * 100).toFixed(4)}%`,
-                        height: `${((rect.height / draft.height) * 100).toFixed(4)}%`,
-                        borderRadius: previewRadius(shape),
-                        boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
-                      }}
-                    />
-                  ) : null}
-                </div>
-
-                {shape === 'full' ? (
-                  <p className="text-xs text-[var(--text-faint)]">
-                    Your whole photo, nothing cropped. It keeps its own shape.
-                  </p>
-                ) : (
-                  <>
-                    <label className="text-sm" htmlFor="photo-zoom">
-                      Zoom
-                      <input
-                        id="photo-zoom"
-                        type="range"
-                        min="1"
-                        max="3"
-                        step="0.05"
-                        value={crop.zoom}
-                        onChange={(event) =>
-                          setCrop((current) => ({
-                            ...current,
-                            zoom: Number(event.target.value),
-                          }))
-                        }
-                        className="mt-1 w-full"
-                      />
-                    </label>
-                    <p className="text-xs text-[var(--text-faint)]">
-                      Drag the frame to the part you want, or use the arrow
-                      keys. It starts on the middle of your photo.
-                    </p>
-                  </>
-                )}
+                <img
+                  src={draft.url}
+                  alt="The photo you picked"
+                  className="mx-auto block h-auto w-full rounded-[14px] border border-[var(--border-strong)]"
+                />
+                <p className="text-xs text-[var(--text-faint)]">
+                  Your whole photo, nothing cropped. It keeps its own shape.
+                  Press Save photo to use it.
+                </p>
               </div>
             ) : data.photo ? (
-              <img
-                src={data.photo.url}
-                alt={data.photo.alt}
-                className="mx-auto block h-auto w-full"
-                style={{
-                  maxWidth:
-                    shape === 'full' || shape === 'banner' ? '100%' : '76%',
-                  borderRadius: previewRadius(shape),
-                  aspectRatio:
-                    shape === 'full' && data.photo.width > 0
-                      ? `${data.photo.width} / ${data.photo.height}`
-                      : aspectFor(shape),
-                }}
-              />
+              <div className="grid gap-2">
+                <img
+                  src={data.photo.url}
+                  alt={data.photo.alt}
+                  className="mx-auto block h-auto w-full rounded-[14px]"
+                  style={
+                    data.photo.width > 0 && data.photo.height > 0
+                      ? {
+                          aspectRatio: `${data.photo.width} / ${data.photo.height}`,
+                        }
+                      : undefined
+                  }
+                />
+                <p className="text-xs text-[var(--text-faint)]">
+                  Saved photo · {photoSizeLabel(data.photo.bytes)}
+                  {data.photo.width > 0 && data.photo.height > 0
+                    ? ` · ${data.photo.width}×${data.photo.height}`
+                    : ''}
+                </p>
+              </div>
             ) : (
               <div
-                className="grid w-full place-items-center border border-dashed border-[var(--border-strong)] text-sm text-[var(--text-faint)]"
-                style={{
-                  aspectRatio: aspectFor(shape),
-                  borderRadius: previewRadius(shape),
-                }}
+                className="grid w-full place-items-center rounded-[14px] border border-dashed border-[var(--border-strong)] text-sm text-[var(--text-faint)]"
+                style={{ aspectRatio: '4 / 3' }}
               >
                 Your photo runs here
               </div>
             )}
-
-            <fieldset className="grid gap-2">
-              <legend className="text-sm text-[var(--text-muted)]">
-                Shape
-              </legend>
-              <div className="flex flex-wrap gap-2">
-                {PHOTO_SHAPES.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    aria-pressed={shape === item}
-                    className={`min-h-11 rounded-full border px-3 text-sm ${shape === item ? 'border-[var(--pink)] text-[var(--pink-soft)]' : 'border-[var(--border-strong)] text-[var(--text-muted)]'}`}
-                    onClick={() => void chooseShape(item)}
-                  >
-                    {shapeLabel(item)}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-[var(--text-faint)]">
-                Full photo shows the whole picture, exactly as you took it.
-                Banner, circle and arch crop to a shape you position yourself.
-              </p>
-            </fieldset>
 
             <div className="flex flex-wrap items-center gap-3">
               <label
@@ -509,11 +224,9 @@ export function Design({ data }: { data: ReadyManage }) {
                 aria-disabled={reading}
               >
                 {reading ? <Spinner label="Reading the photo" /> : null}
-                {draft
+                {draft || data.photo
                   ? 'Choose another photo'
-                  : data.photo
-                    ? 'Replace photo'
-                    : 'Add your photo'}
+                  : 'Add your photo'}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/heic,image/heif"
@@ -529,34 +242,24 @@ export function Design({ data }: { data: ReadyManage }) {
               {draft ? (
                 <ActionButton
                   className={`${rsvpButton} w-auto px-5`}
-                  busy={draft.fresh ? 'Uploading…' : 'Saving…'}
+                  busy="Uploading…"
                   done="Saved"
                   surface={surface}
                   onRun={async (): Promise<RunResult> => {
-                    if (!draft.fresh) return saveCropOnly()
                     const whole = trimmedPhoto()
-                    if (!whole || !frame) {
+                    if (!whole) {
                       return {
                         ok: false,
                         message: 'That photo could not be read.',
                       }
                     }
-                    // The whole photo is always stored; a shape adds a second,
-                    // shaped rendition, so switching back to Full photo never
-                    // has to re-crop anything.
-                    const shaped = trimmedCrop()
                     const result = await upload({
                       data: {
                         dataUrl: whole.dataUrl,
-                        cropUrl: shaped?.dataUrl ?? '',
-                        shape,
                         // The whole photo's own size: a portrait and a
                         // landscape both keep their proportions.
                         width: whole.width,
                         height: whole.height,
-                        zoom: crop.zoom,
-                        panX: crop.panX,
-                        panY: crop.panY,
                       },
                     })
                     if (!result.ok) return { ok: false, message: result.error }
@@ -569,17 +272,8 @@ export function Design({ data }: { data: ReadyManage }) {
                     }
                   }}
                 >
-                  {draft.fresh ? 'Save photo' : 'Save crop'}
+                  Save photo
                 </ActionButton>
-              ) : data.photo ? (
-                <button
-                  type="button"
-                  className={`${rsvpGhost} w-auto px-4`}
-                  disabled={reading}
-                  onClick={() => void openSaved()}
-                >
-                  Adjust photo
-                </button>
               ) : null}
               {!draft && data.photo ? (
                 <ActionButton
@@ -608,15 +302,6 @@ export function Design({ data }: { data: ReadyManage }) {
                 {fileNote}
               </p>
             ) : null}
-            {data.photo && !draft ? (
-              <p className="text-xs text-[var(--text-faint)]">
-                Saved photo · {photoSizeLabel(data.photo.bytes)} ·{' '}
-                {shapeLabel(data.photo.shape).toLowerCase()}
-                {data.photo.width > 0 && data.photo.height > 0
-                  ? ` · ${data.photo.width}×${data.photo.height}`
-                  : ''}
-              </p>
-            ) : null}
           </div>
 
           <div className="grid content-start gap-2">
@@ -627,11 +312,9 @@ export function Design({ data }: { data: ReadyManage }) {
               templateId={data.wedding.template}
               couple={couple}
               dateLine={dateLine}
-              photoUrl={draft ? draft.url : (data.photo?.url ?? '')}
-              shape={shape}
-              frame={frame}
-              naturalWidth={draft?.width ?? data.photo?.width ?? 0}
-              naturalHeight={draft?.height ?? data.photo?.height ?? 0}
+              photoUrl={photoUrl}
+              naturalWidth={naturalWidth}
+              naturalHeight={naturalHeight}
             />
           </div>
         </div>
@@ -646,8 +329,6 @@ function InvitationPreview({
   couple,
   dateLine,
   photoUrl,
-  shape,
-  frame,
   naturalWidth = 0,
   naturalHeight = 0,
 }: {
@@ -655,8 +336,6 @@ function InvitationPreview({
   couple: string
   dateLine: string
   photoUrl: string
-  shape: PhotoShape
-  frame: ReturnType<typeof cropFrame> | null
   naturalWidth?: number
   naturalHeight?: number
 }) {
@@ -676,44 +355,20 @@ function InvitationPreview({
         }}
       >
         {photoUrl ? (
-          shape === 'full' ? (
-            <img
-              src={photoUrl}
-              alt="Your photo in the invitation"
-              className="mx-auto block h-auto w-full"
-              style={{
-                borderRadius: previewRadius(shape),
-                ...(naturalWidth > 0 && naturalHeight > 0
-                  ? { aspectRatio: `${naturalWidth} / ${naturalHeight}` }
-                  : {}),
-              }}
-            />
-          ) : frame ? (
-            <div
-              className="relative overflow-hidden"
-              style={{
-                aspectRatio: `${frame.width} / ${frame.height}`,
-                borderRadius: previewRadius(shape),
-              }}
-            >
-              <img
-                src={photoUrl}
-                alt="Your photo in the invitation"
-                className="absolute max-w-none"
-                style={frameStyle(frame)}
-              />
-            </div>
-          ) : (
-            <img
-              src={photoUrl}
-              alt="Your photo in the invitation"
-              className="mx-auto block h-auto object-cover"
-              style={{
-                maxWidth: shape === 'banner' ? '100%' : '70%',
-                borderRadius: previewRadius(shape),
-              }}
-            />
-          )
+          // The whole photo, full width, in the card's own paper. It keeps the
+          // couple's proportions, so a portrait stays tall and a landscape
+          // stays wide.
+          <img
+            src={photoUrl}
+            alt="Your photo in the invitation"
+            className="mx-auto block h-auto w-full"
+            style={{
+              borderRadius: '12px',
+              ...(naturalWidth > 0 && naturalHeight > 0
+                ? { aspectRatio: `${naturalWidth} / ${naturalHeight}` }
+                : {}),
+            }}
+          />
         ) : null}
         <p
           style={{
@@ -794,8 +449,6 @@ function TemplateCard({
   couple,
   dateLine,
   photoUrl,
-  shape,
-  frame,
   naturalWidth,
   naturalHeight,
   active,
@@ -806,8 +459,6 @@ function TemplateCard({
   couple: string
   dateLine: string
   photoUrl: string
-  shape: PhotoShape
-  frame: ReturnType<typeof cropFrame> | null
   naturalWidth: number
   naturalHeight: number
   active: boolean
@@ -824,8 +475,6 @@ function TemplateCard({
         couple={couple}
         dateLine={dateLine}
         photoUrl={photoUrl}
-        shape={shape}
-        frame={frame}
         naturalWidth={naturalWidth}
         naturalHeight={naturalHeight}
       />
@@ -863,23 +512,6 @@ function TemplateCard({
   )
 }
 
-function previewRadius(shape: PhotoShape): string {
-  if (shape === 'circle') return '50%'
-  if (shape === 'arch') return '999px 999px 0 0'
-  return '12px'
-}
-
-function aspectFor(shape: PhotoShape): string {
-  const size = shapeSize(shape)
-  if (size.width === 0 || size.height === 0) return '4 / 3'
-  return `${size.width} / ${size.height}`
-}
-
-function clampPan(value: number): number {
-  if (!Number.isFinite(value)) return 0
-  return Math.min(1, Math.max(-1, value))
-}
-
 function loadImage(blob: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob)
@@ -896,14 +528,14 @@ function loadImage(blob: Blob): Promise<HTMLImageElement> {
 }
 
 /**
- * Draws one frame of the photo — the whole picture, or the couple's crop — and
- * re-encodes it as a JPEG, stepping down the width and the quality until it
- * lands under 300 KB. Re-encoding is also what drops the camera's location
- * metadata: only pixels survive.
+ * Draws the whole photo onto a canvas at its own size and re-encodes it as a
+ * JPEG, stepping down the width and the quality until it lands under 300 KB.
+ * Re-encoding is also what drops the camera's location metadata: only pixels
+ * survive.
  */
 function encodeFrame(
   image: ImageBitmap | HTMLImageElement,
-  frame: ReturnType<typeof cropFrame>,
+  frame: ReturnType<typeof fullFrame>,
 ): { dataUrl: string; bytes: number } | null {
   const canvas = document.createElement('canvas')
   canvas.width = frame.width

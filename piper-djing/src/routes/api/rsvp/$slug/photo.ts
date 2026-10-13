@@ -1,17 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  readRsvpPhoto,
-  readRsvpPhotoCrop,
-} from '../../../../lib/rsvp/store.server.ts'
-import { parsePhotoShape } from '../../../../lib/rsvp/templates.ts'
+import { readRsvpPhoto } from '../../../../lib/rsvp/store.server.ts'
 
 /**
  * The couple's photo, served from the site's own domain and nothing else.
  *
- * With no `shape`, this is the whole photo exactly as the couple uploaded it —
- * nothing cropped. With a shape, it is the shaped rendition they positioned in
- * the crop tool. The couple's template asks for it with a version stamp, so the
- * browser can keep it forever and a new upload still shows straight away.
+ * There is exactly one photo per couple: the whole picture they uploaded, at
+ * its own proportions. Nothing is ever cropped here, and a `shape` parameter is
+ * ignored — a page cached from when the crop tool existed still gets the whole
+ * photo rather than a broken image. The version stamp lets the browser keep the
+ * image forever while a new upload still shows straight away.
  */
 function slugFrom(url: string): string {
   const path = new URL(url).pathname
@@ -24,17 +21,10 @@ export const Route = createFileRoute('/api/rsvp/$slug/photo')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const url = new URL(request.url)
         const slug = slugFrom(request.url)
-        const shape = parsePhotoShape(url.searchParams.get('shape'))
-        const wantsCrop = url.searchParams.has('shape') && shape !== 'full'
-        const found = !slug
-          ? null
-          : wantsCrop
-            ? await readRsvpPhotoCrop(slug)
-            : await readRsvpPhoto(slug)
+        const found = !slug ? null : await readRsvpPhoto(slug)
         if (!found) return new Response('No photo', { status: 404 })
-        const tag = `"${slug}-${shape}-${found.version}"`
+        const tag = `"${slug}-${found.version}"`
         const headers: Record<string, string> = {
           'content-type': found.mime,
           'content-length': String(found.bytes.length),

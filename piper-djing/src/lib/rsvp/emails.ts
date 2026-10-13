@@ -15,14 +15,8 @@ import type {
   RsvpParty,
   RsvpWedding,
 } from './model.ts'
-import {
-  emailPhotoBox,
-  photoSrc,
-  resolvePhotoShape,
-  shapeRadius,
-  templateFor,
-} from './templates.ts'
-import type { PhotoShape, RsvpSkin } from './templates.ts'
+import { emailPhotoBox, photoPath, templateFor } from './templates.ts'
+import type { RsvpSkin } from './templates.ts'
 
 export type RsvpEmailKind =
   | 'invitation'
@@ -206,30 +200,26 @@ type Block =
       t: 'photo'
       url: string
       alt: string
-      shape: PhotoShape
       width: number
       height: number
     }
 
 /**
- * The couple's photo sits at the top of the card when they have one. It is
- * shown whole unless the couple picked a shape and positioned a crop, in which
- * case the shaped rendition is used — and its size is always the photo's own
- * proportions scaled to the card, so nothing is ever stretched or trimmed.
+ * The couple's photo sits at the top of the card when they have one. It is the
+ * whole picture, scaled to the card at the proportions they uploaded, so it is
+ * never stretched or trimmed — in any of the letters and every template.
  */
 export function photoBlock(wedding: RsvpWedding): Block[] {
   const photo = wedding.photo
   if (!photo) return []
-  const url = photoSrc(wedding.slug, photo)
+  const url = photoPath(wedding.slug, photo)
   if (!url) return []
-  const shape = resolvePhotoShape(photo)
-  const box = emailPhotoBox(shape, photo.width, photo.height)
+  const box = emailPhotoBox(photo.width, photo.height)
   return [
     {
       t: 'photo',
       url: `https://${SITE_HOST}${url}`,
       alt: `${coupleTitle(wedding)} photo`,
-      shape,
       width: box.width,
       height: box.height,
     },
@@ -276,7 +266,7 @@ function renderBlock(block: Block, skin: RsvpSkin): string {
     case 'space':
       return `<div style="height:14px;line-height:14px;">&nbsp;</div>`
     case 'photo':
-      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px;"><tr><td align="center"><img src="${esc(block.url)}" alt="${esc(block.alt)}" width="${block.width}" height="${block.height}" style="display:block;width:${block.width}px;max-width:100%;height:auto;border:0;border-radius:${shapeRadius(block.shape)};"><div style="height:30px;line-height:30px;">&nbsp;</div></td></tr></table>`
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px;"><tr><td align="center"><img src="${esc(block.url)}" alt="${esc(block.alt)}" width="${block.width}" height="${block.height}" style="display:block;width:${block.width}px;max-width:100%;height:auto;border:0;"><div style="height:30px;line-height:30px;">&nbsp;</div></td></tr></table>`
   }
 }
 

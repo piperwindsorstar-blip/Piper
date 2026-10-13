@@ -59,16 +59,7 @@ import {
 import type { RsvpEmail } from './emails.ts'
 import { listRsvpEmails, sendRsvpEmail } from './mailer.server.ts'
 import { parsePhotoUpload } from './photo.ts'
-import {
-  photoPath,
-  photoSrc,
-  parseCrop,
-  parsePhotoShape,
-  parseTemplateId,
-  resolvePhotoShape,
-  templateFor,
-} from './templates.ts'
-import type { PhotoShape } from './templates.ts'
+import { photoPath, parseTemplateId } from './templates.ts'
 import { notifyCouplePaid, notifyPiperSignup } from './notify.server.ts'
 import {
   coupleBookings,
@@ -83,7 +74,6 @@ import {
   readRsvp,
   removeRsvpPhoto as dropRsvpPhoto,
   saveRsvpPhoto as storeRsvpPhoto,
-  saveRsvpPhotoCrop as storeRsvpPhotoCrop,
   writeRsvp,
 } from './store.server.ts'
 import {
@@ -539,25 +529,20 @@ export const openRsvpSignIn = createServerFn({ method: 'POST' })
   })
 
 /**
- * The photo as the guest pages and the dashboard show it. A shaped crop is
- * served from its own address, so the whole photo is never cut to show a shape
- * and the shape is never shown whole by mistake.
+ * The photo as the guest pages and the dashboard show it: the whole picture,
+ * at its own proportions. There is one image per couple and nothing else, so a
+ * record that once carried a crop is simply the photo the couple uploaded.
  */
 function photoView(wedding: RsvpWedding) {
   const photo = wedding.photo
   if (!photo) return null
-  const shape = resolvePhotoShape(photo)
   return {
-    url: publicUrl(photoSrc(wedding.slug, photo)),
-    wholeUrl: publicUrl(photoPath(wedding.slug, photo)),
-    shape,
+    url: publicUrl(photoPath(wedding.slug, photo)),
     alt: `${coupleTitle(wedding)} photo`,
     bytes: photo.bytes,
     version: photo.version,
     width: photo.width,
     height: photo.height,
-    crop: photo.crop,
-    hasCrop: Boolean(photo.cropVersion),
   }
 }
 
@@ -651,35 +636,18 @@ export const saveRsvpTemplate = createServerFn({ method: 'POST' })
   })
 
 /**
- * The trimmed JPEG the browser made. It lands in the site's own storage and is
- * served from the site's own domain, so no third party ever holds a guest's
- * photo. A new upload replaces the old one and changes the version, so the
- * image guests fetch is never stale.
+ * The JPEG the browser made from the couple's photo. It is the whole picture,
+ * at its own proportions — the upload path never crops. It lands in the site's
+ * own storage and is served from the site's own domain, so no third party ever
+ * holds a guest's photo. A new upload replaces the old one and changes the
+ * version, so the image guests fetch is never stale.
  */
-function cropFrom(data: { zoom?: unknown; panX?: unknown; panY?: unknown }) {
-  return parseCrop({ zoom: data.zoom, panX: data.panX, panY: data.panY })
-}
-
 export const saveRsvpPhoto = createServerFn({ method: 'POST' })
   .validator(
-    (data: {
-      dataUrl?: unknown
-      cropUrl?: unknown
-      shape?: unknown
-      width?: unknown
-      height?: unknown
-      zoom?: unknown
-      panX?: unknown
-      panY?: unknown
-    }) => ({
+    (data: { dataUrl?: unknown; width?: unknown; height?: unknown }) => ({
       dataUrl: typeof data.dataUrl === 'string' ? data.dataUrl : '',
-      cropUrl: typeof data.cropUrl === 'string' ? data.cropUrl : '',
-      shape: typeof data.shape === 'string' ? data.shape : '',
       width: data.width,
       height: data.height,
-      zoom: data.zoom,
-      panX: data.panX,
-      panY: data.panY,
     }),
   )
   .handler(async ({ data }) => {
@@ -691,100 +659,19 @@ export const saveRsvpPhoto = createServerFn({ method: 'POST' })
         error: 'Open your RSVP from the sign-in link.',
       }
     }
-    const parsed = parsePhotoUpload(
-      data.dataUrl,
-      data.shape ||
-        wedding.photo?.shape ||
-        templateFor(wedding.template).skin.photoShape,
-      data.width,
-      data.height,
-    )
+    const parsed = parsePhotoUpload(data.dataUrl, data.width, data.height)
     if (!parsed.ok) return { ok: false as const, error: parsed.error }
-    const crop = cropFrom(data)
-    // A shaped rendition only exists when the couple chose a crop rather than
-    // the whole photo, so "Full photo" stores one image and cuts nothing.
-    const cropBytes =
-      parsed.photo.shape === 'full' || !data.cropUrl
-        ? undefined
-        : cropBytesFrom(data.cropUrl, parsed.photo.shape)
-    if (parsed.photo.shape !== 'full' && data.cropUrl && !cropBytes) {
-      return { ok: false as const, error: 'That crop could not be read.' }
-    }
     const photo = await storeRsvpPhoto({
       slug: wedding.slug,
       mime: parsed.photo.mime,
       bytes: parsed.photo.bytes,
-      shape: parsed.photo.shape,
       width: parsed.photo.width,
       height: parsed.photo.height,
-      crop,
-      cropBytes,
     })
     wedding.photo = photo
     await writeRsvp(wedding)
     return { ok: true as const, photo }
   })
-
-/**
- * The couple moves the crop, or picks a different shape, without uploading
- * again. The whole photo stays exactly as it was; only the shape, the position
- * and the shaped rendition change.
- */
-export const saveRsvpPhotoCrop = createServerFn({ method: 'POST' })
-  .validator(
-    (data: {
-      shape?: unknown
-      cropUrl?: unknown
-      zoom?: unknown
-      panX?: unknown
-      panY?: unknown
-    }) => ({
-      shape: parsePhotoShape(data.shape),
-      cropUrl: typeof data.cropUrl === 'string' ? data.cropUrl : '',
-      zoom: data.zoom,
-      panX: data.panX,
-      panY: data.panY,
-    }),
-  )
-  .handler(async ({ data }) => {
-    const wedding = await ownedWedding()
-    const desk = await isDesk()
-    if (!wedding || (!wedding.paid && !desk) || !wedding.photo) {
-      return { ok: false as const, error: 'Add a photo first.' }
-    }
-    const cropBytes =
-      data.shape === 'full' || !data.cropUrl
-        ? undefined
-        : cropBytesFrom(data.cropUrl, data.shape)
-    if (data.shape !== 'full' && data.cropUrl && !cropBytes) {
-      return { ok: false as const, error: 'That crop could not be read.' }
-    }
-    const photo = await storeRsvpPhotoCrop({
-      slug: wedding.slug,
-      shape: data.shape,
-      crop: cropFrom(data),
-      cropBytes,
-    })
-    if (!photo) return { ok: false as const, error: 'Add a photo first.' }
-    wedding.photo = photo
-    await writeRsvp(wedding)
-    return { ok: true as const, photo, shape: photo.shape }
-  })
-
-/** Kept for the desk: a shape change with the photo's own centre kept. */
-export const saveRsvpPhotoShape = saveRsvpPhotoCrop
-
-/**
- * Reads the shaped rendition the browser drew. It is checked the same way the
- * whole photo is, so a shaped crop can never be bigger than the site stores.
- */
-function cropBytesFrom(
-  dataUrl: string,
-  shape: PhotoShape,
-): Uint8Array | undefined {
-  const parsed = parsePhotoUpload(dataUrl, shape, 0, 0)
-  return parsed.ok ? parsed.photo.bytes : undefined
-}
 
 /** "Remove photo" puts the invitation back to its template without one. */
 export const clearRsvpPhoto = createServerFn({ method: 'POST' }).handler(
