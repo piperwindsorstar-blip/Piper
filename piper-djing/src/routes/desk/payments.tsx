@@ -32,46 +32,47 @@ function PaymentsPage() {
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
 
+  async function record(
+    form: FormData,
+    kind: 'payment' | 'refund',
+  ): Promise<{ ok: boolean; message: string }> {
+    const refund = kind === 'refund'
+    try {
+      const cents = dollarsToCents(String(form.get('amount') ?? ''))
+      const result = await pay({
+        data: {
+          id: Number(form.get('bookingId')),
+          cents: refund ? -cents : cents,
+          note: String(form.get('note') ?? ''),
+          paidOn: String(form.get('paidOn') ?? ''),
+          method: String(form.get('method') ?? ''),
+        },
+      })
+      const message = result.ok
+        ? result.newlyBooked
+          ? 'The deposit cleared. The date is booked.'
+          : refund
+            ? 'Refund recorded.'
+            : 'Payment recorded.'
+        : result.error
+      setNotice(message)
+      if (result.ok) await router.invalidate()
+      return { ok: result.ok, message }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Enter an amount.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+  }
+
   return (
     <div className="grid gap-5">
       <DeskTitle kicker="Payments" title="Payments" />
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       <form
         className={`${deskCard} grid gap-3 sm:grid-cols-2`}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const submitter =
-            event.nativeEvent instanceof SubmitEvent
-              ? event.nativeEvent.submitter
-              : null
-          const form = new FormData(event.currentTarget, submitter)
-          const refund = form.get('kind') === 'refund'
-          try {
-            const cents = dollarsToCents(String(form.get('amount') ?? ''))
-            void pay({
-              data: {
-                id: Number(form.get('bookingId')),
-                cents: refund ? -cents : cents,
-                note: String(form.get('note') ?? ''),
-                paidOn: String(form.get('paidOn') ?? ''),
-                method: String(form.get('method') ?? ''),
-              },
-            }).then(async (result) => {
-              setNotice(
-                result.ok
-                  ? result.newlyBooked
-                    ? 'The deposit cleared. The date is booked.'
-                    : 'Recorded.'
-                  : result.error,
-              )
-              if (result.ok) await router.invalidate()
-            })
-          } catch (error) {
-            setNotice(
-              error instanceof Error ? error.message : 'Enter an amount.',
-            )
-          }
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <label className="field sm:col-span-2">
           Booking
@@ -113,12 +114,28 @@ function PaymentsPage() {
           Note
           <input name="note" />
         </label>
-        <button name="kind" value="payment" className={deskPrimary}>
-          Record payment
-        </button>
-        <button name="kind" value="refund" className={deskGhost}>
-          Record refund
-        </button>
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={(form) => record(form, 'payment')}
+          >
+            Record payment
+          </ActionButton>
+          <ActionButton
+            className={deskGhost}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={(form) => record(form, 'refund')}
+          >
+            Record refund
+          </ActionButton>
+        </div>
       </form>
       <ul className="grid gap-3">
         {data.payments.map((payment) => (

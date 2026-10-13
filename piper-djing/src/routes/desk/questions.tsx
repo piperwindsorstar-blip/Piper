@@ -89,29 +89,31 @@ function QuestionCard({
 
   return (
     <li className="rounded-xl border border-white/10 bg-ink-900 px-4 py-3">
-      <form
-        className="grid gap-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const prompt = String(
-            new FormData(event.currentTarget).get('prompt') ?? '',
-          )
-          void save({ data: { id: question.id, prompt } }).then(
-            async (result) => {
-              setNotice(result.ok ? 'Saved.' : result.error)
-              if (result.ok) await router.invalidate()
-            },
-          )
-        }}
-      >
+      <form className="grid gap-3" onSubmit={(event) => event.preventDefault()}>
         <label className="field">
           Question
           <input name="prompt" required defaultValue={question.prompt} />
         </label>
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (form: FormData): Promise<RunResult | undefined> => {
+              const prompt = String(form.get('prompt') ?? '')
+              const result = await save({ data: { id: question.id, prompt } })
+              setNotice(result.ok ? 'Saved.' : result.error)
+              if (result.ok) await router.invalidate()
+              return {
+                ok: result.ok,
+                message: result.ok ? 'Saved.' : result.error,
+              }
+            }}
+          >
             Save
-          </button>
+          </ActionButton>
           <button
             type="button"
             className={deskDanger}

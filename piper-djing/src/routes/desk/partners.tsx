@@ -144,38 +144,7 @@ function PartnerCard({
 
   return (
     <li className="rounded-xl border border-white/10 bg-ink-900 px-4 py-3">
-      <form
-        className="grid gap-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const form = event.currentTarget
-          const name = String(form.get('name') ?? '')
-          const href = String(form.get('href') ?? '')
-          const file = form.elements.namedItem('logo')
-          const logo =
-            file instanceof HTMLInputElement ? file.files?.[0] : undefined
-          const send = (data: string) =>
-            save({ data: { id: partner.id, name, href, logo: data } }).then(
-              async (result) => {
-                onNotice(result.ok ? 'Saved.' : result.error)
-                if (result.ok) await router.invalidate()
-              },
-            )
-          if (!logo) {
-            void send('')
-            return
-          }
-          void readLogo(logo)
-            .then((data) => send(data))
-            .catch((error: unknown) => {
-              onNotice(
-                error instanceof Error
-                  ? error.message
-                  : 'That logo did not load.',
-              )
-            })
-        }}
-      >
+      <form className="grid gap-3" onSubmit={(event) => event.preventDefault()}>
         <div className="flex items-center gap-4">
           <img
             src={partner.src}
@@ -208,9 +177,47 @@ function PartnerCard({
           />
         </label>
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (
+              form: FormData,
+              formElement: HTMLFormElement | null,
+            ): Promise<RunResult | undefined> => {
+              const name = String(form.get('name') ?? '')
+              const href = String(form.get('href') ?? '')
+              const file = formElement?.elements.namedItem('logo')
+              const logo =
+                file instanceof HTMLInputElement ? file.files?.[0] : undefined
+              const send = async (data: string) => {
+                const result = await save({
+                  data: { id: partner.id, name, href, logo: data },
+                })
+                onNotice(result.ok ? 'Saved.' : result.error)
+                if (result.ok) await router.invalidate()
+                return result
+              }
+              try {
+                const result = logo
+                  ? await readLogo(logo).then((data) => send(data))
+                  : await send('')
+                return {
+                  ok: result.ok,
+                  message: result.ok ? 'Saved.' : result.error,
+                }
+              } catch (error) {
+                const message =
+                  error instanceof Error ? error.message : 'That did not save.'
+                onNotice(message)
+                return { ok: false, message }
+              }
+            }}
+          >
             Save
-          </button>
+          </ActionButton>
           <button
             type="button"
             className="min-h-11 text-sm font-semibold text-rose-300"

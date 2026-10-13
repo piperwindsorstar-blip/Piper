@@ -6,6 +6,7 @@ import {
   DeskTitle,
   deskGhost,
   deskPrimary,
+  deskSurface,
 } from '../../../../components/desk-ui.tsx'
 import { QuestionControl } from '../../../../components/portal/question-controls.tsx'
 import {
@@ -27,6 +28,8 @@ import {
   sectionQuestions,
 } from '../../../../lib/portal/questions.ts'
 import type { SectionId } from '../../../../lib/portal/questions.ts'
+import { ActionButton } from '../../../../components/action-button.tsx'
+import type { RunResult } from '../../../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/portals/$slug/')({
   head: () => deskHead('Couple portal · DJ Piper P'),
@@ -109,19 +112,7 @@ function PasscodeEditor({
   return (
     <form
       className="flex flex-wrap items-end gap-2"
-      onSubmit={(event) => {
-        event.preventDefault()
-        setError('')
-        setSaved('')
-        void save({ data: { slug, passcode: value } }).then((result) => {
-          if (!result.ok) {
-            setError(result.error)
-            return
-          }
-          setValue(result.passcode)
-          setSaved('Passcode saved.')
-        })
-      }}
+      onSubmit={(event) => event.preventDefault()}
     >
       <label className="field min-w-40">
         Passcode
@@ -132,9 +123,27 @@ function PasscodeEditor({
           onChange={(event) => setValue(event.target.value.toUpperCase())}
         />
       </label>
-      <button type="submit" className={deskPrimary}>
+      <ActionButton
+        className={deskPrimary}
+        checkForm
+        busy="Saving…"
+        done="Saved"
+        surface={deskSurface}
+        onRun={async (): Promise<RunResult | undefined> => {
+          setError('')
+          setSaved('')
+          const result = await save({ data: { slug, passcode: value } })
+          if (!result.ok) {
+            setError(result.error)
+            return { ok: false, message: result.error }
+          }
+          setValue(result.passcode)
+          setSaved('Passcode saved.')
+          return { ok: true, message: 'Passcode saved.' }
+        }}
+      >
         Save passcode
-      </button>
+      </ActionButton>
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
       {saved ? <p className="text-sm text-white/80">{saved}</p> : null}
     </form>

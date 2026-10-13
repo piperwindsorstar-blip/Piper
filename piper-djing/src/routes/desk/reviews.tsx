@@ -114,22 +114,7 @@ function SavedReview({ review }: { review: ReviewView }) {
 
   return (
     <li className="grid gap-3 rounded-2xl border border-white/10 bg-ink-900 p-5">
-      <form
-        className="grid gap-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const draft = draftFrom(event.currentTarget)
-          void save({ data: { id: review.id, ...draft } }).then(
-            async (result) => {
-              setNotice(result.ok ? 'Review saved.' : result.error)
-              if (result.ok) {
-                setShown(result.review.show)
-                await router.invalidate()
-              }
-            },
-          )
-        }}
-      >
+      <form className="grid gap-3" onSubmit={(event) => event.preventDefault()}>
         <ReviewFields review={review} />
         <ShowSwitch
           checked={shown}
@@ -154,9 +139,33 @@ function SavedReview({ review }: { review: ReviewView }) {
           }}
         />
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={deskPrimary}>
+          <ActionButton
+            className={deskPrimary}
+            checkForm
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (
+              _form: FormData,
+              formElement: HTMLFormElement | null,
+            ): Promise<RunResult | undefined> => {
+              if (!formElement) return { ok: false, message: 'Try again.' }
+              const result = await save({
+                data: { id: review.id, ...draftFrom(formElement) },
+              })
+              setNotice(result.ok ? 'Review saved.' : result.error)
+              if (result.ok) {
+                setShown(result.review.show)
+                await router.invalidate()
+              }
+              return {
+                ok: result.ok,
+                message: result.ok ? 'Review saved.' : result.error,
+              }
+            }}
+          >
             Save
-          </button>
+          </ActionButton>
           <button
             type="button"
             className="min-h-11 text-sm font-semibold text-rose-300"

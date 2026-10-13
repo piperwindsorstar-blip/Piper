@@ -949,6 +949,60 @@ function BookingCard({
   const controls = invoiceControls(booking.invoice?.status ?? null)
   const canMail = hasCoupleAddress(booking.email)
 
+  async function updateStatus(
+    form: FormData,
+  ): Promise<{ ok: boolean; message: string }> {
+    const next = String(form.get('action') ?? '')
+    if (next !== 'release' && next !== 'cancel' && next !== 'release-stag') {
+      return { ok: false, message: 'Pick a status action.' }
+    }
+    const result = await status({ data: { id: booking.id, action: next } })
+    if (!result.ok) {
+      setError(result.error)
+      return { ok: false, message: result.error }
+    }
+    setError(null)
+    const message = 'The status is updated.'
+    setNotice(message)
+    await router.invalidate()
+    return { ok: true, message }
+  }
+
+  async function savePayment(
+    form: FormData,
+    kind: 'payment' | 'refund',
+  ): Promise<{ ok: boolean; message: string }> {
+    const refund = kind === 'refund'
+    try {
+      const cents = dollarsToCents(String(form.get('amount') ?? ''))
+      const result = await pay({
+        data: {
+          id: booking.id,
+          cents: refund ? -cents : cents,
+          note: String(form.get('note') ?? ''),
+        },
+      })
+      if (!result.ok) {
+        setError(result.error)
+        return { ok: false, message: result.error }
+      }
+      setError(null)
+      const message = result.newlyBooked
+        ? 'The deposit cleared. The date is booked.'
+        : refund
+          ? 'The refund is on the invoice. The date stays booked.'
+          : 'The payment is on the invoice.'
+      setNotice(message)
+      await router.invalidate()
+      return { ok: true, message }
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : 'Enter an amount.'
+      setError(message)
+      return { ok: false, message }
+    }
+  }
+
   return (
     <article
       className={`rounded-2xl border bg-ink-900 ${open ? 'border-neon/40' : 'border-white/10'}`}
@@ -1271,28 +1325,7 @@ function BookingCard({
         <div className="grid gap-5 md:grid-cols-2">
           <form
             className="rounded-xl border border-white/10 bg-ink-950 p-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              const form = new FormData(event.currentTarget)
-              const next = String(form.get('action') ?? '')
-              if (
-                next !== 'release' &&
-                next !== 'cancel' &&
-                next !== 'release-stag'
-              )
-                return
-              void status({ data: { id: booking.id, action: next } }).then(
-                async (result) => {
-                  if (!result.ok) {
-                    setError(result.error)
-                    return
-                  }
-                  setError(null)
-                  setNotice('The status is updated.')
-                  await router.invalidate()
-                },
-              )
-            }}
+            onSubmit={(event) => event.preventDefault()}
           >
             <label className="field min-w-52">
               Status
@@ -1308,52 +1341,20 @@ function BookingCard({
                 ) : null}
               </select>
             </label>
-            <button
-              type="submit"
+            <ActionButton
               className={`mt-3 ${action === 'cancel' ? deskDanger : deskGhost}`}
+              checkForm
+              busy="Saving…"
+              done="Saved"
+              surface={deskSurface}
+              onRun={updateStatus}
             >
               Update status
-            </button>
+            </ActionButton>
           </form>
           <form
             className="rounded-xl border border-white/10 bg-ink-950 p-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              const submitter =
-                event.nativeEvent instanceof SubmitEvent
-                  ? event.nativeEvent.submitter
-                  : null
-              const form = new FormData(event.currentTarget, submitter)
-              const refund = form.get('kind') === 'refund'
-              try {
-                const cents = dollarsToCents(String(form.get('amount') ?? ''))
-                void pay({
-                  data: {
-                    id: booking.id,
-                    cents: refund ? -cents : cents,
-                    note: String(form.get('note') ?? ''),
-                  },
-                }).then(async (result) => {
-                  if (!result.ok) {
-                    setError(result.error)
-                    return
-                  }
-                  setError(null)
-                  setNotice(
-                    result.newlyBooked
-                      ? 'The deposit cleared. The date is booked.'
-                      : refund
-                        ? 'The refund is on the invoice. The date stays booked.'
-                        : 'The payment is on the invoice.',
-                  )
-                  await router.invalidate()
-                })
-              } catch (caught) {
-                setError(
-                  caught instanceof Error ? caught.message : 'Enter an amount.',
-                )
-              }
-            }}
+            onSubmit={(event) => event.preventDefault()}
           >
             <p className="font-semibold">Record payment</p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -1367,12 +1368,26 @@ function BookingCard({
               </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button name="kind" value="payment" className={deskPrimary}>
+              <ActionButton
+                className={deskPrimary}
+                checkForm
+                busy="Saving…"
+                done="Saved"
+                surface={deskSurface}
+                onRun={(form) => savePayment(form, 'payment')}
+              >
                 Record payment
-              </button>
-              <button name="kind" value="refund" className={deskGhost}>
+              </ActionButton>
+              <ActionButton
+                className={deskGhost}
+                checkForm
+                busy="Saving…"
+                done="Saved"
+                surface={deskSurface}
+                onRun={(form) => savePayment(form, 'refund')}
+              >
                 Record refund
-              </button>
+              </ActionButton>
             </div>
             {payments.length > 0 ? (
               <ul className="mt-3 space-y-1 text-sm">
