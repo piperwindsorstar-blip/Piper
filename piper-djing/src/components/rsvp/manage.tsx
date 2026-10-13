@@ -17,6 +17,7 @@ import {
 import { GuestPaste } from './guest-paste.tsx'
 import type { getRsvpManage } from '../../lib/rsvp/rsvp.functions.ts'
 import {
+  RsvpLogo,
   RsvpThemeProvider,
   downloadText,
   rsvpButton,
@@ -58,11 +59,8 @@ export function ManageShell({
       }
     >
       <aside className="border-b border-[var(--border)] p-4 md:border-b-0 md:border-r">
-        <div className="mb-6 flex items-center gap-2 text-sm font-semibold">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--pink)] font-bold text-[#0D0D0D]">
-            P
-          </span>
-          Piper P · RSVP
+        <div className="mb-6">
+          <RsvpLogo />
         </div>
         <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
           WEDDING

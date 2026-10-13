@@ -23,7 +23,7 @@ function LoginPage() {
 
   return (
     <main className="desk flex min-h-screen w-full flex-col items-center justify-center bg-paper px-5 py-16 text-ink">
-      <div className="w-full max-w-md rounded-2xl border border-ink bg-ink/95 p-7 text-white shadow-[8px_8px_0_0_#EEE8FF]">
+      <div className="login-card w-full max-w-md rounded-2xl border border-ink bg-ink/95 p-7 text-white shadow-[8px_8px_0_0_#EEE8FF]">
         <img
           src="/brand/dj-piper-p.png"
           alt="DJ Piper P"

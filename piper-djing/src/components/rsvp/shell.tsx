@@ -47,15 +47,29 @@ export function RsvpFrame({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * The brand mark in the RSVP header. Dark pages read the white-and-pink mark,
+ * light pages the ink mark.
+ */
+export function RsvpLogo({ className = 'h-9 w-auto' }: { className?: string }) {
+  const theme = useRsvpTheme()
+  return (
+    <img
+      src={
+        theme === 'light'
+          ? '/photos/logo-inverted.png'
+          : '/brand/dj-piper-p.png'
+      }
+      alt="DJ Piper P"
+      className={className}
+    />
+  )
+}
+
 export function RsvpHeader({ step }: { step?: string }) {
   return (
     <header className="mb-8 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--pink)] text-sm font-bold text-[#0D0D0D]">
-          P
-        </span>
-        Piper P · RSVP
-      </div>
+      <RsvpLogo />
       {step ? (
         <span className="text-sm text-[var(--text-muted)]">{step}</span>
       ) : null}

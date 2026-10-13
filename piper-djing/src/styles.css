@@ -253,6 +253,16 @@ html:has(.desk) {
   color: var(--color-muted);
 }
 
+/* The sign-in card is an ink panel on the paper desk. The paper theme's muted
+   label colour disappears on it, so its labels and error read light. */
+.desk .login-card .field {
+  color: #ffffff;
+}
+
+.desk .login-card .text-danger {
+  color: #ffb3ab;
+}
+
 .desk input:not([type='checkbox']):not([type='radio']):not([type='file']),
 .desk select,
 .desk textarea {

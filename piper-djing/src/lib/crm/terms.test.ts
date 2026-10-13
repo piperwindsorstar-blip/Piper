@@ -12,6 +12,12 @@ Wired uplights are $15 each. Travel is calculated from the kilometres to each ve
 
 Once a date is booked, later payments, refunds, and edits do not release it. Only a cancellation or a release changes that status.`
 
+/** The document as it stood before the venue fee became its own clause. */
+const WITH_VENUE_TAIL = TERMS_BODY.replace(
+  '\n\nIf the ceremony is at a separate venue from the reception, a flat $75 second-venue fee applies. Two venues is the maximum; a third venue is not offered.',
+  ' A separate ceremony venue is $75. A third venue is not offered.',
+)
+
 describe('terms', () => {
   it('replaces the old deposit and travel sentences', () => {
     assert.equal(reviseTerms(PREVIOUS), TERMS_BODY)
@@ -19,6 +25,19 @@ describe('terms', () => {
     assert.match(TERMS_BODY, /39 Butcher Crescent, Brantford/)
     assert.match(TERMS_BODY, /\$250 plus a hotel/)
     assert.doesNotMatch(TERMS_BODY, /first 20/)
+  })
+
+  it('states the second-venue fee once', () => {
+    assert.match(
+      TERMS_BODY,
+      /If the ceremony is at a separate venue from the reception, a flat \$75 second-venue fee applies\. Two venues is the maximum; a third venue is not offered\./,
+    )
+    assert.equal(TERMS_BODY.match(/a third venue is not offered/gi)?.length, 1)
+  })
+
+  it('moves the venue fee out of the travel paragraph', () => {
+    assert.notEqual(WITH_VENUE_TAIL, TERMS_BODY)
+    assert.equal(reviseTerms(WITH_VENUE_TAIL), TERMS_BODY)
   })
 
   it('leaves a rewritten document alone', () => {
