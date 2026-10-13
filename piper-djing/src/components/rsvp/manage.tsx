@@ -18,7 +18,7 @@ import {
 } from '../../lib/rsvp/rsvp.functions.ts'
 import { GuestPaste } from './guest-paste.tsx'
 import { MealOptions } from './meal-options.tsx'
-import { PrintSeating, PrintTimeline, usePrintSheet } from './print.tsx'
+import { PrintTimeline, SeatingPrintDialog, usePrintSheet } from './print.tsx'
 import type { SeatingData } from './seating.tsx'
 import type { TimelineData } from './timeline.tsx'
 import type { getRsvpManage } from '../../lib/rsvp/rsvp.functions.ts'
@@ -1217,6 +1217,7 @@ export function Exports({
   sheets: ExportSheets
 }) {
   const { sheet, print } = usePrintSheet()
+  const [seatingPrint, setSeatingPrint] = useState(false)
   const load = useServerFn(downloadRsvpCsv)
   const router = useRouter()
   const remind = useServerFn(sendRsvpReminders)
@@ -1236,15 +1237,15 @@ export function Exports({
   }
   return (
     <div>
-      {sheet === 'seating' && sheets.seating ? (
-        <div className="hidden print:block">
-          <PrintSeating
-            plan={sheets.seating.plan}
-            guests={sheets.seating.guests}
-            couple={sheets.seating.couple}
-            dateLabel={sheets.seating.dateLabel}
-          />
-        </div>
+      {sheets.seating ? (
+        <SeatingPrintDialog
+          open={seatingPrint}
+          onClose={() => setSeatingPrint(false)}
+          plan={sheets.seating.plan}
+          guests={sheets.seating.guests}
+          couple={sheets.seating.couple}
+          dateLabel={sheets.seating.dateLabel}
+        />
       ) : null}
       {sheet === 'timeline' && sheets.timeline ? (
         <div className="hidden print:block">
@@ -1285,7 +1286,7 @@ export function Exports({
           title="Seating chart"
           body="Table, seat, party, guest, child, meal, event. Unseated attending guests are listed last."
           onClick={() => void grab('seating', 'seating-chart')}
-          onPrint={sheets.seating ? () => print('seating') : undefined}
+          onPrint={sheets.seating ? () => setSeatingPrint(true) : undefined}
         />
         <ExportCard
           title="Timeline"

@@ -1,15 +1,23 @@
-import { useRef } from 'react'
-import type { DragEvent, PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import type {
+  DragEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import {
-  FLOOR_H,
-  FLOOR_W,
+  MIN_SIZE,
+  fitTableSize,
+  gridStep,
   guestsAt,
+  normalAngle,
+  placedSeats,
+  rotatePoint,
   seatLabelLines,
-  seatPositions,
+  snapTo,
   tableLabel,
-  tableSize,
 } from '../../lib/rsvp/seating.ts'
 import type {
+  RoomItem,
+  RoomItemKind,
   SeatTable,
   SeatableGuest,
   SeatingPlan,
@@ -17,8 +25,12 @@ import type {
 
 /** Screen colours follow the RSVP theme; print is always ink on white. */
 const SCREEN = {
+  room: 'var(--surface)',
+  wall: 'var(--border-strong)',
+  gridMinor: 'var(--border)',
+  gridMajor: 'var(--border-strong)',
   table: 'var(--field)',
-  tableLine: 'var(--border-strong)',
+  tableLine: 'var(--text-muted)',
   seatFill: 'var(--pink)',
   seatText: '#0D0D0D',
   seatEmpty: 'var(--text-faint)',
@@ -26,36 +38,120 @@ const SCREEN = {
   label: 'var(--text)',
   muted: 'var(--text-muted)',
   pick: 'var(--pink-soft)',
+  item: 'var(--pink-tint)',
+  itemLine: 'var(--pink)',
+  itemText: 'var(--text)',
+  handle: 'var(--pink)',
 }
 
 const PRINT = {
-  table: '#f4f1ec',
-  tableLine: '#555555',
-  seatFill: '#222222',
-  seatText: '#ffffff',
-  seatEmpty: '#888888',
+  room: '#ffffff',
+  wall: '#111111',
+  gridMinor: '#eeeeee',
+  gridMajor: '#dddddd',
+  table: '#ffffff',
+  tableLine: '#111111',
+  seatFill: '#ffffff',
+  seatText: '#111111',
+  seatEmpty: '#999999',
   name: '#111111',
-  label: '#111111',
-  muted: '#555555',
+  label: '#000000',
+  muted: '#444444',
   pick: '#111111',
+  item: '#f2f2f2',
+  itemLine: '#555555',
+  itemText: '#111111',
+  handle: '#111111',
 }
+
+export type Selection = { kind: 'table' | 'item'; id: string } | null
 
 export type FloorPlanProps = {
   plan: SeatingPlan
   guests: Map<string, SeatableGuest>
+  /** The couple's venue layout, faded behind the plan. */
+  image?: string
   print?: boolean
+  selection?: Selection
+  onSelect?: (selection: Selection) => void
   /** Guest whose seat is highlighted (tap to inspect). */
   selectedGuest?: string
   /** A guest picked from the list, waiting for a tap on a seat. */
   placing?: boolean
-  onMoveTable?: (tableId: string, x: number, y: number) => void
-  onMoveEnd?: () => void
+  /** Every step of a drag, resize or turn, for the screen only. */
+  onChange?: (plan: SeatingPlan) => void
+  /** The drag, resize or turn is finished: save it. */
+  onCommit?: (plan: SeatingPlan) => void
   onTapSeat?: (tableId: string, seat: number, guestId: string | null) => void
   onDropGuest?: (guestId: string, tableId: string, seat?: number) => void
 }
 
-const SEAT_R = 13
+type View = { x: number; y: number; w: number; h: number }
 
+type Gesture =
+  | { type: 'none' }
+  | {
+      type: 'move'
+      kind: 'table' | 'item'
+      id: string
+      dx: number
+      dy: number
+      startX: number
+      startY: number
+      moved: boolean
+    }
+  | {
+      type: 'resize'
+      kind: 'table' | 'item'
+      id: string
+      startX: number
+      startY: number
+      moved: boolean
+    }
+  | {
+      type: 'rotate'
+      kind: 'table' | 'item'
+      id: string
+      startX: number
+      startY: number
+      moved: boolean
+    }
+  | {
+      type: 'pan'
+      view: View
+      startX: number
+      startY: number
+      moved: boolean
+      background: boolean
+    }
+  | {
+      type: 'pinch'
+      view: View
+      distance: number
+      mid: { x: number; y: number }
+    }
+  | {
+      type: 'seat'
+      tableId: string
+      seat: number
+      guestId: string | null
+      startX: number
+      startY: number
+      moved: boolean
+    }
+
+const SEAT_R = 12
+const NAME_LINE = 11
+
+function fitView(plan: SeatingPlan): View {
+  const pad = Math.max(36, Math.min(plan.room.width, plan.room.length) * 0.05)
+  return {
+    x: -pad,
+    y: -pad,
+    w: plan.room.width + pad * 2,
+    h: plan.room.length + pad * 2,
+  }
+}
 
 function initials(guest: SeatableGuest | undefined): string {
   if (!guest) return ''
@@ -67,33 +163,69 @@ function initials(guest: SeatableGuest | undefined): string {
     .join('')
 }
 
+function hitOf(target: EventTarget | null): HTMLElement | SVGElement | null {
+  if (!(target instanceof Element)) return null
+  return target.closest('[data-hit]') as HTMLElement | SVGElement | null
+}
+
 /**
- * The room from above. Tables are drawn to their shape with a seat for every
- * place, the table number in the middle and "6 / 8 seated" under it. On screen
- * tables can be dragged, seats tapped, and guests dropped onto a seat or table.
+ * The room from above, to scale. Tables and room items can be dragged,
+ * resized from their corners and turned from the handle above them; the grid
+ * snaps when snapping is on. One finger or the mouse on empty floor pans, two
+ * fingers pinch to zoom, and the buttons zoom or fit the room to the screen.
  */
 export function FloorPlan({
   plan,
   guests,
+  image = '',
   print = false,
+  selection = null,
+  onSelect,
   selectedGuest = '',
   placing = false,
-  onMoveTable,
-  onMoveEnd,
+  onChange,
+  onCommit,
   onTapSeat,
   onDropGuest,
 }: FloorPlanProps) {
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const svg = useRef<SVGSVGElement | null>(null)
-  const drag = useRef<{
-    id: string
-    dx: number
-    dy: number
-    pointer: number
-  } | null>(null)
   const colours = print ? PRINT : SCREEN
-  const interactive = !print
+  const editable = !print && Boolean(onChange)
+  const [view, setView] = useState<View>(() => fitView(plan))
+  const viewRef = useRef(view)
+  viewRef.current = view
+  const planRef = useRef(plan)
+  planRef.current = plan
+  const gesture = useRef<Gesture>({ type: 'none' })
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const roomKey = `${plan.room.width}x${plan.room.length}`
+  const step = gridStep(plan.room.unit)
 
-  function toFloor(clientX: number, clientY: number) {
+  // A new room size refits the view so the whole room shows.
+  const lastRoom = useRef(roomKey)
+  useEffect(() => {
+    if (lastRoom.current === roomKey) return
+    lastRoom.current = roomKey
+    setView(fitView(planRef.current))
+  }, [roomKey])
+
+  // Ctrl/⌘ + wheel (and trackpad pinch) zooms; a plain wheel scrolls the page.
+  useEffect(() => {
+    const element = svg.current
+    if (!element || print) return
+    const wheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return
+      event.preventDefault()
+      const at = toRoom(event.clientX, event.clientY)
+      if (!at) return
+      zoomAt(at, Math.exp(-event.deltaY * 0.01))
+    }
+    element.addEventListener('wheel', wheel, { passive: false })
+    return () => element.removeEventListener('wheel', wheel)
+  })
+
+  function toRoom(clientX: number, clientY: number) {
     const element = svg.current
     const matrix = element?.getScreenCTM()
     if (!element || !matrix) return null
@@ -104,252 +236,815 @@ export function FloorPlan({
     return { x: local.x, y: local.y }
   }
 
-  function startDrag(event: ReactPointerEvent, table: SeatTable) {
-    if (!interactive || !onMoveTable) return
-    const at = toFloor(event.clientX, event.clientY)
-    if (!at) return
-    event.preventDefault()
-    ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
-    drag.current = {
-      id: table.id,
-      dx: at.x - table.x,
-      dy: at.y - table.y,
-      pointer: event.pointerId,
+  function zoomAt(at: { x: number; y: number }, factor: number) {
+    const current = viewRef.current
+    const room = planRef.current.room
+    const maxW = Math.max(room.width, room.length) * 3
+    const w = Math.min(maxW, Math.max(96, current.w / factor))
+    const scale = w / current.w
+    const h = current.h * scale
+    const next = {
+      x: at.x - (at.x - current.x) * scale,
+      y: at.y - (at.y - current.y) * scale,
+      w,
+      h,
+    }
+    viewRef.current = next
+    setView(next)
+  }
+
+  function zoomCentre(factor: number) {
+    const current = viewRef.current
+    zoomAt({ x: current.x + current.w / 2, y: current.y + current.h / 2 }, factor)
+  }
+
+  function snap(value: number) {
+    return planRef.current.room.snap ? snapTo(value, step.snap) : Math.round(value)
+  }
+
+  function findThing(kind: 'table' | 'item', id: string) {
+    const current = planRef.current
+    return kind === 'table'
+      ? current.tables.find((table) => table.id === id)
+      : current.items.find((item) => item.id === id)
+  }
+
+  function update(
+    kind: 'table' | 'item',
+    id: string,
+    change: Partial<SeatTable> & Partial<RoomItem>,
+  ) {
+    const current = planRef.current
+    const next: SeatingPlan =
+      kind === 'table'
+        ? {
+            ...current,
+            tables: current.tables.map((table) =>
+              table.id === id ? { ...table, ...change } : table,
+            ),
+          }
+        : {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === id ? { ...item, ...change } : item,
+            ),
+          }
+    planRef.current = next
+    onChange?.(next)
+  }
+
+  function startPinch() {
+    const points = [...pointers.current.values()]
+    if (points.length < 2) return
+    const [a, b] = points as [{ x: number; y: number }, { x: number; y: number }]
+    gesture.current = {
+      type: 'pinch',
+      view: viewRef.current,
+      distance: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
     }
   }
 
-  function moveDrag(event: ReactPointerEvent) {
-    const current = drag.current
-    if (!current || current.pointer !== event.pointerId || !onMoveTable) return
-    const at = toFloor(event.clientX, event.clientY)
+  function onPointerDown(event: ReactPointerEvent<SVGSVGElement>) {
+    if (print) return
+    pointers.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    })
+    svg.current?.setPointerCapture(event.pointerId)
+    if (pointers.current.size >= 2) {
+      // Two fingers: whatever was being dragged stays where it got to.
+      finishEdit()
+      startPinch()
+      return
+    }
+    const hit = hitOf(event.target)
+    const kind = hit?.getAttribute('data-hit') ?? 'background'
+    const id = hit?.getAttribute('data-id') ?? ''
+    const at = toRoom(event.clientX, event.clientY)
     if (!at) return
-    const x = Math.round(Math.min(FLOOR_W - 30, Math.max(30, at.x - current.dx)))
-    const y = Math.round(Math.min(FLOOR_H - 30, Math.max(30, at.y - current.dy)))
-    onMoveTable(current.id, x, y)
-  }
-
-  function endDrag(event: ReactPointerEvent) {
-    const current = drag.current
-    if (!current || current.pointer !== event.pointerId) return
-    drag.current = null
-    onMoveEnd?.()
-  }
-
-  function dropProps(tableId: string, seat?: number) {
-    if (!interactive || !onDropGuest) return {}
-    return {
-      onDragOver: (event: DragEvent) => {
-        if (event.dataTransfer.types.includes('text/x-rsvp-guest')) {
-          event.preventDefault()
-          event.dataTransfer.dropEffect = 'move'
-        }
-      },
-      onDrop: (event: DragEvent) => {
-        const guestId = event.dataTransfer.getData('text/x-rsvp-guest')
-        if (!guestId) return
-        event.preventDefault()
-        event.stopPropagation()
-        onDropGuest(guestId, tableId, seat)
-      },
+    const base = { startX: event.clientX, startY: event.clientY, moved: false }
+    if (kind === 'seat' && hit) {
+      gesture.current = {
+        type: 'seat',
+        tableId: id,
+        seat: Number(hit.getAttribute('data-seat') ?? '0'),
+        guestId: hit.getAttribute('data-guest') || null,
+        ...base,
+      }
+      return
+    }
+    if (editable && (kind === 'table' || kind === 'item')) {
+      const thing = findThing(kind, id)
+      if (!thing) return
+      onSelect?.({ kind, id })
+      gesture.current = {
+        type: 'move',
+        kind,
+        id,
+        dx: at.x - thing.x,
+        dy: at.y - thing.y,
+        ...base,
+      }
+      event.preventDefault()
+      return
+    }
+    if (editable && (kind === 'resize' || kind === 'rotate')) {
+      const owner = hit?.getAttribute('data-kind') === 'item' ? 'item' : 'table'
+      gesture.current = { type: kind, kind: owner, id, ...base }
+      event.preventDefault()
+      return
+    }
+    gesture.current = {
+      type: 'pan',
+      view: viewRef.current,
+      background: true,
+      ...base,
     }
   }
+
+  function onPointerMove(event: ReactPointerEvent<SVGSVGElement>) {
+    if (!pointers.current.has(event.pointerId)) return
+    pointers.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    })
+    const current = gesture.current
+    if (current.type === 'pinch') {
+      const points = [...pointers.current.values()]
+      if (points.length < 2) return
+      const [a, b] = points as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ]
+      const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1
+      const factor = distance / current.distance
+      const element = svg.current
+      const rect = element?.getBoundingClientRect()
+      if (!rect) return
+      const per = current.view.w / rect.width
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      const room = planRef.current.room
+      const maxW = Math.max(room.width, room.length) * 3
+      const w = Math.min(maxW, Math.max(96, current.view.w / factor))
+      const scale = w / current.view.w
+      // Keep the floor under the fingers' midpoint where it was.
+      const anchorX = current.view.x + (current.mid.x - rect.left) * per
+      const anchorY = current.view.y + (current.mid.y - rect.top) * per
+      const next = {
+        x: anchorX - (mid.x - rect.left) * per * scale,
+        y: anchorY - (mid.y - rect.top) * per * scale,
+        w,
+        h: current.view.h * scale,
+      }
+      viewRef.current = next
+      setView(next)
+      return
+    }
+    if (current.type === 'none') return
+    const travelled = Math.hypot(
+      event.clientX - current.startX,
+      event.clientY - current.startY,
+    )
+    if (!current.moved && travelled < 4) return
+    current.moved = true
+    if (current.type === 'pan') {
+      const rect = svg.current?.getBoundingClientRect()
+      if (!rect) return
+      const per = current.view.w / rect.width
+      const next = {
+        ...current.view,
+        x: current.view.x - (event.clientX - current.startX) * per,
+        y: current.view.y - (event.clientY - current.startY) * per,
+      }
+      viewRef.current = next
+      setView(next)
+      return
+    }
+    if (current.type === 'seat') return
+    const at = toRoom(event.clientX, event.clientY)
+    if (!at) return
+    const thing = findThing(current.kind, current.id)
+    if (!thing) return
+    const room = planRef.current.room
+    if (current.type === 'move') {
+      update(current.kind, current.id, {
+        x: Math.min(room.width, Math.max(0, snap(at.x - current.dx))),
+        y: Math.min(room.length, Math.max(0, snap(at.y - current.dy))),
+      })
+      return
+    }
+    if (current.type === 'rotate') {
+      let angle =
+        (Math.atan2(at.y - thing.y, at.x - thing.x) * 180) / Math.PI + 90
+      if (event.shiftKey) angle = Math.round(angle / 15) * 15
+      update(current.kind, current.id, { rotation: normalAngle(angle) })
+      return
+    }
+    // Resize from a corner: the table grows evenly around its centre.
+    const local = rotatePoint(
+      { x: at.x - thing.x, y: at.y - thing.y },
+      -thing.rotation,
+    )
+    const w = Math.max(MIN_SIZE, snap(Math.abs(local.x) * 2))
+    const h = Math.max(MIN_SIZE / 2, snap(Math.abs(local.y) * 2))
+    if (current.kind === 'table') {
+      const table = thing as SeatTable
+      const even = table.shape === 'round' || table.shape === 'square'
+      const size = fitTableSize(table.shape, even ? Math.max(w, h) : w, h)
+      update('table', current.id, size)
+    } else {
+      update('item', current.id, { w, h })
+    }
+  }
+
+  function finishEdit() {
+    const current = gesture.current
+    if (
+      (current.type === 'move' ||
+        current.type === 'resize' ||
+        current.type === 'rotate') &&
+      current.moved
+    ) {
+      onCommit?.(planRef.current)
+    }
+    gesture.current = { type: 'none' }
+  }
+
+  function onPointerUp(event: ReactPointerEvent<SVGSVGElement>) {
+    pointers.current.delete(event.pointerId)
+    const current = gesture.current
+    if (current.type === 'pinch') {
+      if (pointers.current.size < 2) gesture.current = { type: 'none' }
+      return
+    }
+    if (current.type === 'seat' && !current.moved) {
+      onTapSeat?.(current.tableId, current.seat, current.guestId)
+    }
+    if (current.type === 'pan' && !current.moved && current.background) {
+      onSelect?.(null)
+    }
+    finishEdit()
+  }
+
+  function onDragOver(event: DragEvent<SVGSVGElement>) {
+    if (!onDropGuest) return
+    if (event.dataTransfer.types.includes('text/x-rsvp-guest')) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+    }
+  }
+
+  function onDrop(event: DragEvent<SVGSVGElement>) {
+    if (!onDropGuest) return
+    const guestId = event.dataTransfer.getData('text/x-rsvp-guest')
+    if (!guestId) return
+    const hit = hitOf(event.target)
+    const kind = hit?.getAttribute('data-hit')
+    const id = hit?.getAttribute('data-id') ?? ''
+    if (kind === 'seat') {
+      event.preventDefault()
+      onDropGuest(guestId, id, Number(hit?.getAttribute('data-seat') ?? '0'))
+      return
+    }
+    if (kind === 'table') {
+      event.preventDefault()
+      onDropGuest(guestId, id)
+    }
+  }
+
+  const shown = print ? fitView(plan) : view
+  const handleR = print ? 0 : Math.max(6, view.w / 90)
+  const selectedTable =
+    selection?.kind === 'table'
+      ? plan.tables.find((table) => table.id === selection.id)
+      : undefined
+  const selectedItem =
+    selection?.kind === 'item'
+      ? plan.items.find((item) => item.id === selection.id)
+      : undefined
+
+  const gridLines = useMemo(
+    () => ({ minor: step.minor, major: step.major }),
+    [step.minor, step.major],
+  )
 
   return (
-    <svg
-      ref={svg}
-      viewBox={`0 0 ${FLOOR_W} ${FLOOR_H}`}
-      className="block h-auto w-full select-none"
-      role="img"
-      aria-label="Seating chart floor plan"
-    >
-      <rect
-        x={1}
-        y={1}
-        width={FLOOR_W - 2}
-        height={FLOOR_H - 2}
-        rx={18}
-        fill="none"
-        stroke={colours.tableLine}
-        strokeDasharray="6 8"
-        opacity={0.6}
-      />
-      {plan.tables.map((table) => {
-        const size = tableSize(table.shape, table.seats)
-        const spots = seatPositions(table.shape, table.seats)
-        const sitting = guestsAt(plan, table.id)
-        const bySeat = new Map<number, string>()
-        for (const guestId of sitting) {
-          const spot = plan.seats[guestId]
-          if (spot) bySeat.set(spot.seat, guestId)
+    <div className="relative">
+      <svg
+        ref={svg}
+        viewBox={`${shown.x} ${shown.y} ${shown.w} ${shown.h}`}
+        preserveAspectRatio="xMidYMid meet"
+        className={
+          print
+            ? 'block h-auto w-full'
+            : 'block h-[min(70vh,640px)] w-full select-none rounded-3xl'
         }
-        const label = /^\d+$/.test(table.name.trim())
-          ? table.name.trim()
-          : table.name.trim() || '?'
-        const big = label.length <= 3
-        return (
-          <g key={table.id} transform={`translate(${table.x} ${table.y})`}>
-            <g
-              {...dropProps(table.id)}
-              onPointerDown={(event) => startDrag(event, table)}
-              onPointerMove={moveDrag}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              style={{
-                cursor: interactive && onMoveTable ? 'grab' : undefined,
-                touchAction: interactive ? 'none' : undefined,
-              }}
-            >
-              <title>{`${tableLabel(table.name)} · ${sitting.length} of ${table.seats} seated`}</title>
-              {table.shape === 'round' ? (
-                <circle
-                  r={size.w / 2}
-                  fill={colours.table}
-                  stroke={colours.tableLine}
-                  strokeWidth={2}
-                />
-              ) : (
-                <rect
-                  x={-size.w / 2}
-                  y={-size.h / 2}
-                  width={size.w}
-                  height={size.h}
-                  rx={table.shape === 'square' ? 6 : 10}
-                  fill={colours.table}
-                  stroke={colours.tableLine}
-                  strokeWidth={2}
-                />
-              )}
-              <text
-                y={table.shape === 'banquet' ? -1 : -4}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize={big ? 22 : 13}
-                fontWeight={700}
-                fill={colours.label}
-              >
-                {label.length > 16 ? `${label.slice(0, 15)}…` : label}
-              </text>
-              <text
-                y={table.shape === 'banquet' ? 14 : big ? 17 : 13}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize={11}
-                fill={colours.muted}
-              >
-                {sitting.length} / {table.seats} seated
-              </text>
-            </g>
-            {spots.map((spot, seat) => {
-              const guestId = bySeat.get(seat) ?? null
-              const guest = guestId ? guests.get(guestId) : undefined
-              const chosen = guestId !== null && guestId === selectedGuest
-              const length = Math.hypot(spot.x, spot.y) || 1
-              const out = { x: spot.x / length, y: spot.y / length }
-              const nameX = spot.x + out.x * (SEAT_R + 6)
-              const nameY = spot.y + out.y * (SEAT_R + 6)
-              const anchor =
-                Math.abs(out.x) < 0.35 ? 'middle' : out.x > 0 ? 'start' : 'end'
-              return (
-                <g
-                  key={seat}
-                  {...dropProps(table.id, seat)}
-                  onClick={
-                    interactive && onTapSeat
-                      ? () => onTapSeat(table.id, seat, guestId)
-                      : undefined
-                  }
-                  style={{
-                    cursor: interactive && onTapSeat ? 'pointer' : undefined,
-                  }}
-                >
-                  <title>
-                    {guest
-                      ? `${guest.name}${guest.meal ? ` · ${guest.meal}` : ''} · seat ${seat + 1}`
-                      : `Empty seat ${seat + 1}`}
-                  </title>
-                  <circle
-                    cx={spot.x}
-                    cy={spot.y}
-                    r={SEAT_R}
-                    fill={guest ? colours.seatFill : 'transparent'}
-                    stroke={
-                      chosen
-                        ? colours.pick
-                        : guest
-                          ? colours.seatFill
-                          : colours.seatEmpty
-                    }
-                    strokeWidth={chosen ? 4 : 1.5}
-                    strokeDasharray={guest || !placing ? undefined : '3 3'}
-                  />
-                  {guest ? (
-                    <>
-                      <text
-                        x={spot.x}
-                        y={spot.y + 0.5}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize={10}
-                        fontWeight={700}
-                        fill={colours.seatText}
-                      >
-                        {initials(guest)}
-                      </text>
-                      <SeatName
-                        lines={seatLabelLines(guest.name)}
-                        x={nameX}
-                        y={nameY}
-                        anchor={anchor}
-                        above={out.y < -0.35}
-                        side={Math.abs(out.y) <= 0.35}
-                        fill={colours.name}
-                      />
-                    </>
-                  ) : null}
-                </g>
-              )
-            })}
-          </g>
-        )
-      })}
-    </svg>
+        style={print ? undefined : { touchAction: 'none' }}
+        role="img"
+        aria-label="Seating chart floor plan"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+      >
+        <defs>
+          <pattern
+            id={`minor-${uid}`}
+            width={gridLines.minor}
+            height={gridLines.minor}
+            patternUnits="userSpaceOnUse"
+          >
+            <path
+              d={`M ${gridLines.minor} 0 L 0 0 0 ${gridLines.minor}`}
+              fill="none"
+              stroke={colours.gridMinor}
+              strokeWidth={0.6}
+            />
+          </pattern>
+          <pattern
+            id={`major-${uid}`}
+            width={gridLines.major}
+            height={gridLines.major}
+            patternUnits="userSpaceOnUse"
+          >
+            <rect
+              width={gridLines.major}
+              height={gridLines.major}
+              fill={`url(#minor-${uid})`}
+            />
+            <path
+              d={`M ${gridLines.major} 0 L 0 0 0 ${gridLines.major}`}
+              fill="none"
+              stroke={colours.gridMajor}
+              strokeWidth={1.2}
+            />
+          </pattern>
+        </defs>
+        <rect
+          data-hit="background"
+          x={0}
+          y={0}
+          width={plan.room.width}
+          height={plan.room.length}
+          fill={colours.room}
+        />
+        {image && !print ? (
+          <image
+            href={image}
+            x={0}
+            y={0}
+            width={plan.room.width}
+            height={plan.room.length}
+            preserveAspectRatio="xMidYMid meet"
+            opacity={0.35}
+            pointerEvents="none"
+          />
+        ) : null}
+        <rect
+          x={0}
+          y={0}
+          width={plan.room.width}
+          height={plan.room.length}
+          fill={`url(#major-${uid})`}
+          opacity={print ? 0.5 : 0.8}
+          pointerEvents="none"
+        />
+        <rect
+          x={0}
+          y={0}
+          width={plan.room.width}
+          height={plan.room.length}
+          fill="none"
+          stroke={colours.wall}
+          strokeWidth={print ? 3 : 4}
+          pointerEvents="none"
+        />
+
+        {plan.items.map((item) => (
+          <ItemShape
+            key={item.id}
+            item={item}
+            colours={colours}
+            print={print}
+          />
+        ))}
+
+        {plan.tables.map((table) => (
+          <TableShape
+            key={table.id}
+            table={table}
+            plan={plan}
+            guests={guests}
+            colours={colours}
+            print={print}
+            selectedGuest={selectedGuest}
+            placing={placing}
+            interactive={!print}
+          />
+        ))}
+
+        {editable && selectedTable ? (
+          <Handles
+            kind="table"
+            thing={selectedTable}
+            r={handleR}
+            colour={colours.handle}
+          />
+        ) : null}
+        {editable && selectedItem ? (
+          <Handles
+            kind="item"
+            thing={selectedItem}
+            r={handleR}
+            colour={colours.handle}
+          />
+        ) : null}
+      </svg>
+      {print ? null : (
+        <div className="absolute right-3 top-3 flex flex-col gap-2">
+          <ZoomButton label="Zoom in" onClick={() => zoomCentre(1.25)}>
+            +
+          </ZoomButton>
+          <ZoomButton label="Zoom out" onClick={() => zoomCentre(0.8)}>
+            −
+          </ZoomButton>
+          <ZoomButton
+            label="Fit to screen"
+            wide
+            onClick={() => {
+              const next = fitView(planRef.current)
+              viewRef.current = next
+              setView(next)
+            }}
+          >
+            Fit
+          </ZoomButton>
+        </div>
+      )}
+    </div>
   )
 }
 
-const LINE_HEIGHT = 11
-
-/** The name beside a seat, one or two lines, stacked away from the table. */
-function SeatName({
-  lines,
-  x,
-  y,
-  anchor,
-  above,
-  side,
-  fill,
+function ZoomButton({
+  label,
+  onClick,
+  wide = false,
+  children,
 }: {
-  lines: string[]
-  x: number
-  y: number
-  anchor: 'start' | 'middle' | 'end'
-  above: boolean
-  side: boolean
-  fill: string
+  label: string
+  onClick: () => void
+  wide?: boolean
+  children: string
 }) {
-  const spread = (lines.length - 1) * LINE_HEIGHT
-  const top = above ? y - spread : side ? y - spread / 2 : y
   return (
-    <text
-      textAnchor={anchor}
-      dominantBaseline="middle"
-      fontSize={lines.length > 1 ? 10 : 11}
-      fill={fill}
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className={`grid h-11 ${wide ? 'px-3' : 'w-11'} place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] text-base font-semibold text-[var(--text)] shadow-sm`}
+      onClick={onClick}
     >
-      {lines.map((line, index) => (
-        <tspan key={index} x={x} y={top + index * LINE_HEIGHT}>
-          {line}
-        </tspan>
+      {children}
+    </button>
+  )
+}
+
+type Colours = typeof SCREEN
+
+const ITEM_STYLE: Record<RoomItemKind, { dash?: string; fill?: boolean }> = {
+  'dance-floor': { fill: true },
+  'dj-booth': { fill: true },
+  'head-table': { fill: true },
+  cake: { fill: true },
+  gift: { fill: true },
+  bar: { fill: true },
+  buffet: { fill: true },
+  photo: { dash: '10 8', fill: true },
+  door: { fill: true },
+  label: {},
+}
+
+function ItemShape({
+  item,
+  colours,
+  print,
+}: {
+  item: RoomItem
+  colours: Colours
+  print: boolean
+}) {
+  const style = ITEM_STYLE[item.kind]
+  const isLabel = item.kind === 'label'
+  const fontSize = Math.max(
+    10,
+    Math.min(isLabel ? item.h * 0.75 : 26, item.h * 0.45, (item.w / Math.max(4, item.label.length)) * 1.6),
+  )
+  return (
+    <g
+      transform={`translate(${item.x} ${item.y}) rotate(${item.rotation})`}
+      data-hit="item"
+      data-id={item.id}
+      style={{ cursor: print ? undefined : 'move' }}
+    >
+      <title>{item.label || 'Label'}</title>
+      <rect
+        x={-item.w / 2}
+        y={-item.h / 2}
+        width={item.w}
+        height={item.h}
+        rx={item.kind === 'dance-floor' ? 4 : 8}
+        fill={isLabel ? 'transparent' : style.fill ? colours.item : 'none'}
+        stroke={isLabel ? 'transparent' : colours.itemLine}
+        strokeWidth={2}
+        strokeDasharray={style.dash}
+      />
+      {item.kind === 'dance-floor' ? (
+        <path
+          d={checker(item.w, item.h)}
+          fill={colours.itemLine}
+          opacity={0.12}
+          pointerEvents="none"
+        />
+      ) : null}
+      <text
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={fontSize}
+        fontWeight={700}
+        fill={colours.itemText}
+        pointerEvents="none"
+      >
+        {item.label || (isLabel ? 'Label' : '')}
+      </text>
+    </g>
+  )
+}
+
+/** A light checkerboard so the dance floor reads as one at a glance. */
+function checker(w: number, h: number): string {
+  const cell = Math.max(12, Math.min(w, h) / 8)
+  const parts: string[] = []
+  for (let y = 0; y < h; y += cell) {
+    for (let x = 0; x < w; x += cell) {
+      if ((Math.floor(x / cell) + Math.floor(y / cell)) % 2 === 1) continue
+      const cw = Math.min(cell, w - x)
+      const ch = Math.min(cell, h - y)
+      parts.push(`M${x - w / 2} ${y - h / 2}h${cw}v${ch}h${-cw}z`)
+    }
+  }
+  return parts.join('')
+}
+
+function TableShape({
+  table,
+  plan,
+  guests,
+  colours,
+  print,
+  selectedGuest,
+  placing,
+  interactive,
+}: {
+  table: SeatTable
+  plan: SeatingPlan
+  guests: Map<string, SeatableGuest>
+  colours: Colours
+  print: boolean
+  selectedGuest: string
+  placing: boolean
+  interactive: boolean
+}) {
+  const sitting = guestsAt(plan, table.id)
+  const bySeat = new Map<number, string>()
+  for (const guestId of sitting) {
+    const spot = plan.seats[guestId]
+    if (spot) bySeat.set(spot.seat, guestId)
+  }
+  const label = table.name.trim() || '?'
+  const short = label.length <= 3
+  const spots = placedSeats(table)
+  const numberSize = print
+    ? Math.min(table.w, table.h) * 0.42
+    : Math.min(28, Math.max(12, Math.min(table.w, table.h) * 0.32))
+  return (
+    <g>
+      <g
+        transform={`translate(${table.x} ${table.y}) rotate(${table.rotation})`}
+        data-hit="table"
+        data-id={table.id}
+        style={{ cursor: interactive ? 'move' : undefined }}
+      >
+        <title>{`${tableLabel(table.name)} · ${sitting.length} of ${table.seats} seated`}</title>
+        {table.shape === 'round' ? (
+          <circle
+            r={table.w / 2}
+            fill={colours.table}
+            stroke={colours.tableLine}
+            strokeWidth={print ? 2.5 : 2}
+          />
+        ) : (
+          <rect
+            x={-table.w / 2}
+            y={-table.h / 2}
+            width={table.w}
+            height={table.h}
+            rx={table.shape === 'square' ? 4 : 6}
+            fill={colours.table}
+            stroke={colours.tableLine}
+            strokeWidth={print ? 2.5 : 2}
+          />
+        )}
+      </g>
+      {/* Numbers stay upright however the table is turned. */}
+      <text
+        x={table.x}
+        y={table.y - (print ? 0 : numberSize * 0.2)}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={short ? numberSize : Math.max(10, numberSize * 0.55)}
+        fontWeight={800}
+        fill={colours.label}
+        pointerEvents="none"
+      >
+        {label.length > 16 ? `${label.slice(0, 15)}…` : label}
+      </text>
+      {print ? null : (
+        <text
+          x={table.x}
+          y={table.y + numberSize * 0.55}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={10}
+          fill={colours.muted}
+          pointerEvents="none"
+        >
+          {sitting.length} / {table.seats} seated
+        </text>
+      )}
+      {spots.map((spot, seat) => {
+        const guestId = bySeat.get(seat) ?? null
+        const guest = guestId ? guests.get(guestId) : undefined
+        const chosen = guestId !== null && guestId === selectedGuest
+        const outX = spot.x - table.x
+        const outY = spot.y - table.y
+        const length = Math.hypot(outX, outY) || 1
+        const out = { x: outX / length, y: outY / length }
+        const nameX = spot.x + out.x * (SEAT_R + 5)
+        const nameY = spot.y + out.y * (SEAT_R + 5)
+        const anchor =
+          Math.abs(out.x) < 0.35 ? 'middle' : out.x > 0 ? 'start' : 'end'
+        const lines = guest ? seatLabelLines(guest.name) : []
+        const spread = (lines.length - 1) * NAME_LINE
+        const top =
+          out.y < -0.35
+            ? nameY - spread
+            : Math.abs(out.y) <= 0.35
+              ? nameY - spread / 2
+              : nameY
+        return (
+          <g
+            key={seat}
+            data-hit="seat"
+            data-id={table.id}
+            data-seat={seat}
+            data-guest={guestId ?? ''}
+            style={{ cursor: interactive ? 'pointer' : undefined }}
+          >
+            <title>
+              {guest
+                ? `${guest.name}${guest.meal ? ` · ${guest.meal}` : ''} · ${tableLabel(table.name)}, seat ${seat + 1}`
+                : `Empty seat ${seat + 1}`}
+            </title>
+            <circle
+              cx={spot.x}
+              cy={spot.y}
+              r={SEAT_R}
+              fill={guest ? colours.seatFill : 'transparent'}
+              stroke={
+                chosen
+                  ? colours.pick
+                  : guest
+                    ? print
+                      ? colours.tableLine
+                      : colours.seatFill
+                    : colours.seatEmpty
+              }
+              strokeWidth={chosen ? 4 : 1.5}
+              strokeDasharray={guest || !placing ? undefined : '3 3'}
+            />
+            {guest ? (
+              <>
+                <text
+                  x={spot.x}
+                  y={spot.y + 0.5}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={9}
+                  fontWeight={700}
+                  fill={colours.seatText}
+                  pointerEvents="none"
+                >
+                  {initials(guest)}
+                </text>
+                <text
+                  textAnchor={anchor}
+                  dominantBaseline="middle"
+                  fontSize={lines.length > 1 ? 9 : 10}
+                  fill={colours.name}
+                  pointerEvents="none"
+                >
+                  {lines.map((line, index) => (
+                    <tspan key={index} x={nameX} y={top + index * NAME_LINE}>
+                      {line}
+                    </tspan>
+                  ))}
+                </text>
+              </>
+            ) : null}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+/** Corner handles to resize and a handle above to turn the selected thing. */
+function Handles({
+  kind,
+  thing,
+  r,
+  colour,
+}: {
+  kind: 'table' | 'item'
+  thing: { id: string; x: number; y: number; w: number; h: number; rotation: number }
+  r: number
+  colour: string
+}) {
+  const halfW = thing.w / 2
+  const halfH = thing.h / 2
+  const lift = halfH + r * 4
+  const corners = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ] as const
+  return (
+    <g transform={`translate(${thing.x} ${thing.y}) rotate(${thing.rotation})`}>
+      <rect
+        x={-halfW - r}
+        y={-halfH - r}
+        width={thing.w + r * 2}
+        height={thing.h + r * 2}
+        fill="none"
+        stroke={colour}
+        strokeWidth={r / 4}
+        strokeDasharray={`${r} ${r / 1.5}`}
+        pointerEvents="none"
+      />
+      <line
+        x1={0}
+        y1={-halfH - r}
+        x2={0}
+        y2={-lift}
+        stroke={colour}
+        strokeWidth={r / 4}
+        pointerEvents="none"
+      />
+      <circle
+        data-hit="rotate"
+        data-kind={kind}
+        data-id={thing.id}
+        cx={0}
+        cy={-lift}
+        r={r * 1.1}
+        fill={colour}
+        style={{ cursor: 'grab' }}
+      >
+        <title>Drag to turn (hold Shift for 15° steps)</title>
+      </circle>
+      {corners.map(([sx, sy]) => (
+        <rect
+          key={`${sx}${sy}`}
+          data-hit="resize"
+          data-kind={kind}
+          data-id={thing.id}
+          x={sx * (halfW + r) - r}
+          y={sy * (halfH + r) - r}
+          width={r * 2}
+          height={r * 2}
+          rx={r / 3}
+          fill="#ffffff"
+          stroke={colour}
+          strokeWidth={r / 3}
+          style={{ cursor: sx === sy ? 'nwse-resize' : 'nesw-resize' }}
+        >
+          <title>Drag to resize</title>
+        </rect>
       ))}
-    </text>
+    </g>
   )
 }

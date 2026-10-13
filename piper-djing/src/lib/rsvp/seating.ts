@@ -1,6 +1,10 @@
 /**
- * The couple's seating chart: the tables on the floor plan and who sits where.
+ * The couple's seating chart: the room, the tables on its floor plan, the
+ * other things in the room (dance floor, DJ booth, bar…) and who sits where.
  * Pure rules only, so the dashboard, the server and the CSV all agree.
+ *
+ * Floor units are inches, so a 60″ round table is 60 units across and the grid
+ * can be drawn to scale in feet or metres.
  *
  * Only a guest whose RSVP is confirmed attending can be seated. A guest who
  * later says they can't make it comes off their seat on the next load, and the
@@ -25,9 +29,50 @@ export type SeatTable = {
   name: string
   shape: TableShape
   seats: number
-  /** Centre of the table on the floor plan, in floor units. */
+  /** Centre of the table on the floor plan, in inches from the room's corner. */
   x: number
   y: number
+  /** Size in inches. A round table uses w as its diameter. */
+  w: number
+  h: number
+  /** Degrees clockwise. */
+  rotation: number
+}
+
+export type RoomItemKind =
+  | 'dance-floor'
+  | 'dj-booth'
+  | 'head-table'
+  | 'cake'
+  | 'gift'
+  | 'bar'
+  | 'buffet'
+  | 'photo'
+  | 'door'
+  | 'label'
+
+/** Something in the room that is not a seated table. */
+export type RoomItem = {
+  id: string
+  kind: RoomItemKind
+  label: string
+  x: number
+  y: number
+  w: number
+  h: number
+  rotation: number
+}
+
+export type FloorUnit = 'ft' | 'm'
+
+export type FloorRoom = {
+  /** Inside size of the room, in inches. */
+  width: number
+  length: number
+  /** How sizes are shown and typed. Stored values stay in inches. */
+  unit: FloorUnit
+  /** Dragging snaps to the grid. */
+  snap: boolean
 }
 
 export type SeatSpot = { tableId: string; seat: number }
@@ -35,18 +80,59 @@ export type SeatSpot = { tableId: string; seat: number }
 export type SeatingNotice = { id: string; text: string; at: string }
 
 export type SeatingPlan = {
+  room: FloorRoom
   tables: SeatTable[]
+  items: RoomItem[]
   /** Guest id → table and seat number (0-based). */
   seats: Record<string, SeatSpot>
   notices: SeatingNotice[]
 }
 
-export const FLOOR_W = 1000
-export const FLOOR_H = 700
+export const INCHES_PER_FOOT = 12
+export const INCHES_PER_METRE = 39.37
+/** 84 ft × 60 ft: room for a typical reception before the couple sets theirs. */
+export const DEFAULT_ROOM_W = 84 * INCHES_PER_FOOT
+export const DEFAULT_ROOM_L = 60 * INCHES_PER_FOOT
+export const MIN_ROOM = 10 * INCHES_PER_FOOT
+export const MAX_ROOM = 400 * INCHES_PER_FOOT
+/** Kept for older callers: the default room in floor units. */
+export const FLOOR_W = DEFAULT_ROOM_W
+export const FLOOR_H = DEFAULT_ROOM_L
 export const MAX_TABLES = 60
+export const MAX_ITEMS = 60
 export const MAX_SEATS = 30
 export const DEFAULT_SEATS = 8
+export const MIN_SIZE = 12
+export const MAX_SIZE = 600
+/** Seats closer than this, centre to centre, are drawn but flagged as tight. */
+export const SEAT_ROOM = 22
 const MAX_NOTICES = 20
+
+export const ROOM_ITEMS: {
+  kind: RoomItemKind
+  label: string
+  w: number
+  h: number
+}[] = [
+  { kind: 'dance-floor', label: 'Dance floor', w: 192, h: 192 },
+  { kind: 'dj-booth', label: 'DJ Piper P', w: 96, h: 36 },
+  { kind: 'head-table', label: 'Head table', w: 144, h: 36 },
+  { kind: 'cake', label: 'Cake table', w: 48, h: 48 },
+  { kind: 'gift', label: 'Gift table', w: 72, h: 30 },
+  { kind: 'bar', label: 'Bar', w: 120, h: 36 },
+  { kind: 'buffet', label: 'Buffet', w: 144, h: 36 },
+  { kind: 'photo', label: 'Photo area', w: 96, h: 96 },
+  { kind: 'door', label: 'Entrance', w: 60, h: 12 },
+  { kind: 'label', label: 'Label', w: 96, h: 24 },
+]
+
+export function roomItemDefaults(kind: RoomItemKind) {
+  return ROOM_ITEMS.find((item) => item.kind === kind) ?? ROOM_ITEMS[9]!
+}
+
+export function isItemKind(value: unknown): value is RoomItemKind {
+  return ROOM_ITEMS.some((item) => item.kind === value)
+}
 
 export type SeatableGuest = {
   id: string
@@ -60,8 +146,41 @@ export type SeatableGuest = {
   events: string[]
 }
 
+export function defaultRoom(): FloorRoom {
+  return {
+    width: DEFAULT_ROOM_W,
+    length: DEFAULT_ROOM_L,
+    unit: 'ft',
+    snap: true,
+  }
+}
+
+/** The DJ booth every plan starts with, along the top wall. */
+export function defaultItems(room: FloorRoom = defaultRoom()): RoomItem[] {
+  const booth = roomItemDefaults('dj-booth')
+  return [
+    {
+      id: 'dj-booth',
+      kind: 'dj-booth',
+      label: booth.label,
+      x: Math.round(room.width / 2),
+      y: Math.round(booth.h / 2 + 24),
+      w: booth.w,
+      h: booth.h,
+      rotation: 0,
+    },
+  ]
+}
+
 export function emptySeating(): SeatingPlan {
-  return { tables: [], seats: {}, notices: [] }
+  const room = defaultRoom()
+  return {
+    room,
+    tables: [],
+    items: defaultItems(room),
+    seats: {},
+    notices: [],
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -82,6 +201,12 @@ function clamp(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value))
 }
 
+/** Any angle as 0–359 degrees. */
+export function normalAngle(degrees: number): number {
+  const whole = Math.round(degrees) % 360
+  return whole < 0 ? whole + 360 : whole
+}
+
 export function isShape(value: unknown): value is TableShape {
   return (
     value === 'round' ||
@@ -91,10 +216,41 @@ export function isShape(value: unknown): value is TableShape {
   )
 }
 
+function parseRoom(value: unknown): FloorRoom {
+  const room = asRecord(value)
+  const base = defaultRoom()
+  if (!room) return base
+  return {
+    width: clamp(Math.round(asNumber(room.width, base.width)), MIN_ROOM, MAX_ROOM),
+    length: clamp(
+      Math.round(asNumber(room.length, base.length)),
+      MIN_ROOM,
+      MAX_ROOM,
+    ),
+    unit: room.unit === 'm' ? 'm' : 'ft',
+    snap: room.snap !== false,
+  }
+}
+
+/** Width and length for a table, square or round kept even. */
+export function fitTableSize(
+  shape: TableShape,
+  w: number,
+  h: number,
+): { w: number; h: number } {
+  const width = clamp(Math.round(w), MIN_SIZE, MAX_SIZE)
+  const height = clamp(Math.round(h), MIN_SIZE, MAX_SIZE)
+  if (shape === 'round' || shape === 'square') {
+    return { w: width, h: width }
+  }
+  return { w: width, h: height }
+}
+
 /** Reads a stored or posted plan, dropping anything malformed. */
 export function parseSeating(raw: unknown): SeatingPlan {
   const record = asRecord(raw)
   if (!record) return emptySeating()
+  const room = parseRoom(record.room)
   const tables: SeatTable[] = []
   const ids = new Set<string>()
   if (Array.isArray(record.tables)) {
@@ -104,15 +260,57 @@ export function parseSeating(raw: unknown): SeatingPlan {
       const id = asText(table.id, 40)
       if (!id || ids.has(id)) continue
       ids.add(id)
+      const shape = isShape(table.shape) ? table.shape : 'round'
+      const seats = clamp(
+        Math.round(asNumber(table.seats, DEFAULT_SEATS)),
+        1,
+        MAX_SEATS,
+      )
+      const auto = tableSize(shape, seats)
+      const size = fitTableSize(
+        shape,
+        asNumber(table.w, auto.w),
+        asNumber(table.h, auto.h),
+      )
       tables.push({
         id,
         name: asText(table.name, 30),
-        shape: isShape(table.shape) ? table.shape : 'round',
-        seats: clamp(Math.round(asNumber(table.seats, DEFAULT_SEATS)), 1, MAX_SEATS),
-        x: clamp(Math.round(asNumber(table.x, FLOOR_W / 2)), 0, FLOOR_W),
-        y: clamp(Math.round(asNumber(table.y, FLOOR_H / 2)), 0, FLOOR_H),
+        shape,
+        seats,
+        x: clamp(Math.round(asNumber(table.x, room.width / 2)), 0, room.width),
+        y: clamp(Math.round(asNumber(table.y, room.length / 2)), 0, room.length),
+        w: size.w,
+        h: size.h,
+        rotation: normalAngle(asNumber(table.rotation, 0)),
       })
       if (tables.length >= MAX_TABLES) break
+    }
+  }
+  const items: RoomItem[] = []
+  if (!Array.isArray(record.items)) {
+    // A plan saved before room items existed starts with the DJ booth.
+    items.push(...defaultItems(room))
+  } else {
+    const itemIds = new Set<string>()
+    for (const value of record.items) {
+      const item = asRecord(value)
+      if (!item) continue
+      const id = asText(item.id, 40)
+      if (!id || itemIds.has(id)) continue
+      itemIds.add(id)
+      const kind = isItemKind(item.kind) ? item.kind : 'label'
+      const base = roomItemDefaults(kind)
+      items.push({
+        id,
+        kind,
+        label: asText(item.label, 40) || (kind === 'label' ? '' : base.label),
+        x: clamp(Math.round(asNumber(item.x, room.width / 2)), 0, room.width),
+        y: clamp(Math.round(asNumber(item.y, room.length / 2)), 0, room.length),
+        w: clamp(Math.round(asNumber(item.w, base.w)), MIN_SIZE, MAX_ROOM),
+        h: clamp(Math.round(asNumber(item.h, base.h)), MIN_SIZE / 2, MAX_ROOM),
+        rotation: normalAngle(asNumber(item.rotation, 0)),
+      })
+      if (items.length >= MAX_ITEMS) break
     }
   }
   const seats: Record<string, SeatSpot> = {}
@@ -142,7 +340,7 @@ export function parseSeating(raw: unknown): SeatingPlan {
       if (notices.length >= MAX_NOTICES) break
     }
   }
-  return { tables, seats, notices }
+  return { room, tables, items, seats, notices }
 }
 
 /** "1" reads as "Table 1"; "Head table" stays as it is. */
@@ -181,37 +379,56 @@ export function seatableGuests(wedding: RsvpWedding): SeatableGuest[] {
   return guests
 }
 
-/** Table footprint in floor units, so seats and labels never overlap it. */
+/** The starting size for a new table of this shape and seat count, in inches. */
 export function tableSize(
   shape: TableShape,
   seats: number,
 ): { w: number; h: number } {
   if (shape === 'round') {
-    const d = Math.max(64, Math.round(seats * 11))
+    const d = Math.max(60, Math.round(seats * 9))
     return { w: d, h: d }
   }
   if (shape === 'square') {
-    const side = Math.max(70, Math.ceil(seats / 4) * 34)
+    const side = Math.max(60, Math.ceil(seats / 4) * 30)
     return { w: side, h: side }
   }
   if (shape === 'rectangle') {
-    return { w: Math.max(96, Math.ceil(seats / 2) * 34), h: 58 }
+    return { w: Math.max(72, Math.ceil(seats / 2) * 30), h: 36 }
   }
   const oneSide = seats <= 12
   return {
-    w: Math.max(120, (oneSide ? seats : Math.ceil(seats / 2)) * 34),
-    h: 44,
+    w: Math.max(96, (oneSide ? seats : Math.ceil(seats / 2)) * 30),
+    h: 30,
   }
 }
 
-const SEAT_GAP = 22
+/** A table's own size, or its starting size for one saved without one. */
+export function tableDims(table: {
+  shape: TableShape
+  seats: number
+  w?: number
+  h?: number
+}): { w: number; h: number } {
+  if (table.w && table.h) return fitTableSize(table.shape, table.w, table.h)
+  return tableSize(table.shape, table.seats)
+}
 
-/** Where each seat sits around its table, relative to the table's centre. */
+const SEAT_GAP = 20
+
+/**
+ * Where each seat sits around its table, relative to the table's centre and
+ * before the table's rotation. Seats spread evenly along the table's edges,
+ * so they redraw whenever the size or the seat count changes.
+ */
 export function seatPositions(
   shape: TableShape,
   seats: number,
+  width?: number,
+  height?: number,
 ): { x: number; y: number }[] {
-  const { w, h } = tableSize(shape, seats)
+  const auto = tableSize(shape, seats)
+  const w = width ?? auto.w
+  const h = shape === 'round' || shape === 'square' ? w : (height ?? auto.h)
   if (shape === 'round') {
     const r = w / 2 + SEAT_GAP
     return Array.from({ length: seats }, (_, index) => {
@@ -251,17 +468,124 @@ export function seatPositions(
   ]
 }
 
+/** Turns a point around the origin by the given degrees, clockwise. */
+export function rotatePoint(
+  point: { x: number; y: number },
+  degrees: number,
+): { x: number; y: number } {
+  const angle = (degrees * Math.PI) / 180
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  return { x: point.x * cos - point.y * sin, y: point.x * sin + point.y * cos }
+}
+
+/** Seats around a placed table, in room coordinates. */
+export function placedSeats(table: SeatTable): { x: number; y: number }[] {
+  return seatPositions(table.shape, table.seats, table.w, table.h).map(
+    (spot) => {
+      const turned = rotatePoint(spot, table.rotation)
+      return { x: table.x + turned.x, y: table.y + turned.y }
+    },
+  )
+}
+
+/**
+ * A warning (never a block) when seats sit closer than SEAT_ROOM inches apart,
+ * centre to centre: too many chairs for the table's size.
+ */
+export function crowdingWarning(table: SeatTable): string {
+  if (table.seats < 2) return ''
+  const spots = seatPositions(table.shape, table.seats, table.w, table.h)
+  let tightest = Number.POSITIVE_INFINITY
+  for (let i = 0; i < spots.length; i += 1) {
+    for (let j = i + 1; j < spots.length; j += 1) {
+      const a = spots[i]!
+      const b = spots[j]!
+      tightest = Math.min(tightest, Math.hypot(a.x - b.x, a.y - b.y))
+    }
+  }
+  if (tightest >= SEAT_ROOM) return ''
+  return `${tableLabel(table.name)} looks tight: ${table.seats} seats leave about ${Math.max(1, Math.round(tightest))}″ each. Make the table bigger or seat fewer.`
+}
+
+/** Inches shown the way the couple measures: 60″ or 152 cm, 84 ft or 25.6 m. */
+export function formatLength(
+  inches: number,
+  unit: FloorUnit,
+  scale: 'table' | 'room',
+): string {
+  if (unit === 'm') {
+    if (scale === 'table') return `${Math.round(inches * 2.54)} cm`
+    return `${(inches / INCHES_PER_METRE).toFixed(1).replace(/\.0$/, '')} m`
+  }
+  if (scale === 'table') return `${Math.round(inches)}″`
+  return `${Math.round((inches / INCHES_PER_FOOT) * 10) / 10} ft`
+}
+
+/** A typed size in the couple's unit, back to inches. */
+export function toInches(
+  value: number,
+  unit: FloorUnit,
+  scale: 'table' | 'room',
+): number {
+  if (unit === 'm') {
+    return scale === 'table' ? value / 2.54 : value * INCHES_PER_METRE
+  }
+  return scale === 'table' ? value : value * INCHES_PER_FOOT
+}
+
+/** Inches in the couple's unit, as the number their size boxes show. */
+export function fromInches(
+  inches: number,
+  unit: FloorUnit,
+  scale: 'table' | 'room',
+): number {
+  if (unit === 'm') {
+    return scale === 'table'
+      ? Math.round(inches * 2.54)
+      : Math.round((inches / INCHES_PER_METRE) * 10) / 10
+  }
+  return scale === 'table'
+    ? Math.round(inches)
+    : Math.round((inches / INCHES_PER_FOOT) * 10) / 10
+}
+
+/** The grid: a light line every foot (or 50 cm), a stronger one every 5 ft (or 1 m). */
+export function gridStep(unit: FloorUnit): {
+  minor: number
+  major: number
+  snap: number
+} {
+  if (unit === 'm') {
+    return {
+      minor: INCHES_PER_METRE / 2,
+      major: INCHES_PER_METRE,
+      snap: INCHES_PER_METRE / 4,
+    }
+  }
+  return { minor: 12, major: 60, snap: 6 }
+}
+
+export function snapTo(value: number, step: number): number {
+  return Math.round(Math.round(value / step) * step)
+}
+
 const LABEL_LINE = 14
 
 /**
- * A guest's name as it sits beside their seat: the whole name, wrapped onto a
- * second line when it is long, so "Test Guest One" and "Test Guest Two" stay
- * told apart. Only a name too long for two lines is shortened, and the full
- * name is always on hover and tap.
+ * A guest's name as it sits beside their seat: the full name when it fits,
+ * first name and last initial when it is tight ("Elizabeth M."), and only
+ * then the full name over two lines. The full name is always on hover and tap.
  */
 export function seatLabelLines(name: string): string[] {
   const words = name.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
   if (words.length === 0) return []
+  const full = words.join(' ')
+  if (full.length <= LABEL_LINE) return [full]
+  if (words.length > 1) {
+    const short = `${words[0]} ${words.at(-1)?.[0]?.toUpperCase() ?? ''}.`
+    if (short.length <= LABEL_LINE) return [short]
+  }
   const lines: string[] = []
   let line = ''
   for (const word of words) {
@@ -295,19 +619,43 @@ export function nextTableName(tables: SeatTable[]): string {
 }
 
 /** An open spot on the floor for a new table, in a tidy grid. */
-export function nextTableSpot(tables: SeatTable[]): { x: number; y: number } {
-  const columns = 4
-  const cellW = FLOOR_W / columns
-  const cellH = 175
+export function nextTableSpot(
+  tables: SeatTable[],
+  room: FloorRoom = defaultRoom(),
+): { x: number; y: number } {
+  const columns = Math.max(2, Math.floor(room.width / 200))
+  const cellW = room.width / columns
+  const cellH = 170
   for (let index = 0; index < MAX_TABLES; index += 1) {
     const x = Math.round(cellW * ((index % columns) + 0.5))
-    const y = Math.round(110 + cellH * Math.floor(index / columns))
+    const y = Math.round(150 + cellH * Math.floor(index / columns))
     const free = tables.every(
       (table) => Math.abs(table.x - x) > 60 || Math.abs(table.y - y) > 60,
     )
-    if (free) return { x, y: Math.min(y, FLOOR_H - 60) }
+    if (free) return { x, y: Math.min(y, room.length - 60) }
   }
-  return { x: FLOOR_W / 2, y: FLOOR_H / 2 }
+  return { x: Math.round(room.width / 2), y: Math.round(room.length / 2) }
+}
+
+/** A new table at the next free spot, sized for its seats. */
+export function newTable(
+  tables: SeatTable[],
+  room: FloorRoom,
+  id: string,
+): SeatTable {
+  const spot = nextTableSpot(tables, room)
+  const size = tableSize('round', DEFAULT_SEATS)
+  return {
+    id,
+    name: nextTableName(tables),
+    shape: 'round',
+    seats: DEFAULT_SEATS,
+    x: spot.x,
+    y: spot.y,
+    w: size.w,
+    h: size.h,
+    rotation: 0,
+  }
 }
 
 export function addTables(
@@ -318,17 +666,80 @@ export function addTables(
   const tables = plan.tables.slice()
   const wanted = clamp(Math.round(count), 0, MAX_TABLES - tables.length)
   for (let index = 0; index < wanted; index += 1) {
-    const spot = nextTableSpot(tables)
-    tables.push({
-      id: makeId(),
-      name: nextTableName(tables),
-      shape: 'round',
-      seats: DEFAULT_SEATS,
-      x: spot.x,
-      y: spot.y,
-    })
+    tables.push(newTable(tables, plan.room, makeId()))
   }
   return { ...plan, tables }
+}
+
+/** A room item of this kind in the middle of the room. */
+export function newRoomItem(
+  kind: RoomItemKind,
+  room: FloorRoom,
+  id: string,
+): RoomItem {
+  const base = roomItemDefaults(kind)
+  return {
+    id,
+    kind,
+    label: base.label,
+    x: Math.round(room.width / 2),
+    y: Math.round(room.length / 2),
+    w: base.w,
+    h: base.h,
+    rotation: 0,
+  }
+}
+
+/** A new room size, keeping every table and item inside the walls. */
+export function resizeRoom(
+  plan: SeatingPlan,
+  width: number,
+  length: number,
+): SeatingPlan {
+  const room = {
+    ...plan.room,
+    width: clamp(Math.round(width), MIN_ROOM, MAX_ROOM),
+    length: clamp(Math.round(length), MIN_ROOM, MAX_ROOM),
+  }
+  return {
+    ...plan,
+    room,
+    tables: plan.tables.map((table) => ({
+      ...table,
+      x: clamp(table.x, 0, room.width),
+      y: clamp(table.y, 0, room.length),
+    })),
+    items: plan.items.map((item) => ({
+      ...item,
+      x: clamp(item.x, 0, room.width),
+      y: clamp(item.y, 0, room.length),
+    })),
+  }
+}
+
+/** Everyone's seat, alphabetical by last name: the escort-card list. */
+export function findYourSeat(
+  plan: SeatingPlan,
+  guests: SeatableGuest[],
+): { name: string; sortKey: string; table: string; seat: number }[] {
+  const tables = new Map(plan.tables.map((table) => [table.id, table]))
+  return guests
+    .flatMap((guest) => {
+      const spot = plan.seats[guest.id]
+      const table = spot ? tables.get(spot.tableId) : undefined
+      if (!spot || !table) return []
+      const parts = guest.name.split(/\s+/)
+      const last = parts.length > 1 ? (parts.at(-1) ?? '') : ''
+      return [
+        {
+          name: guest.name,
+          sortKey: `${foldName(last)} ${foldName(guest.name)}`,
+          table: tableLabel(table.name),
+          seat: spot.seat + 1,
+        },
+      ]
+    })
+    .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
 }
 
 /** Removing a table sends everyone at it back to Unassigned. */
@@ -539,10 +950,15 @@ export function validateSeating(
     taken.add(key)
     seats[guestId] = spot
   }
+  if (plan.items.length > MAX_ITEMS) {
+    return { ok: false, error: `Up to ${MAX_ITEMS} room items fit on one plan.` }
+  }
   return {
     ok: true,
     plan: {
+      room: plan.room,
       tables: plan.tables.map((table) => ({ ...table, name: table.name.trim() })),
+      items: plan.items,
       seats,
       notices: plan.notices,
     },

@@ -62,9 +62,13 @@ import { parsePhotoUpload } from './photo.ts'
 import { photoPath, parseTemplateId } from './templates.ts'
 import { notifyCouplePaid, notifyPiperSignup } from './notify.server.ts'
 import {
+  FLOOR_IMAGE_MAX,
+  deleteFloorImage,
   listTimelines,
+  readFloorImage,
   readSeating,
   readTimeline,
+  writeFloorImage,
   writeSeating,
   writeTimeline,
 } from './plans.server.ts'
@@ -1383,6 +1387,7 @@ export const getRsvpSeating = createServerFn({ method: 'GET' }).handler(
     if (!wedding) return null
     return {
       plan: await loadSeating(wedding),
+      image: await readFloorImage(wedding.slug).catch(() => ''),
       guests: seatingGuestView(wedding),
       couple: coupleTitle(wedding),
       dateLabel: longWeddingDate(wedding.eventDate),
@@ -1392,9 +1397,21 @@ export const getRsvpSeating = createServerFn({ method: 'GET' }).handler(
 )
 
 export const saveRsvpSeating = createServerFn({ method: 'POST' })
-  .validator((data: { tables?: unknown; seats?: unknown }) => ({
-    plan: parseSeating({ tables: data.tables, seats: data.seats }),
-  }))
+  .validator(
+    (data: {
+      tables?: unknown
+      seats?: unknown
+      room?: unknown
+      items?: unknown
+    }) => ({
+      plan: parseSeating({
+        tables: data.tables,
+        seats: data.seats,
+        room: data.room,
+        items: Array.isArray(data.items) ? data.items : [],
+      }),
+    }),
+  )
   .handler(async ({ data }) => {
     const wedding = await openWedding()
     if (!wedding) {
@@ -1411,6 +1428,39 @@ export const saveRsvpSeating = createServerFn({ method: 'POST' })
     if (!checked.ok) return checked
     const savedAt = await writeSeating(wedding.slug, checked.plan)
     return { ok: true as const, savedAt, plan: checked.plan }
+  })
+
+/** The couple's venue layout behind the floor plan, or "" to take it away. */
+export const saveSeatingImage = createServerFn({ method: 'POST' })
+  .validator((data: { image?: unknown }) => ({
+    image: typeof data.image === 'string' ? data.image : '',
+  }))
+  .handler(async ({ data }) => {
+    const wedding = await openWedding()
+    if (!wedding) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    if (!data.image) {
+      await deleteFloorImage(wedding.slug)
+      return { ok: true as const }
+    }
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data.image)) {
+      return {
+        ok: false as const,
+        error: 'Upload a JPG, PNG or WebP picture of the floor plan.',
+      }
+    }
+    if (data.image.length > FLOOR_IMAGE_MAX) {
+      return {
+        ok: false as const,
+        error: 'That picture is too large. Try a smaller one.',
+      }
+    }
+    await writeFloorImage(wedding.slug, data.image)
+    return { ok: true as const }
   })
 
 export const dismissSeatingNotices = createServerFn({ method: 'POST' }).handler(

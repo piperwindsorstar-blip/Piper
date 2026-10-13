@@ -3,6 +3,12 @@ import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
 import {
   addTables,
+  crowdingWarning,
+  findYourSeat,
+  formatLength,
+  placedSeats,
+  resizeRoom,
+  toInches,
   assignGuest,
   emptySeating,
   parseSeating,
@@ -25,14 +31,14 @@ const makeId = () => {
 }
 
 function threeTables(): SeatingPlan {
+  const base = emptySeating()
   return {
+    ...base,
     tables: [
-      { id: 'a', name: '1', shape: 'round', seats: 8, x: 200, y: 200 },
-      { id: 'b', name: '2', shape: 'rectangle', seats: 6, x: 500, y: 200 },
-      { id: 'c', name: 'Head table', shape: 'banquet', seats: 4, x: 500, y: 60 },
+      { id: 'a', name: '1', shape: 'round', seats: 8, x: 200, y: 200, w: 72, h: 72, rotation: 0 },
+      { id: 'b', name: '2', shape: 'rectangle', seats: 6, x: 500, y: 200, w: 96, h: 36, rotation: 0 },
+      { id: 'c', name: 'Head table', shape: 'banquet', seats: 4, x: 500, y: 60, w: 120, h: 30, rotation: 0 },
     ],
-    seats: {},
-    notices: [],
   }
 }
 
@@ -197,7 +203,7 @@ describe('the floor plan', () => {
     assert.equal(plan.tables[0]?.shape, 'round')
     assert.equal(plan.tables[0]?.seats, 30)
     assert.equal(plan.tables[0]?.x, 0)
-    assert.equal(plan.tables[0]?.y, 700)
+    assert.equal(plan.tables[0]?.y, 720)
     assert.deepEqual(Object.keys(plan.seats), ['liz'])
     assert.deepEqual(plan.notices, [])
   })
@@ -207,14 +213,89 @@ describe('names beside a seat', () => {
   it('keeps the whole name, wrapping long ones so guests stay told apart', () => {
     assert.deepEqual(seatLabelLines('Test Guest One'), ['Test Guest One'])
     assert.deepEqual(seatLabelLines('Test Guest Two'), ['Test Guest Two'])
-    assert.deepEqual(seatLabelLines('Elizabeth Miller'), ['Elizabeth', 'Miller'])
+    assert.deepEqual(seatLabelLines('Elizabeth Miller'), ['Elizabeth M.'])
     assert.deepEqual(seatLabelLines('Ada Okafor'), ['Ada Okafor'])
     assert.deepEqual(seatLabelLines('Maximiliana Wolfeschlegelsteinhausen'), [
-      'Maximiliana',
-      'Wolfeschlegel…',
+      'Maximiliana W.',
     ])
-    const many = seatLabelLines('Anna Maria Louisa de la Cruz Fernandez')
-    assert.equal(many.length, 2)
-    assert.ok(many[1]?.endsWith('…'))
+    assert.deepEqual(seatLabelLines('Bartholomew-James Okonkwo'), [
+      'Bartholomew-J…',
+      'Okonkwo',
+    ])
+    assert.deepEqual(seatLabelLines('Anna Maria Louisa de la Cruz Fernandez'), [
+      'Anna F.',
+    ])
+  })
+})
+
+describe('the room', () => {
+  it('starts with a DJ booth labelled DJ Piper P, also for older plans', () => {
+    const fresh = emptySeating()
+    assert.equal(fresh.items[0]?.kind, 'dj-booth')
+    assert.equal(fresh.items[0]?.label, 'DJ Piper P')
+    const older = parseSeating({ tables: [], seats: {} })
+    assert.equal(older.items[0]?.label, 'DJ Piper P')
+    const removed = parseSeating({ tables: [], seats: {}, items: [] })
+    assert.equal(removed.items.length, 0, 'a booth the couple removed stays gone')
+  })
+
+  it('keeps sizes, rotation and room items through a save', () => {
+    const plan = threeTables()
+    plan.tables[0] = { ...plan.tables[0]!, w: 66, rotation: 370 }
+    plan.items.push({
+      id: 'floor', kind: 'dance-floor', label: 'Dance floor',
+      x: 500, y: 360, w: 192, h: 192, rotation: 45,
+    })
+    const back = parseSeating(JSON.parse(JSON.stringify(plan)))
+    assert.equal(back.tables[0]?.w, 66)
+    assert.equal(back.tables[0]?.h, 66, 'a round table stays round')
+    assert.equal(back.tables[0]?.rotation, 10)
+    assert.equal(back.items[1]?.kind, 'dance-floor')
+    assert.equal(back.items[1]?.rotation, 45)
+  })
+
+  it('keeps everything inside the walls when the room shrinks', () => {
+    const plan = resizeRoom(threeTables(), 360, 240)
+    assert.ok(plan.tables.every((table) => table.x <= 360 && table.y <= 240))
+  })
+
+  it('measures in feet or metres', () => {
+    assert.equal(formatLength(60, 'ft', 'table'), '60″')
+    assert.equal(formatLength(720, 'ft', 'room'), '60 ft')
+    assert.equal(formatLength(60, 'm', 'table'), '152 cm')
+    assert.equal(Math.round(toInches(20, 'm', 'room')), 787)
+  })
+})
+
+describe('table sizes and seats', () => {
+  it('turns seats with the table', () => {
+    const plan = threeTables()
+    const table = { ...plan.tables[2]!, rotation: 90 }
+    const seats = placedSeats(table)
+    assert.equal(seats.length, 4)
+    // Along the back of an unturned banquet; turned 90°, along its right side.
+    assert.ok(seats.every((seat) => seat.x > table.x))
+  })
+
+  it('warns, without blocking, when seats are crowded', () => {
+    const plan = threeTables()
+    assert.equal(crowdingWarning(plan.tables[0]!), '')
+    const tight = { ...plan.tables[0]!, seats: 14, w: 36, h: 36 }
+    assert.match(crowdingWarning(tight), /Table 1 looks tight/)
+  })
+})
+
+describe('find your seat', () => {
+  it('lists seated guests alphabetically by last name with their table', () => {
+    const seated = seatParty(threeTables(), ['liz', 'chidi'], 'a')
+    assert.ok(seated.ok)
+    const list = findYourSeat(
+      seated.ok ? seated.plan : threeTables(),
+      seatableGuests(sampleWedding()),
+    )
+    assert.deepEqual(
+      list.map((row) => `${row.name} → ${row.table}`),
+      ['Elizabeth Miller → Table 1', 'Chidi Okafor → Table 1'],
+    )
   })
 })

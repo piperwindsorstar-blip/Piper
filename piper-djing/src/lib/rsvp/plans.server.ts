@@ -24,6 +24,17 @@ CREATE TABLE IF NOT EXISTS rsvp_timeline (
   updated_at text NOT NULL DEFAULT ''
 )`
 
+/** The couple's own venue layout, traced over on the floor plan. */
+const FLOOR_IMAGE = `
+CREATE TABLE IF NOT EXISTS rsvp_floor_image (
+  slug text PRIMARY KEY,
+  data text NOT NULL,
+  updated_at text NOT NULL DEFAULT ''
+)`
+
+/** A downsized JPEG or PNG as a data URL; the browser shrinks it before upload. */
+export const FLOOR_IMAGE_MAX = 1_500_000
+
 let ready: Promise<void> | null = null
 
 function ensure(): Promise<void> {
@@ -31,6 +42,7 @@ function ensure(): Promise<void> {
     ready = (async () => {
       await query(SEATING)
       await query(TIMELINE)
+      await query(FLOOR_IMAGE)
     })().catch((error: unknown) => {
       ready = null
       throw error
@@ -95,6 +107,31 @@ export async function writeTimeline(
   return writeBody('rsvp_timeline', slug, timeline)
 }
 
+export async function readFloorImage(slug: string): Promise<string> {
+  await ensure()
+  const rows = await query<{ data: string }>(
+    'SELECT data FROM rsvp_floor_image WHERE slug = $1',
+    [slug],
+  )
+  return rows[0]?.data ?? ''
+}
+
+export async function writeFloorImage(slug: string, data: string) {
+  await ensure()
+  await query(
+    `INSERT INTO rsvp_floor_image (slug, data, updated_at) VALUES ($1, $2, $3)
+     ON CONFLICT (slug) DO UPDATE SET
+       data = EXCLUDED.data,
+       updated_at = EXCLUDED.updated_at`,
+    [slug, data, new Date().toISOString()],
+  )
+}
+
+export async function deleteFloorImage(slug: string) {
+  await ensure()
+  await query('DELETE FROM rsvp_floor_image WHERE slug = $1', [slug])
+}
+
 /** Every couple's timeline in one call, for the owner desk. */
 export async function listTimelines(): Promise<Map<string, Timeline>> {
   await ensure()
@@ -107,4 +144,5 @@ export async function deletePlans(slug: string): Promise<void> {
   await ensure()
   await query('DELETE FROM rsvp_seating WHERE slug = $1', [slug])
   await query('DELETE FROM rsvp_timeline WHERE slug = $1', [slug])
+  await query('DELETE FROM rsvp_floor_image WHERE slug = $1', [slug])
 }
