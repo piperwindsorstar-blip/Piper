@@ -21,9 +21,12 @@ export function Hero() {
           height={562}
           className="h-36 w-auto sm:h-48"
         />
-        <Eyebrow className="mt-8">
-          Brantford wedding DJ · Ontario
-        </Eyebrow>
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+          <Eyebrow>Brantford wedding DJ · Ontario</Eyebrow>
+          <ButtonPrimary to={LINKS.weddings} className="px-6 py-3">
+            Weddings
+          </ButtonPrimary>
+        </div>
         <h1 className="mt-6 max-w-full font-display text-[clamp(3.4rem,13vw,11rem)] font-extrabold leading-[0.88] tracking-tight text-balance">
           Hi, I’m <br />
           <span className="text-neon text-glow">Piper P.</span>
