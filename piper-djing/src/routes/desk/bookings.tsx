@@ -93,6 +93,8 @@ const deskRoute = getRouteApi('/desk')
 
 type BookingsSearch = {
   couple?: number
+  /** Start a new booking filled in from this inquiry. */
+  lead?: number
   view?: 'list' | 'calendar'
   month?: string
   add?: boolean
@@ -105,6 +107,8 @@ export const Route = createFileRoute('/desk/bookings')({
     const out: BookingsSearch = {}
     const couple = Number(search.couple)
     if (Number.isInteger(couple) && couple > 0) out.couple = couple
+    const lead = Number(search.lead)
+    if (Number.isInteger(lead) && lead > 0) out.lead = lead
     if (search.view === 'calendar' || search.view === 'list') out.view = search.view
     if (typeof search.month === 'string' && /^\d{4}-\d{2}$/.test(search.month)) out.month = search.month
     if (search.add === true || search.add === 'true') out.add = true
@@ -164,12 +168,13 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const bookings = Route.useLoaderData()
-  const { packages, externalDates, venues } = deskRoute.useLoaderData()
+  const { packages, externalDates, venues, leads } = deskRoute.useLoaderData()
   const today = todayInToronto()
+  const fromLead = search.lead ? leads.find((lead) => lead.id === search.lead) : undefined
   const [filter, setFilter] = useState<Filter>('all')
   const [samples, setSamples] = useState(false)
   const [needle, setNeedle] = useState('')
-  const [adding, setAdding] = useState(Boolean(search.add))
+  const [adding, setAdding] = useState(Boolean(search.add || fromLead))
   const view = search.view ?? 'list'
   const q = needle.trim().toLowerCase()
 
@@ -261,7 +266,27 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
         </button>
       </div>
 
-      {adding ? <NewBooking packages={packages} venues={venues} startOpen /> : null}
+      {adding ? (
+        <NewBooking
+          packages={packages}
+          venues={venues}
+          startOpen
+          prefill={
+            fromLead
+              ? {
+                  partnerOne: fromLead.partnerOne,
+                  partnerTwo: fromLead.partnerTwo,
+                  email: fromLead.email,
+                  phone: fromLead.phone,
+                  eventDate: fromLead.eventDate ?? '',
+                  stagDate: fromLead.stagDate ?? '',
+                  withStag: fromLead.withStag,
+                  packageId: fromLead.packageId,
+                }
+              : undefined
+          }
+        />
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#e6def4] bg-white p-2.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -921,6 +946,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
           venues={venues}
           payments={own}
           startOpen
+          hideTravel
         />
       </section>
     </div>
@@ -992,16 +1018,30 @@ function NewBooking({
   packages,
   venues,
   startOpen = false,
+  prefill,
 }: {
   packages: { id: string; name: string; cents: number }[]
   venues: SavedVenue[]
   startOpen?: boolean
+  /** Filled in from an inquiry. */
+  prefill?: {
+    partnerOne: string
+    partnerTwo: string
+    email: string
+    phone: string
+    eventDate: string
+    stagDate: string
+    withStag: boolean
+    packageId: string
+  }
 }) {
   const add = useServerFn(addBooking)
   const router = useRouter()
   const prices = priceRecord(packages)
   const [error, setError] = useState<string | null>(null)
-  const [packageId, setPackageId] = useState('full')
+  const [packageId, setPackageId] = useState(
+    prefill && isPackageId(prefill.packageId) ? prefill.packageId : 'full',
+  )
   const [open, setOpen] = useState(startOpen)
   const [draft, setDraft] = useState(0)
   const [preview, setPreview] = useState(() => ({
@@ -1046,6 +1086,31 @@ function NewBooking({
           onPackage={setPackageId}
           packages={packages}
           venues={venues}
+          defaults={
+            prefill && draft === 0
+              ? {
+                  partnerOne: prefill.partnerOne,
+                  partnerTwo: prefill.partnerTwo,
+                  email: prefill.email,
+                  phone: prefill.phone,
+                  eventDate: prefill.eventDate,
+                  stagDate: prefill.stagDate,
+                  withStag: prefill.withStag,
+                  uplights: 0,
+                  kmOne: '',
+                  kmTwo: '',
+                  venueName: '',
+                  venueStreet: '',
+                  venueTwoName: '',
+                  venueTwoStreet: '',
+                  sample: false,
+                  notes: '',
+                  discountCents: 0,
+                  customTotalCents: 0,
+                  lockedTotal: false,
+                }
+              : undefined
+          }
         />
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/10 bg-ink-950 p-4">
@@ -1724,8 +1789,11 @@ function BookingCard({
   packages,
   venues,
   startOpen = false,
+  hideTravel = false,
 }: {
   startOpen?: boolean
+  /** The couple page shows travel in The day, so the editor leaves it out. */
+  hideTravel?: boolean
   packages: { id: string; name: string }[]
   venues: SavedVenue[]
   booking: {
@@ -1945,7 +2013,7 @@ function BookingCard({
             </Link>
           ) : null}
         </p>
-        <TravelPanel booking={booking} />
+        {hideTravel ? null : <TravelPanel booking={booking} />}
         {open ? <PortalDeskFields slug={booking.slug} /> : null}
         <form
           key={formKey}

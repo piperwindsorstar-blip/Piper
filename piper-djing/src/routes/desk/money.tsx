@@ -336,7 +336,7 @@ function MoneyPage() {
           </div>
           <fieldset className="grid gap-2">
             <legend className="mb-2 text-sm font-semibold">How they paid</legend>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-1.5">
               {(
                 [
                   ['e-transfer', 'E-transfer'],
@@ -346,7 +346,7 @@ function MoneyPage() {
               ).map(([value, label]) => (
                 <label
                   key={value}
-                  className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#d6cce8] px-2 text-sm font-semibold has-[:checked]:border-2 has-[:checked]:border-[#1c1533]"
+                  className="flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#d6cce8] px-1.5 text-[13px] font-semibold whitespace-nowrap has-[:checked]:border-2 has-[:checked]:border-[#1c1533]"
                 >
                   <input type="radio" name="method" value={value} defaultChecked={value === 'e-transfer'} />
                   {label}

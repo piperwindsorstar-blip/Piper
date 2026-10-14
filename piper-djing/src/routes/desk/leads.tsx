@@ -1,10 +1,12 @@
-import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
+import { Link, createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { Mail, Phone } from 'lucide-react'
+import { Check, Mail, Phone, TriangleAlert } from 'lucide-react'
 import {
+  CoupleName,
   DeskTitle,
   deskCard,
+  deskDark,
   deskDanger,
   deskGhost,
   deskPrimary,
@@ -26,21 +28,59 @@ export const Route = createFileRoute('/desk/leads')({
 
 function LeadsPage() {
   const leads = Route.useLoaderData()
-  const { packages } = deskRoute.useLoaderData()
+  const { packages, bookings, externalDates } = deskRoute.useLoaderData()
+  const [copied, setCopied] = useState(false)
+  /** Who already has a date: your held or booked couples, and Pynx dates. */
+  const taken = (date: string | null): string | null => {
+    if (!date) return null
+    const own = bookings.find(
+      (booking) =>
+        !booking.sample &&
+        (booking.status === 'hold' || booking.status === 'booked') &&
+        booking.eventDate === date,
+    )
+    if (own) return `${own.partnerOne} & ${own.partnerTwo}${own.status === 'hold' ? ' (held)' : ''}`
+    const other = externalDates.find((row) => !row.released && row.eventDate === date)
+    return other ? `${other.company} gig` : null
+  }
   return (
     <div className="grid gap-5">
-      <DeskTitle kicker="Leads" title="Leads">
+      <DeskTitle kicker="Your book" title="Leads">
         New inquiries from the website, newest first. Email or call straight
         from here. Deleting an inquiry never opens a booked date.
       </DeskTitle>
       {leads.length === 0 ? (
-        <p className={`${deskCard} text-sm text-white/65`}>
-          No inquiries right now. New ones from the website land here.
-        </p>
+        <section
+          aria-labelledby="no-leads"
+          className="flex flex-wrap items-center justify-between gap-6 rounded-[20px] border border-[#eadff5] bg-[linear-gradient(135deg,#ffe6f2_0%,#eee8ff_55%,#e3f4fd_100%)] p-7 sm:p-9"
+        >
+          <div className="grid max-w-xl gap-2">
+            <h2 id="no-leads" className="font-display text-3xl leading-[1.05] font-extrabold tracking-[-0.02em] sm:text-[40px]">
+              No new inquiries.{' '}
+              <em className="font-serif font-normal tracking-normal text-[#d1006b] italic">Yet.</em>
+            </h2>
+            <p className="text-[#4a4262] sm:text-lg">
+              When a couple checks a date on the website, it lands here with their date already
+              checked against your book.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={deskDark}
+            onClick={() => {
+              void navigator.clipboard?.writeText(`${window.location.origin}/book`).then(() => {
+                setCopied(true)
+                window.setTimeout(() => setCopied(false), 2000)
+              })
+            }}
+          >
+            {copied ? 'Link copied' : 'Copy the check-a-date link'}
+          </button>
+        </section>
       ) : null}
       <div className="grid gap-3">
         {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} packages={packages} />
+          <LeadCard key={lead.id} lead={lead} packages={packages} clash={taken(lead.eventDate)} />
         ))}
       </div>
     </div>
@@ -50,7 +90,10 @@ function LeadsPage() {
 function LeadCard({
   lead,
   packages,
+  clash,
 }: {
+  /** Who already has this date, or null when it is free. */
+  clash: string | null
   lead: {
     id: number
     partnerOne: string
@@ -78,33 +121,51 @@ function LeadCard({
     : lead.partnerOne
   const phone = lead.phone.replace(/[^\d+]/g, '')
   return (
-    <article className={deskCard}>
+    <article className={`${deskCard} grid gap-3`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold">{names}</h2>
-          <p className="mt-0.5 text-sm text-white/65">
+          <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
+            {lead.partnerTwo ? <CoupleName one={lead.partnerOne} two={lead.partnerTwo} /> : names}
+          </h2>
+          <p className="mt-0.5 text-[#4a4262]">
             {lead.eventDate ? longDate(lead.eventDate) : 'No date yet'}
             {lead.packageName ? ` · ${lead.packageName}` : ''}
             {lead.withStag ? ' · with a stag and doe' : ''}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {lead.email ? (
-            <a className={deskPrimary} href={`mailto:${lead.email}`}>
-              <Mail className="h-4 w-4" aria-hidden="true" />
-              Email
-            </a>
-          ) : null}
-          {phone ? (
-            <a className={deskGhost} href={`tel:${phone}`}>
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              Call
-            </a>
-          ) : null}
-        </div>
+        {lead.eventDate ? (
+          clash ? (
+            <span className="inline-flex items-center gap-2 rounded-[10px] bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">
+              <TriangleAlert className="h-4.5 w-4.5" aria-hidden="true" />
+              Taken: {clash}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 rounded-[10px] bg-[#dcf3e7] px-3 py-2 text-sm font-bold text-[#0b5e41]">
+              <Check className="h-4.5 w-4.5" aria-hidden="true" />
+              Date is free
+            </span>
+          )
+        ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {lead.email ? (
+          <a className={deskPrimary} href={`mailto:${lead.email}`}>
+            <Mail className="h-4 w-4" aria-hidden="true" />
+            Email
+          </a>
+        ) : null}
+        {phone ? (
+          <a className={deskGhost} href={`tel:${phone}`}>
+            <Phone className="h-4 w-4" aria-hidden="true" />
+            Call
+          </a>
+        ) : null}
+        <Link to="/desk/bookings" search={{ lead: lead.id }} className={deskDark}>
+          Make it a booking
+        </Link>
       </div>
       {lead.message.trim() ? (
-        <p className="mt-3 rounded-xl bg-white/5 px-3 py-2 text-sm whitespace-pre-line text-white/85">
+        <p className="rounded-xl bg-[#faf8fe] px-4 py-3 text-sm whitespace-pre-line text-[#3b3352]">
           {lead.message}
         </p>
       ) : null}

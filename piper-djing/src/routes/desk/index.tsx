@@ -39,7 +39,7 @@ function greeting(): string {
 function dayLine(iso: string): string {
   const day = new Date(`${iso}T12:00:00Z`)
   const weekday = day.toLocaleDateString('en-CA', { weekday: 'long', timeZone: 'UTC' })
-  const date = day.toLocaleDateString('en-CA', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+  const date = day.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
   return `${weekday} · ${date}`
 }
 
