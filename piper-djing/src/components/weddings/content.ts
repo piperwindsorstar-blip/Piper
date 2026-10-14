@@ -10,7 +10,7 @@ export const LINKS = {
 } as const
 
 // Black lining keeps the white lettering crisp on the dark header.
-export const LOGO_SRC = '/brand/dj-piper-p-outlined.png'
+export const LOGO_SRC = '/brand/dj-piper-p-lined.png'
 export const LOGO_ALT = 'DJ Piper P'
 
 export const PHOTOS = {
