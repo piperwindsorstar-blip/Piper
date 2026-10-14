@@ -1,6 +1,7 @@
 import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+import { Mail, Phone } from 'lucide-react'
 import {
   DeskTitle,
   deskCard,
@@ -29,17 +30,19 @@ function LeadsPage() {
   return (
     <div className="grid gap-5">
       <DeskTitle kicker="Leads" title="Leads">
-        <p className="mt-1 text-sm text-white/65">
-          Saving an inquiry does not change its booking. Delete removes the
-          inquiry only. Delete the booking on the book to open the date.
-        </p>
+        New inquiries from the website, newest first. Email or call straight
+        from here. Deleting an inquiry never opens a booked date.
       </DeskTitle>
       {leads.length === 0 ? (
-        <p className="text-sm text-white/65">No inquiries yet.</p>
+        <p className={`${deskCard} text-sm text-white/65`}>
+          No inquiries right now. New ones from the website land here.
+        </p>
       ) : null}
-      {leads.map((lead) => (
-        <LeadCard key={lead.id} lead={lead} packages={packages} />
-      ))}
+      <div className="grid gap-3">
+        {leads.map((lead) => (
+          <LeadCard key={lead.id} lead={lead} packages={packages} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -70,21 +73,53 @@ function LeadCard({
   const [withStag, setWithStag] = useState(lead.withStag)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  const names = lead.partnerTwo
+    ? `${lead.partnerOne} and ${lead.partnerTwo}`
+    : lead.partnerOne
+  const phone = lead.phone.replace(/[^\d+]/g, '')
   return (
+    <article className={deskCard}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold">{names}</h2>
+          <p className="mt-0.5 text-sm text-white/65">
+            {lead.eventDate ? longDate(lead.eventDate) : 'No date yet'}
+            {lead.packageName ? ` · ${lead.packageName}` : ''}
+            {lead.withStag ? ' · with a stag and doe' : ''}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {lead.email ? (
+            <a className={deskPrimary} href={`mailto:${lead.email}`}>
+              <Mail className="h-4 w-4" aria-hidden="true" />
+              Email
+            </a>
+          ) : null}
+          {phone ? (
+            <a className={deskGhost} href={`tel:${phone}`}>
+              <Phone className="h-4 w-4" aria-hidden="true" />
+              Call
+            </a>
+          ) : null}
+        </div>
+      </div>
+      {lead.message.trim() ? (
+        <p className="mt-3 rounded-xl bg-white/5 px-3 py-2 text-sm whitespace-pre-line text-white/85">
+          {lead.message}
+        </p>
+      ) : null}
+      <p className="mt-2 text-xs text-white/65">
+        {[lead.email, lead.phone].filter(Boolean).join(' · ')}
+      </p>
+      <details className="group mt-3 border-t border-white/10 pt-2">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center text-sm font-semibold text-hot [&::-webkit-details-marker]:hidden">
+          <span className="group-open:hidden">Edit details</span>
+          <span className="hidden group-open:inline">Hide details</span>
+        </summary>
     <form
-      className={`${deskCard} grid gap-3`}
+      className="mt-2 grid gap-3"
       onSubmit={(event) => event.preventDefault()}
     >
-      <h2 className="font-display text-xl font-bold">
-        {lead.partnerTwo
-          ? `${lead.partnerOne} and ${lead.partnerTwo}`
-          : lead.partnerOne}
-        {lead.eventDate ? (
-          <span className="mt-1 block text-sm font-normal text-white/65">
-            {longDate(lead.eventDate)}
-          </span>
-        ) : null}
-      </h2>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="field">
           First partner
@@ -213,7 +248,9 @@ function LeadCard({
           </button>
         )}
       </div>
-      {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
+      {notice ? <p className="text-sm text-white/85" role="status">{notice}</p> : null}
     </form>
+      </details>
+    </article>
   )
 }
