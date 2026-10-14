@@ -36,6 +36,9 @@ describe('desk usage', () => {
     assert.match(text, /plusOnes/)
     assert.match(text, /DELETE \/api\/bots\/v1\/venues/)
     assert.doesNotMatch(text, /instead of deleting it/)
+    assert.match(text, /payByCard/)
+    assert.match(text, /externalId/)
+    assert.match(text, /duplicate:true/)
   })
 
   it('sends owner mail to the saved desk address', () => {

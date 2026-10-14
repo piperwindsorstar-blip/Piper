@@ -7,7 +7,7 @@ import {
   addPartner,
   addPayment,
   addQuestion,
-  addReview,
+  addReviewOnce,
   botFromToken,
   createBooking,
   createInquiry,
@@ -56,6 +56,7 @@ import {
 } from '../crm/store.server.ts'
 import type { BookingView, BotRole, LeadView } from '../crm/store.server.ts'
 import type { ReviewDraft } from '../crm/reviews.ts'
+import { botSettings } from './settings.server.ts'
 import { isPackageId } from '../crm/defaults.ts'
 import { dollarsToCents, optionalDiscount } from '../crm/money.ts'
 import {
@@ -861,7 +862,12 @@ async function reviews(
 ): Promise<Response> {
   if (method === 'GET' && !id) return botJson({ reviews: await listReviews() })
   if (method === 'POST' && !id) {
-    return botJson({ review: await addReview(reviewDraft(body, null)) })
+    const added = await addReviewOnce(reviewDraft(body, null))
+    return botJson(
+      added.duplicate
+        ? { duplicate: true, review: added.review }
+        : { review: added.review },
+    )
   }
   if ((method === 'PATCH' || method === 'PUT') && id) {
     const current = (await listReviews()).find((item) => item.id === intId(id))
@@ -917,18 +923,18 @@ async function settings(
   body: Record<string, unknown>,
   role: BotRole,
 ): Promise<Response> {
-  if (method === 'GET') return botJson({ settings: await deskProfile() })
+  if (method === 'GET') return botJson({ settings: await botSettings() })
   if (!canManage(role)) {
     return botJson({ error: 'The Ceo bot changes settings.' }, 403)
   }
   if (method === 'PATCH' || method === 'PUT' || method === 'POST') {
+    // payByCard is read-only here: it is switched on the desk.
     const current = await deskProfile()
-    return botJson({
-      settings: await saveDeskProfile({
-        email: str(body, 'email') || current.email,
-        homeBase: str(body, 'homeBase') || current.homeBase,
-      }),
+    await saveDeskProfile({
+      email: str(body, 'email') || current.email,
+      homeBase: str(body, 'homeBase') || current.homeBase,
     })
+    return botJson({ settings: await botSettings() })
   }
   return botJson({ error: 'That action is not on the desk.' }, 405)
 }
@@ -1171,6 +1177,9 @@ function reviewDraft(
     source: str(body, 'source') || current?.source || 'other',
     show:
       body.show === undefined ? (current?.show ?? false) : bool(body, 'show'),
+    stars: body.stars,
+    link: body.link,
+    externalId: body.externalId,
   }
 }
 

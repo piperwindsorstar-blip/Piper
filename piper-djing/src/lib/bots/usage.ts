@@ -70,7 +70,9 @@ export function usageDocument(packages: UsagePackage[]) {
       terms:
         'PATCH /api/bots/v1/terms with {body}. CEO only. There is one document. Change it. Do not delete it.',
       settings:
-        'PATCH /api/bots/v1/settings with {email, homeBase}. CEO only. Owner messages go to that email. Travel is still calculated from the kilometres on the booking.',
+        'PATCH /api/bots/v1/settings with {email, homeBase}. CEO only. Owner messages go to that email. Travel is still calculated from the kilometres on the booking. GET /api/bots/v1/settings also returns payByCard (true or false), read-only: it is true only when Stripe is set up and Pay by card is turned on at the desk.',
+      reviews:
+        'POST /api/bots/v1/reviews (or action add_review) with {quote, names, eventType, town, date, source, show} plus optional stars (whole number 1 to 5), link (the review URL, e.g. its Google review link) and externalId (your id for the review). A review with the same externalId, or the same names, source and date, is not added again: the reply is {duplicate:true, review} with the review already on the page. PATCH /api/bots/v1/reviews/{id} keeps stars, link and externalId unless they are sent; send stars null to clear them.',
       invites:
         'POST /api/bots/v1/bots with {name, role}. PATCH or DELETE /api/bots/v1/bots/{id}. CEO only. role is reader, writer, or ceo.',
       emails: 'GET only. Emails are a record of what was sent.',

@@ -218,12 +218,48 @@ function bookIfCovered(
   invoice: InvoiceState,
   ceremonyCents = CEREMONY_DEPOSIT_CENTS,
 ): Transition {
+  const required = depositToBook(booking, invoice, ceremonyCents)
+  // A deposit received on a draft invoice means the couple has it: it is
+  // sent, and never shows DRAFT after payment.
+  if (
+    invoice.status === 'draft' &&
+    invoice.totalCents > 0 &&
+    required > 0 &&
+    invoice.receivedCents >= required &&
+    (booking.status === 'open' || booking.status === 'hold' || booking.status === 'booked')
+  ) {
+    invoice = { ...invoice, status: 'sent' }
+  }
   if (booking.status === 'booked') {
     return { booking, invoice, newlyBooked: false }
   }
+  // Clause 4.5: the deposit received is agreement, so it books an open or
+  // held date alike. A void invoice never does. Cancelled and released dates
+  // are never revived.
+  const covered =
+    invoice.status !== 'void' &&
+    invoice.totalCents > 0 &&
+    required > 0 &&
+    invoice.receivedCents >= required &&
+    (booking.status === 'hold' || booking.status === 'open')
+  if (!covered) {
+    return { booking, invoice, newlyBooked: false }
+  }
+  return {
+    booking: { ...booking, status: 'booked' },
+    invoice,
+    newlyBooked: true,
+  }
+}
+
+/** The money that books this date: the deposit, by package. */
+function depositToBook(
+  booking: BookingState,
+  invoice: InvoiceState,
+  ceremonyCents: number,
+): number {
   const discount = booking.discountCents
-  const required =
-    booking.packageId === 'ceremony'
+  return booking.packageId === 'ceremony'
       ? discount > 0
         ? invoice.depositCents
         : Math.max(ceremonyCents, invoice.depositCents)
@@ -240,23 +276,6 @@ function bookIfCovered(
               withStag: booking.withStag,
               invoiceDepositCents: invoice.depositCents,
             })
-  // Clause 4.5: the deposit received is agreement, so it books an open or
-  // held date alike. A draft invoice counts once the couple has paid on it;
-  // a void one never does. Cancelled and released dates are never revived.
-  const covered =
-    invoice.status !== 'void' &&
-    invoice.totalCents > 0 &&
-    required > 0 &&
-    invoice.receivedCents >= required &&
-    (booking.status === 'hold' || booking.status === 'open')
-  if (!covered) {
-    return { booking, invoice, newlyBooked: false }
-  }
-  return {
-    booking: { ...booking, status: 'booked' },
-    invoice,
-    newlyBooked: true,
-  }
 }
 
 /**

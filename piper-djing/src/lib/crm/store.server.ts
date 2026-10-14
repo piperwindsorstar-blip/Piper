@@ -35,7 +35,13 @@ import {
   planningFromUnknown,
 } from './planning.ts'
 import type { Planning, PlanningSeed } from './planning.ts'
-import { isReviewSource } from './reviews.ts'
+import {
+  findDuplicateReview,
+  isReviewSource,
+  parseExternalId,
+  parseReviewLink,
+  parseStars,
+} from './reviews.ts'
 import type {
   PublicReview,
   ReviewDraft,
@@ -2062,6 +2068,22 @@ async function ensureReviews(): Promise<void> {
   await addReviewColumn('reviewed_on', `text NOT NULL DEFAULT ''`)
   await addReviewColumn('source', `text NOT NULL DEFAULT 'other'`)
   await addReviewColumn('show_on_site', `integer NOT NULL DEFAULT 0`)
+  await addReviewColumn('stars', `integer NOT NULL DEFAULT 0`)
+  await addReviewColumn('link', `text NOT NULL DEFAULT ''`)
+  await addReviewColumn('external_id', `text NOT NULL DEFAULT ''`)
+}
+
+let reviewsReady: Promise<void> | null = null
+
+/** The reviews table and its newer columns, checked once per Worker. */
+function reviewsOnce(): Promise<void> {
+  if (!reviewsReady) {
+    reviewsReady = ensureReviews().catch((error: unknown) => {
+      reviewsReady = null
+      throw error
+    })
+  }
+  return reviewsReady
 }
 
 type ReviewRow = {
@@ -2073,6 +2095,9 @@ type ReviewRow = {
   reviewed_on: string
   source: string
   show_on_site: unknown
+  stars: unknown
+  link: string | null
+  external_id: string | null
 }
 
 function toReview(row: ReviewRow): ReviewView {
@@ -2086,11 +2111,17 @@ function toReview(row: ReviewRow): ReviewView {
     date: row.reviewed_on,
     source,
     show: flag(row.show_on_site),
+    stars: (() => {
+      const stars = Number(row.stars ?? 0)
+      return Number.isInteger(stars) && stars >= 1 && stars <= 5 ? stars : null
+    })(),
+    link: row.link ?? '',
+    externalId: row.external_id ?? '',
   }
 }
 
 const REVIEW_COLUMNS =
-  'id, quote, names, event_type, town, reviewed_on, source, show_on_site'
+  'id, quote, names, event_type, town, reviewed_on, source, show_on_site, stars, link, external_id'
 
 function reviewId(id: number): number {
   if (!Number.isInteger(id) || id < 1) {
@@ -2099,7 +2130,10 @@ function reviewId(id: number): number {
   return id
 }
 
-function parseReview(input: ReviewDraft): Omit<ReviewView, 'id'> {
+function parseReview(
+  input: ReviewDraft,
+  current?: ReviewView,
+): Omit<ReviewView, 'id'> {
   const quote = input.quote.trim()
   const names = input.names.trim()
   const eventType = input.eventType.trim()
@@ -2132,6 +2166,12 @@ function parseReview(input: ReviewDraft): Omit<ReviewView, 'id'> {
     date,
     source: input.source,
     show: input.show,
+    stars: input.stars === undefined ? (current?.stars ?? null) : parseStars(input.stars),
+    link: input.link === undefined ? (current?.link ?? '') : parseReviewLink(input.link),
+    externalId:
+      input.externalId === undefined
+        ? (current?.externalId ?? '')
+        : parseExternalId(input.externalId),
   }
 }
 
@@ -2156,7 +2196,23 @@ export async function homepageReviews(): Promise<PublicReview[]> {
       town: review.town,
       date: review.date,
       source: review.source,
+      stars: review.stars,
+      link: review.link,
     }))
+}
+
+/**
+ * Adds a review unless it repeats one already on the page (same externalId,
+ * or same names, source and date); then nothing is inserted.
+ */
+export async function addReviewOnce(
+  input: ReviewDraft,
+): Promise<{ duplicate: boolean; review: ReviewView }> {
+  await ensureReviews()
+  const draft = parseReview(input)
+  const existing = findDuplicateReview(await listReviews(), draft)
+  if (existing) return { duplicate: true, review: existing }
+  return { duplicate: false, review: await addReview(input) }
 }
 
 export async function addReview(input: ReviewDraft): Promise<ReviewView> {
@@ -2167,8 +2223,8 @@ export async function addReview(input: ReviewDraft): Promise<ReviewView> {
   )
   const id = whole(ids.at(0)?.id, 'Review')
   await query(
-    `INSERT INTO reviews (id, quote, names, when_label, event_type, town, reviewed_on, source, show_on_site)
-     VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8)`,
+    `INSERT INTO reviews (id, quote, names, when_label, event_type, town, reviewed_on, source, show_on_site, stars, link, external_id)
+     VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       id,
       review.quote,
@@ -2178,6 +2234,9 @@ export async function addReview(input: ReviewDraft): Promise<ReviewView> {
       review.date,
       review.source,
       review.show ? 1 : 0,
+      review.stars ?? 0,
+      review.link,
+      review.externalId,
     ],
   )
   await forgetPublicSite()
@@ -2190,11 +2249,13 @@ export async function updateReview(
 ): Promise<ReviewView> {
   const reviewIdValue = reviewId(id)
   await ensureReviews()
-  const review = parseReview(input)
+  const current = (await listReviews()).find((item) => item.id === reviewIdValue)
+  const review = parseReview(input, current)
   const rows = await query<ReviewRow>(
     `UPDATE reviews
-     SET quote = $1, names = $2, event_type = $3, town = $4, reviewed_on = $5, source = $6, show_on_site = $7
-     WHERE id = $8
+     SET quote = $1, names = $2, event_type = $3, town = $4, reviewed_on = $5, source = $6, show_on_site = $7,
+         stars = $8, link = $9, external_id = $10
+     WHERE id = $11
      RETURNING ${REVIEW_COLUMNS}`,
     [
       review.quote,
@@ -2204,6 +2265,9 @@ export async function updateReview(
       review.date,
       review.source,
       review.show ? 1 : 0,
+      review.stars ?? 0,
+      review.link,
+      review.externalId,
       reviewIdValue,
     ],
   )
@@ -2389,8 +2453,6 @@ export async function listPackageOffers(): Promise<PackageOffer[]> {
   const results = await queryBatch([
     { sql: PACKAGE_OFFER_TABLE },
     { sql: 'SELECT id, name, detail, cents FROM package_offers' },
-    { sql: REVIEW_DISPLAY_TABLE },
-    { sql: 'SELECT page, mode FROM review_display' },
   ])
   return offersFromRows(results[1] as OfferRow[])
 }
@@ -2600,6 +2662,7 @@ export async function setReviewDisplay(
 
 /** Reviews, partners, and packages in one Book call. */
 export async function loadPublicCatalog(): Promise<PublicCatalog> {
+  await reviewsOnce()
   const results = await queryBatch([
     {
       sql: `SELECT ${REVIEW_COLUMNS} FROM reviews
@@ -2609,19 +2672,21 @@ export async function loadPublicCatalog(): Promise<PublicCatalog> {
     { sql: 'SELECT id, name, href, mime, logo FROM partners ORDER BY id' },
     { sql: PACKAGE_OFFER_TABLE },
     { sql: 'SELECT id, name, detail, cents FROM package_offers' },
+    { sql: REVIEW_DISPLAY_TABLE },
+    { sql: 'SELECT page, mode FROM review_display' },
   ])
-  const reviews = (results[0] as ReviewRow[]).map((row) => {
-    const source: ReviewSource = isReviewSource(row.source)
-      ? row.source
-      : 'other'
+  const reviews = (results[0] as ReviewRow[]).map((row): PublicReview => {
+    const review = toReview(row)
     return {
-      id: whole(row.id, 'Review'),
-      quote: row.quote,
-      names: row.names,
-      eventType: row.event_type,
-      town: row.town,
-      date: row.reviewed_on,
-      source,
+      id: review.id,
+      quote: review.quote,
+      names: review.names,
+      eventType: review.eventType,
+      town: review.town,
+      date: review.date,
+      source: review.source,
+      stars: review.stars,
+      link: review.link,
     }
   })
   const partners = (

@@ -7,6 +7,7 @@ import {
   askRsvpQuestion,
   downloadRsvpCsv,
   emailRsvpInvitations,
+  markRsvpReply,
   removeRsvpParty,
   saveRsvpParty,
   saveRsvpReplyEmail,
@@ -538,7 +539,13 @@ export function Guests({ data }: { data: ReadyManage }) {
                 </span>
               </span>
               <span className="grid justify-items-end text-sm text-[var(--text-faint)]">
-                <span>{party.lastRepliedAt ? 'Replied' : 'Waiting'}</span>
+                <span>
+                  {party.lastRepliedAt
+                    ? party.phoneReply
+                      ? 'Marked by you'
+                      : 'Replied'
+                    : 'Waiting'}
+                </span>
                 {data.invited[party.id] ? (
                   <span className="text-xs text-emerald-500">
                     ✓ Sent {shortWhen(data.invited[party.id] ?? '')}
@@ -553,6 +560,7 @@ export function Guests({ data }: { data: ReadyManage }) {
         <PartyDrawer
           party={current}
           events={data.wedding.events}
+          meals={mealsOf(data)}
           invitedAt={current ? (data.invited[current.id] ?? '') : ''}
           error={error}
           onClose={() => setEditing(null)}
@@ -584,6 +592,7 @@ export function Guests({ data }: { data: ReadyManage }) {
 function PartyDrawer({
   party,
   events,
+  meals,
   invitedAt,
   error,
   onClose,
@@ -592,6 +601,7 @@ function PartyDrawer({
 }: {
   party: ReadyManage['wedding']['parties'][number] | null
   events: ReadyManage['wedding']['events']
+  meals: string[]
   invitedAt: string
   error: string
   onClose: () => void
@@ -778,6 +788,9 @@ function PartyDrawer({
           </div>
         </fieldset>
         {party ? (
+          <MarkReply party={party} events={events} meals={meals} />
+        ) : null}
+        {party ? (
           <EmailPartyButton
             partyId={party.id}
             email={party.email}
@@ -826,6 +839,177 @@ function PartyDrawer({
       ),
     )
   }
+}
+
+type Reply = 'attending' | 'declined' | 'pending'
+
+/**
+ * For a phone call or a paper card: the couple marks each guest's reply
+ * (and dinner) themselves. Saves straight to the list; no email is sent.
+ */
+function MarkReply({
+  party,
+  events,
+  meals,
+}: {
+  party: ReadyManage['wedding']['parties'][number]
+  events: ReadyManage['wedding']['events']
+  meals: string[]
+}) {
+  const mark = useServerFn(markRsvpReply)
+  const router = useRouter()
+  const surface = useSurface()
+  const invited = events.filter((event) => party.eventIds.includes(event.id))
+  const [open, setOpen] = useState(false)
+  const [guests, setGuests] = useState(() =>
+    party.guests.map((guest) => ({
+      id: guest.id,
+      name: `${guest.firstName} ${guest.lastName}`.trim() || 'Guest',
+      isChild: guest.isChild,
+      meal: guest.meal,
+      replies: Object.fromEntries(
+        invited.map((event) => {
+          const value = guest.replies[event.id]
+          return [
+            event.id,
+            (value === 'attending' || value === 'declined' ? value : 'pending') as Reply,
+          ]
+        }),
+      ) as Record<string, Reply>,
+    })),
+  )
+  if (invited.length === 0 || party.guests.length === 0) return null
+  const setReply = (index: number, eventId: string, value: Reply) =>
+    setGuests((current) =>
+      current.map((guest, at) =>
+        at === index
+          ? { ...guest, replies: { ...guest.replies, [eventId]: value } }
+          : guest,
+      ),
+    )
+  return (
+    <section className="mt-5 rounded-2xl border border-[var(--border)] p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold">Mark their reply</h3>
+        <button
+          type="button"
+          className="min-h-11 px-2 text-sm text-[var(--pink-soft)] underline underline-offset-4"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? 'Hide' : party.phoneReply ? 'Change' : 'Mark reply'}
+        </button>
+      </div>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">
+        Got their answer by phone or a paper card? Mark it here. No email is
+        sent.
+      </p>
+      {open ? (
+        <div className="mt-3 grid gap-3">
+          {guests.map((guest, index) => {
+            const wantsMeal =
+              !guest.isChild &&
+              meals.length > 0 &&
+              invited.some(
+                (event) =>
+                  event.asksMeal && guest.replies[event.id] === 'attending',
+              )
+            return (
+              <div
+                key={guest.id}
+                className="grid gap-2 rounded-xl border border-[var(--border)] p-3"
+              >
+                <p className="font-semibold">{guest.name}</p>
+                {invited.map((event) => (
+                  <fieldset key={event.id} className="grid gap-1">
+                    <legend className="text-sm text-[var(--text-muted)]">
+                      {invited.length > 1 ? event.name : 'Coming?'}
+                    </legend>
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          ['attending', 'Attending'],
+                          ['declined', 'Not attending'],
+                          ['pending', 'No reply'],
+                        ] as const
+                      ).map(([value, label]) => {
+                        const on = guest.replies[event.id] === value
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            aria-pressed={on}
+                            className={`min-h-11 rounded-full border px-3 text-sm ${on ? 'border-[var(--pink)] text-[var(--pink-soft)]' : 'border-[var(--border-strong)]'}`}
+                            onClick={() => setReply(index, event.id, value)}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+                ))}
+                {wantsMeal ? (
+                  <label className="grid gap-1 text-sm">
+                    Dinner
+                    <select
+                      className={rsvpField}
+                      value={guest.meal}
+                      onChange={(event) => {
+                        const meal = event.target.value
+                        setGuests((current) =>
+                          current.map((item, at) =>
+                            at === index ? { ...item, meal } : item,
+                          ),
+                        )
+                      }}
+                    >
+                      <option value="">Not chosen yet</option>
+                      {meals.map((meal) => (
+                        <option key={meal} value={meal}>
+                          {meal}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+            )
+          })}
+          <ActionButton
+            className={rsvpButton}
+            wrapperClassName="grid"
+            busy="Saving…"
+            done="Saved"
+            surface={surface}
+            onRun={async (): Promise<RunResult> => {
+              const result = await mark({
+                data: {
+                  partyId: party.id,
+                  guests: guests.map((guest) => ({
+                    id: guest.id,
+                    replies: guest.replies,
+                    meal: guest.meal,
+                  })),
+                },
+              })
+              if (!result.ok) {
+                return {
+                  ok: false,
+                  message:
+                    'error' in result ? result.error : 'Could not save that reply.',
+                }
+              }
+              await router.invalidate()
+              return { ok: true, message: 'Reply saved. No email was sent.' }
+            }}
+          >
+            Save reply
+          </ActionButton>
+        </div>
+      ) : null}
+    </section>
+  )
 }
 
 function EmailAllButton({ data }: { data: ReadyManage }) {

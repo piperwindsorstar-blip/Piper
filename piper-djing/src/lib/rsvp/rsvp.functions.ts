@@ -7,6 +7,7 @@ import { torontoToday } from '../piper/rules.ts'
 import {
   catererCsv,
   priceLabel,
+  applyCoupleReply,
   applyHousehold,
   applyPartyDraft,
   asksSong,
@@ -908,6 +909,45 @@ export const saveRsvpParty = createServerFn({ method: 'POST' })
         }),
       },
       newToken(),
+    )
+    if (!result.ok) return result
+    await writeRsvp(result.wedding)
+    return { ok: true as const }
+  })
+
+/**
+ * The couple marks a guest's reply themselves (phone or paper RSVP). Saved
+ * straight to their list; no confirmation email goes to anyone.
+ */
+export const markRsvpReply = createServerFn({ method: 'POST' })
+  .validator((data: Record<string, unknown>) => data)
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    const guests = Array.isArray(data.guests) ? data.guests : []
+    const result = applyCoupleReply(
+      wedding,
+      text(data.partyId, 40),
+      guests.flatMap((item) => {
+        if (!item || typeof item !== 'object') return []
+        const guest = item as Record<string, unknown>
+        const replies: Record<string, unknown> = {}
+        if (guest.replies && typeof guest.replies === 'object') {
+          for (const [key, value] of Object.entries(
+            guest.replies as Record<string, unknown>,
+          )) {
+            replies[key.slice(0, 40)] = value
+          }
+        }
+        return [{ id: text(guest.id, 40), replies, meal: text(guest.meal, 80) }]
+      }),
+      new Date().toISOString(),
     )
     if (!result.ok) return result
     await writeRsvp(result.wedding)

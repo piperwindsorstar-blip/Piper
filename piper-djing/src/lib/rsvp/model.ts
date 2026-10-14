@@ -626,9 +626,74 @@ export function applyHousehold(
       }
     }
     party.lastRepliedAt = patch.now
+    // The guest's own reply replaces one the couple marked by hand.
+    party.phoneReply = false
   }
   party.email = patch.email.trim().slice(0, 120)
   party.note = patch.note.trim().slice(0, 400)
+  return { ok: true, wedding: next, party }
+}
+
+export type CoupleReplyGuest = {
+  id: string
+  /** By event id; anything else counts as no reply yet. */
+  replies: Record<string, unknown>
+  meal: string
+}
+
+/**
+ * The couple marks a party's reply themselves (a phone call or a paper
+ * card). No confirmation email and no deadline: it is their own list. Meals
+ * are kept only for adults coming to an event that asks for one, and must be
+ * one of the wedding's meal options when it has any.
+ */
+export function applyCoupleReply(
+  wedding: RsvpWedding,
+  partyId: string,
+  guests: CoupleReplyGuest[],
+  now: string,
+):
+  | { ok: true; wedding: RsvpWedding; party: RsvpParty }
+  | { ok: false; error: string } {
+  const next = structuredClone(wedding)
+  const party = next.parties.find((item) => item.id === partyId)
+  if (!party) return { ok: false, error: 'That party is not on your list.' }
+  const meals = new Set(mealOptions(next))
+  for (const incoming of guests) {
+    const guest = party.guests.find((item) => item.id === incoming.id)
+    if (!guest) continue
+    const replies: Record<string, RsvpStatus> = {}
+    for (const eventId of party.eventIds) {
+      const value = incoming.replies[eventId]
+      replies[eventId] =
+        value === 'attending' || value === 'declined' ? value : 'pending'
+    }
+    guest.replies = replies
+    const mealEvent = party.eventIds.some((id) => {
+      const event = next.events.find((item) => item.id === id)
+      return Boolean(event?.asksMeal) && replies[id] === 'attending'
+    })
+    const meal = incoming.meal.trim().slice(0, 80)
+    if (!mealEvent || guest.isChild) {
+      guest.meal = ''
+    } else if (meal && meals.size > 0 && !meals.has(meal)) {
+      return {
+        ok: false,
+        error: `Choose one of the dinners for ${guest.firstName || 'that guest'}.`,
+      }
+    } else {
+      guest.meal = meal
+    }
+    if (!party.eventIds.some((id) => replies[id] === 'attending')) {
+      guest.songTitle = ''
+      guest.songArtist = ''
+    }
+  }
+  const answered = party.guests.some((guest) =>
+    party.eventIds.some((id) => replyFor(guest, id) !== 'pending'),
+  )
+  party.lastRepliedAt = answered ? now : ''
+  party.phoneReply = answered
   return { ok: true, wedding: next, party }
 }
 

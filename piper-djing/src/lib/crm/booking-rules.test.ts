@@ -107,8 +107,14 @@ describe('status', () => {
     assert.equal(sent.newlyBooked, true)
     const drafted = recordMoney(base(), draft(), 50000)
     assert.equal(drafted.booking.status, 'booked')
+    assert.equal(drafted.invoice.status, 'sent')
     const short = recordMoney(base(), draft(), 49999)
     assert.equal(short.booking.status, 'open')
+    assert.equal(short.invoice.status, 'draft')
+    // Already booked with a draft invoice: paying marks it sent too.
+    const booked = recordMoney({ ...base(), status: 'booked' }, draft(), 50000)
+    assert.equal(booked.invoice.status, 'sent')
+    assert.equal(recordMoney(base(), { ...draft(), status: 'void' }, 50000).invoice.status, 'void')
   })
 
   it('a deposit never books a void invoice or revives a cancelled or released date', () => {

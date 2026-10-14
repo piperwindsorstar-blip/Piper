@@ -1,5 +1,6 @@
 import type { PublicReview } from '../../lib/crm/reviews.ts'
 import { reviewCaption } from '../../lib/crm/reviews.ts'
+import { ReviewLink, ReviewStars } from '../review-stars.tsx'
 import { LINKS } from './content.ts'
 
 export function Reviews({ reviews }: { reviews: PublicReview[] }) {
@@ -23,11 +24,13 @@ export function Reviews({ reviews }: { reviews: PublicReview[] }) {
               key={review.id}
               className="flex flex-col rounded-2xl border border-line bg-paper p-6"
             >
+              <ReviewStars stars={review.stars} />
               <blockquote className="flex-1 leading-relaxed text-ink">
                 “{review.quote}”
               </blockquote>
               <figcaption className="mt-5 border-t border-line pt-4 text-sm text-soft">
                 {reviewCaption(review)}
+                <ReviewLink link={review.link} className="font-semibold text-violet" />
               </figcaption>
             </figure>
           ))}

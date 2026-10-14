@@ -5,11 +5,10 @@ import {
   addPartner,
   addPayment,
   addQuestion,
-  addReview,
+  addReviewOnce,
   botFromToken,
   createBooking,
   createInquiry,
-  deskProfile,
   getTerms,
   inviteBot,
   listBots,
@@ -51,6 +50,7 @@ import {
   voidBookingInvoice,
 } from '../crm/store.server.ts'
 import type { BookingView, BotRole } from '../crm/store.server.ts'
+import { botSettings } from './settings.server.ts'
 
 type Bot = { id: number; name: string; role: BotRole }
 
@@ -147,7 +147,7 @@ async function readResource(resource: string): Promise<Response> {
     case 'reviews':
       return Response.json({ reviews: await listReviews() })
     case 'settings':
-      return Response.json({ settings: await deskProfile() })
+      return Response.json({ settings: await botSettings() })
     case 'terms':
       return Response.json({ terms: await getTerms() })
     case 'questions':
@@ -405,18 +405,25 @@ async function writeAction(
     case 'delete_partner':
       await removePartner(num(body, 'id'))
       return Response.json({ partners: await listPartners() })
-    case 'add_review':
-      return Response.json({
-        review: await addReview({
-          quote: str(body, 'quote'),
-          names: str(body, 'names'),
-          eventType: str(body, 'eventType'),
-          town: str(body, 'town'),
-          date: str(body, 'date'),
-          source: str(body, 'source'),
-          show: bool(body, 'show'),
-        }),
+    case 'add_review': {
+      const added = await addReviewOnce({
+        quote: str(body, 'quote'),
+        names: str(body, 'names'),
+        eventType: str(body, 'eventType'),
+        town: str(body, 'town'),
+        date: str(body, 'date'),
+        source: str(body, 'source'),
+        show: bool(body, 'show'),
+        stars: body.stars,
+        link: body.link,
+        externalId: body.externalId,
       })
+      return Response.json(
+        added.duplicate
+          ? { duplicate: true, review: added.review }
+          : { review: added.review },
+      )
+    }
     case 'update_review':
       return Response.json({
         review: await updateReview(num(body, 'id'), {
@@ -427,6 +434,9 @@ async function writeAction(
           date: str(body, 'date'),
           source: str(body, 'source'),
           show: bool(body, 'show'),
+          stars: body.stars,
+          link: body.link,
+          externalId: body.externalId,
         }),
       })
     case 'show_review':
