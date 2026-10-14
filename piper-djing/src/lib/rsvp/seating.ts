@@ -415,7 +415,7 @@ export function tableDims(table: {
 }
 
 /** Seat centres sit this far past the table's edge. */
-const SEAT_GAP = 16
+const SEAT_GAP = 14
 
 /**
  * Where each seat sits around its table, relative to the table's centre and
@@ -654,7 +654,7 @@ export function seatNameSpot(
   const uy = dy / length
   const lineHeight = fontSize * 1.15
   const longest = Math.max(1, ...lines.map((line) => line.length))
-  const halfW = (longest * fontSize * 0.56) / 2
+  const halfW = (longest * fontSize * CHAR_WIDTH) / 2
   const halfH = (Math.max(1, lines.length) * lineHeight) / 2
   const reach = seatRadius + 2 + Math.abs(ux) * halfW + Math.abs(uy) * halfH
   return {
@@ -663,6 +663,14 @@ export function seatNameSpot(
     lineHeight,
   }
 }
+
+/**
+ * Average width of a character as a share of the font size. Set generously,
+ * since capitals and digits in "Mock Guest 026" run wider than lower case.
+ */
+const CHAR_WIDTH = 0.64
+/** Clear space kept between two names. */
+const LABEL_PAD = 2
 
 export type SeatNameLayout = {
   lines: string[]
@@ -693,20 +701,29 @@ export function layoutSeatNames(
   }))
   const clash = (a: Rect) =>
     placed.some(
-      (b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1,
+      (b) =>
+        a.x0 - LABEL_PAD < b.x1 &&
+        b.x0 - LABEL_PAD < a.x1 &&
+        a.y0 - LABEL_PAD < b.y1 &&
+        b.y0 - LABEL_PAD < a.y1,
     )
   return names.map((name, index) => {
     const seat = seats[index]
     if (!name || !seat) return null
     const words = name.trim().split(/\s+/).filter(Boolean)
     const first = words[0] ?? name
-    const initial = words.length > 1 ? `${first} ${words.at(-1)?.[0]?.toUpperCase() ?? ''}.` : first
-    const options = [seatLabelLines(name), [initial], [first.slice(0, 12)]]
+    const last = words.at(-1) ?? ''
+    // "Elizabeth M." helps; "Mock 0." from "Mock Guest 021" does not, so a
+    // short form is only tried when the last name starts with a letter.
+    const options = [seatLabelLines(name)]
+    if (words.length > 1 && /^\p{L}/u.test(last)) {
+      options.push([`${first} ${last[0]?.toUpperCase() ?? ''}.`])
+    }
     for (const push of [0, fontSize * 0.9, fontSize * 1.8]) {
       for (const lines of options) {
         const spot = seatNameSpot(seat, centre, lines, fontSize, seatRadius + push)
         const longest = Math.max(1, ...lines.map((line) => line.length))
-        const halfW = (longest * fontSize * 0.56) / 2
+        const halfW = (longest * fontSize * CHAR_WIDTH) / 2
         const rect = {
           x0: spot.x - halfW,
           x1: spot.x + halfW,
@@ -720,6 +737,29 @@ export function layoutSeatNames(
     }
     return null
   })
+}
+
+/**
+ * How a table's guests show on the chart once zoomed in: their names beside
+ * the seats when every one of them fits without overlapping, otherwise seat
+ * numbers on the chart and a numbered list of names beside the table.
+ */
+export function seatNamePlan(
+  seats: { x: number; y: number }[],
+  centre: { x: number; y: number },
+  names: (string | null)[],
+  fontSize: number,
+  seatRadius: number,
+):
+  | { mode: 'names'; labels: SeatNameLayout[] }
+  | { mode: 'numbers'; list: { seat: number; name: string }[] } {
+  const labels = layoutSeatNames(seats, centre, names, fontSize, seatRadius)
+  const fits = names.every((name, index) => !name || labels[index])
+  if (fits) return { mode: 'names', labels }
+  return {
+    mode: 'numbers',
+    list: names.flatMap((name, seat) => (name ? [{ seat: seat + 1, name }] : [])),
+  }
 }
 
 /** Grows the room 5 ft at a time until Auto-arrange fits every table. */
@@ -787,10 +827,13 @@ export function nextTableName(tables: SeatTable[]): string {
 
 type Box = { x0: number; y0: number; x1: number; y1: number }
 
-/** How far seats and chairs reach past a table's edge. */
-const CHAIR_REACH = 26
-/** A walkway kept clear between tables and around room items. */
-const AISLE = 30
+/**
+ * How far chairs reach past a table's edge. Two tables' chair zones may meet,
+ * which leaves their edges 4 ft apart: the walkway servers and guests use.
+ */
+const CHAIR_REACH = 24
+/** A little air between chair zones, and between chairs and room items. */
+const AISLE = 2
 
 function boxOf(
   x: number,
@@ -942,13 +985,24 @@ export function autoArrange(plan: SeatingPlan): {
   const items = plan.items
     .filter((item) => item.kind !== 'label')
     .map((item) => itemFootprint(item))
+  // Every table is set square to the room when arranged.
   const upright = plan.tables.map((table) => ({ ...table, rotation: 0 }))
   const ordered = upright.slice().sort(tableOrder)
-  const rows = ordered.filter((table) => table.shape !== 'banquet')
-  const cellW =
-    Math.max(0, ...rows.map((table) => table.w)) + CHAIR_REACH * 2 + AISLE
-  const cellH =
-    Math.max(0, ...rows.map((table) => table.h)) + CHAIR_REACH * 2 + AISLE
+  const median = (values: number[]) => {
+    const sorted = values.slice().sort((a, b) => a - b)
+    return sorted[Math.floor(sorted.length / 2)] ?? 0
+  }
+  // The grid is sized for the typical table, so one large table cannot
+  // spread every row apart; larger tables are placed first on a finer grid.
+  const typical = ordered.filter((table) => table.shape !== 'banquet')
+  const typicalW = median(typical.map((table) => table.w))
+  const typicalH = median(typical.map((table) => table.h))
+  const cellW = typicalW + CHAIR_REACH * 2 + AISLE
+  const cellH = typicalH + CHAIR_REACH * 2 + AISLE
+  const regular = (table: SeatTable) =>
+    table.shape !== 'banquet' &&
+    table.w <= typicalW * 1.1 &&
+    table.h <= typicalH * 1.1
   // A grid of table spots filling the room edge to edge, tried nearest the
   // dance floor first, so tables come out in straight rows around it.
   const lattice = (stepX: number, stepY: number) => {
@@ -968,37 +1022,54 @@ export function autoArrange(plan: SeatingPlan): {
     return spots.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x)
   }
   const tableSpots = cellW > 0 && cellH > 0 ? lattice(cellW, cellH) : []
-  const fineSpots = lattice(24, 24)
+  const fineSpots = lattice(12, 12)
   const placed: Box[] = []
   const moved = new Map<string, { x: number; y: number }>()
-  let unplaced = 0
-  for (const table of ordered) {
-    const spots = table.shape === 'banquet' ? fineSpots : tableSpots
+  const leftOver: SeatTable[] = []
+  const first = ordered.filter((table) => !regular(table))
+  const rest = ordered.filter((table) => regular(table))
+  for (const table of [...first, ...rest]) {
     const taken = [...items, ...placed]
-    const spot = spots.find((candidate) =>
-      fits(tableFootprint({ ...table, x: candidate.x, y: candidate.y }), plan.room, taken),
-    )
+    const clear = (candidate: { x: number; y: number }) =>
+      fits(tableFootprint({ ...table, ...candidate }), plan.room, taken)
     const chosen =
-      spot ??
-      (() => {
-        // Off the lattice: any clear spot at all.
-        const step = 12
-        for (let y = 0; y <= plan.room.length; y += step) {
-          for (let x = 0; x <= plan.room.width; x += step) {
-            if (fits(tableFootprint({ ...table, x, y }), plan.room, taken)) {
-              return { x, y }
-            }
-          }
-        }
-        return null
-      })()
+      (regular(table) ? tableSpots.find(clear) : undefined) ??
+      fineSpots.find(clear)
     if (!chosen) {
-      unplaced += 1
+      leftOver.push(table)
       continue
     }
-    moved.set(table.id, chosen)
-    placed.push(tableFootprint({ ...table, ...chosen }))
+    moved.set(table.id, { x: chosen.x, y: chosen.y })
+    placed.push(tableFootprint({ ...table, x: chosen.x, y: chosen.y }))
   }
+  // A table with no clear floor anywhere still moves: to the inside spot
+  // nearest the dance floor that overlaps the least, and it is counted so the
+  // couple can let the room grow.
+  for (const table of leftOver) {
+    const taken = [...items, ...placed]
+    let best: { x: number; y: number } | null = null
+    let bestOverlap = Number.POSITIVE_INFINITY
+    for (const spot of fineSpots) {
+      const box = tableFootprint({ ...table, x: spot.x, y: spot.y })
+      if (!insideRoom(box, plan.room)) continue
+      let overlap = 0
+      for (const other of taken) {
+        const w = Math.min(box.x1, other.x1) - Math.max(box.x0, other.x0)
+        const h = Math.min(box.y1, other.y1) - Math.max(box.y0, other.y0)
+        if (w > 0 && h > 0) overlap += w * h
+      }
+      if (overlap < bestOverlap) {
+        bestOverlap = overlap
+        best = { x: spot.x, y: spot.y }
+        if (overlap === 0) break
+      }
+    }
+    if (best) {
+      moved.set(table.id, best)
+      placed.push(tableFootprint({ ...table, ...best }))
+    }
+  }
+  const unplaced = leftOver.length
   return {
     plan: {
       ...plan,

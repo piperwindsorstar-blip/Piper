@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
 import {
+  seatNamePlan,
   enlargeRoomToFit,
   layoutSeatNames,
   autoArrange,
@@ -463,26 +464,59 @@ describe('round 2 fixes', () => {
   })
 
   it('never lets names around a 10-seat round table overlap', () => {
-    const table = { id: 't', name: '7', shape: 'round' as const, seats: 10, x: 300, y: 300, w: 72, h: 72, rotation: 0 }
+    const table = { id: 't', name: '7', shape: 'round' as const, seats: 10, x: 300, y: 300, w: 74, h: 74, rotation: 0 }
     const seats = placedSeats(table)
-    const names = seats.map((_, index) => `Mock Guest ${String(20 + index).padStart(3, '0')}`)
-    const placed = layoutSeatNames(seats, { x: 300, y: 300 }, names, 9, 10)
-    const boxes = placed.flatMap((label) => {
-      if (!label) return []
-      const longest = Math.max(...label.lines.map((line) => line.length))
-      const halfW = (longest * 9 * 0.56) / 2
-      return [{
-        x0: label.x - halfW, x1: label.x + halfW,
-        y0: label.y - label.lineHeight / 2,
-        y1: label.y + (label.lines.length - 0.5) * label.lineHeight,
-      }]
-    })
-    for (const [i, a] of boxes.entries()) {
-      for (const b of boxes.slice(i + 1)) {
-        const hit = a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
-        assert.equal(hit, false)
+    const boxesOf = (labels: ReturnType<typeof layoutSeatNames>) =>
+      labels.flatMap((label) => {
+        if (!label) return []
+        const longest = Math.max(...label.lines.map((line) => line.length))
+        const halfW = (longest * 9 * 0.64) / 2
+        return [{
+          x0: label.x - halfW, x1: label.x + halfW,
+          y0: label.y - label.lineHeight / 2,
+          y1: label.y + (label.lines.length - 0.5) * label.lineHeight,
+        }]
+      })
+    for (const names of [
+      seats.map((_, index) => `Mock Guest ${String(21 + index).padStart(3, '0')}`),
+      ['Elizabeth Miller', 'David Miller', 'Nora Miller', 'Chidi Okafor', 'Ada Okafor',
+        'Rose Harrington', 'William Thompson', 'Jordan Lee', 'Sam Park', 'Kai Wong'],
+    ]) {
+      const plan = seatNamePlan(seats, { x: 300, y: 300 }, names, 9, 10)
+      if (plan.mode === 'numbers') {
+        // Numbers on the seats; every name listed once beside the table.
+        assert.equal(plan.list.length, 10)
+        assert.deepEqual(plan.list.map((row) => row.name), names)
+        continue
+      }
+      const boxes = boxesOf(plan.labels)
+      assert.equal(boxes.length, 10, 'every name shows in full')
+      for (const label of plan.labels) {
+        assert.ok(label && !label.lines.join(' ').match(/^Mock \d\.$/), 'never "Mock 0."')
+      }
+      for (const [i, a] of boxes.entries()) {
+        for (const b of boxes.slice(i + 1)) {
+          assert.equal(a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1, false)
+        }
       }
     }
-    assert.ok(placed.filter(Boolean).length >= 8, 'most names still show')
+  })
+
+  it('arranges the saved Mark & Mya layout with no table left over', () => {
+    const plan = emptySeating()
+    plan.items.push({
+      id: 'floor', kind: 'dance-floor', label: 'Dance floor',
+      x: 504, y: 360, w: 192, h: 192, rotation: 0,
+    })
+    plan.tables.push({ id: 't1', name: '1', shape: 'round', seats: 8, x: 100, y: 100, w: 90, h: 90, rotation: 0 })
+    plan.tables.push({ id: 't2', name: '2', shape: 'rectangle', seats: 6, x: 300, y: 100, w: 90, h: 36, rotation: 0 })
+    for (let n = 3; n <= 13; n += 1) {
+      plan.tables.push({ id: `t${n}`, name: String(n), shape: 'round', seats: 10, x: 500, y: 300, w: 74, h: 74, rotation: 0 })
+    }
+    plan.tables.push({ id: 'head', name: 'Head table', shape: 'banquet', seats: 4, x: 500, y: 150, w: 120, h: 30, rotation: 15 })
+    const result = autoArrange(plan)
+    assert.equal(result.unplaced, 0)
+    assert.deepEqual(overlappingTables(result.plan), [])
+    assert.ok(result.plan.tables.every((table) => table.rotation === 0))
   })
 })

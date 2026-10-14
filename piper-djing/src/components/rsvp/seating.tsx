@@ -351,15 +351,10 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             className={`${rsvpGhost} w-auto`}
             disabled={plan.tables.length === 0}
             onClick={() => {
+              // Always arranges and saves. A table that finds no clear floor
+              // goes to the nearest spot, and the couple can grow the room.
               const result = autoArrange(planRef.current)
-              if (result.unplaced > 0) {
-                // Never leave tables on top of each other: nothing moves,
-                // and the couple can let the room grow to fit.
-                setArranged(false)
-                setEnlarge(result.unplaced)
-                return
-              }
-              setEnlarge(0)
+              setEnlarge(result.unplaced)
               setArranged(true)
               commit(result.plan, true)
             }}
@@ -448,10 +443,11 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             role="alert"
           >
             <span>
-              {enlarge} table{enlarge === 1 ? '' : 's'} will not fit in a{' '}
+              Every table is arranged, but {enlarge} table
+              {enlarge === 1 ? '' : 's'} could not get clear floor in a{' '}
               {formatLength(plan.room.width, unit, 'room')} ×{' '}
-              {formatLength(plan.room.length, unit, 'room')} room with clear
-              walkways. Nothing was moved.
+              {formatLength(plan.room.length, unit, 'room')} room, so{' '}
+              {enlarge === 1 ? 'it sits' : 'they sit'} in the nearest spot.
             </span>
             <button
               type="button"

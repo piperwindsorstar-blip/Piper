@@ -10,8 +10,8 @@ import {
   guestsAt,
   normalAngle,
   placedSeats,
-  layoutSeatNames,
   rotatePoint,
+  seatNamePlan,
   snapTo,
   tableLabel,
   tableLabelLayout,
@@ -690,6 +690,21 @@ export function FloorPlan({
             perPixel={perPixel}
           />
         ))}
+        {plan.tables.map((table) => (
+          <TableShape
+            key={`list-${table.id}`}
+            layer="callout"
+            table={table}
+            plan={plan}
+            guests={guests}
+            colours={colours}
+            print={print}
+            selectedGuest={selectedGuest}
+            placing={placing}
+            interactive={!print}
+            perPixel={perPixel}
+          />
+        ))}
 
         {editable && selectedTable ? (
           <Handles
@@ -853,6 +868,7 @@ function TableShape({
   placing,
   interactive,
   perPixel,
+  layer = 'table',
 }: {
   table: SeatTable
   plan: SeatingPlan
@@ -864,6 +880,8 @@ function TableShape({
   interactive: boolean
   /** Floor units per screen pixel; 0 in print. */
   perPixel: number
+  /** Name lists draw in a second pass, above every table. */
+  layer?: 'table' | 'callout'
 }) {
   const sitting = guestsAt(plan, table.id)
   const bySeat = new Map<number, string>()
@@ -883,8 +901,8 @@ function TableShape({
   // at Fit zoom and in print the plan shows table numbers and counts only.
   const showNames = !print && perPixel > 0 && NAME_SIZE / perPixel >= 8
   // Every name at this table placed together, so none lands on another.
-  const names = showNames
-    ? layoutSeatNames(
+  const namePlan = showNames
+    ? seatNamePlan(
         spots,
         { x: table.x, y: table.y },
         spots.map((_, seat) => {
@@ -894,9 +912,44 @@ function TableShape({
         NAME_SIZE,
         SEAT_R,
       )
-    : []
+    : null
+  const names = namePlan?.mode === 'names' ? namePlan.labels : []
+  // Names that cannot all fit around the table: numbers on the seats and a
+  // numbered list beside the table instead, so nothing overlaps.
+  const callout =
+    namePlan?.mode === 'numbers' && namePlan.list.length > 0
+      ? (() => {
+          const lineHeight = NAME_SIZE * 1.3
+          const rows = namePlan.list.map(
+            (row) => `${row.seat}. ${row.name}`,
+          )
+          const width =
+            Math.max(...rows.map((row) => row.length)) * NAME_SIZE * 0.64 + 14
+          const height = rows.length * lineHeight + 10
+          const angle = (table.rotation * Math.PI) / 180
+          const reach =
+            (Math.abs(table.w * Math.cos(angle)) +
+              Math.abs(table.h * Math.sin(angle))) /
+              2 +
+            SEAT_R * 2 +
+            18
+          const right = table.x + reach + width <= plan.room.width
+          return {
+            rows,
+            lineHeight,
+            width,
+            height,
+            x: right ? table.x + reach : table.x - reach - width,
+            y: table.y - height / 2,
+          }
+        })()
+      : null
+  if (layer === 'callout') {
+    if (!callout) return null
+  }
   return (
     <g>
+      {layer === 'callout' ? null : (<>
       <g
         transform={`translate(${table.x} ${table.y}) rotate(${table.rotation})`}
         data-hit="table"
@@ -990,7 +1043,7 @@ function TableShape({
               strokeWidth={chosen ? 4 : 1.5}
               strokeDasharray={guest || !placing ? undefined : '3 3'}
             />
-            {guest && showNames && name ? (
+            {guest && showNames && (name || callout) ? (
               <>
                 <text
                   x={spot.x}
@@ -1002,8 +1055,9 @@ function TableShape({
                   fill={colours.seatText}
                   pointerEvents="none"
                 >
-                  {initials(guest)}
+                  {callout ? seat + 1 : initials(guest)}
                 </text>
+                {name ? (
                 <text
                   textAnchor="middle"
                   dominantBaseline="central"
@@ -1021,11 +1075,39 @@ function TableShape({
                     </tspan>
                   ))}
                 </text>
+                ) : null}
               </>
             ) : null}
           </g>
         )
       })}
+      </>)}
+      {layer === 'callout' && callout ? (
+        <g pointerEvents="none">
+          <rect
+            x={callout.x}
+            y={callout.y}
+            width={callout.width}
+            height={callout.height}
+            rx={6}
+            fill={colours.room}
+            fillOpacity={0.94}
+            stroke={colours.tableLine}
+            strokeWidth={1}
+          />
+          <text fontSize={NAME_SIZE} fill={colours.name}>
+            {callout.rows.map((row, index) => (
+              <tspan
+                key={row}
+                x={callout.x + 7}
+                y={callout.y + 5 + callout.lineHeight * (index + 0.75)}
+              >
+                {row}
+              </tspan>
+            ))}
+          </text>
+        </g>
+      ) : null}
     </g>
   )
 }
