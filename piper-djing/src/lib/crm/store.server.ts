@@ -1164,11 +1164,15 @@ export async function refreshTravel(
     return done()
   }
   const found = await drivingKm(street)
-  if (!found.ok && found.reason === 'no-key') {
+  // Google down or not set up (no key, billing, permissions): leave travel as
+  // it is rather than marking a good address as not found.
+  if (!found.ok && (found.reason === 'no-key' || found.reason === 'error')) {
     // Not set up yet: leave travel as it is and say why on the desk.
     if (options.force) {
       await query('UPDATE bookings SET travel_error = $1 WHERE id = $2', [
-        'Add GOOGLE_MAPS_API_KEY in Cloudflare to work travel out automatically.',
+        found.reason === 'no-key'
+          ? 'Add GOOGLE_MAPS_API_KEY in Cloudflare to work travel out automatically.'
+          : `Google could not work out the distance right now (${found.detail}). Enter it by hand or try Recalculate later.`,
         bookingId,
       ])
     }
