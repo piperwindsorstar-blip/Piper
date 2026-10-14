@@ -50,6 +50,7 @@ import {
   voidBookingInvoice,
 } from '../crm/store.server.ts'
 import type { BookingView, BotRole } from '../crm/store.server.ts'
+import { loadMoneySummary } from '../crm/money-summary.server.ts'
 import { botSettings } from './settings.server.ts'
 import { travelFields } from './travel-fields.ts'
 
@@ -145,6 +146,8 @@ async function readResource(resource: string): Promise<Response> {
       })
     case 'payments':
       return Response.json({ payments: await listPayments() })
+    case 'money':
+      return Response.json({ money: await loadMoneySummary() })
     case 'leads':
       return Response.json({ leads: await listLeads() })
     case 'packages':

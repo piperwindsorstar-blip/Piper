@@ -16,6 +16,10 @@ export type UsagePackage = {
 
 const PACKAGE_IDS = ['full', 'reception', 'stag', 'ceremony'] as const
 
+/** How the desk's Money page reads to a bot. Kept beside the payment rules. */
+export const MONEY_READ =
+  'The desk has one Money page in place of separate Invoices and Payments pages. It has two tabs, Who owes and Payments in. GET /api/bots/v1/money returns the same thing as {money:{totals, whoOwes, paymentsIn}}. totals: bookedCents (agreed totals of every held or booked date), collectedCents (paid toward those totals), stillToCollectCents (still owed), receivedCents, refundedCents, cardHstCents and weddings. Test samples, open inquiries, cancelled and released dates are not counted. External dates for another company (Pynx) are never counted: that company pays Piper, not the couple. whoOwes: one row per held or booked couple with money left, soonest wedding first: bookingId, names, eventDate, packageName, status, invoiceStatus, invoiceSlug, totalCents, paidCents, leftCents and hasEmail. hasEmail false means the desk has no email for that couple, so an invoice or a card link cannot be emailed to them until an email is added to the booking. paymentsIn: months newest first, {month:"YYYY-MM", netCents, payments}. Each payment has id, bookingId, names, cents, note, paidOn, method, hstCents, kind (payment or refund) and chargedCents (what actually moved, card HST included). A refund has negative cents. Card HST sits on top of a card payment and is never part of a balance. GET /api/bots/v1/money/{bookingId} is one couple: invoice, leftCents, hasEmail and their payments. Money is read only. Record a payment or a refund with POST /api/bots/v1/payments. Invoices are still read and sent through /invoices.'
+
 export function usageDocument(packages: UsagePackage[]) {
   const listed = PACKAGE_IDS.map((id) => {
     const saved = packages.find((item) => item.id === id)
@@ -35,7 +39,7 @@ export function usageDocument(packages: UsagePackage[]) {
     version: 1,
     book: 'piperpweddingdj.services',
     about:
-      'This desk holds the book, the packages, the questions, the media, the reviews, the partners, the leads, the payments, the invoices, the external dates, the saved venues, and the one terms document. A writer or the CEO can change package names, details, and prices. These four packages stay. The terms document stays. Delete a booking to remove it, its invoice, its payments, and its emails. Delete an inquiry to remove the inquiry. Delete an external date to remove that row. Emails are a record of what was sent until that booking is deleted.',
+      'This desk holds the book, the packages, the questions, the media, the reviews, the partners, the leads, the money (payments and invoices, shown together on the Money page), the external dates, the saved venues, and the one terms document. A writer or the CEO can change package names, details, and prices. These four packages stay. The terms document stays. Delete a booking to remove it, its invoice, its payments, and its emails. Delete an inquiry to remove the inquiry. Delete an external date to remove that row. Emails are a record of what was sent until that booking is deleted.',
     auth: 'Authorization: Bearer <token from join>',
     roles:
       'Every bot can read. A writer can change leads, bookings, invoices, payments, packages, questions, media, partners, reviews, external dates, venues, and the terms text. The CEO can do those writes and can also change invites and settings. A reader can only read.',
@@ -54,7 +58,8 @@ export function usageDocument(packages: UsagePackage[]) {
     reads: {
       usage: 'GET /api/bots/v1',
       glance: 'GET /api/bots/v1/glance',
-      list: 'GET /api/bots/v1/{leads|bookings|invoices|payments|packages|terms|questions|media|partners|reviews|bots|emails|externals|venues|settings|rsvps}',
+      list: 'GET /api/bots/v1/{leads|bookings|invoices|payments|money|packages|terms|questions|media|partners|reviews|bots|emails|externals|venues|settings|rsvps}',
+      money: MONEY_READ,
       one: 'GET /api/bots/v1/{resource}/{id}',
       filters: 'List leads with ?date=YYYY-MM-DD or ?q=text',
     },
@@ -66,7 +71,7 @@ export function usageDocument(packages: UsagePackage[]) {
       package:
         'PATCH /api/bots/v1/packages/{full|reception|stag|ceremony} with name, detail, and cents or priceCents. includes and blurb are saved as the detail. Names and prices can be changed. Do not add a fifth package and do not delete one. The public listing and the next quote use the saved price. A date already on the book keeps its total until that booking is saved again.',
       payments:
-        'POST /api/bots/v1/payments with {bookingId, cents, paidOn, method}. paidOn is YYYY-MM-DD and method is e-transfer, cash, or card. PATCH /api/bots/v1/payments/{id} with {cents, note, paidOn, method}. A payment edit can book a date; it never unbooks one.',
+        'POST /api/bots/v1/payments with {bookingId, cents, paidOn, method}. paidOn is YYYY-MM-DD and method is e-transfer, cash, or card. PATCH /api/bots/v1/payments/{id} with {cents, note, paidOn, method}. A payment edit can book a date; it never unbooks one. A refund is a payment with negative cents. To see what a couple still owes, read GET /api/bots/v1/money.',
       travel:
         'Travel is worked out from the main venue address: one-way driving km from Brantford (Google Routes). Bookings and invoices include distanceKm, travelFee (dollars), travelFeeCents, travelTier (included, near, far, hotel, ceremony), hotelRequired and travelSource (auto, manual, failed, or empty). Changing venueStreet on a booking works it out again unless Piper set it by hand or the invoice has a payment.',
       terms:

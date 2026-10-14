@@ -26,6 +26,14 @@ describe('desk bot paths', () => {
       resource: 'rsvps',
       id: 'mark-and-mya',
     })
+    assert.deepEqual(deskBotTarget('/api/bots/v1/money'), {
+      resource: 'money',
+      id: null,
+    })
+    assert.deepEqual(deskBotTarget('/api/bots/v1/money/10'), {
+      resource: 'money',
+      id: '10',
+    })
     assert.equal(deskBotTarget('/api/bots/v1'), null)
     assert.equal(deskBotTarget('/api/bots/v1/join'), null)
     assert.equal(deskBotTarget('/api/bots/v1/glance'), null)

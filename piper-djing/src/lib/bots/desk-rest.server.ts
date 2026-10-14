@@ -83,6 +83,7 @@ import { notifyCouplePaid } from '../rsvp/notify.server.ts'
 import { legacyRole } from './desk-leads.server.ts'
 import { selectLeads, toBotLead } from './desk-leads.ts'
 import { deskBotTarget, rsvpBotTarget } from './desk-rest.ts'
+import { loadMoneySummary } from '../crm/money-summary.server.ts'
 import { torontoToday } from '../piper/rules.ts'
 import type { DeskBotTarget, RsvpBotAction } from './desk-rest.ts'
 
@@ -294,6 +295,8 @@ async function route(
       return invoices(method, target.id, body)
     case 'payments':
       return payments(method, target.id, body)
+    case 'money':
+      return moneyResource(method, target.id)
     case 'packages':
       return packages(method, target.id, body)
     case 'terms':
@@ -664,6 +667,47 @@ async function invoices(
     return botJson({ error: 'Send status sent or void.' }, 400)
   }
   return botJson({ error: 'An invoice is part of the booking.' }, 405)
+}
+
+/**
+ * GET /api/bots/v1/money is the desk's Money page: totals, who owes, and
+ * payments in by month. GET /api/bots/v1/money/{bookingId} is one couple.
+ * Read only: record money through /payments.
+ */
+async function moneyResource(
+  method: string,
+  id: string | null,
+): Promise<Response> {
+  if (method !== 'GET' && method !== 'HEAD') {
+    return botJson(
+      {
+        error:
+          'Money is read only. Record a payment or refund with POST /api/bots/v1/payments.',
+      },
+      405,
+    )
+  }
+  const summary = await loadMoneySummary()
+  if (!id) return botJson({ money: summary })
+  const bookingId = intId(id)
+  const booking = (await listBookings()).find((row) => row.id === bookingId)
+  if (!booking) return botJson({ error: 'That booking is not on the book.' }, 404)
+  const owing = summary.whoOwes.find((row) => row.bookingId === bookingId) ?? null
+  const paymentsIn = summary.paymentsIn.flatMap((month) =>
+    month.payments.filter((payment) => payment.bookingId === bookingId),
+  )
+  return botJson({
+    money: {
+      bookingId,
+      names: `${booking.partnerOne} and ${booking.partnerTwo}`,
+      eventDate: booking.eventDate,
+      status: booking.status,
+      invoice: booking.invoice,
+      leftCents: owing?.leftCents ?? Math.max(0, booking.invoice?.balanceCents ?? 0),
+      hasEmail: booking.email.trim().length > 0,
+      payments: paymentsIn,
+    },
+  })
 }
 
 async function payments(

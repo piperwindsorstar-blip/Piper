@@ -3,6 +3,7 @@ const RESOURCES = [
   'bookings',
   'invoices',
   'payments',
+  'money',
   'packages',
   'terms',
   'questions',
