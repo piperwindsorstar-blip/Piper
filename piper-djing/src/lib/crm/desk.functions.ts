@@ -8,6 +8,8 @@ import {
   searchGooglePlaces,
 } from './google-reviews.server.ts'
 import { forgetPublicSite } from './public-memory.ts'
+import { drivingKm, mapsConfigured } from './travel.server.ts'
+import { travelFromKm } from './travel.ts'
 import { listRsvpPurchases } from '../rsvp/purchase.server.ts'
 import {
   cardQuoteForInvoice,
@@ -1075,5 +1077,29 @@ export const saveTravel = createServerFn({ method: 'POST' })
       }
     } catch (error) {
       return fail(error)
+    }
+  })
+
+/** Desk: the driving distance and fee for any address. Changes nothing. */
+export const checkDistance = createServerFn({ method: 'POST' })
+  .validator((data: { address?: unknown; packageId?: unknown }) => ({
+    address: typeof data.address === 'string' ? data.address.trim().slice(0, 200) : '',
+    packageId: typeof data.packageId === 'string' ? data.packageId : 'full',
+  }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    if (!mapsConfigured()) {
+      return { ok: false as const, error: 'GOOGLE_MAPS_API_KEY is not set in Cloudflare.' }
+    }
+    const found = await drivingKm(data.address)
+    if (!found.ok) return { ok: false as const, error: `${found.reason}: ${found.detail}` }
+    const figure = travelFromKm(found.km, data.packageId)
+    return {
+      ok: true as const,
+      km: found.km,
+      cached: found.cached,
+      feeCents: figure.feeCents ?? 0,
+      tier: figure.tier,
+      hotel: figure.hotel,
     }
   })

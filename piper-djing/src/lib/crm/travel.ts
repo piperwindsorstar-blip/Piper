@@ -86,6 +86,8 @@ export function routesRequest(address: string, key: string): {
         'content-type': 'application/json',
         'x-goog-api-key': key,
         'x-goog-fieldmask': 'routes.distanceMeters',
+        // Lets a key restricted to the website's address work from the server.
+        referer: 'https://piperpweddingdj.services/',
       },
       body: JSON.stringify({
         origin: { address: HOME_ADDRESS },

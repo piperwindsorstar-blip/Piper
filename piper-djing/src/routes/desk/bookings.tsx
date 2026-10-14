@@ -42,6 +42,7 @@ import {
   deleteExternal,
   deleteVenue,
   getBookings,
+  checkDistance,
   recalcTravel,
   releaseExternal,
   saveTravel,
@@ -183,6 +184,7 @@ function BookingsPage() {
         <h2 id="booking-tools" className="text-lg font-semibold">
           Other dates and venues
         </h2>
+        <DistanceCheck />
         <ExternalDates dates={externalDates} venues={venues} />
         <SavedVenues venues={venues} />
       </section>
@@ -1667,6 +1669,47 @@ function TravelPanel({
         </p>
       ) : null}
     </section>
+  )
+}
+
+/** Any address: driving distance and travel fee. Saves nothing. */
+function DistanceCheck() {
+  const check = useServerFn(checkDistance)
+  const [result, setResult] = useState<string | null>(null)
+  return (
+    <details className={`${deskCard} group`}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-display text-xl font-bold [&::-webkit-details-marker]:hidden">
+        Check a distance
+        <ChevronDown className="desk-motion h-5 w-5 text-white/40 group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <form className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end" onSubmit={(event) => event.preventDefault()}>
+        <label className="field">
+          Venue address
+          <input name="address" required placeholder="60 Ava Rd, Brantford, ON" />
+        </label>
+        <ActionButton
+          className={deskPrimary}
+          checkForm
+          busy="Checking…"
+          done="Checked"
+          surface={deskSurface}
+          onRun={async (form: FormData): Promise<RunResult> => {
+            const reply = await check({ data: { address: String(form.get('address') ?? '') } })
+            if (!reply.ok) {
+              setResult(reply.error)
+              return { ok: false, message: TRAVEL_FAILED_TEXT }
+            }
+            const fee = reply.feeCents === 0 ? 'included' : cad(reply.feeCents)
+            const text = `${reply.km.toFixed(1)} km one way · travel ${fee}${reply.hotel ? ' · hotel required' : ''}`
+            setResult(text)
+            return { ok: true, message: text }
+          }}
+        >
+          Check
+        </ActionButton>
+      </form>
+      {result ? <p className="mt-2 text-sm text-white/85" role="status">{result}</p> : null}
+    </details>
   )
 }
 
