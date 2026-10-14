@@ -48,11 +48,30 @@ export type MasterPatch = {
 
 export type MasterMap = Record<string, MasterPatch>
 
-const YES_NOT_SURE: ChoiceOption[] = [
-  { value: 'Yes', hint: "It's booked" },
-  { value: 'Not yet', hint: "I'll ask" },
-  { value: 'Not sure', hint: 'Can you check?' },
+/** A closed question: a plain Yes or No, nothing else to read. */
+const YES_NO: ChoiceOption[] = [
+  { value: 'Yes', hint: '' },
+  { value: 'No', hint: '' },
 ]
+
+/** True when a question's choices are exactly Yes and No. */
+export function isYesNo(options: ChoiceOption[] | undefined): boolean {
+  if (!options || options.length !== 2) return false
+  const values = options.map((option) => option.value.trim().toLowerCase())
+  return values.includes('yes') && values.includes('no')
+}
+
+/**
+ * Answers couples gave before these questions became Yes/No ("Yes, they
+ * know", "Not yet", "Not sure") read as Yes or No, so nothing is lost.
+ */
+export function yesNoAnswer(value: string): 'Yes' | 'No' | '' {
+  const clean = value.trim().toLowerCase()
+  if (!clean) return ''
+  if (clean === 'yes' || clean.startsWith('yes,') || clean.startsWith('yes ')) return 'Yes'
+  if (clean === 'no' || clean.startsWith('not ') || clean.startsWith('no,')) return 'No'
+  return ''
+}
 
 const GENRE_CHIPS = [
   'Throwbacks',
@@ -206,15 +225,10 @@ const DETAIL_QUESTIONS: Question[] = [
     group: 'Wedding party',
     type: 'choice',
     label: 'Have you told your MC to find the DJ at cocktail hour?',
-    options: [
-      { value: 'Yes, they know', hint: "We'll meet before dinner" },
-      { value: "Not yet, I'll tell them", hint: 'Cocktail hour' },
-    ],
+    options: YES_NO,
     djReplies: {
-      'Yes, they know':
-        "Perfect. We'll go over names and timing together before dinner.",
-      "Not yet, I'll tell them":
-        'No problem. Just let them know to come say hi at cocktail hour.',
+      Yes: "Perfect. We'll go over names and timing together before dinner.",
+      No: 'No problem. Just let them know to come say hi at cocktail hour.',
     },
     rail: 'MC at cocktail hour',
   },
@@ -225,7 +239,10 @@ const DETAIL_QUESTIONS: Question[] = [
     group: 'DJ setup',
     type: 'choice',
     label: 'Have you reserved a 6 ft table for me?',
-    options: YES_NOT_SURE,
+    options: YES_NO,
+    djReplies: {
+      No: "No worries. Ask your venue for one, or I'll check with them.",
+    },
     rail: '6 ft table',
   },
   {
@@ -237,10 +254,9 @@ const DETAIL_QUESTIONS: Question[] = [
     label: "Have you reserved a 10' × 10' space for me?",
     helper:
       'I need that much room for the booth and speakers. Check with your venue.',
-    options: YES_NOT_SURE,
+    options: YES_NO,
     djReplies: {
-      'Not sure':
-        "No worries. I'll reach out to your venue coordinator and sort it out.",
+      No: "No worries. I'll reach out to your venue coordinator and sort it out.",
     },
     rail: "10' × 10' space",
   },
@@ -251,10 +267,7 @@ const DETAIL_QUESTIONS: Question[] = [
     group: 'DJ setup',
     type: 'choice',
     label: 'Is any part of the day outside?',
-    options: [
-      { value: 'Yes', hint: 'At least one part' },
-      { value: 'No', hint: 'Everything is inside' },
-    ],
+    options: YES_NO,
     rail: 'Any part outside',
   },
   {
@@ -264,11 +277,10 @@ const DETAIL_QUESTIONS: Question[] = [
     group: 'DJ setup',
     type: 'choice',
     label: 'Does each space have power?',
-    options: [
-      { value: 'Yes', hint: 'Power is there' },
-      { value: 'No', hint: 'Not yet' },
-      { value: 'Not sure', hint: 'Can you check?' },
-    ],
+    options: YES_NO,
+    djReplies: {
+      No: "No worries. I'll check with your venue about power.",
+    },
     rail: 'Power in each space',
   },
   {

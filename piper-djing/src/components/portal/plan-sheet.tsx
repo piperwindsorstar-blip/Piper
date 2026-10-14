@@ -424,6 +424,7 @@ function roleLabel(role: string): string {
 }
 
 function toldLabel(value: string): string {
+  if (value === 'Yes' || value === 'No') return value
   if (value === 'Yes, they know') return 'Yes'
   if (value === "Not yet, I'll tell them") return 'Not yet'
   return ''

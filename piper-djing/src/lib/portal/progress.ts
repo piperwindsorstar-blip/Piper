@@ -3,11 +3,13 @@ import {
   SECTION_ORDER,
   allQuestions,
   isVisible,
+  isYesNo,
   itemAt,
   momentLabel,
   sectionQuestions,
   songsOf,
   textValue,
+  yesNoAnswer,
 } from './questions.ts'
 import type { MasterMap, Question, SectionId } from './questions.ts'
 
@@ -170,7 +172,8 @@ export function railSummary(planning: Planning, question: Question): string {
 }
 
 export function djLine(planning: Planning, question: Question): string {
-  const value = textValue(planning, question.id)
+  const raw = textValue(planning, question.id)
+  const value = isYesNo(question.options) ? yesNoAnswer(raw) || raw : raw
   if (question.djReplies && question.djReplies[value])
     return question.djReplies[value]
   if (question.id === 'genres' && planning.genreChips.length > 0) {

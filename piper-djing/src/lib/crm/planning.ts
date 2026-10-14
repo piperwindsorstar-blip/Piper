@@ -835,7 +835,13 @@ export function applyLiveInquiry(
 
 function mcTold(value: unknown): string {
   const next = clip(value, 40)
-  if (next === 'Yes, they know' || next === "Not yet, I'll tell them")
+  // Yes/No now; the older wordings stay readable for plans saved before.
+  if (
+    next === 'Yes' ||
+    next === 'No' ||
+    next === 'Yes, they know' ||
+    next === "Not yet, I'll tell them"
+  )
     return next
   return ''
 }

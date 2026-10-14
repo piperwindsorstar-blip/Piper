@@ -15,7 +15,13 @@ import type {
   Planning,
   SongItem,
 } from '../../lib/crm/planning.ts'
-import { itemAt, linkPlatform, textValue } from '../../lib/portal/questions.ts'
+import {
+  isYesNo,
+  itemAt,
+  linkPlatform,
+  textValue,
+  yesNoAnswer,
+} from '../../lib/portal/questions.ts'
 import { searchSongs, suggestSongs } from '../../lib/portal/portal.functions.ts'
 import { isSongLink } from '../../lib/portal/song-search.ts'
 import { suggestionHeading } from '../../lib/portal/song-suggestions.ts'
@@ -159,6 +165,40 @@ function Choice({
   const { planning, editText } = usePortal()
   const value = textValue(planning, question.id)
   const known = question.options?.some((option) => option.value === value)
+  if (isYesNo(question.options)) {
+    const answer = yesNoAnswer(value)
+    return (
+      <fieldset>
+        <legend className="sr-only">{question.label}</legend>
+        <div className="grid max-w-md grid-cols-2 gap-3">
+          {(question.options ?? []).map((option) => {
+            const selected = answer === yesNoAnswer(option.value)
+            return (
+              <label
+                key={option.value}
+                className={`flex min-h-[64px] cursor-pointer items-center justify-center rounded-[18px] border-2 px-4 text-xl font-bold ${
+                  selected
+                    ? 'border-[var(--pink)] bg-[var(--pink-tint)]'
+                    : 'border-[var(--border-strong)] bg-[var(--field)]'
+                }`}
+              >
+                <input
+                  className="sr-only"
+                  type="radio"
+                  name={question.id}
+                  value={option.value}
+                  checked={selected}
+                  disabled={disabled}
+                  onChange={() => editText(question.id, option.value)}
+                />
+                {option.value}
+              </label>
+            )
+          })}
+        </div>
+      </fieldset>
+    )
+  }
   return (
     <fieldset>
       <legend className="sr-only">{question.label}</legend>
