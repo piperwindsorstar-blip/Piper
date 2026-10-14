@@ -1,4 +1,10 @@
 import type { PublicReview } from '../../lib/crm/reviews.ts'
+import type {
+  GoogleReviews,
+  ReviewDisplay,
+} from '../../lib/crm/google-reviews.ts'
+import { publicUrl } from '../../lib/crm/safe-origin.ts'
+import { GoogleReviewsSection } from '../google-reviews.tsx'
 import { homeLocalBusinessJsonLd, personJsonLd } from '../../lib/seo.ts'
 import { About } from './about.tsx'
 import { DateChecker } from './date-checker.tsx'
@@ -13,7 +19,15 @@ import { PromiseTabs } from './promise-tabs.tsx'
 import { Reviews } from './reviews.tsx'
 import { SiteFooter } from './site-footer.tsx'
 
-export function HomePage({ reviews }: { reviews: PublicReview[] }) {
+export function HomePage({
+  reviews,
+  google = null,
+  display = 'both',
+}: {
+  reviews: PublicReview[]
+  google?: GoogleReviews | null
+  display?: ReviewDisplay
+}) {
   return (
     <div className="home overflow-x-clip bg-ink-950 text-white">
       <script
@@ -33,7 +47,15 @@ export function HomePage({ reviews }: { reviews: PublicReview[] }) {
         <PromiseTabs />
         <EventCards />
         <Process />
-        <Reviews reviews={reviews} />
+        {display === 'mine' ? null : (
+          <GoogleReviewsSection
+            google={google}
+            variant="dark"
+            pageUrl={publicUrl('/')}
+            heading="What people say."
+          />
+        )}
+        {display === 'google' ? null : <Reviews reviews={reviews} />}
         <InstagramStrip />
         <FinalCta />
       </main>

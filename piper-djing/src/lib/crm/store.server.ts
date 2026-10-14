@@ -1,3 +1,5 @@
+import { isReviewDisplay } from './google-reviews.ts'
+import type { ReviewDisplay, ReviewPage } from './google-reviews.ts'
 import { randomBytes } from 'node:crypto'
 import { query, queryBatch, usesEdgeBook } from '../db.server.ts'
 import {
@@ -2361,6 +2363,8 @@ export async function listPackageOffers(): Promise<PackageOffer[]> {
   const results = await queryBatch([
     { sql: PACKAGE_OFFER_TABLE },
     { sql: 'SELECT id, name, detail, cents FROM package_offers' },
+    { sql: REVIEW_DISPLAY_TABLE },
+    { sql: 'SELECT page, mode FROM review_display' },
   ])
   return offersFromRows(results[1] as OfferRow[])
 }
@@ -2520,6 +2524,52 @@ export type PublicCatalog = {
   reviews: PublicReview[]
   partners: PartnerView[]
   packages: PackageOffer[]
+  /** Which reviews each page shows: Google's, the owner's, or both. */
+  reviewDisplay: Record<ReviewPage, ReviewDisplay>
+}
+
+const REVIEW_DISPLAY_TABLE = `CREATE TABLE IF NOT EXISTS review_display (
+  page text PRIMARY KEY,
+  mode text NOT NULL
+)`
+
+export function reviewDisplayFrom(
+  rows: { page: string; mode: string }[],
+): Record<ReviewPage, ReviewDisplay> {
+  const display: Record<ReviewPage, ReviewDisplay> = {
+    home: 'both',
+    weddings: 'both',
+  }
+  for (const row of rows) {
+    if ((row.page === 'home' || row.page === 'weddings') && isReviewDisplay(row.mode)) {
+      display[row.page] = row.mode
+    }
+  }
+  return display
+}
+
+export async function readReviewDisplay(): Promise<
+  Record<ReviewPage, ReviewDisplay>
+> {
+  await query(REVIEW_DISPLAY_TABLE)
+  return reviewDisplayFrom(
+    await query<{ page: string; mode: string }>(
+      'SELECT page, mode FROM review_display',
+    ),
+  )
+}
+
+export async function setReviewDisplay(
+  page: ReviewPage,
+  mode: ReviewDisplay,
+): Promise<Record<ReviewPage, ReviewDisplay>> {
+  await query(REVIEW_DISPLAY_TABLE)
+  await query(
+    `INSERT INTO review_display (page, mode) VALUES ($1, $2)
+     ON CONFLICT (page) DO UPDATE SET mode = EXCLUDED.mode`,
+    [page, mode],
+  )
+  return readReviewDisplay()
 }
 
 /** Reviews, partners, and packages in one Book call. */
@@ -2566,6 +2616,9 @@ export async function loadPublicCatalog(): Promise<PublicCatalog> {
     reviews,
     partners,
     packages: offersFromRows(results[3] as OfferRow[]),
+    reviewDisplay: reviewDisplayFrom(
+      (results[5] ?? []) as { page: string; mode: string }[],
+    ),
   }
 }
 

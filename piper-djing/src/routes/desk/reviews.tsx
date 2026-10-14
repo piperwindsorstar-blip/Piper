@@ -18,6 +18,7 @@ import {
 import { REVIEW_SOURCES, reviewSourceLabel } from '../../lib/crm/reviews.ts'
 import type { ReviewDraft, ReviewView } from '../../lib/crm/reviews.ts'
 import { deskHead } from '../../lib/desk-head.ts'
+import { DeskGoogleReviews } from '../../components/desk-google-reviews.tsx'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
 
@@ -200,6 +201,7 @@ function ReviewsPage() {
           newest first. Nothing is shown until you switch it on.
         </p>
       </DeskTitle>
+      <DeskGoogleReviews />
       <form
         className={`${deskCard} grid gap-3`}
         onSubmit={(event) => event.preventDefault()}

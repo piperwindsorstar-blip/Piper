@@ -3,6 +3,7 @@ import { isPackageId, packageName } from './defaults.ts'
 import { parseDateRequest, todayInToronto } from './date-request.ts'
 import { emailOwner } from './mail.server.ts'
 import { readPublicSite } from './public-site.server.ts'
+import { readGoogleReviews } from './google-reviews.server.ts'
 import {
   createEventInquiry,
   createInquiry,
@@ -12,7 +13,18 @@ import {
 } from './store.server.ts'
 
 export const getPublicSite = createServerFn({ method: 'GET' }).handler(
-  async () => readPublicSite(),
+  async () => {
+    const [site, google] = await Promise.all([
+      readPublicSite(),
+      readGoogleReviews(),
+    ])
+    return {
+      ...site,
+      // A snapshot cached before this setting existed shows both.
+      reviewDisplay: site.reviewDisplay ?? { home: 'both', weddings: 'both' },
+      google,
+    }
+  },
 )
 
 export const getPublicTerms = createServerFn({ method: 'GET' }).handler(

@@ -43,6 +43,13 @@ export const Route = createFileRoute('/weddings')({
 })
 
 function Weddings() {
-  const { reviews, packages } = Route.useLoaderData()
-  return <WeddingsPage reviews={reviews} packages={packages} />
+  const { reviews, packages, google, reviewDisplay } = Route.useLoaderData()
+  return (
+    <WeddingsPage
+      reviews={reviews}
+      packages={packages}
+      google={google}
+      display={reviewDisplay.weddings}
+    />
+  )
 }

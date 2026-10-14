@@ -1,5 +1,11 @@
 import type { PackageOffer } from '../../lib/crm/packages.ts'
 import type { PublicReview } from '../../lib/crm/reviews.ts'
+import type {
+  GoogleReviews,
+  ReviewDisplay,
+} from '../../lib/crm/google-reviews.ts'
+import { publicUrl } from '../../lib/crm/safe-origin.ts'
+import { GoogleReviewsSection } from '../google-reviews.tsx'
 import { AreaMarquee } from './area-marquee.tsx'
 import { DateCalendarDialog } from './date-calendar.tsx'
 import { DateDraftProvider } from './date-draft.tsx'
@@ -22,9 +28,13 @@ import {
 export function WeddingsPage({
   reviews,
   packages,
+  google = null,
+  display = 'both',
 }: {
   reviews: PublicReview[]
   packages: PackageOffer[]
+  google?: GoogleReviews | null
+  display?: ReviewDisplay
 }) {
   return (
     <DateDraftProvider>
@@ -48,7 +58,14 @@ export function WeddingsPage({
           <AreaMarquee />
           <Process />
           <GearSection />
-          <Reviews reviews={reviews} />
+          {display === 'mine' ? null : (
+            <GoogleReviewsSection
+              google={google}
+              variant="light"
+              pageUrl={publicUrl('/weddings')}
+            />
+          )}
+          {display === 'google' ? null : <Reviews reviews={reviews} />}
           <Faq />
           <FinalCta />
         </main>

@@ -36,5 +36,6 @@ function staticCatalog(): PublicCatalog {
       detail: item.detail,
       cents: PACKAGE_CENTS[item.id],
     })),
+    reviewDisplay: { home: 'both', weddings: 'both' },
   }
 }

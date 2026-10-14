@@ -1,5 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireDesk } from '../auth/session.server.ts'
+import { isReviewDisplay } from './google-reviews.ts'
+import type { ReviewDisplay, ReviewPage } from './google-reviews.ts'
+import {
+  googleStatus,
+  refreshGoogleReviews,
+  searchGooglePlaces,
+} from './google-reviews.server.ts'
+import { forgetPublicSite } from './public-memory.ts'
 import { masterFromDrafts } from '../portal/master.ts'
 import type { ChoiceOption } from '../portal/questions.ts'
 import { usesEdgeBook } from '../db.server.ts'
@@ -71,6 +79,8 @@ import {
   saveDeskProfile,
   updateBot,
   removeBot,
+  readReviewDisplay,
+  setReviewDisplay,
 } from './store.server.ts'
 import type { BookingPatch } from './store.server.ts'
 
@@ -918,4 +928,56 @@ export const saveBot = createServerFn({ method: 'POST' })
     } catch (error) {
       return fail(error)
     }
+  })
+
+// --- Google reviews --------------------------------------------------------
+
+/** The desk's Google reviews panel: what the site shows, and where. */
+export const getGoogleReviewSettings = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    const [status, display] = await Promise.all([
+      googleStatus().catch((error: unknown) => ({
+        configured: false,
+        ok: false,
+        error: error instanceof Error ? error.message : 'Google could not be checked.',
+        rating: 0,
+        count: 0,
+        shown: 0,
+        fetchedAt: '',
+        mapsUri: '',
+      })),
+      readReviewDisplay(),
+    ])
+    return { status, display }
+  },
+)
+
+export const saveReviewDisplay = createServerFn({ method: 'POST' })
+  .validator((data: { page?: string; mode?: string }) => ({
+    page: (data.page === 'weddings' ? 'weddings' : 'home') as ReviewPage,
+    mode: isReviewDisplay(data.mode) ? data.mode : ('both' as ReviewDisplay),
+  }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    const display = await setReviewDisplay(data.page, data.mode)
+    await forgetPublicSite()
+    return { ok: true as const, display }
+  })
+
+export const refreshGoogle = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    await requireDesk()
+    return refreshGoogleReviews()
+  },
+)
+
+export const findGooglePlace = createServerFn({ method: 'POST' })
+  .validator((data: { query?: string }) => ({
+    query: typeof data.query === 'string' ? data.query.trim().slice(0, 200) : '',
+  }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    if (!data.query) return { ok: false as const, error: 'Type the business name and town.' }
+    return searchGooglePlaces(data.query)
   })
