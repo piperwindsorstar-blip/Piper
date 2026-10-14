@@ -12,11 +12,7 @@ export const Route = createRootRoute({
       { name: 'apple-mobile-web-app-status-bar-style', content: 'black' },
       {
         name: 'google-site-verification',
-        content: 'ZMZADdI4jnyoPib3w66dcoUdwQA2BrjskaYXL14Fks4',
-      },
-      {
-        name: 'google-site-verification',
-        content: '1Ziqc7uNXcqZec7DG59aKU9SBArgU_ctZpsUYEepYQA',
+        content: 'rC-19iyENoGxBTVddW7hMLMplqxu6KsJtb64zruLGWY',
       },
       { title: 'Piper DJing' },
     ],
