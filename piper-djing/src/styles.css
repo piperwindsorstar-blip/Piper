@@ -221,8 +221,9 @@ html:has(.desk) {
 /* The desk wears the same paper-and-ink theme as /weddings: light pages, the
    site's ink console bar, the same fonts and the same pink. */
 .desk {
-  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --color-paper: #ffffff;
   --color-paper-deep: #f7f2fb;
@@ -230,8 +231,14 @@ html:has(.desk) {
   --color-ink: #1c1533;
   --color-line: #e3dcf2;
   --color-muted: #5b5370;
-  /* A faint lilac page so white cards stand out. */
-  background: #faf8fd;
+  /* A faint lilac page on a fine grid, like the site's sheets, so white
+     cards stand out. */
+  background-color: #f7f4fd;
+  background-image:
+    radial-gradient(900px 420px at 30% -8%, rgb(255 0 127 / 0.08), transparent 70%),
+    linear-gradient(#ebe4f6 1px, transparent 1px),
+    linear-gradient(90deg, #ebe4f6 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
   color: var(--color-ink);
   font-family: var(--font-sans);
   color-scheme: light;
@@ -241,7 +248,7 @@ html:has(.desk) {
 
 /* The console bar keeps the site's ink header so the white and pink logo reads. */
 .desk-header {
-  background-color: #1c1533f2;
+  background-color: #1c1533;
   color: #fff;
 }
 

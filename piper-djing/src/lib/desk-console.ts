@@ -10,6 +10,8 @@ export type ConsoleBooking = {
   status: string
   totalCents: number
   holdLastDay: string | null
+  /** The couple's email. Left out, the no-email check skips the booking. */
+  email?: string
   invoice: {
     status: string
     receivedCents: number
@@ -35,8 +37,27 @@ export type Attention = {
   id: string
   title: string
   detail: string
-  to: '/desk/bookings' | '/desk/leads' | '/desk/payments'
+  to: '/desk/bookings' | '/desk/leads' | '/desk/money'
+  /** Opens that couple's page on Bookings. */
+  couple?: number
+  /** The button label beside the item. */
+  action: string
+  kind: 'invoice' | 'deposit' | 'lead' | 'balance' | 'plan' | 'email'
 }
+
+/** How far a couple is with their plan, from the portal. */
+export type ConsolePlan = {
+  bookingId: number
+  percent: number
+  answered: number
+  total: number
+}
+
+/** A balance this close to the wedding goes on Needs you. */
+export const BALANCE_DUE_DAYS = 30
+/** A plan under PLAN_BEHIND_PERCENT this close to the wedding goes on Needs you. */
+export const PLAN_DUE_DAYS = 45
+export const PLAN_BEHIND_PERCENT = 50
 
 const MONTHS = [
   'January',
@@ -183,8 +204,13 @@ export function attention(
   bookings: ConsoleBooking[],
   leads: ConsoleLead[],
   today: string,
+  plans: ConsolePlan[] = [],
 ): Attention[] {
   const items: Attention[] = []
+  const names = (booking: ConsoleBooking) => `${booking.partnerOne} and ${booking.partnerTwo}`
+  const upcoming = onTheBook(bookings)
+    .filter((booking) => booking.eventDate >= today)
+    .sort((a, b) => a.eventDate.localeCompare(b.eventDate))
   for (const booking of bookings) {
     if (
       booking.sample ||
@@ -195,9 +221,12 @@ export function attention(
     }
     items.push({
       id: `draft-${booking.id}`,
-      title: `Send the invoice to ${booking.partnerOne} and ${booking.partnerTwo}`,
+      title: `Send the invoice to ${names(booking)}`,
       detail: 'The date stays open until the invoice is sent.',
       to: '/desk/bookings',
+      couple: booking.id,
+      action: 'Open booking',
+      kind: 'invoice',
     })
   }
   for (const booking of bookings) {
@@ -206,9 +235,11 @@ export function attention(
     const left = daysUntil(today, booking.holdLastDay)
     items.push({
       id: `hold-${booking.id}`,
-      title: `${booking.partnerOne} and ${booking.partnerTwo}: deposit due`,
+      title: `${names(booking)}: deposit due`,
       detail: `Hold ends ${longDate(booking.holdLastDay)} (${left} days left).`,
-      to: '/desk/payments',
+      to: '/desk/money',
+      action: 'Record payment',
+      kind: 'deposit',
     })
   }
   for (const lead of leads) {
@@ -217,9 +248,62 @@ export function attention(
       title: `Answer ${lead.partnerOne} and ${lead.partnerTwo}`,
       detail: lead.email,
       to: '/desk/leads',
+      action: 'Open leads',
+      kind: 'lead',
+    })
+  }
+  for (const booking of upcoming) {
+    const days = daysUntil(today, booking.eventDate)
+    const plan = plans.find((row) => row.bookingId === booking.id)
+    if (plan && plan.total > 0 && days <= PLAN_DUE_DAYS && plan.percent < PLAN_BEHIND_PERCENT) {
+      items.push({
+        id: `plan-${booking.id}`,
+        title: `${names(booking)} have planned ${plan.percent}%`,
+        detail: `${plan.answered} of ${plan.total} answers in, and the wedding is ${days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}.`,
+        to: '/desk/bookings',
+        couple: booking.id,
+        action: 'Open their plan',
+        kind: 'plan',
+      })
+    }
+    const balance = booking.invoice?.balanceCents ?? 0
+    if (booking.status === 'booked' && balance > 0 && days <= BALANCE_DUE_DAYS) {
+      items.push({
+        id: `balance-${booking.id}`,
+        title: `${names(booking)} still owe ${dollarText(balance)}`,
+        detail: `Their balance is due before ${longDate(booking.eventDate)}.`,
+        to: '/desk/money',
+        action: 'Record payment',
+        kind: 'balance',
+      })
+    }
+  }
+  const noEmail = onTheBook(bookings).filter(
+    (booking) => booking.email !== undefined && booking.email.trim() === '',
+  )
+  if (noEmail.length > 0) {
+    const one = noEmail.length === 1 ? noEmail[0] : null
+    items.push({
+      id: 'no-email',
+      title: one
+        ? `${names(one)} have no email address`
+        : `${noEmail.length} couples have no email address`,
+      detail: 'Invoices and portal links can only be emailed once you add one.',
+      to: '/desk/bookings',
+      couple: one?.id,
+      action: one ? 'Add their email' : 'Add emails',
+      kind: 'email',
     })
   }
   return items
+}
+
+function dollarText(cents: number): string {
+  const whole = cents % 100 === 0
+  return `$${(cents / 100).toLocaleString('en-CA', {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`
 }
 
 export function upcomingMonths(today: string) {

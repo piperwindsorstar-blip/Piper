@@ -14,7 +14,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const forms: { file: string; buttons: number }[] = [
   { file: 'src/routes/desk/bookings.tsx', buttons: 11 },
   { file: 'src/routes/desk/partners.tsx', buttons: 2 },
-  { file: 'src/routes/desk/payments.tsx', buttons: 3 },
+  { file: 'src/routes/desk/money.tsx', buttons: 3 },
   { file: 'src/routes/desk/portals/$slug/index.tsx', buttons: 1 },
   { file: 'src/routes/desk/portals/index.tsx', buttons: 1 },
   { file: 'src/routes/desk/questions.tsx', buttons: 2 },

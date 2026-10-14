@@ -3,10 +3,10 @@ import type { ReactNode } from 'react'
 import { cad } from '../lib/crm/money.ts'
 
 const TONE = {
-  pink: 'border-pink-200 bg-pink-50 text-pink-700',
-  green: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  amber: 'border-amber-200 bg-amber-50 text-amber-800',
-  gray: 'border-[#e3dcf2] bg-[#f7f2fb] text-[#5b5370]',
+  pink: 'border-[#ffc7e1] bg-[#ffe3f0] text-[#a3004f]',
+  green: 'border-[#bfe8d3] bg-[#dcf3e7] text-[#0b5e41]',
+  amber: 'border-[#f3d9a0] bg-[#fdf1d6] text-[#7a4b00]',
+  gray: 'border-[#e2dbf5] bg-[#efe9fb] text-[#4b3f72]',
   red: 'border-rose-200 bg-rose-50 text-rose-700',
 } as const
 
@@ -16,13 +16,21 @@ export type ChipTone = keyof typeof TONE
 export const deskSurface = 'light' as const
 
 export const deskPrimary =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-neon px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-hot disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#d1006b] px-5 py-2 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#a30054] disabled:opacity-40 desk-motion'
+/** The ink button: the one main action inside a white card. */
+export const deskDark =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#1c1533] px-5 py-2 text-sm font-semibold !text-white transition hover:bg-[#2f2550] disabled:opacity-40 desk-motion'
 export const deskGhost =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#e3dcf2] bg-white px-5 py-2 text-sm font-semibold text-[#1c1533] transition hover:border-[#ff007f] hover:text-[#d1006b] disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#d6cce8] bg-white px-5 py-2 text-sm font-semibold text-[#1c1533] transition hover:border-[#ff007f] hover:text-[#d1006b] disabled:opacity-40 desk-motion'
 export const deskDanger =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-rose-200 bg-white px-5 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-5 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-40 desk-motion'
 export const deskCard =
-  'min-w-0 rounded-2xl border border-[#e3dcf2] bg-white p-5 shadow-[0_1px_2px_rgba(28,21,51,0.05)]'
+  'min-w-0 rounded-[20px] border border-[#e6def4] bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(28,21,51,0.04)]'
+/** The small pink label above a heading. */
+export const deskKicker =
+  'text-xs font-bold tracking-[0.16em] text-[#d1006b] uppercase'
+/** A section heading inside a card. */
+export const deskH2 = 'font-display text-2xl font-extrabold tracking-tight'
 
 export function DeskTitle({
   kicker,
@@ -34,17 +42,13 @@ export function DeskTitle({
   children?: ReactNode
 }) {
   return (
-    <div>
-      {kicker && kicker !== title ? (
-        <p className="text-xs font-semibold tracking-wider text-[#d1006b] uppercase">
-          {kicker}
-        </p>
-      ) : null}
-      <h1 className="mt-1 font-display text-3xl font-bold tracking-tight md:text-4xl">
+    <div className="min-w-0">
+      {kicker && kicker !== title ? <p className={deskKicker}>{kicker}</p> : null}
+      <h1 className="mt-1.5 font-display text-4xl leading-[1.02] font-extrabold tracking-[-0.02em] md:text-[52px]">
         {title}
       </h1>
       {children ? (
-        <div className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5b5370]">
+        <div className="mt-2 max-w-2xl text-base leading-relaxed text-[#4a4262] md:text-lg">
           {children}
         </div>
       ) : null}
@@ -61,7 +65,7 @@ export function Chip({
 }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${TONE[tone]}`}
+      className={`inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[11px] font-bold tracking-[0.08em] uppercase ${TONE[tone]}`}
     >
       {children}
     </span>
@@ -196,5 +200,70 @@ export function ConfirmDelete({
     >
       {asking ? 'Tap again to confirm' : children}
     </button>
+  )
+}
+
+/** "Roxana & Ibu" with the site's serif ampersand. */
+export function CoupleName({
+  one,
+  two,
+  amp = 'text-[#ff007f]',
+}: {
+  one: string
+  two: string
+  amp?: string
+}) {
+  return (
+    <>
+      {one}{' '}
+      <em className={`font-serif font-normal italic ${amp}`}>&amp;</em>{' '}
+      {two}
+    </>
+  )
+}
+
+/** The pink-or-lilac date block: weekday, day, and month. */
+export function DateBlock({
+  date,
+  mine = true,
+  size = 'md',
+}: {
+  date: string
+  mine?: boolean
+  size?: 'sm' | 'md'
+}) {
+  const day = new Date(`${date}T12:00:00Z`)
+  const dow = day.toLocaleDateString('en-CA', { weekday: 'short', timeZone: 'UTC' }).toUpperCase()
+  return (
+    <span
+      className={`grid shrink-0 place-items-center rounded-[10px] text-center leading-[1.05] ${
+        size === 'sm' ? 'w-11 py-1.5' : 'w-12 py-1.5'
+      } ${mine ? 'bg-[#ff007f] text-[#1c1533]' : 'bg-[#efe9fb] text-[#2f2550]'}`}
+    >
+      <span className="text-[10px] font-bold tracking-[0.12em]">{dow}</span>
+      <span className="font-display text-[22px] font-extrabold">{day.getUTCDate()}</span>
+    </span>
+  )
+}
+
+/** A thin progress bar. */
+export function Bar({
+  value,
+  label,
+  color = 'bg-[#0f7b55]',
+  track = 'bg-[#f0eaf9]',
+  height = 'h-2',
+}: {
+  value: number
+  label: string
+  color?: string
+  track?: string
+  height?: string
+}) {
+  const pct = Math.max(0, Math.min(100, value))
+  return (
+    <span role="img" aria-label={label} className={`flex overflow-hidden rounded-full ${height} ${track}`}>
+      <span className={color} style={{ width: `${pct}%` }} />
+    </span>
   )
 }

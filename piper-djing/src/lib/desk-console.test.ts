@@ -165,6 +165,47 @@ describe('desk console meters', () => {
     assert.equal(items[1]?.detail.includes('21 days left'), true)
   })
 
+  it('adds a balance due, a plan behind, and couples with no email', () => {
+    const items = attention(
+      [
+        booking({
+          id: 10,
+          partnerOne: 'Roxana',
+          partnerTwo: 'Ibu',
+          status: 'booked',
+          eventDate: '2026-10-24',
+          email: '',
+          invoice: { status: 'sent', receivedCents: 30000, balanceCents: 70000 },
+        }),
+        booking({
+          id: 11,
+          status: 'booked',
+          eventDate: '2027-06-05',
+          email: '',
+          invoice: { status: 'sent', receivedCents: 50000, balanceCents: 120000 },
+        }),
+        booking({ id: 12, status: 'booked', eventDate: '2027-07-01', email: 'a@b.ca' }),
+      ],
+      [],
+      today,
+      [
+        { bookingId: 10, percent: 10, answered: 5, total: 50 },
+        { bookingId: 11, percent: 10, answered: 5, total: 50 },
+      ],
+    )
+    assert.deepEqual(
+      items.map((item) => [item.kind, item.title]),
+      [
+        ['plan', 'Roxana and Ibu have planned 10%'],
+        ['balance', 'Roxana and Ibu still owe $700'],
+        ['email', '2 couples have no email address'],
+      ],
+    )
+    assert.equal(items[0]?.detail, '5 of 50 answers in, and the wedding is in 15 days.')
+    assert.equal(items[0]?.couple, 10)
+    assert.equal(items[1]?.to, '/desk/money')
+  })
+
   it('starts the chart on the current month', () => {
     const months = upcomingMonths('2026-10-09')
     assert.equal(months.length, 24)

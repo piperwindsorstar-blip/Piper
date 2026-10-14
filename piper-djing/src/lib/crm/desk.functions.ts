@@ -92,6 +92,8 @@ import {
   removeBot,
   readReviewDisplay,
   setReviewDisplay,
+  listPlanProgress,
+  setBookingNotes,
 } from './store.server.ts'
 import type { BookingPatch } from './store.server.ts'
 
@@ -175,8 +177,10 @@ export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
     listPackageOffers(),
     listVenues(),
   ])
+  const plans = await listPlanProgress().catch(() => [])
   return {
     overview: overviewFrom(bookings, leads, externalDates),
+    plans,
     bookings,
     payments,
     leads,
@@ -312,6 +316,18 @@ export const getBookings = createServerFn({ method: 'GET' }).handler(
     return listBookings()
   },
 )
+
+export const saveNotes = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; notes: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await setBookingNotes(data.id, String(data.notes ?? ''))
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const getInvoices = createServerFn({ method: 'GET' }).handler(
   async () => {

@@ -3389,6 +3389,45 @@ export async function listCouplePortals() {
   return { portals, drafts: masterDrafts(master), master }
 }
 
+export type PlanProgress = {
+  bookingId: number
+  slug: string
+  percent: number
+  answered: number
+  total: number
+}
+
+/** How far each couple is with their plan, for the desk. Read only. */
+export async function listPlanProgress(): Promise<PlanProgress[]> {
+  await ensurePlanningColumn()
+  const master = await readPortalMaster()
+  const rows = await query<BookingRow & { planning?: string }>(
+    'SELECT * FROM bookings ORDER BY event_date, id',
+  )
+  return rows.map((row) => {
+    const planning = parsePlanning(row.planning, planningSeed(row)).planning
+    const progress = overallProgress(planning, master)
+    return {
+      bookingId: row.id,
+      slug: row.slug,
+      percent: progress.percent,
+      answered: progress.answered,
+      total: progress.total,
+    }
+  })
+}
+
+/** Piper's private notes on a booking, saved on their own. */
+export async function setBookingNotes(id: number, notes: string): Promise<void> {
+  if (!Number.isInteger(id)) throw new Error('Choose a booking.')
+  const text = notes.slice(0, 2000)
+  const rows = await query<{ id: number }>(
+    'UPDATE bookings SET notes = $1 WHERE id = $2 RETURNING id',
+    [text, id],
+  )
+  if (rows.length === 0) throw new Error('That booking is not on the book.')
+}
+
 export async function saveCouplePasscode(
   slugValue: string,
   code: string,
