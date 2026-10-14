@@ -47,7 +47,13 @@ function LoginPage() {
           void sign({ data: { password } })
             .then(async (result) => {
               if (!result.ok) {
-                setError('That password did not match.')
+                setError(
+                  result.reason === 'unset'
+                    ? 'The desk password is not set. Add DESK_PASSWORD as a Secret in Cloudflare (piper-djing → Settings → Variables and Secrets).'
+                    : result.reason === 'locked'
+                      ? 'Too many tries. Wait 15 minutes and try again.'
+                      : 'That password did not match.',
+                )
                 return
               }
               await router.navigate({ to: '/desk' })

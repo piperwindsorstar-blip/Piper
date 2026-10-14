@@ -51,6 +51,9 @@ const config = defineConfig({
               wrangler: {
                 name: 'piper-djing',
                 workers_dev: true,
+                // Keep variables set in the Cloudflare dashboard on every
+                // deploy. Without this, plain-text variables are wiped.
+                keep_vars: true,
                 durable_objects: {
                   bindings: [{ name: 'BOOK', class_name: 'Book' }],
                 },

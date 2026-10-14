@@ -5,14 +5,53 @@ import {
   getRequest,
   setCookie,
 } from '@tanstack/react-start/server'
-import { query } from '../db.server.ts'
+import { query, usesEdgeBook } from '../db.server.ts'
 
-const COOKIE = 'piper_desk'
+// Renamed Oct 2026 so every session opened before the password fix ends.
+const COOKIE = 'piper_desk_v2'
 
+/**
+ * The desk password is the DESK_PASSWORD secret. Only a local development
+ * book (no database, not the live Worker) falls back to "piper-local"; the
+ * live site stays locked until the secret is set.
+ */
 function expectedPassword(): string | null {
-  if (process.env.DESK_PASSWORD) return process.env.DESK_PASSWORD
-  if (!process.env.DATABASE_URL) return 'piper-local'
+  const secret = process.env.DESK_PASSWORD?.trim()
+  if (secret) return secret
+  if (!process.env.DATABASE_URL && !usesEdgeBook()) return 'piper-local'
   return null
+}
+
+export function deskPasswordSet(): boolean {
+  return expectedPassword() !== null
+}
+
+const tries = new Map<string, number[]>()
+const WINDOW_MS = 15 * 60_000
+const MAX_TRIES = 8
+
+function clientKey(): string {
+  try {
+    const request = getRequest()
+    return (
+      (request.headers.get('cf-connecting-ip') ||
+        request.headers.get('x-forwarded-for') ||
+        'local').split(',')[0]?.trim() || 'local'
+    )
+  } catch {
+    return 'local'
+  }
+}
+
+/** Eight wrong passwords in 15 minutes locks that address out for a while. */
+function lockedOut(key: string, now: number): boolean {
+  const recent = (tries.get(key) ?? []).filter((at) => now - at < WINDOW_MS)
+  tries.set(key, recent)
+  return recent.length >= MAX_TRIES
+}
+
+function noteMiss(key: string, now: number) {
+  tries.set(key, [...(tries.get(key) ?? []).filter((at) => now - at < WINDOW_MS), now])
 }
 
 function digest(value: string): Buffer {
@@ -26,6 +65,8 @@ export function passwordsMatch(given: string, expected: string): boolean {
 }
 
 export async function isDesk(): Promise<boolean> {
+  // No password set on the live site: nobody is signed in.
+  if (!deskPasswordSet()) return false
   const id = getCookie(COOKIE)
   if (!id) return false
   const rows = await query<{ id: string }>(
@@ -50,13 +91,23 @@ function cookieOptions() {
   }
 }
 
-export async function startDeskSession(password: string): Promise<boolean> {
+export async function startDeskSession(
+  password: string,
+): Promise<'ok' | 'wrong' | 'locked' | 'unset'> {
   const expected = expectedPassword()
-  if (!expected || !passwordsMatch(password, expected)) return false
+  if (!expected) return 'unset'
+  const key = clientKey()
+  const now = Date.now()
+  if (lockedOut(key, now)) return 'locked'
+  if (!passwordsMatch(password, expected)) {
+    noteMiss(key, now)
+    return 'wrong'
+  }
+  tries.delete(key)
   const id = randomBytes(24).toString('hex')
   await query('INSERT INTO sessions (id) VALUES ($1)', [id])
   setCookie(COOKIE, id, cookieOptions())
-  return true
+  return 'ok'
 }
 
 export async function endDeskSession(): Promise<void> {

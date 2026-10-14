@@ -18,8 +18,8 @@ export const requireDeskPage = createServerFn({ method: 'GET' }).handler(
 export const signIn = createServerFn({ method: 'POST' })
   .validator((data: { password: string }) => data)
   .handler(async ({ data }) => {
-    const ok = await startDeskSession(data.password)
-    return { ok }
+    const result = await startDeskSession(data.password)
+    return { ok: result === 'ok', reason: result }
   })
 
 export const signOut = createServerFn({ method: 'POST' })
