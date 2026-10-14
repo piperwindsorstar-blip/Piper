@@ -190,7 +190,7 @@ function NextWedding({
             {[booking.venueName, booking.packageName].filter(Boolean).join(' · ')}
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Tile label="Paid">
             <span className="font-display text-[22px] leading-none font-extrabold">
               {dollars(paid)}{' '}
@@ -213,7 +213,7 @@ function NextWedding({
               <span className="text-sm text-[#cfc6e6]">No plan yet</span>
             )}
           </Tile>
-          <Tile label="Travel">
+          <Tile label="Travel" className="hidden md:grid">
             <span className="font-display text-[22px] leading-none font-extrabold">{travelValue}</span>
             <span className="text-[13px] text-[#cfc6e6]">{travelNote}</span>
           </Tile>
@@ -247,9 +247,17 @@ function NextWedding({
   )
 }
 
-function Tile({ label, children }: { label: string; children: ReactNode }) {
+function Tile({
+  label,
+  children,
+  className = 'grid',
+}: {
+  label: string
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="grid content-start gap-2 rounded-xl bg-[#261d45] p-3.5">
+    <div className={`${className} min-w-0 content-start gap-2 rounded-xl bg-[#261d45] p-3.5`}>
       <span className="text-xs font-bold tracking-[0.12em] text-[#b9aedb] uppercase">{label}</span>
       {children}
     </div>

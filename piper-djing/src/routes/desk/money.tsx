@@ -145,10 +145,10 @@ function MoneyPage() {
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <section
           aria-labelledby="still-to-collect"
-          className="grid gap-3 rounded-[20px] bg-[#1c1533] p-6 text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] sm:col-span-2 lg:col-span-1"
+          className="col-span-2 grid gap-3 rounded-[20px] bg-[#1c1533] p-6 text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] lg:col-span-1"
         >
           <p id="still-to-collect" className="text-xs font-bold tracking-[0.16em] text-[#ff8cc6] uppercase">
             Still to collect
@@ -396,9 +396,9 @@ function MoneyPage() {
 
 function SmallTotal({ label, value, note }: { label: string; value: string; note: string }) {
   return (
-    <div className="grid content-start gap-1 rounded-[20px] border border-[#e6def4] bg-white p-5">
+    <div className="grid min-w-0 content-start gap-1 rounded-[20px] border border-[#e6def4] bg-white p-4 sm:p-5">
       <p className="text-xs font-bold tracking-[0.14em] text-[#6b5fa0] uppercase">{label}</p>
-      <p className="font-display text-3xl font-extrabold tabular-nums">{value}</p>
+      <p className="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">{value}</p>
       <p className="text-sm text-[#5b5370]">{note}</p>
     </div>
   )

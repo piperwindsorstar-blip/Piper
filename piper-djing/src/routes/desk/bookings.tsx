@@ -288,8 +288,8 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
         />
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#e6def4] bg-white p-2.5">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      <div className="grid min-w-0 gap-2.5 rounded-[18px] border border-[#e6def4] bg-white p-2.5 lg:flex lg:items-center lg:justify-between">
+        <div className="grid min-w-0 gap-2 sm:flex sm:flex-1 sm:items-center">
           <input
             type="search"
             value={needle}
@@ -299,7 +299,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
             aria-label="Search bookings"
             className="!min-h-11 w-full sm:w-60"
           />
-          <div role="tablist" aria-label="Show" className="no-scrollbar flex max-w-full gap-1.5 overflow-x-auto">
+          <div role="tablist" aria-label="Show" className="no-scrollbar flex min-w-0 gap-1.5 overflow-x-auto">
             {filters.map(([id, label]) => {
               const count = rows.filter((row) => test(id, row) && (id === 'cancelled' || row.date >= today)).length
               if ((id === 'pending' || id === 'cancelled') && count === 0 && filter !== id) return null
@@ -329,7 +329,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
             })}
           </div>
         </div>
-        <div role="group" aria-label="View" className="flex rounded-xl bg-[#efe9fb] p-1">
+        <div role="group" aria-label="View" className="flex w-fit shrink-0 rounded-xl bg-[#efe9fb] p-1">
           {(
             [
               ['list', 'List', List],
