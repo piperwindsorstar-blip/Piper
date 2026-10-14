@@ -11,6 +11,7 @@ import {
   assignGuest,
   autoArrange,
   crowdingWarning,
+  enlargeRoomToFit,
   findFreeSpot,
   fitTableSize,
   formatLength,
@@ -82,6 +83,8 @@ export function SeatingChart({ data }: { data: SeatingData }) {
   const [count, setCount] = useState('6')
   const [printing, setPrinting] = useState(false)
   const [roomOpen, setRoomOpen] = useState(false)
+  const [arranged, setArranged] = useState(false)
+  const [enlarge, setEnlarge] = useState(0)
   const planRef = useRef(plan)
   planRef.current = plan
 
@@ -102,7 +105,17 @@ export function SeatingChart({ data }: { data: SeatingData }) {
         items: draft.items,
       },
     })
-    if (!result.ok) return { ok: false, error: result.error }
+    if (!result.ok) {
+      console.warn('[seating] save refused:', result.error)
+      return { ok: false, error: result.error }
+    }
+    // The server moved guests sitting on a missing or doubled-up chair; show
+    // what was saved, unless something newer has changed since.
+    if (result.repaired > 0 && planRef.current.seats === draft.seats) {
+      const fixed = { ...planRef.current, seats: result.plan.seats }
+      planRef.current = fixed
+      setPlan(fixed)
+    }
     return { ok: true }
   })
 
@@ -339,16 +352,23 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             disabled={plan.tables.length === 0}
             onClick={() => {
               const result = autoArrange(planRef.current)
+              if (result.unplaced > 0) {
+                // Never leave tables on top of each other: nothing moves,
+                // and the couple can let the room grow to fit.
+                setArranged(false)
+                setEnlarge(result.unplaced)
+                return
+              }
+              setEnlarge(0)
+              setArranged(true)
               commit(result.plan, true)
-              setProblem(
-                result.unplaced > 0
-                  ? `${result.unplaced} table${result.unplaced === 1 ? '' : 's'} did not fit and stayed where ${result.unplaced === 1 ? 'it was' : 'they were'}. Make the room bigger, then arrange again.`
-                  : '',
-              )
             }}
           >
             Auto-arrange tables
           </button>
+          {arranged ? (
+            <SaveStatus phase={autosave.phase} error={autosave.error} />
+          ) : null}
           <select
             className={`${smallField} w-auto text-sm`}
             aria-label="Add to the room"
@@ -422,6 +442,44 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             </button>
           ) : null}
         </div>
+        {enlarge > 0 ? (
+          <div
+            className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--pink)] bg-[var(--pink-tint)] px-4 py-3 text-sm text-[var(--text)]"
+            role="alert"
+          >
+            <span>
+              {enlarge} table{enlarge === 1 ? '' : 's'} will not fit in a{' '}
+              {formatLength(plan.room.width, unit, 'room')} ×{' '}
+              {formatLength(plan.room.length, unit, 'room')} room with clear
+              walkways. Nothing was moved.
+            </span>
+            <button
+              type="button"
+              className={`${rsvpButton} w-auto`}
+              onClick={() => {
+                const grown = enlargeRoomToFit(planRef.current)
+                if (grown.unplaced > 0) {
+                  setProblem(
+                    'Even the largest room cannot fit every table. Remove a table or seat more guests per table.',
+                  )
+                  return
+                }
+                setEnlarge(0)
+                setArranged(true)
+                commit(grown.plan, true)
+              }}
+            >
+              Enlarge room to fit
+            </button>
+            <button
+              type="button"
+              className="min-h-11 px-2 text-[var(--pink-soft)]"
+              onClick={() => setEnlarge(0)}
+            >
+              Not now
+            </button>
+          </div>
+        ) : null}
         {imageNote ? (
           <p className="mt-2 text-sm text-[var(--text-muted)]" role="status">
             {imageNote}

@@ -414,7 +414,8 @@ export function tableDims(table: {
   return tableSize(table.shape, table.seats)
 }
 
-const SEAT_GAP = 20
+/** Seat centres sit this far past the table's edge. */
+const SEAT_GAP = 16
 
 /**
  * Where each seat sits around its table, relative to the table's centre and
@@ -609,23 +610,28 @@ export function tableLabelLayout(
   innerH = Math.max(1, innerH - 4)
   const name = table.name.trim() || '?'
   const fitWidth = innerW / Math.max(1, name.length * 0.6)
-  const titleSize =
+  const ideal =
     name.length <= 3
-      ? Math.max(minTitle, Math.min(30, innerH * 0.6, fitWidth))
-      : Math.max(minTitle * 0.85, Math.min(22, innerH * 0.6, fitWidth))
+      ? Math.min(30, innerH * 0.6, fitWidth)
+      : Math.min(22, innerH * 0.6, fitWidth)
   const countSize = Math.max(minCount, 10)
-  const gap = Math.max(2, countSize * 0.25)
-  const showCount = titleSize + gap + countSize <= innerH + 2
-  if (!showCount) {
-    return { titleSize, titleY: 0, countSize, countY: 0, showCount }
+  const gap = Math.max(2, countSize * 0.2)
+  // The count gets its line first; the number shrinks to make room for it,
+  // but never below what reads at this zoom.
+  const room = innerH - gap - countSize
+  const titleFloor = Math.max(minTitle * 0.8, countSize)
+  if (room >= titleFloor) {
+    const titleSize = Math.max(titleFloor, Math.min(ideal, room))
+    return {
+      titleSize,
+      titleY: -(countSize + gap) / 2,
+      countSize,
+      countY: (titleSize + gap) / 2,
+      showCount: true,
+    }
   }
-  return {
-    titleSize,
-    titleY: -(countSize + gap) / 2,
-    countSize,
-    countY: (titleSize + gap) / 2,
-    showCount,
-  }
+  const titleSize = Math.max(minTitle, ideal)
+  return { titleSize, titleY: 0, countSize, countY: 0, showCount: false }
 }
 
 /**
@@ -656,6 +662,79 @@ export function seatNameSpot(
     y: seat.y + uy * reach - ((lines.length - 1) * lineHeight) / 2,
     lineHeight,
   }
+}
+
+export type SeatNameLayout = {
+  lines: string[]
+  x: number
+  y: number
+  lineHeight: number
+} | null
+
+/**
+ * Names for every seat at one table, placed so no two overlap each other or
+ * sit on a chair. Each name tries its full label first, then first name and
+ * last initial, then the first name alone, each a little further out if
+ * needed; a name that still cannot fit is left to hover and tap.
+ */
+export function layoutSeatNames(
+  seats: { x: number; y: number }[],
+  centre: { x: number; y: number },
+  names: (string | null)[],
+  fontSize: number,
+  seatRadius: number,
+): SeatNameLayout[] {
+  type Rect = { x0: number; y0: number; x1: number; y1: number }
+  const placed: Rect[] = seats.map((seat) => ({
+    x0: seat.x - seatRadius,
+    y0: seat.y - seatRadius,
+    x1: seat.x + seatRadius,
+    y1: seat.y + seatRadius,
+  }))
+  const clash = (a: Rect) =>
+    placed.some(
+      (b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1,
+    )
+  return names.map((name, index) => {
+    const seat = seats[index]
+    if (!name || !seat) return null
+    const words = name.trim().split(/\s+/).filter(Boolean)
+    const first = words[0] ?? name
+    const initial = words.length > 1 ? `${first} ${words.at(-1)?.[0]?.toUpperCase() ?? ''}.` : first
+    const options = [seatLabelLines(name), [initial], [first.slice(0, 12)]]
+    for (const push of [0, fontSize * 0.9, fontSize * 1.8]) {
+      for (const lines of options) {
+        const spot = seatNameSpot(seat, centre, lines, fontSize, seatRadius + push)
+        const longest = Math.max(1, ...lines.map((line) => line.length))
+        const halfW = (longest * fontSize * 0.56) / 2
+        const rect = {
+          x0: spot.x - halfW,
+          x1: spot.x + halfW,
+          y0: spot.y - spot.lineHeight / 2,
+          y1: spot.y + (lines.length - 0.5) * spot.lineHeight,
+        }
+        if (clash(rect)) continue
+        placed.push(rect)
+        return { lines, ...spot }
+      }
+    }
+    return null
+  })
+}
+
+/** Grows the room 5 ft at a time until Auto-arrange fits every table. */
+export function enlargeRoomToFit(
+  plan: SeatingPlan,
+): { plan: SeatingPlan; unplaced: number } {
+  let width = plan.room.width
+  let length = plan.room.length
+  let last = autoArrange(plan)
+  while (last.unplaced > 0 && (width < MAX_ROOM || length < MAX_ROOM)) {
+    width = Math.min(MAX_ROOM, width + 60)
+    length = Math.min(MAX_ROOM, length + 60)
+    last = autoArrange(resizeRoom(plan, width, length))
+  }
+  return last
 }
 
 const LABEL_LINE = 14
@@ -709,9 +788,9 @@ export function nextTableName(tables: SeatTable[]): string {
 type Box = { x0: number; y0: number; x1: number; y1: number }
 
 /** How far seats and chairs reach past a table's edge. */
-const CHAIR_REACH = 32
+const CHAIR_REACH = 26
 /** A walkway kept clear between tables and around room items. */
-const AISLE = 18
+const AISLE = 30
 
 function boxOf(
   x: number,
@@ -1188,56 +1267,63 @@ export function tableNameProblem(tables: SeatTable[]): string {
 }
 
 /**
- * Checks a plan the couple posted. Seats must point at real tables and real
- * seats, one guest per seat, and only guests confirmed attending.
+ * Checks a plan the couple posted, and repairs rather than refuses: a seat
+ * pointing at a missing table, a seat past the table's last chair or two
+ * guests in one chair moves the extra guest to a free chair at that table,
+ * or back to Unassigned when the table is full. A save never fails over
+ * seating data. Only duplicate table numbers and plan limits are refused.
  */
 export function validateSeating(
   plan: SeatingPlan,
   wedding: RsvpWedding,
-): { ok: true; plan: SeatingPlan } | { ok: false; error: string } {
+):
+  | { ok: true; plan: SeatingPlan; repaired: number }
+  | { ok: false; error: string } {
   if (plan.tables.length > MAX_TABLES) {
     return { ok: false, error: `Up to ${MAX_TABLES} tables fit on one plan.` }
-  }
-  const problem = tableNameProblem(plan.tables)
-  if (problem) return { ok: false, error: problem }
-  const tables = new Map(plan.tables.map((table) => [table.id, table]))
-  const guests = new Map(seatableGuests(wedding).map((guest) => [guest.id, guest]))
-  const taken = new Set<string>()
-  const counts = new Map<string, number>()
-  const seats: Record<string, SeatSpot> = {}
-  for (const [guestId, spot] of Object.entries(plan.seats)) {
-    const table = tables.get(spot.tableId)
-    // A guest who stopped attending since the page loaded simply drops off.
-    if (!table || !guests.has(guestId)) continue
-    const count = (counts.get(table.id) ?? 0) + 1
-    counts.set(table.id, count)
-    if (count > table.seats) {
-      return {
-        ok: false,
-        error: `${tableLabel(table.name)} has ${table.seats} seats and ${count} guests. Move someone first.`,
-      }
-    }
-    if (spot.seat >= table.seats) {
-      return {
-        ok: false,
-        error: `${tableLabel(table.name)} has no seat ${spot.seat + 1}.`,
-      }
-    }
-    const key = `${spot.tableId}#${spot.seat}`
-    if (taken.has(key)) {
-      return {
-        ok: false,
-        error: `Two guests are in seat ${spot.seat + 1} at ${tableLabel(table.name)}.`,
-      }
-    }
-    taken.add(key)
-    seats[guestId] = spot
   }
   if (plan.items.length > MAX_ITEMS) {
     return { ok: false, error: `Up to ${MAX_ITEMS} room items fit on one plan.` }
   }
+  const problem = tableNameProblem(plan.tables)
+  if (problem) return { ok: false, error: problem }
+  const tables = new Map(plan.tables.map((table) => [table.id, table]))
+  const guests = new Set(seatableGuests(wedding).map((guest) => guest.id))
+  const taken = new Set<string>()
+  const seats: Record<string, SeatSpot> = {}
+  const misplaced: { guestId: string; tableId: string }[] = []
+  let repaired = 0
+  for (const [guestId, spot] of Object.entries(plan.seats)) {
+    const table = tables.get(spot.tableId)
+    // A guest who stopped attending since the page loaded simply drops off.
+    if (!guests.has(guestId)) continue
+    if (!table) {
+      repaired += 1
+      continue
+    }
+    const key = `${spot.tableId}#${spot.seat}`
+    if (spot.seat >= table.seats || taken.has(key)) {
+      misplaced.push({ guestId, tableId: table.id })
+      continue
+    }
+    taken.add(key)
+    seats[guestId] = spot
+  }
+  for (const { guestId, tableId } of misplaced) {
+    repaired += 1
+    const table = tables.get(tableId)
+    if (!table) continue
+    for (let seat = 0; seat < table.seats; seat += 1) {
+      const key = `${tableId}#${seat}`
+      if (taken.has(key)) continue
+      taken.add(key)
+      seats[guestId] = { tableId, seat }
+      break
+    }
+  }
   return {
     ok: true,
+    repaired,
     plan: {
       room: plan.room,
       tables: plan.tables.map((table) => ({ ...table, name: table.name.trim() })),

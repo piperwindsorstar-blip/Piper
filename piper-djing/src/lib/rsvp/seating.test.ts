@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
 import {
+  enlargeRoomToFit,
+  layoutSeatNames,
   autoArrange,
   overlappingTables,
   seatNameSpot,
@@ -133,7 +135,26 @@ describe('validating a posted plan', () => {
       liz: { tableId: 'c', seat: 0 },
       david: { tableId: 'c', seat: 0 },
     }
-    assert.equal(validateSeating(crowded, sampleWedding()).ok, false)
+    // Repaired, never refused: the second guest in a full table's only chair
+    // goes back to Unassigned, and the save goes through.
+    const repaired = validateSeating(crowded, sampleWedding())
+    assert.ok(repaired.ok)
+    if (repaired.ok) {
+      assert.equal(repaired.repaired, 1)
+      assert.deepEqual(Object.keys(repaired.plan.seats), ['liz'])
+    }
+    const doubled = threeTables()
+    doubled.seats = {
+      liz: { tableId: 'a', seat: 2 },
+      david: { tableId: 'a', seat: 2 },
+      chidi: { tableId: 'a', seat: 40 },
+    }
+    const moved = validateSeating(doubled, sampleWedding())
+    assert.ok(moved.ok)
+    if (moved.ok) {
+      const spots = Object.values(moved.plan.seats).map((spot) => spot.seat)
+      assert.equal(new Set(spots).size, 3, 'everyone ends up in their own chair')
+    }
   })
 })
 
@@ -308,8 +329,11 @@ describe('table labels', () => {
   it('stacks the name and count without overlap, upright when turned', () => {
     const head = { shape: 'banquet' as const, w: 120, h: 30, rotation: 0, name: 'Head table' }
     const flat = tableLabelLayout(head, 12, 10)
-    // A 30″ deep head table cannot hold both lines, so the count steps aside.
-    assert.equal(flat.showCount, false)
+    // Both lines fit inside a 30″ deep head table only when stacked tight.
+    if (flat.showCount) {
+      assert.ok(flat.titleY + flat.titleSize / 2 <= flat.countY - flat.countSize / 2 + 0.01)
+      assert.ok(flat.titleSize + flat.countSize <= 30)
+    }
     const turned = tableLabelLayout({ ...head, rotation: 90 }, 12, 10)
     if (turned.showCount) {
       assert.ok(turned.titleY + turned.titleSize / 2 <= turned.countY - turned.countSize / 2)
@@ -394,5 +418,71 @@ describe('placing tables in a full room (127 guests, 14 tables)', () => {
     const plan = resizeRoom(bigPlan(), 360, 360)
     const result = autoArrange(plan)
     assert.ok(result.unplaced > 0)
+  })
+})
+
+describe('round 2 fixes', () => {
+  it('fits 14 tables of 10, a head table, dance floor and DJ booth in 84 × 60 ft', () => {
+    for (const w of [60, 72, 74]) {
+      let plan = emptySeating()
+      plan.items.push({
+        id: 'floor', kind: 'dance-floor', label: 'Dance floor',
+        x: 504, y: 360, w: 192, h: 192, rotation: 0,
+      })
+      let n = 0
+      plan = addTables(plan, 14, () => `t${(n += 1)}`)
+      plan.tables = plan.tables.map((table) => ({ ...table, seats: 10, w, h: w }))
+      plan.tables.push({
+        id: 'head', name: 'Head table', shape: 'banquet', seats: 4,
+        x: 30, y: 30, w: 120, h: 30, rotation: 0,
+      })
+      const result = autoArrange(plan)
+      assert.equal(result.unplaced, 0, `${w}″ tables`)
+      assert.deepEqual(overlappingTables(result.plan), [])
+    }
+  })
+
+  it('offers a bigger room when tables truly cannot fit', () => {
+    let plan = resizeRoom(emptySeating(), 360, 300)
+    let n = 0
+    plan = addTables(plan, 14, () => `t${(n += 1)}`)
+    assert.ok(autoArrange(plan).unplaced > 0)
+    const grown = enlargeRoomToFit(plan)
+    assert.equal(grown.unplaced, 0)
+    assert.ok(grown.plan.room.width > 360)
+    assert.deepEqual(overlappingTables(grown.plan), [])
+  })
+
+  it('shows the count on 60″ and 72″ tables at a desktop Fit zoom, and in print', () => {
+    for (const w of [60, 72]) {
+      const table = { shape: 'round' as const, w, h: w, rotation: 0, name: '13' }
+      // About 1.5 floor inches per screen pixel at Fit on a laptop.
+      assert.equal(tableLabelLayout(table, 1.5 * 12, 1.5 * 9).showCount, true)
+      assert.equal(tableLabelLayout(table, 14, 0).showCount, true, 'print')
+    }
+  })
+
+  it('never lets names around a 10-seat round table overlap', () => {
+    const table = { id: 't', name: '7', shape: 'round' as const, seats: 10, x: 300, y: 300, w: 72, h: 72, rotation: 0 }
+    const seats = placedSeats(table)
+    const names = seats.map((_, index) => `Mock Guest ${String(20 + index).padStart(3, '0')}`)
+    const placed = layoutSeatNames(seats, { x: 300, y: 300 }, names, 9, 10)
+    const boxes = placed.flatMap((label) => {
+      if (!label) return []
+      const longest = Math.max(...label.lines.map((line) => line.length))
+      const halfW = (longest * 9 * 0.56) / 2
+      return [{
+        x0: label.x - halfW, x1: label.x + halfW,
+        y0: label.y - label.lineHeight / 2,
+        y1: label.y + (label.lines.length - 0.5) * label.lineHeight,
+      }]
+    })
+    for (const [i, a] of boxes.entries()) {
+      for (const b of boxes.slice(i + 1)) {
+        const hit = a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
+        assert.equal(hit, false)
+      }
+    }
+    assert.ok(placed.filter(Boolean).length >= 8, 'most names still show')
   })
 })

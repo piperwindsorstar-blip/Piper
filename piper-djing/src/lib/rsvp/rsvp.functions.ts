@@ -1428,7 +1428,12 @@ export const saveRsvpSeating = createServerFn({ method: 'POST' })
     )
     if (!checked.ok) return checked
     const savedAt = await writeSeating(wedding.slug, checked.plan)
-    return { ok: true as const, savedAt, plan: checked.plan }
+    return {
+      ok: true as const,
+      savedAt,
+      plan: checked.plan,
+      repaired: checked.repaired,
+    }
   })
 
 /** The couple's venue layout behind the floor plan, or "" to take it away. */

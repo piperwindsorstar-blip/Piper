@@ -41,6 +41,27 @@ const sheetStyle = {
 
 export type PaperSize = 'letter' | 'a4'
 
+/**
+ * Each printed page is its own white sheet in the preview, with a gap
+ * between, and starts a new page when printed, so what is seen is what
+ * prints.
+ */
+const PAGE_CSS = `
+  .sheet-page { background: #fff; color: #111; padding: 0.55in; margin: 0 auto 28px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.35); border-radius: 4px; }
+  .sheet-page .screen-footer { text-align: center; font-size: 9px; color: #555; margin-top: 18px; }
+  .print-footer { display: none; }
+  @media print {
+    .sheet-page { padding: 0; margin: 0; box-shadow: none; border-radius: 0; }
+    .sheet-page + .sheet-page { break-before: page; page-break-before: always; }
+    .sheet-page .screen-footer { display: none; }
+    .print-footer { display: block; position: fixed; bottom: 0; left: 0; right: 0;
+      text-align: center; font-size: 9px; color: #555; }
+  }
+`
+
+const pageBreak = { breakBefore: 'page', pageBreakBefore: 'always' } as const
+
 const PAPER = {
   // Kept a little under the landscape page's height so the plan, header and
   // caption always fit on page 1 and never spill onto a near-empty page.
@@ -100,21 +121,19 @@ export function PrintSeating({
     </header>
   )
   return (
-    <div style={sheetStyle} className="seating-print">
+    <div style={{ ...sheetStyle, background: 'transparent' }} className="seating-print">
       <style>{`
         @page seating-plan { size: ${page.size} landscape; margin: 0.45in; }
         @page { size: ${page.size} portrait; margin: 0.55in 0.55in 0.75in; }
         @media print {
           html, body { background: #fff !important; }
-          .seating-print .plan-page { page: seating-plan; break-after: page; }
-          .seating-print .plan-page { break-inside: avoid; }
+          .seating-print .plan-page { page: seating-plan; break-inside: avoid; }
           .seating-print .plan-page svg { height: auto !important; max-height: ${page.planHeight} !important; width: 100% !important; }
-          .seating-print .tables-page { break-before: page; margin-top: 0 !important; }
-          .seating-print .print-footer { position: fixed; bottom: 0; left: 0; right: 0; }
-          .seating-print .sheet-gap { display: none; }
+
         }
+        ${PAGE_CSS}
       `}</style>
-      <section className="plan-page">
+      <section className="plan-page sheet-page">
         {header('Seating chart')}
         <div style={{ border: '1px solid #bbb', borderRadius: 8, padding: 6 }}>
           <FloorPlan plan={plan} guests={byId} print />
@@ -125,12 +144,9 @@ export function PrintSeating({
           {plan.tables.length} table{plan.tables.length === 1 ? '' : 's'} ·{' '}
           {guests.length - unassigned.length} of {guests.length} guests seated
         </p>
+        <p className="screen-footer">Seating by DJ Piper P</p>
       </section>
-      <hr
-        className="sheet-gap"
-        style={{ border: 0, borderTop: '1px dashed #bbb', margin: '16px 0' }}
-      />
-      <section className="tables-page">
+      <section className="sheet-page" style={pageBreak}>
         {header('Tables')}
         <div
           style={{
@@ -182,12 +198,9 @@ export function PrintSeating({
             </p>
           </div>
         ) : null}
+        <p className="screen-footer">Seating by DJ Piper P</p>
       </section>
-      <hr
-        className="sheet-gap"
-        style={{ border: 0, borderTop: '1px dashed #bbb', margin: '16px 0' }}
-      />
-      <section style={{ breakBefore: 'page' }}>
+      <section className="sheet-page" style={pageBreak}>
         {header('Find your seat')}
         {escort.length === 0 ? (
           <p style={{ fontSize: 12, color: '#777' }}>No one is seated yet.</p>
@@ -220,18 +233,9 @@ export function PrintSeating({
             ))}
           </ol>
         )}
+        <p className="screen-footer">Seating by DJ Piper P</p>
       </section>
-      <footer
-        className="print-footer"
-        style={{
-          textAlign: 'center',
-          fontSize: 9,
-          color: '#555',
-          marginTop: 16,
-        }}
-      >
-        Seating by DJ Piper P
-      </footer>
+      <footer className="print-footer">Seating by DJ Piper P</footer>
     </div>
   )
 }
@@ -304,7 +308,7 @@ export function PrintDialog({
           </button>
         </div>
       </div>
-      <div className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-xl print:max-w-none print:rounded-none print:p-0 print:shadow-none">
+      <div className="mx-auto max-w-5xl print:max-w-none">
         {children(paper)}
       </div>
     </div>
@@ -395,17 +399,15 @@ export function CatererPrint({
     </header>
   )
   return (
-    <div style={sheetStyle} className="caterer-print">
+    <div style={{ ...sheetStyle, background: 'transparent' }} className="caterer-print">
       <style>{`
         @page { size: ${page.size} portrait; margin: 0.55in 0.55in 0.75in; }
         @media print {
           html, body { background: #fff !important; }
-          .caterer-print .print-footer { position: fixed; bottom: 0; left: 0; right: 0; }
-          .caterer-print .sheet-gap { display: none; }
-          .caterer-print .tables-page { break-before: page; }
         }
+        ${PAGE_CSS}
       `}</style>
-      <section>
+      <section className="sheet-page">
         {header('Caterer report')}
         <table style={{ fontSize: 13, borderCollapse: 'collapse', marginBottom: 14 }}>
           <tbody>
@@ -505,12 +507,9 @@ export function CatererPrint({
             </tbody>
           </table>
         )}
+        <p className="screen-footer">Prepared by DJ Piper P · page 1</p>
       </section>
-      <hr
-        className="sheet-gap"
-        style={{ border: 0, borderTop: '1px dashed #bbb', margin: '16px 0' }}
-      />
-      <section className="tables-page">
+      <section className="sheet-page" style={pageBreak}>
         {header('Table by table')}
         <p style={{ fontSize: 11, color: '#444', margin: '0 0 10px' }}>
           {sheet.meals.map((meal) => `${meal.code} = ${meal.meal}`).join(' · ')}
@@ -559,13 +558,9 @@ export function CatererPrint({
             </div>
           ))}
         </div>
+        <p className="screen-footer">Prepared by DJ Piper P</p>
       </section>
-      <footer
-        className="print-footer"
-        style={{ textAlign: 'center', fontSize: 9, color: '#555', marginTop: 16 }}
-      >
-        Prepared by DJ Piper P
-      </footer>
+      <footer className="print-footer">Prepared by DJ Piper P</footer>
     </div>
   )
 }

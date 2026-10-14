@@ -10,9 +10,8 @@ import {
   guestsAt,
   normalAngle,
   placedSeats,
+  layoutSeatNames,
   rotatePoint,
-  seatLabelLines,
-  seatNameSpot,
   snapTo,
   tableLabel,
   tableLabelLayout,
@@ -142,7 +141,7 @@ type Gesture =
       moved: boolean
     }
 
-const SEAT_R = 12
+const SEAT_R = 10
 const NAME_SIZE = 9
 
 function fitView(plan: SeatingPlan): View {
@@ -877,12 +876,25 @@ function TableShape({
   // At least 14 px for the number and 11 px for the count on screen.
   const layout = tableLabelLayout(
     table,
-    print ? 14 : Math.max(12, perPixel * 14),
-    print ? 0 : Math.max(10, perPixel * 11),
+    print ? 14 : Math.max(10, perPixel * 12),
+    print ? 0 : Math.max(9, perPixel * 9),
   )
   // Names only once they are big enough to read without running together;
   // at Fit zoom and in print the plan shows table numbers and counts only.
   const showNames = !print && perPixel > 0 && NAME_SIZE / perPixel >= 8
+  // Every name at this table placed together, so none lands on another.
+  const names = showNames
+    ? layoutSeatNames(
+        spots,
+        { x: table.x, y: table.y },
+        spots.map((_, seat) => {
+          const guestId = bySeat.get(seat)
+          return guestId ? (guests.get(guestId)?.name ?? null) : null
+        }),
+        NAME_SIZE,
+        SEAT_R,
+      )
+    : []
   return (
     <g>
       <g
@@ -946,14 +958,7 @@ function TableShape({
         const guestId = bySeat.get(seat) ?? null
         const guest = guestId ? guests.get(guestId) : undefined
         const chosen = guestId !== null && guestId === selectedGuest
-        const lines = guest ? seatLabelLines(guest.name) : []
-        const name = seatNameSpot(
-          spot,
-          { x: table.x, y: table.y },
-          lines,
-          NAME_SIZE,
-          SEAT_R,
-        )
+        const name = names[seat] ?? null
         return (
           <g
             key={seat}
@@ -985,14 +990,14 @@ function TableShape({
               strokeWidth={chosen ? 4 : 1.5}
               strokeDasharray={guest || !placing ? undefined : '3 3'}
             />
-            {guest && showNames ? (
+            {guest && showNames && name ? (
               <>
                 <text
                   x={spot.x}
                   y={spot.y + 0.5}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  fontSize={9}
+                  fontSize={8}
                   fontWeight={700}
                   fill={colours.seatText}
                   pointerEvents="none"
@@ -1006,7 +1011,7 @@ function TableShape({
                   fill={colours.name}
                   pointerEvents="none"
                 >
-                  {lines.map((line, index) => (
+                  {name.lines.map((line, index) => (
                     <tspan
                       key={index}
                       x={name.x}
