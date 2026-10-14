@@ -8,6 +8,7 @@ import {
   searchGooglePlaces,
 } from './google-reviews.server.ts'
 import { forgetPublicSite } from './public-memory.ts'
+import { listRsvpPurchases } from '../rsvp/purchase.server.ts'
 import {
   cardQuoteForInvoice,
   cardStatus,
@@ -318,11 +319,12 @@ export const getInvoices = createServerFn({ method: 'GET' }).handler(
 export const getPayments = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireDesk()
-    const [bookings, payments] = await Promise.all([
+    const [bookings, payments, rsvp] = await Promise.all([
       listBookings(),
       listPayments(),
+      listRsvpPurchases().catch(() => []),
     ])
-    return { bookings, payments }
+    return { bookings, payments, rsvp }
   },
 )
 

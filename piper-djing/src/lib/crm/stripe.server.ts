@@ -2,6 +2,14 @@ import { torontoToday } from '../piper/rules.ts'
 import { cardPayment, cardQuote, checkoutForm } from './card-pay.ts'
 import type { CardQuote } from './card-pay.ts'
 import { processStripeWebhook } from './stripe-webhook.ts'
+import {
+  matchesPaidBooking,
+  parsePurchase,
+  rsvpCheckoutForm,
+  rsvpQuote,
+} from '../rsvp/purchase.ts'
+import type { RsvpQuote } from '../rsvp/purchase.ts'
+import { fulfilRsvpPurchase, priceBookings } from '../rsvp/purchase.server.ts'
 import { emailOwner, emailPayment } from './mail.server.ts'
 import { publicUrl } from './safe-origin.ts'
 import {
@@ -102,11 +110,19 @@ export async function startCheckout(
     cancelUrl: publicUrl(`/p/${context.invoiceSlug}`),
     couple: context.couple,
   })
+  return createSession(keys.key, form)
+}
+
+/** POSTs a Checkout Session; the browser only ever gets Stripe's link. */
+async function createSession(
+  key: string,
+  form: URLSearchParams,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   try {
     const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
-        authorization: `Bearer ${keys.key}`,
+        authorization: `Bearer ${key}`,
         'content-type': 'application/x-www-form-urlencoded',
       },
       body: form.toString(),
@@ -165,5 +181,50 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
     emailReceipt: async (bookingId, paymentId) => {
       await emailPayment(bookingId, paymentId)
     },
+    rsvpPurchase: fulfilRsvpPurchase,
   })
+}
+
+// --- RSVP pages bought by card ----------------------------------------------
+
+/**
+ * The RSVP page price for what the couple typed, worked out here only:
+ * $20 with a Piper booking whose deposit is in, else $30, plus card HST.
+ * Null when card payments are off (the page shows "Contact us").
+ */
+export async function quoteRsvpPurchase(
+  input: Record<string, unknown>,
+): Promise<
+  | { ok: true; quote: RsvpQuote }
+  | { ok: false; error: string; off?: boolean }
+> {
+  const status = await cardStatus()
+  if (!status.enabled) {
+    return { ok: false, off: true, error: 'Card payment is not available right now.' }
+  }
+  const parsed = parsePurchase(input)
+  if (!parsed.ok) return parsed
+  const matched = matchesPaidBooking(parsed.purchase, await priceBookings())
+  return { ok: true, quote: rsvpQuote(matched) }
+}
+
+export async function startRsvpCheckout(
+  input: Record<string, unknown>,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const keys = secrets()
+  const status = await cardStatus()
+  if (!keys || !status.enabled) {
+    return { ok: false, error: 'Card payment is not available right now.' }
+  }
+  const parsed = parsePurchase(input)
+  if (!parsed.ok) return parsed
+  const matched = matchesPaidBooking(parsed.purchase, await priceBookings())
+  const form = rsvpCheckoutForm({
+    quote: rsvpQuote(matched),
+    purchase: parsed.purchase,
+    // Stripe fills in the session id, which signs them straight in.
+    successUrl: `${publicUrl('/rsvp')}?session={CHECKOUT_SESSION_ID}`,
+    cancelUrl: publicUrl('/rsvp'),
+  })
+  return createSession(keys.key, form)
 }

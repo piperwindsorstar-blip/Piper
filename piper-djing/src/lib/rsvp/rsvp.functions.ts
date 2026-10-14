@@ -111,6 +111,13 @@ import {
   rsvpSlugFromCookie,
 } from './session.server.ts'
 
+import {
+  cardStatus,
+  quoteRsvpPurchase,
+  startRsvpCheckout,
+} from '../crm/stripe.server.ts'
+import { openPurchasedSite } from './purchase.server.ts'
+
 const lookups = new Map<string, number[]>()
 
 function clientIp(): string {
@@ -232,6 +239,107 @@ export const startRsvp = createServerFn({ method: 'POST' })
       kind: wedding.priceKind,
       path: rsvpPath(wedding.slug),
     }
+  })
+
+/** Whether the /rsvp page can sell by card right now. */
+export const getRsvpSale = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const status = await cardStatus().catch(() => ({ enabled: false }))
+    return { card: status.enabled }
+  },
+)
+
+/** The price, HST and total for what the couple typed. Server-side only. */
+export const quoteRsvpCard = createServerFn({ method: 'POST' })
+  .validator((data: Record<string, unknown>) => data)
+  .handler(async ({ data }) => {
+    try {
+      return await quoteRsvpPurchase(data)
+    } catch {
+      return { ok: false as const, error: 'The price could not be worked out. Try again.' }
+    }
+  })
+
+/** Opens Stripe Checkout for the RSVP page. */
+export const startRsvpCard = createServerFn({ method: 'POST' })
+  .validator((data: Record<string, unknown>) => data)
+  .handler(async ({ data }) => {
+    try {
+      return await startRsvpCheckout(data)
+    } catch {
+      return {
+        ok: false as const,
+        error: 'Card payment could not start. Please try again.',
+      }
+    }
+  })
+
+/** Back from Stripe: straight into the new dashboard once it is built. */
+export const openRsvpPurchase = createServerFn({ method: 'POST' })
+  .validator((data: { session?: string }) => ({ session: text(data.session, 200) }))
+  .handler(async ({ data }) => {
+    const result = await openPurchasedSite(data.session)
+    if (result.state === 'ready') rememberRsvpSlug(result.slug)
+    return { state: result.state }
+  })
+
+/**
+ * The owner makes a couple's RSVP site by hand, free and already paid, and
+ * can email them a sign-in link.
+ */
+export const createRsvpByHand = createServerFn({ method: 'POST' })
+  .validator((data: Record<string, unknown>) => ({
+    partnerOne: text(data.partnerOne, 40),
+    partnerTwo: text(data.partnerTwo, 40),
+    email: text(data.email, 120).toLowerCase(),
+    eventDate: text(data.eventDate, 10),
+    venue: text(data.venue, 120),
+    sendLink: data.sendLink === true,
+  }))
+  .handler(async ({ data }) => {
+    if (!(await isDesk())) return { ok: false as const, error: 'Sign in to the desk.' }
+    if (!data.partnerOne || !data.partnerTwo) {
+      return { ok: false as const, error: 'Enter both names.' }
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      return { ok: false as const, error: "Enter the couple's email." }
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.eventDate)) {
+      return { ok: false as const, error: 'Choose the wedding date.' }
+    }
+    const existing = (await listRsvps()).find(
+      (item) => item.email.toLowerCase() === data.email,
+    )
+    if (existing) {
+      return {
+        ok: false as const,
+        error: `That email already has an RSVP site: /rsvp/${existing.slug}.`,
+      }
+    }
+    const wedding = await createRsvpWedding(data)
+    wedding.paid = true
+    wedding.priceCents = 0
+    let mailed = false
+    if (data.sendLink) {
+      const token = newToken()
+      wedding.signInToken = token
+      wedding.signInExpires = new Date(Date.now() + 7 * 86_400_000).toISOString()
+      await writeRsvp(wedding)
+      const sent = await sendRsvpEmail({
+        slug: wedding.slug,
+        kind: 'welcome',
+        to: wedding.email,
+        email: welcomeEmail(wedding, {
+          amountLabel: 'No charge',
+          dashboardUrl: publicUrl(`/rsvp/open/${token}`),
+          guestUrl: publicUrl(rsvpPath(wedding.slug)),
+        }),
+      })
+      mailed = sent.delivered
+    } else {
+      await writeRsvp(wedding)
+    }
+    return { ok: true as const, slug: wedding.slug, mailed }
   })
 
 export const getRsvpHome = createServerFn({ method: 'GET' })

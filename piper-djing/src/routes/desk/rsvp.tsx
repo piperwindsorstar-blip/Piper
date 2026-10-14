@@ -6,9 +6,13 @@ import {
   deskCard,
   deskGhost,
   deskPrimary,
+  deskSurface,
 } from '../../components/desk-ui.tsx'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
 import { priceLabel } from '../../lib/rsvp/model.ts'
 import {
+  createRsvpByHand,
   createSampleRsvp,
   getRsvpDesk,
   markRsvpPaid,
@@ -34,8 +38,9 @@ function RsvpDesk() {
   return (
     <div className="grid gap-6">
       <DeskTitle kicker="RSVP" title="Wedding RSVPs">
-        A paid Piper couple is $20. A standalone RSVP is $30. The guest link
-        starts with /rsvp.
+        A Piper couple (deposit in) is $20 and anyone else $30, plus 13% HST
+        when bought by card on /rsvp. Sites you make here are free. The guest
+        link starts with /rsvp.
       </DeskTitle>
       <div className="flex flex-wrap gap-2">
         <button
@@ -56,6 +61,7 @@ function RsvpDesk() {
         </Link>
       </div>
       {notice ? <p className="text-sm text-emerald-700">{notice}</p> : null}
+      <MakeByHand onMade={setNotice} />
       <ul className="grid gap-3">
         {rows.map((row) => (
           <li
@@ -162,6 +168,74 @@ function DeskTimeline({
           ))}
         </ol>
       )}
+    </details>
+  )
+}
+
+/** The owner makes a couple's site for free; it is live straight away. */
+function MakeByHand({ onMade }: { onMade: (notice: string) => void }) {
+  const make = useServerFn(createRsvpByHand)
+  const router = useRouter()
+  return (
+    <details className={deskCard}>
+      <summary className="min-h-11 cursor-pointer py-2 font-semibold">
+        Make a couple's RSVP site by hand (free)
+      </summary>
+      <form
+        className="mt-3 grid gap-3 sm:grid-cols-2"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <label className="field">
+          First partner
+          <input name="partnerOne" required />
+        </label>
+        <label className="field">
+          Second partner
+          <input name="partnerTwo" required />
+        </label>
+        <label className="field">
+          Couple's email
+          <input name="email" type="email" required />
+        </label>
+        <label className="field">
+          Wedding date
+          <input name="eventDate" type="date" required />
+        </label>
+        <label className="field sm:col-span-2">
+          Venue (optional)
+          <input name="venue" />
+        </label>
+        <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2">
+          <input name="sendLink" type="checkbox" defaultChecked />
+          Email them a sign-in link to their dashboard
+        </label>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Making…"
+          done="Made"
+          surface={deskSurface}
+          onRun={async (form: FormData): Promise<RunResult> => {
+            const result = await make({
+              data: {
+                partnerOne: String(form.get('partnerOne') ?? ''),
+                partnerTwo: String(form.get('partnerTwo') ?? ''),
+                email: String(form.get('email') ?? ''),
+                eventDate: String(form.get('eventDate') ?? ''),
+                venue: String(form.get('venue') ?? ''),
+                sendLink: form.get('sendLink') === 'on',
+              },
+            })
+            if (!result.ok) return { ok: false, message: result.error }
+            const message = `Made /rsvp/${result.slug}.${result.mailed ? ' Sign-in link sent.' : ''}`
+            onMade(message)
+            await router.invalidate()
+            return { ok: true, message }
+          }}
+        >
+          Make the site
+        </ActionButton>
+      </form>
     </details>
   )
 }

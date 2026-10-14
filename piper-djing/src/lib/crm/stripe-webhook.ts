@@ -1,5 +1,18 @@
 import { dollars, stripeNote, verifyStripeSignature } from './card-pay.ts'
 import type { CardKind } from './card-pay.ts'
+import { purchaseFromMetadata } from '../rsvp/purchase.ts'
+import type { RsvpPurchase } from '../rsvp/purchase.ts'
+
+/** What became of a paid RSVP page purchase. */
+export type RsvpOutcome = {
+  slug: string
+  /**
+   * created: a new site. attached: the couple's existing site (same email)
+   * was paid. needs-check: a site with that name belongs to another email,
+   * so nothing was opened and the owner is asked to look.
+   */
+  outcome: 'created' | 'attached' | 'needs-check'
+}
 
 /**
  * What the webhook needs from the book and the mail. stripe.server.ts wires
@@ -38,6 +51,16 @@ export type WebhookDeps = {
   }>
   emailOwner: (letter: { subject: string; text: string }) => Promise<void>
   emailReceipt: (bookingId: number, paymentId: number) => Promise<void>
+  /** Builds (or finds) the couple's RSVP site for a paid purchase. */
+  rsvpPurchase?: (input: {
+    sessionId: string
+    paymentId: string
+    live: boolean
+    purchase: RsvpPurchase
+    priceKind: 'piper' | 'standalone'
+    baseCents: number
+    hstCents: number
+  }) => Promise<RsvpOutcome>
   now?: number
 }
 
@@ -94,6 +117,7 @@ export async function processStripeWebhook(
     return Response.json({ received: true, waiting: session.payment_status ?? '' })
   }
   const meta = session.metadata ?? {}
+  if (meta.purpose === 'rsvp') return rsvpSession(session, deps)
   const sessionId = text(session.id)
   const bookingId = Number(meta.bookingId)
   const baseCents = Number(meta.baseCents)
@@ -192,4 +216,71 @@ export async function processStripeWebhook(
     // The payment stands even if the receipt cannot go.
   }
   return Response.json({ received: true, recorded: true })
+}
+
+/** A paid RSVP page: one site per Checkout session, CAD only. */
+async function rsvpSession(
+  session: CheckoutSession,
+  deps: WebhookDeps,
+): Promise<Response> {
+  const sessionId = text(session.id)
+  const read = purchaseFromMetadata(session.metadata ?? {})
+  if (!sessionId || !read || !deps.rsvpPurchase) {
+    return Response.json({ received: true, ignored: 'not a Piper RSVP purchase' })
+  }
+  const paymentId =
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : text(session.payment_intent?.id) || sessionId
+  const live = session.livemode === true
+  const claimed = await deps.claim({
+    sessionId,
+    bookingId: 0,
+    paymentId,
+    kind: 'rsvp',
+    baseCents: read.baseCents,
+    hstCents: read.hstCents,
+    live,
+  })
+  if (!claimed) return Response.json({ received: true, duplicate: true })
+
+  const charged = Number(session.amount_total)
+  const currency = text(session.currency).toLowerCase()
+  const expected = read.baseCents + read.hstCents
+  if ((Number.isFinite(charged) && charged !== expected) || currency !== 'cad') {
+    await deps.finish(
+      sessionId,
+      'needs-attention',
+      `Charged ${charged} ${currency}, expected ${expected} cad.`,
+    )
+    await deps
+      .emailOwner({
+        subject: 'RSVP purchase needs a look',
+        text: `Stripe session ${sessionId} charged ${charged} ${currency || '?'} (cents) for an RSVP page for ${read.purchase.partnerOne} & ${read.purchase.partnerTwo} (${read.purchase.email}), but ${expected} cad was expected. No site was opened. Check the payment in Stripe.`,
+      })
+      .catch(() => undefined)
+    return Response.json({ received: true, attention: true })
+  }
+  let result: RsvpOutcome
+  try {
+    result = await deps.rsvpPurchase({
+      sessionId,
+      paymentId,
+      live,
+      purchase: read.purchase,
+      priceKind: read.kind,
+      baseCents: read.baseCents,
+      hstCents: read.hstCents,
+    })
+  } catch {
+    // A database hiccup: let Stripe retry this session.
+    await deps.release(sessionId)
+    return new Response('Try again', { status: 500 })
+  }
+  await deps.finish(
+    sessionId,
+    result.outcome === 'needs-check' ? 'needs-attention' : 'recorded',
+    `rsvp ${result.outcome} ${result.slug}`,
+  )
+  return Response.json({ received: true, rsvp: result })
 }

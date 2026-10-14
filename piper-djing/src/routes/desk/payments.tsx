@@ -143,7 +143,79 @@ function PaymentsPage() {
           <PaymentCard key={payment.id} payment={payment} />
         ))}
       </ul>
+      {data.rsvp.length > 0 ? (
+        <section aria-labelledby="rsvp-purchases" className="grid gap-3">
+          <h2 id="rsvp-purchases" className="font-display text-xl font-bold">
+            RSVP pages bought by card
+          </h2>
+          <ul className="grid gap-3">
+            {data.rsvp.map((row) => (
+              <RsvpPurchaseRow key={row.sessionId} row={row} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
+  )
+}
+
+const RSVP_OUTCOME: Record<string, string> = {
+  created: 'New site made',
+  attached: 'Paid their existing site (same email)',
+  'needs-check': 'Needs a look: that name belongs to another email',
+}
+
+function RsvpPurchaseRow({
+  row,
+}: {
+  row: {
+    sessionId: string
+    slug: string
+    couple: string
+    email: string
+    priceKind: string
+    baseCents: number
+    hstCents: number
+    paymentId: string
+    live: boolean
+    outcome: string
+    paidOn: string
+  }
+}) {
+  const stripe = row.paymentId.startsWith('pi_')
+    ? `https://dashboard.stripe.com/${row.live ? '' : 'test/'}payments/${row.paymentId}`
+    : ''
+  return (
+    <li className="rounded-2xl border border-white/10 bg-ink-900 px-4 py-3 text-sm">
+      <p className="flex flex-wrap items-center gap-2 font-semibold">
+        {row.couple}
+        <span className="rounded-full bg-[#E0007A] px-2.5 py-0.5 text-xs font-semibold text-white">
+          RSVP
+        </span>
+        <span className="rounded-full bg-[#635BFF] px-2.5 py-0.5 text-xs font-semibold text-white">
+          Stripe{row.live ? '' : ' · test'}
+        </span>
+        {stripe ? (
+          <a
+            href={stripe}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-11 items-center font-normal text-white/75 underline underline-offset-4 hover:text-white"
+          >
+            View in Stripe
+          </a>
+        ) : null}
+      </p>
+      <p className="mt-1 text-white/85">
+        {cad(row.baseCents)} + {cad(row.hstCents)} HST ={' '}
+        {cad(row.baseCents + row.hstCents)} ·{' '}
+        {row.priceKind === 'piper' ? 'Piper couple price' : 'Standalone price'}
+        {row.paidOn ? ` · ${row.paidOn}` : ''}
+      </p>
+      <p className="text-white/65">
+        {row.email} · /rsvp/{row.slug} · {RSVP_OUTCOME[row.outcome] ?? row.outcome}
+      </p>
+    </li>
   )
 }
 
