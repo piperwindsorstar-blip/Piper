@@ -1057,7 +1057,7 @@ function BookingCard({
 
   return (
     <article
-      className={`rounded-2xl border bg-ink-900 ${open ? 'border-neon/40' : 'border-white/10'}`}
+      className={`rounded-2xl border bg-white shadow-[0_1px_2px_rgba(28,21,51,0.05)] ${open ? 'border-[#ff007f]/50' : 'border-[#e3dcf2]'}`}
     >
       <button
         type="button"

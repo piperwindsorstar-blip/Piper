@@ -132,7 +132,7 @@ function OverviewPage() {
         )}
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat to="/desk/bookings" label="Weddings on the book" value={String(booked.length + data.external.length)} />
         <Stat to="/desk/leads" label="Open inquiries" value={String(data.leads)} />
         <Stat to="/desk/invoices" label="Booked value" value={cad(data.totalCents)} />
@@ -282,8 +282,8 @@ function Stat({
       to={to}
       className="group rounded-2xl border border-[#e3dcf2] bg-white p-4 shadow-[0_1px_2px_rgba(28,21,51,0.05)] transition hover:border-[#ff007f] desk-motion"
     >
-      <p className="text-sm text-[#5b5370] group-hover:text-[#d1006b]">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums md:text-3xl">{value}</p>
+      <p className="text-xs text-[#5b5370] group-hover:text-[#d1006b] sm:text-sm">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums sm:text-2xl md:text-3xl">{value}</p>
     </Link>
   )
 }

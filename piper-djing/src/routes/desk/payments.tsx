@@ -99,10 +99,10 @@ function PaymentsPage() {
         Card HST sits on top and never counts toward a balance.
       </DeskTitle>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Total label="Received" value={cad(received)} />
         <Total label="Refunded" value={cad(refunded)} />
-        <Total label="Card HST collected (on top)" value={cad(hst)} />
+        <Total label="Card HST (on top)" value={cad(hst)} />
       </div>
 
       <details className={`${deskCard} group`}>
@@ -281,9 +281,9 @@ const METHOD: Record<string, string> = {
 
 function Total({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[#e3dcf2] bg-white p-4">
-      <p className="text-sm text-[#5b5370]">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+    <div className="min-w-0 rounded-2xl border border-[#e3dcf2] bg-white p-3 sm:p-4">
+      <p className="text-xs leading-tight text-[#5b5370] sm:text-sm">{label}</p>
+      <p className="mt-1 truncate text-base font-bold tabular-nums sm:text-2xl">{value}</p>
     </div>
   )
 }
