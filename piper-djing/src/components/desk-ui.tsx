@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { cad } from '../lib/crm/money.ts'
 
 const TONE = {
   pink: 'border-pink-200 bg-pink-50 text-pink-700',
@@ -111,3 +112,55 @@ export function ShowSwitch({
     </label>
   )
 }
+
+/** Paid so far against the total, with the deposit marked. */
+export function MoneyBar({
+  totalCents,
+  depositCents,
+  receivedCents,
+  discountCents,
+}: {
+  totalCents: number
+  depositCents: number
+  receivedCents: number
+  discountCents: number
+}) {
+  const total = Math.max(0, totalCents)
+  const paid = Math.min(Math.max(0, receivedCents), total)
+  const left = Math.max(0, total - receivedCents)
+  const pct = total > 0 ? (paid / total) * 100 : 0
+  const depositPct = total > 0 ? Math.min(100, (depositCents / total) * 100) : 0
+  return (
+    <div className="mt-2 max-w-md">
+      <div
+        className="relative h-2 overflow-hidden rounded-full bg-[#eee8f7]"
+        role="img"
+        aria-label={`${cad(paid)} paid of ${cad(total)}`}
+      >
+        <span
+          className={`absolute inset-y-0 left-0 rounded-full ${left === 0 && total > 0 ? 'bg-emerald-500' : 'bg-[#ff007f]'}`}
+          style={{ width: `${pct}%` }}
+        />
+        {depositPct > 0 && depositPct < 100 ? (
+          <span
+            className="absolute inset-y-0 w-0.5 bg-[#1c1533]/40"
+            style={{ left: `${depositPct}%` }}
+            title="Deposit"
+          />
+        ) : null}
+      </div>
+      <p className="mt-1 text-xs text-white/65 tabular-nums">
+        {total === 0
+          ? 'No price set yet'
+          : left === 0
+            ? `Paid in full · ${cad(total)}`
+            : `${cad(paid)} paid of ${cad(total)} · ${cad(left)} left`}
+        {discountCents > 0 ? ` · ${cad(discountCents)} off` : ''}
+        {total > 0 && receivedCents < depositCents
+          ? ` · deposit ${cad(depositCents)}`
+          : ''}
+      </p>
+    </div>
+  )
+}
+

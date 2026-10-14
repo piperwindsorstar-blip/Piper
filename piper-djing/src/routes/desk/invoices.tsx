@@ -4,6 +4,8 @@ import { useState } from 'react'
 import {
   Chip,
   DeskTitle,
+  MoneyBar,
+  deskCard,
   deskDanger,
   deskGhost,
   deskPrimary,
@@ -27,17 +29,75 @@ export const Route = createFileRoute('/desk/invoices')({
   component: InvoicesPage,
 })
 
+type InvoiceTab = 'all' | 'draft' | 'owing' | 'paid' | 'void'
+
+const INVOICE_TABS: [InvoiceTab, string][] = [
+  ['all', 'All'],
+  ['draft', 'Drafts'],
+  ['owing', 'Money owing'],
+  ['paid', 'Paid in full'],
+  ['void', 'Void'],
+]
+
 function InvoicesPage() {
   const bookings = Route.useLoaderData()
+  const [tab, setTab] = useState<InvoiceTab>('all')
+  const kind = (booking: (typeof bookings)[number]): InvoiceTab | null => {
+    const invoice = booking.invoice
+    if (!invoice) return null
+    if (invoice.status === 'void') return 'void'
+    if (invoice.status === 'draft') return 'draft'
+    return invoice.balanceCents > 0 ? 'owing' : 'paid'
+  }
+  const count = (id: InvoiceTab) =>
+    id === 'all'
+      ? bookings.length
+      : bookings.filter((booking) => kind(booking) === id).length
+  const owed = bookings
+    .filter((booking) => !booking.sample && kind(booking) === 'owing')
+    .reduce((sum, booking) => sum + (booking.invoice?.balanceCents ?? 0), 0)
+  const shown = bookings.filter((booking) => tab === 'all' || kind(booking) === tab)
 
   return (
     <div className="grid gap-5">
-      <DeskTitle kicker="Invoices" title="Invoices" />
-      {bookings.length === 0 ? (
-        <p className="text-sm text-white/65">No invoices yet.</p>
+      <DeskTitle kicker="Invoices" title="Invoices">
+        Send, email or void each couple's invoice. Still owed on sent
+        invoices: <strong className="text-[#1c1533]">{cad(owed)}</strong>
+      </DeskTitle>
+      <div
+        role="tablist"
+        aria-label="Filter invoices"
+        className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+      >
+        {INVOICE_TABS.map(([id, label]) =>
+          id !== 'all' && count(id) === 0 ? null : (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition ${
+                tab === id
+                  ? 'border-[#1c1533] bg-[#1c1533] !text-white'
+                  : 'border-[#e3dcf2] bg-white text-[#5b5370] hover:border-[#ff007f]'
+              }`}
+            >
+              {label}
+              <span className={tab === id ? 'text-[#cfc6e3]' : 'text-[#9a91ad]'}>
+                {count(id)}
+              </span>
+            </button>
+          ),
+        )}
+      </div>
+      {shown.length === 0 ? (
+        <p className="text-sm text-white/65">
+          {bookings.length === 0 ? 'No invoices yet.' : 'No invoices here.'}
+        </p>
       ) : null}
       <ul className="grid gap-3">
-        {bookings.map((booking) => (
+        {shown.map((booking) => (
           <InvoiceCard key={booking.id} booking={booking} />
         ))}
       </ul>
@@ -74,6 +134,7 @@ function InvoiceCard({
     error: boolean
   } | null>(null)
   const [pending, setPending] = useState(false)
+  const [confirmVoid, setConfirmVoid] = useState(false)
   const controls = invoiceControls(booking.invoice?.status ?? null)
   const canMail = hasCoupleAddress(booking.email)
 
@@ -114,25 +175,27 @@ function InvoiceCard({
   }
 
   return (
-    <li className="rounded-2xl border border-white/10 bg-ink-900 p-5">
+    <li className={deskCard}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl font-bold">
+          <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
             {booking.partnerOne} and {booking.partnerTwo}
             {booking.sample ? (
-              <span className="ml-3 text-sm text-rose-300">TEST</span>
+              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                TEST
+              </span>
             ) : null}
           </h2>
           <p className="mt-1 text-sm text-white/65">
             {longDate(booking.eventDate)}
           </p>
           {booking.invoice ? (
-            <p className="mt-1 text-sm text-white/85 tabular-nums">
-              {booking.invoice.status} · {cad(booking.invoice.totalCents)} total
-              · {cad(booking.invoice.depositCents)} deposit ·{' '}
-              {cad(booking.invoice.receivedCents)} received ·{' '}
-              {cad(booking.invoice.balanceCents)} balance
-            </p>
+            <MoneyBar
+              totalCents={booking.invoice.totalCents}
+              depositCents={booking.invoice.depositCents}
+              receivedCents={booking.invoice.receivedCents}
+              discountCents={0}
+            />
           ) : (
             <p className="mt-1 text-sm text-white/65">No invoice.</p>
           )}
@@ -175,14 +238,20 @@ function InvoiceCard({
             type="button"
             disabled={pending}
             className={deskDanger}
+            onBlur={() => setConfirmVoid(false)}
             onClick={() => {
+              if (!confirmVoid) {
+                setConfirmVoid(true)
+                return
+              }
+              setConfirmVoid(false)
               void run(
                 () => voided({ data: { id: booking.id } }),
                 () => 'Void. The balance is zero.',
               )
             }}
           >
-            Void
+            {confirmVoid ? 'Tap again to void' : 'Void'}
           </button>
         ) : null}
         {booking.invoice && canMail ? (
