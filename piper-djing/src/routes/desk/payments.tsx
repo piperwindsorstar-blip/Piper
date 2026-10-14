@@ -196,12 +196,12 @@ function PaymentsPage() {
                 onClick={() => setTab(id)}
                 className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition ${
                   tab === id
-                    ? 'border-[#1c1533] bg-[#1c1533] text-white'
+                    ? 'border-[#1c1533] bg-[#1c1533] !text-white'
                     : 'border-[#e3dcf2] bg-white text-[#5b5370] hover:border-[#ff007f]'
                 }`}
               >
                 {label}
-                <span className={tab === id ? 'text-white/70' : 'text-[#9a91ad]'}>{counts[id]}</span>
+                <span className={tab === id ? 'text-[#cfc6e3]' : 'text-[#9a91ad]'}>{counts[id]}</span>
               </button>
             ),
           )}
@@ -301,7 +301,7 @@ function StripeTag({ live, href }: { live: boolean; href: string }) {
       target="_blank"
       rel="noreferrer"
       onClick={(event) => event.stopPropagation()}
-      className="rounded-full bg-[#635BFF] px-2 py-0.5 text-[11px] font-semibold text-white hover:brightness-110"
+      className="rounded-full bg-[#635BFF] px-2 py-0.5 text-[11px] font-semibold !text-white hover:brightness-110"
       title="View in Stripe"
     >
       Stripe{live ? '' : ' · test'} ↗

@@ -86,23 +86,28 @@ function BookingsPage() {
     deskRoute.useLoaderData()
   const [filter, setFilter] = useState<(typeof FILTERS)[number][1]>('all')
   const [samples, setSamples] = useState(true)
+  const [search, setSearch] = useState('')
+  const needle = search.trim().toLowerCase()
   const pool = samples
     ? bookings
     : bookings.filter((booking) => !booking.sample)
   const list = pool.filter(
-    (booking) => filter === 'all' || booking.status === filter,
+    (booking) =>
+      (filter === 'all' || booking.status === filter) &&
+      (!needle ||
+        `${booking.partnerOne} ${booking.partnerTwo} ${booking.venueName} ${booking.email} ${booking.eventDate}`
+          .toLowerCase()
+          .includes(needle)),
   )
 
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <DeskTitle kicker="Bookings" title="Bookings">
-          <p className="mt-1 text-sm text-white/65">
-            Delete removes the booking, the invoice, and the payments. The date
-            opens. An inquiry stays until you delete it on the leads page.
-          </p>
+          Every date on the book. Tap a booking to see its invoice, payments
+          and plan.
         </DeskTitle>
-        <label className="flex items-center gap-2 text-sm text-white/65">
+        <label className="flex min-h-11 items-center gap-2 text-sm text-white/65">
           <input
             type="checkbox"
             checked={samples}
@@ -112,12 +117,18 @@ function BookingsPage() {
         </label>
       </div>
       <NewBooking packages={packages} venues={venues} />
-      <ExternalDates dates={externalDates} venues={venues} />
-      <SavedVenues venues={venues} />
+      <input
+        type="search"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Search names, venue, email or date"
+        aria-label="Search bookings"
+        className="w-full"
+      />
       <div
         role="tablist"
         aria-label="Status"
-        className="no-scrollbar flex max-w-full gap-2 overflow-x-auto"
+        className="no-scrollbar -mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1"
       >
         {FILTERS.map(([label, value]) => {
           const count =
@@ -131,10 +142,10 @@ function BookingsPage() {
               role="tab"
               aria-selected={filter === value}
               onClick={() => setFilter(value)}
-              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-semibold ${
+              className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-semibold transition ${
                 filter === value
-                  ? 'border-neon bg-neon text-white'
-                  : 'border-white/15 text-white/65 hover:text-white'
+                  ? 'border-[#1c1533] bg-[#1c1533] !text-white'
+                  : 'border-[#e3dcf2] bg-white text-[#5b5370] hover:border-[#ff007f]'
               }`}
             >
               {label}
@@ -146,7 +157,9 @@ function BookingsPage() {
       {bookings.length === 0 ? (
         <p className="text-sm text-white/65">No bookings yet.</p>
       ) : list.length === 0 ? (
-        <p className="text-sm text-white/65">No bookings here.</p>
+        <p className="text-sm text-white/65">
+          {needle ? 'No booking matches that search.' : 'No bookings here.'}
+        </p>
       ) : null}
       <div className="grid gap-3">
         {list.map((booking) => (
@@ -161,6 +174,13 @@ function BookingsPage() {
           />
         ))}
       </div>
+      <section aria-labelledby="booking-tools" className="grid gap-3 pt-2">
+        <h2 id="booking-tools" className="text-lg font-semibold">
+          Other dates and venues
+        </h2>
+        <ExternalDates dates={externalDates} venues={venues} />
+        <SavedVenues venues={venues} />
+      </section>
     </div>
   )
 }
@@ -362,10 +382,15 @@ function ExternalDates({
               <Plus className="h-4 w-4" aria-hidden="true" />
             )}
           </span>
-          External date
+          Dates for another company
+          {active.length > 0 ? (
+            <span className="text-sm font-normal text-white/65">
+              {active.length} on the book
+            </span>
+          ) : null}
         </span>
       </button>
-      <p className="mt-3 text-sm text-white/65">
+      <p className={open ? 'mt-3 text-sm text-white/65' : 'hidden'}>
         A wedding or other event you play for another company. The date is
         booked. There is no invoice.
       </p>
@@ -719,8 +744,19 @@ function SavedVenues({ venues }: { venues: SavedVenue[] }) {
   const [notice, setNotice] = useState<string | null>(null)
 
   return (
-    <section className={deskCard}>
-      <h2 className="font-display text-xl font-bold">Saved venues</h2>
+    <details className={`${deskCard} group`}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-display text-xl font-bold [&::-webkit-details-marker]:hidden">
+        <span>
+          Saved venues{' '}
+          <span className="text-sm font-normal text-white/65">
+            {venues.length}
+          </span>
+        </span>
+        <ChevronDown
+          className="desk-motion h-5 w-5 text-white/40 group-open:rotate-180"
+          aria-hidden="true"
+        />
+      </summary>
       <p className="mt-3 text-sm text-white/65">
         Every venue on the book is kept here. Pick one on a booking or an
         external date and the address fills in. Edit changes the name and the
@@ -797,7 +833,7 @@ function SavedVenues({ venues }: { venues: SavedVenue[] }) {
           ))}
         </ul>
       )}
-    </section>
+    </details>
   )
 }
 
@@ -1019,7 +1055,7 @@ function BookingCard({
               {booking.partnerOne} and {booking.partnerTwo}
             </h2>
             {booking.sample ? (
-              <span className="text-sm tracking-wide text-rose-300">TEST</span>
+              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">TEST</span>
             ) : null}
           </div>
           <p className="text-sm text-white/65">
@@ -1033,16 +1069,12 @@ function BookingCard({
               {longDate(booking.holdLastDay)}
             </p>
           ) : null}
-          <p className="mt-1 text-sm text-white/85 tabular-nums">
-            {cad(booking.invoice?.totalCents ?? booking.totalCents)} total
-            {booking.discountCents > 0
-              ? ` · ${cad(booking.discountCents)} off`
-              : ''}{' '}
-            · {cad(booking.invoice?.depositCents ?? booking.depositCents)}{' '}
-            deposit · {cad(booking.invoice?.receivedCents ?? 0)} received ·{' '}
-            {cad(booking.invoice?.balanceCents ?? booking.totalCents)} balance
-            {booking.invoice ? ` · invoice ${booking.invoice.status}` : ''}
-          </p>
+          <MoneyBar
+            totalCents={booking.invoice?.totalCents ?? booking.totalCents}
+            depositCents={booking.invoice?.depositCents ?? booking.depositCents}
+            receivedCents={booking.invoice?.receivedCents ?? 0}
+            discountCents={booking.discountCents}
+          />
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <div className="flex gap-2">
@@ -1055,7 +1087,7 @@ function BookingCard({
           </div>
           {daysLeft !== null && booking.holdLastDay ? (
             <span
-              className={`text-xs ${daysLeft < 10 ? 'text-amber-200' : 'text-white/65'}`}
+              className={`text-xs ${daysLeft < 10 ? 'font-semibold text-amber-700' : 'text-white/65'}`}
             >
               Hold ends {longDate(booking.holdLastDay)} · {daysLeft} days left
             </span>
@@ -1456,6 +1488,57 @@ function BookingCard({
         </div>
       </div>
     </article>
+  )
+}
+
+/** Paid so far against the total, with the deposit marked. */
+function MoneyBar({
+  totalCents,
+  depositCents,
+  receivedCents,
+  discountCents,
+}: {
+  totalCents: number
+  depositCents: number
+  receivedCents: number
+  discountCents: number
+}) {
+  const total = Math.max(0, totalCents)
+  const paid = Math.min(Math.max(0, receivedCents), total)
+  const left = Math.max(0, total - receivedCents)
+  const pct = total > 0 ? (paid / total) * 100 : 0
+  const depositPct = total > 0 ? Math.min(100, (depositCents / total) * 100) : 0
+  return (
+    <div className="mt-2 max-w-md">
+      <div
+        className="relative h-2 overflow-hidden rounded-full bg-[#eee8f7]"
+        role="img"
+        aria-label={`${cad(paid)} paid of ${cad(total)}`}
+      >
+        <span
+          className={`absolute inset-y-0 left-0 rounded-full ${left === 0 && total > 0 ? 'bg-emerald-500' : 'bg-[#ff007f]'}`}
+          style={{ width: `${pct}%` }}
+        />
+        {depositPct > 0 && depositPct < 100 ? (
+          <span
+            className="absolute inset-y-0 w-0.5 bg-[#1c1533]/40"
+            style={{ left: `${depositPct}%` }}
+            title="Deposit"
+          />
+        ) : null}
+      </div>
+      <p className="mt-1 text-xs text-white/65 tabular-nums">
+        {total === 0
+          ? 'No price set yet'
+          : left === 0
+            ? `Paid in full · ${cad(total)}`
+            : `${cad(paid)} paid of ${cad(total)} · ${cad(left)} left`}
+        {discountCents > 0 ? ` · ${cad(discountCents)} off` : ''}
+        {total > 0 && receivedCents < depositCents
+          ? ` · deposit ${cad(depositCents)}`
+          : ''}
+      </p>
+    </div>
   )
 }
 

@@ -351,6 +351,30 @@ html:has(.desk) {
   border-color: var(--color-line);
 }
 
+/* Warning, error and success text was written for the old dark desk. On
+   the white desk it reads in the deeper shade of the same colour. */
+.desk main .text-rose-200,
+.desk main .text-rose-300,
+.desk main .text-rose-400,
+.desk main .text-red-300,
+.desk main .text-red-400 {
+  color: #be123c;
+}
+
+.desk main .text-amber-100,
+.desk main .text-amber-200,
+.desk main .text-amber-300,
+.desk main .text-yellow-300 {
+  color: #b45309;
+}
+
+.desk main .text-emerald-200,
+.desk main .text-emerald-300,
+.desk main .text-emerald-400,
+.desk main .text-green-300 {
+  color: #047857;
+}
+
 /* Pink buttons keep white type, as they do on /weddings. */
 .desk main .bg-neon.text-white,
 .desk main .bg-hot.text-white,
