@@ -3203,3 +3203,118 @@ export async function invoiceBySlug(slugValue: string) {
 export async function countedTotal(): Promise<number> {
   return countedCents(await states())
 }
+
+// --- card payments (Stripe) -------------------------------------------------
+
+/** What a card payment needs to know about an invoice, by its link. */
+export async function cardContextBySlug(slugValue: string) {
+  const invoices = await query<InvoiceRow>(
+    'SELECT * FROM invoices WHERE slug = $1',
+    [slugValue],
+  )
+  const invoice = invoices.at(0)
+  if (!invoice) return null
+  const view = toView(await bookingRow(invoice.booking_id), invoice)
+  return {
+    bookingId: view.id,
+    invoiceSlug: invoice.slug,
+    packageId: view.packageId,
+    packageName: view.packageName,
+    email: view.email,
+    couple: `${view.partnerOne} and ${view.partnerTwo}`,
+    sample: view.sample,
+    invoice: {
+      status: view.invoice?.status ?? 'draft',
+      totalCents: view.invoice?.totalCents ?? 0,
+      depositCents: view.invoice?.depositCents ?? 0,
+      receivedCents: view.invoice?.receivedCents ?? 0,
+      balanceCents: view.invoice?.balanceCents ?? 0,
+    },
+  }
+}
+
+const SITE_SETTINGS = `CREATE TABLE IF NOT EXISTS site_settings (
+  key text PRIMARY KEY,
+  value text NOT NULL
+)`
+
+export async function readSiteSetting(key: string): Promise<string> {
+  await query(SITE_SETTINGS)
+  const rows = await query<{ value: string }>(
+    'SELECT value FROM site_settings WHERE key = $1',
+    [key],
+  )
+  return rows.at(0)?.value ?? ''
+}
+
+export async function writeSiteSetting(key: string, value: string) {
+  await query(SITE_SETTINGS)
+  await query(
+    `INSERT INTO site_settings (key, value) VALUES ($1, $2)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [key, value],
+  )
+}
+
+const STRIPE_PAYMENTS = `CREATE TABLE IF NOT EXISTS stripe_payments (
+  session_id text PRIMARY KEY,
+  booking_id integer NOT NULL,
+  payment_id text NOT NULL DEFAULT '',
+  kind text NOT NULL DEFAULT '',
+  base_cents integer NOT NULL DEFAULT 0,
+  hst_cents integer NOT NULL DEFAULT 0,
+  live integer NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'recording',
+  detail text NOT NULL DEFAULT '',
+  recorded_at text NOT NULL DEFAULT ''
+)`
+
+/**
+ * Takes the one slot for this Checkout session. False when the session was
+ * already recorded (or is being recorded), so a payment never lands twice.
+ */
+export async function claimStripeSession(input: {
+  sessionId: string
+  bookingId: number
+  paymentId: string
+  kind: string
+  baseCents: number
+  hstCents: number
+  live: boolean
+}): Promise<boolean> {
+  await query(STRIPE_PAYMENTS)
+  const rows = await query<{ session_id: string }>(
+    `INSERT INTO stripe_payments
+       (session_id, booking_id, payment_id, kind, base_cents, hst_cents, live, status, recorded_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'recording', $8)
+     ON CONFLICT (session_id) DO NOTHING
+     RETURNING session_id`,
+    [
+      input.sessionId,
+      input.bookingId,
+      input.paymentId,
+      input.kind,
+      input.baseCents,
+      input.hstCents,
+      input.live ? 1 : 0,
+      new Date().toISOString(),
+    ],
+  )
+  return rows.length > 0
+}
+
+export async function finishStripeSession(
+  sessionId: string,
+  status: 'recorded' | 'needs-attention',
+  detail = '',
+) {
+  await query(
+    'UPDATE stripe_payments SET status = $1, detail = $2 WHERE session_id = $3',
+    [status, detail.slice(0, 500), sessionId],
+  )
+}
+
+/** Lets Stripe's retry record a session whose first attempt failed. */
+export async function releaseStripeSession(sessionId: string) {
+  await query('DELETE FROM stripe_payments WHERE session_id = $1', [sessionId])
+}

@@ -46,6 +46,7 @@ import { Route as RsvpManageRouteRouteImport } from './routes/rsvp/manage/route'
 import { Route as RsvpSignInRouteImport } from './routes/rsvp/sign-in'
 import { Route as ShareTokenRouteImport } from './routes/share/$token'
 import { Route as ApiBotsV1RouteImport } from './routes/api/bots/v1'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as DeskPortalsIndexRouteImport } from './routes/desk/portals/index'
 import { Route as RsvpSlugIndexRouteImport } from './routes/rsvp/$slug/index'
 import { Route as RsvpSlugFindRouteImport } from './routes/rsvp/$slug/find'
@@ -251,6 +252,11 @@ const ApiBotsV1Route = ApiBotsV1RouteImport.update({
   path: '/api/bots/v1',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe/webhook',
+  path: '/api/stripe/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeskPortalsIndexRoute = DeskPortalsIndexRouteImport.update({
   id: '/portals/',
   path: '/portals/',
@@ -385,6 +391,7 @@ export interface FileRoutesByFullPath {
   '/portal/': typeof PortalIndexRoute
   '/rsvp/': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/rsvp/$slug/find': typeof RsvpSlugFindRoute
   '/rsvp/manage/design': typeof RsvpManageDesignRoute
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
@@ -440,6 +447,7 @@ export interface FileRoutesByTo {
   '/portal': typeof PortalIndexRoute
   '/rsvp': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/rsvp/$slug/find': typeof RsvpSlugFindRoute
   '/rsvp/manage/design': typeof RsvpManageDesignRoute
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
@@ -499,6 +507,7 @@ export interface FileRoutesById {
   '/portal/': typeof PortalIndexRoute
   '/rsvp/': typeof RsvpIndexRoute
   '/api/bots/v1': typeof ApiBotsV1Route
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/rsvp/$slug/find': typeof RsvpSlugFindRoute
   '/rsvp/manage/design': typeof RsvpManageDesignRoute
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
@@ -559,6 +568,7 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/rsvp/'
     | '/api/bots/v1'
+    | '/api/stripe/webhook'
     | '/rsvp/$slug/find'
     | '/rsvp/manage/design'
     | '/rsvp/manage/events'
@@ -614,6 +624,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/rsvp'
     | '/api/bots/v1'
+    | '/api/stripe/webhook'
     | '/rsvp/$slug/find'
     | '/rsvp/manage/design'
     | '/rsvp/manage/events'
@@ -672,6 +683,7 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/rsvp/'
     | '/api/bots/v1'
+    | '/api/stripe/webhook'
     | '/rsvp/$slug/find'
     | '/rsvp/manage/design'
     | '/rsvp/manage/events'
@@ -710,6 +722,7 @@ export interface RootRouteChildren {
   ShareTokenRoute: typeof ShareTokenRoute
   RsvpIndexRoute: typeof RsvpIndexRoute
   ApiBotsV1Route: typeof ApiBotsV1Route
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   RsvpSlugFindRoute: typeof RsvpSlugFindRoute
   RsvpOpenTokenRoute: typeof RsvpOpenTokenRoute
   RsvpSlugIndexRoute: typeof RsvpSlugIndexRoute
@@ -980,6 +993,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBotsV1RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe/webhook': {
+      id: '/api/stripe/webhook'
+      path: '/api/stripe/webhook'
+      fullPath: '/api/stripe/webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/desk/portals/': {
       id: '/desk/portals/'
       path: '/portals'
@@ -1229,6 +1249,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShareTokenRoute: ShareTokenRoute,
   RsvpIndexRoute: RsvpIndexRoute,
   ApiBotsV1Route: ApiBotsV1Route,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   RsvpSlugFindRoute: RsvpSlugFindRoute,
   RsvpOpenTokenRoute: RsvpOpenTokenRoute,
   RsvpSlugIndexRoute: RsvpSlugIndexRoute,

@@ -17,6 +17,7 @@ import {
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents } from '../../lib/crm/money.ts'
+import { stripeFromNote } from '../../lib/crm/card-pay.ts'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
 
@@ -163,6 +164,7 @@ function PaymentCard({
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
   const refund = payment.cents < 0
+  const stripe = stripeFromNote(payment.note)
 
   return (
     <li className="rounded-2xl border border-white/10 bg-ink-900 px-4 py-3">
@@ -170,7 +172,24 @@ function PaymentCard({
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={(event) => event.preventDefault()}
       >
-        <p className="font-semibold sm:col-span-2">{payment.names}</p>
+        <p className="flex flex-wrap items-center gap-2 font-semibold sm:col-span-2">
+          {payment.names}
+          {stripe ? (
+            <>
+              <span className="rounded-full bg-[#635BFF] px-2.5 py-0.5 text-xs font-semibold text-white">
+                Stripe{stripe.live ? '' : ' · test'}
+              </span>
+              <a
+                href={stripe.dashboardUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 items-center text-sm font-normal text-white/75 underline underline-offset-4 hover:text-white"
+              >
+                View in Stripe
+              </a>
+            </>
+          ) : null}
+        </p>
         <label className="field">
           Amount
           <input

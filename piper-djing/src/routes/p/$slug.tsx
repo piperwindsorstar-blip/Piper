@@ -1,13 +1,23 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { ActionButton } from '../../components/action-button.tsx'
+import type { RunResult } from '../../components/action-button.tsx'
+import { HST_RATE_PERCENT } from '../../lib/crm/card-pay.ts'
+import type { CardQuote } from '../../lib/crm/card-pay.ts'
 import { SiteFooter, SiteHeader } from '../../components/site-frame.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
-import { getInvoicePage } from '../../lib/crm/desk.functions.ts'
+import {
+  getInvoicePage,
+  startCardPayment,
+} from '../../lib/crm/desk.functions.ts'
 import { cad } from '../../lib/crm/money.ts'
 import { PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
 import { privateHead } from '../../lib/seo.ts'
 
 export const Route = createFileRoute('/p/$slug')({
   head: () => privateHead('Invoice · DJ Piper P'),
+  validateSearch: (search: Record<string, unknown>): { paid?: 1 } =>
+    search.paid === 1 || search.paid === '1' ? { paid: 1 } : {},
   loader: async ({ params }) => {
     const invoice = await getInvoicePage({ data: { slug: params.slug } })
     if (!invoice) throw notFound()
@@ -18,6 +28,8 @@ export const Route = createFileRoute('/p/$slug')({
 
 function InvoicePage() {
   const invoice = Route.useLoaderData()
+  const { paid } = Route.useSearch()
+  const { slug } = Route.useParams()
   const voided = invoice.status === 'void'
   return (
     <div className="min-h-screen">
@@ -78,17 +90,37 @@ function InvoicePage() {
           <Row label="Balance" value={cad(invoice.balanceCents)} />
         </dl>
 
-        <p className="mt-8 text-sm leading-relaxed">
-          You can pay by e-transfer to{' '}
-          <a
-            href={`mailto:${PUBLIC_EMAIL}`}
-            className="text-ink underline underline-offset-4"
+        {paid ? (
+          <p
+            role="status"
+            className="mt-8 rounded-2xl border border-line px-5 py-4 text-sm leading-relaxed"
           >
-            {PUBLIC_EMAIL}
-          </a>
-          , by cash, or by card. Card adds 13% HST, which is charged on the
-          balance, not the deposit.
-        </p>
+            Thank you. Your card payment went through. It shows on this invoice
+            within a minute or two, and a confirmation email is on its way.
+          </p>
+        ) : null}
+
+        <section className="mt-8" aria-labelledby="how-to-pay">
+          <h2 id="how-to-pay" className="font-display text-2xl tracking-tight">
+            How to pay
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed">
+            You can pay by e-transfer to{' '}
+            <a
+              href={`mailto:${PUBLIC_EMAIL}`}
+              className="text-ink underline underline-offset-4"
+            >
+              {PUBLIC_EMAIL}
+            </a>
+            , or by cash. E-transfer and cash have no HST.
+            {invoice.card && !paid
+              ? ` Card adds ${HST_RATE_PERCENT}% HST, which is charged once, with the balance, never on the deposit.`
+              : ''}
+          </p>
+          {invoice.card && !paid ? (
+            <PayByCard slug={slug} quote={invoice.card} />
+          ) : null}
+        </section>
 
         <section
           className="mt-10 rounded-2xl border border-line px-5 py-6"
@@ -124,6 +156,48 @@ function InvoicePage() {
         </p>
       </main>
       <SiteFooter />
+    </div>
+  )
+}
+
+function PayByCard({ slug, quote }: { slug: string; quote: CardQuote }) {
+  const start = useServerFn(startCardPayment)
+  return (
+    <div className="mt-5 rounded-2xl border border-line px-5 py-5">
+      <h3 className="font-display text-xl tracking-tight">Pay by card</h3>
+      <dl className="mt-3 grid gap-1 text-sm">
+        <Row label={quote.label} value={cad(quote.baseCents)} />
+        {quote.hstCents > 0 ? (
+          <Row
+            label={`HST ${HST_RATE_PERCENT}% on the ${cad(quote.hstOnCents)} booking total`}
+            value={cad(quote.hstCents)}
+          />
+        ) : (
+          <Row label="HST" value="None on the deposit" />
+        )}
+        <div className="flex justify-between gap-4 border-t border-ink py-2 font-semibold">
+          <dt>Card total</dt>
+          <dd className="tabular-nums">{cad(quote.chargeCents)}</dd>
+        </div>
+      </dl>
+      <ActionButton
+        className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-violet px-6 py-3 font-semibold text-white hover:brightness-110"
+        busy="Opening secure checkout…"
+        done="Opening"
+        surface="light"
+        onRun={async (): Promise<RunResult> => {
+          const result = await start({ data: { slug } })
+          if (!result.ok) return { ok: false, message: result.error }
+          window.location.assign(result.url)
+          return { ok: true }
+        }}
+      >
+        Pay {cad(quote.chargeCents)} by card
+      </ActionButton>
+      <p className="mt-3 text-xs leading-relaxed text-muted">
+        You pay on Stripe's secure page, in Canadian dollars. Your card details
+        never touch this site.
+      </p>
     </div>
   )
 }

@@ -8,6 +8,12 @@ import {
   searchGooglePlaces,
 } from './google-reviews.server.ts'
 import { forgetPublicSite } from './public-memory.ts'
+import {
+  cardQuoteForInvoice,
+  cardStatus,
+  setCardPayments,
+  startCheckout,
+} from './stripe.server.ts'
 import { masterFromDrafts } from '../portal/master.ts'
 import type { ChoiceOption } from '../portal/questions.ts'
 import { usesEdgeBook } from '../db.server.ts'
@@ -417,6 +423,11 @@ export const getSettings = createServerFn({ method: 'GET' }).handler(
       mailFrom: mail.from,
       kindWords: await kindWordsOn(),
       emails: await listEmails(),
+      card: await cardStatus().catch(() => ({
+        configured: false,
+        enabled: false,
+        live: false,
+      })),
     }
   },
 )
@@ -532,7 +543,43 @@ export const saveCouplePlanningForm = createServerFn({ method: 'POST' })
 
 export const getInvoicePage = createServerFn({ method: 'POST' })
   .validator((data: { slug: string }) => data)
-  .handler(async ({ data }) => invoiceBySlug(data.slug))
+  .handler(async ({ data }) => {
+    const invoice = await invoiceBySlug(data.slug)
+    if (!invoice) return invoice
+    // Null hides "Pay by card": Stripe off, not set up, or nothing due.
+    return { ...invoice, card: await cardQuoteForInvoice(data.slug) }
+  })
+
+/** Public: opens Stripe Checkout for what this invoice owes right now. */
+export const startCardPayment = createServerFn({ method: 'POST' })
+  .validator((data: { slug?: unknown }) => ({
+    slug: typeof data.slug === 'string' ? data.slug.trim().slice(0, 120) : '',
+  }))
+  .handler(async ({ data }) => {
+    if (!data.slug) return { ok: false as const, error: 'That invoice was not found.' }
+    try {
+      return await startCheckout(data.slug)
+    } catch {
+      return {
+        ok: false as const,
+        error: 'Card payment could not start. Please try again, or pay by e-transfer.',
+      }
+    }
+  })
+
+export const saveCardPayments = createServerFn({ method: 'POST' })
+  .validator((data: { on?: unknown }) => ({ on: data.on === true }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    const status = await cardStatus()
+    if (data.on && !status.configured) {
+      return {
+        ok: false as const,
+        error: 'Add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in Cloudflare first.',
+      }
+    }
+    return { ok: true as const, card: await setCardPayments(data.on) }
+  })
 
 export const saveBooking = createServerFn({ method: 'POST' })
   .validator((data: BookingPatch) => data)
