@@ -470,6 +470,13 @@ export function Guests({ data }: { data: ReadyManage }) {
   })
   const current =
     data.wedding.parties.find((party) => party.id === editing) ?? null
+  // Only "new" opens an empty form; an id that is gone (just deleted) opens
+  // nothing, so a deleted party never reappears as an Add party dialog.
+  const drawerOpen = editing === 'new' || current !== null
+  const close = () => {
+    setEditing(null)
+    setError('')
+  }
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -556,19 +563,22 @@ export function Guests({ data }: { data: ReadyManage }) {
           </li>
         ))}
       </ul>
-      {editing ? (
+      {drawerOpen ? (
         <PartyDrawer
+          // A fresh form every time it opens: nothing carries over from the
+          // last party saved, deleted or closed.
+          key={editing ?? 'closed'}
           party={current}
           events={data.wedding.events}
           meals={mealsOf(data)}
           invitedAt={current ? (data.invited[current.id] ?? '') : ''}
           error={error}
-          onClose={() => setEditing(null)}
+          onClose={close}
           onDelete={() => {
             if (!current) return
-            void remove({ data: { id: current.id } }).then(() =>
-              router.invalidate(),
-            )
+            const id = current.id
+            close()
+            void remove({ data: { id } }).then(() => router.invalidate())
           }}
           onSave={async (draft) => {
             setError('')
@@ -579,7 +589,7 @@ export function Guests({ data }: { data: ReadyManage }) {
               setError(message)
               return { ok: false, message }
             }
-            setEditing(null)
+            close()
             await router.invalidate()
             return { ok: true, message: 'Party saved.' }
           }}
