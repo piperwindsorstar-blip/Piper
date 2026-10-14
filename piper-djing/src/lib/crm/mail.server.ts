@@ -2,10 +2,19 @@ import nodemailer from 'nodemailer'
 import { query, usesEdgeBook } from '../db.server.ts'
 import { PUBLIC_EMAIL } from './defaults.ts'
 import { addressHeader } from './mime-header.ts'
-import { bookingLetter, coupleAddress, invoiceLetter } from './mail-copy.ts'
+import {
+  bookingLetter,
+  coupleAddress,
+  invoiceLetter,
+  paymentLetter,
+} from './mail-copy.ts'
 import type { Letter, LetterBooking } from './mail-copy.ts'
 import { publicUrl } from './safe-origin.ts'
-import { deskProfile, listBookings } from './store.server.ts'
+import {
+  deskProfile,
+  listBookings,
+  paymentsForBooking,
+} from './store.server.ts'
 import type { BookingView } from './store.server.ts'
 
 export type MailResult = {
@@ -107,6 +116,22 @@ export async function emailInvoice(bookingId: number): Promise<MailResult> {
     'invoice',
     to,
     invoiceLetter(toLetter(booking), publicUrl),
+  )
+}
+
+/** The receipt for one payment, with the card HST on each card payment. */
+export async function emailPayment(
+  bookingId: number,
+  paymentId: number,
+): Promise<MailResult> {
+  const booking = await requireBooking(bookingId)
+  const to = coupleAddress(booking.email)
+  const payments = await paymentsForBooking(bookingId)
+  return deliverAndRemember(
+    booking.id,
+    'booking',
+    to,
+    paymentLetter(toLetter(booking), payments, paymentId, publicUrl),
   )
 }
 

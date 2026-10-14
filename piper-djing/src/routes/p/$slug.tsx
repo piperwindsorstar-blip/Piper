@@ -2,7 +2,13 @@ import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
-import { HST_RATE_PERCENT } from '../../lib/crm/card-pay.ts'
+import { useState } from 'react'
+import {
+  HST_RATE_PERCENT,
+  cardPayment,
+  hstLabel,
+  parseAmount,
+} from '../../lib/crm/card-pay.ts'
 import type { CardQuote } from '../../lib/crm/card-pay.ts'
 import { SiteFooter, SiteHeader } from '../../components/site-frame.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
@@ -86,8 +92,14 @@ function InvoicePage() {
               value={longDate(invoice.depositDue)}
             />
           ) : null}
-          <Row label="Received" value={cad(invoice.receivedCents)} />
-          <Row label="Balance" value={cad(invoice.balanceCents)} />
+          <Row label="Paid so far" value={cad(invoice.receivedCents)} />
+          <Row label="Remaining" value={cad(invoice.balanceCents)} />
+          {invoice.cardHstCents > 0 ? (
+            <Row
+              label="Card HST paid (on top, not part of the total)"
+              value={cad(invoice.cardHstCents)}
+            />
+          ) : null}
         </dl>
 
         {paid ? (
@@ -114,7 +126,7 @@ function InvoicePage() {
             </a>
             , or by cash. E-transfer and cash have no HST.
             {invoice.card && !paid
-              ? ` Card adds ${HST_RATE_PERCENT}% HST, which is charged once, with the balance, never on the deposit.`
+              ? ` Card adds ${HST_RATE_PERCENT}% HST on the amount you pay by card, never on the deposit. HST is on top and does not count toward your balance.`
               : ''}
           </p>
           {invoice.card && !paid ? (
@@ -162,37 +174,77 @@ function InvoicePage() {
 
 function PayByCard({ slug, quote }: { slug: string; quote: CardQuote }) {
   const start = useServerFn(startCardPayment)
+  const [typed, setTyped] = useState((quote.baseCents / 100).toFixed(2))
+  const amount = quote.adjustable ? parseAmount(typed) : quote.baseCents
+  const chosen = Number.isNaN(amount)
+    ? ({ ok: false, error: 'Enter dollars and cents, such as 500.00.' } as const)
+    : cardPayment(quote, amount)
+  const shown = chosen.ok ? chosen.quote : null
   return (
     <div className="mt-5 rounded-2xl border border-line px-5 py-5">
       <h3 className="font-display text-xl tracking-tight">Pay by card</h3>
-      <dl className="mt-3 grid gap-1 text-sm">
-        <Row label={quote.label} value={cad(quote.baseCents)} />
-        {quote.hstCents > 0 ? (
-          <Row
-            label={`HST ${HST_RATE_PERCENT}% on the ${cad(quote.hstOnCents)} booking total`}
-            value={cad(quote.hstCents)}
-          />
-        ) : (
-          <Row label="HST" value="None on the deposit" />
-        )}
-        <div className="flex justify-between gap-4 border-t border-ink py-2 font-semibold">
-          <dt>Card total</dt>
-          <dd className="tabular-nums">{cad(quote.chargeCents)}</dd>
-        </div>
-      </dl>
+      {quote.adjustable ? (
+        <label className="mt-3 grid gap-1 text-sm">
+          <span>Amount to pay</span>
+          <span className="flex items-center gap-2">
+            <span aria-hidden="true">$</span>
+            <input
+              inputMode="decimal"
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              aria-describedby="amount-range"
+              aria-invalid={!chosen.ok}
+              className="min-h-11 w-40 rounded-lg border border-line bg-transparent px-3 tabular-nums"
+            />
+          </span>
+          <span id="amount-range" className="text-xs text-muted">
+            From {cad(quote.minCents)} up to the {cad(quote.maxCents)}{' '}
+            remaining. Pay the rest later by card, e-transfer or cash.
+          </span>
+          {!chosen.ok ? (
+            <span role="alert" className="text-xs text-red-700">
+              {chosen.error}
+            </span>
+          ) : null}
+        </label>
+      ) : null}
+      {shown ? (
+        <dl className="mt-3 grid gap-1 text-sm">
+          <Row label={shown.label} value={cad(shown.baseCents)} />
+          {shown.hstCents > 0 ? (
+            <Row label={hstLabel(shown.baseCents)} value={cad(shown.hstCents)} />
+          ) : (
+            <Row label="HST" value="None on the deposit" />
+          )}
+          <div className="flex justify-between gap-4 border-t border-ink py-2 font-semibold">
+            <dt>Card total</dt>
+            <dd className="tabular-nums">{cad(shown.chargeCents)}</dd>
+          </div>
+          {quote.adjustable ? (
+            <Row
+              label="Remaining after this payment"
+              value={cad(quote.maxCents - shown.baseCents)}
+            />
+          ) : null}
+        </dl>
+      ) : null}
       <ActionButton
-        className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-violet px-6 py-3 font-semibold text-white hover:brightness-110"
+        className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-violet px-6 py-3 font-semibold text-white hover:brightness-110 disabled:opacity-50"
         busy="Opening secure checkout…"
         done="Opening"
         surface="light"
+        disabled={!shown}
         onRun={async (): Promise<RunResult> => {
-          const result = await start({ data: { slug } })
+          if (!shown) return { ok: false, message: 'Check the amount.' }
+          const result = await start({
+            data: { slug, amountCents: shown.baseCents },
+          })
           if (!result.ok) return { ok: false, message: result.error }
           window.location.assign(result.url)
           return { ok: true }
         }}
       >
-        Pay {cad(quote.chargeCents)} by card
+        {shown ? `Pay ${cad(shown.chargeCents)} by card` : 'Pay by card'}
       </ActionButton>
       <p className="mt-3 text-xs leading-relaxed text-muted">
         You pay on Stripe's secure page, in Canadian dollars. Your card details

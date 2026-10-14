@@ -5,6 +5,7 @@ import {
   coupleAddress,
   hasCoupleAddress,
   invoiceLetter,
+  paymentLetter,
 } from './mail-copy.ts'
 import type { LetterBooking } from './mail-copy.ts'
 
@@ -112,5 +113,50 @@ describe('couple emails', () => {
       () => invoiceLetter({ ...sample, invoice: null }, url),
       /no invoice/,
     )
+  })
+})
+
+describe('payment receipt', () => {
+  const booking: LetterBooking = {
+    ...sample,
+    status: 'booked',
+    totalCents: 165000,
+    invoice: {
+      slug: 'inv-mara',
+      status: 'sent',
+      totalCents: 165000,
+      depositCents: 50000,
+      receivedCents: 100000,
+      balanceCents: 65000,
+    },
+  }
+  const payments = [
+    { id: 1, cents: 50000, hstCents: 0, paidOn: '2026-10-01', method: 'card' },
+    { id: 2, cents: 50000, hstCents: 6500, paidOn: '2026-10-13', method: 'card' },
+  ]
+
+  it('shows the HST on the card payment, on top of the balance', () => {
+    const letter = paymentLetter(booking, payments, 2, url)
+    assert.match(letter.subject, /Payment received/)
+    assert.match(
+      letter.text,
+      /This payment: 13 October 2026: \$500\.00 by card \+ \$65\.00 HST \(13% on this card payment\) = \$565\.00 charged/,
+    )
+    assert.match(letter.text, /does not count toward your balance/)
+    assert.match(letter.text, /- 1 October 2026: \$500\.00 by card\n/)
+    assert.match(letter.text, /Paid so far: \$1,000\.00/)
+    assert.match(letter.text, /Card HST paid \(on top\): \$65\.00/)
+    assert.match(letter.text, /Remaining: \$650\.00/)
+  })
+
+  it('an e-transfer has no HST line', () => {
+    const letter = paymentLetter(
+      { ...booking, invoice: { ...booking.invoice!, receivedCents: 165000, balanceCents: 0 } },
+      [...payments, { id: 3, cents: 65000, hstCents: 0, paidOn: '2026-10-20', method: 'e-transfer' }],
+      3,
+      url,
+    )
+    assert.match(letter.text, /This payment: 20 October 2026: \$650\.00 by e-transfer\n/)
+    assert.match(letter.text, /Remaining: \$0\.00/)
   })
 })

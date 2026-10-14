@@ -137,7 +137,7 @@ function CardPaymentsSetting({
         {!card.configured
           ? 'Off. Stripe is not set up: add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET to the piper-djing Worker in Cloudflare, then turn this on. Couples see no card button until then.'
           : card.enabled
-            ? `On. Invoices show a "Pay by card" button through Stripe Checkout${card.live ? '' : ' in TEST mode (no real money)'}. Card adds 13% HST on the full total, charged with the balance.`
+            ? `On. Invoices show a "Pay by card" button through Stripe Checkout${card.live ? '' : ' in TEST mode (no real money)'}. Card adds 13% HST on each card payment toward the balance, never on the deposit.`
             : `Off. Stripe is set up${card.live ? '' : ' with test keys'}; couples see e-transfer and cash only.`}
       </p>
       <ActionButton

@@ -152,6 +152,82 @@ export function invoiceLetter(
   }
 }
 
+export type LetterPayment = {
+  id: number
+  cents: number
+  /** Card HST paid on top of this payment; 0 for e-transfer and cash. */
+  hstCents: number
+  paidOn: string
+  method: string
+}
+
+const METHOD_LABEL: Record<string, string> = {
+  card: 'card',
+  cash: 'cash',
+  'e-transfer': 'e-transfer',
+}
+
+function paymentLine(payment: LetterPayment): string {
+  const when = payment.paidOn ? `${longDate(payment.paidOn)}: ` : ''
+  const how = METHOD_LABEL[payment.method] ? ` by ${METHOD_LABEL[payment.method]}` : ''
+  if (payment.cents < 0) return `${when}${cad(-payment.cents)} refunded`
+  if (payment.hstCents > 0) {
+    return `${when}${cad(payment.cents)}${how} + ${cad(payment.hstCents)} HST (13% on this card payment) = ${cad(payment.cents + payment.hstCents)} charged`
+  }
+  return `${when}${cad(payment.cents)}${how}`
+}
+
+/**
+ * The receipt for one payment: what was paid, the card HST on it (HST is on
+ * top and never counts toward the balance), every payment so far, and what
+ * is left.
+ */
+export function paymentLetter(
+  booking: LetterBooking,
+  payments: LetterPayment[],
+  paymentId: number,
+  url: (path: string) => string,
+): Letter {
+  const invoice = booking.invoice
+  if (!invoice) throw new Error('This booking has no invoice.')
+  const paid = payments.find((payment) => payment.id === paymentId)
+  if (!paid) throw new Error('That payment is not on the book.')
+  const hstTotal = payments.reduce(
+    (sum, payment) => sum + (payment.cents > 0 ? payment.hstCents : 0),
+    0,
+  )
+  const lines = [
+    greeting(booking),
+    '',
+    sampleLine(booking),
+    'Thank you. Your payment is in.',
+    '',
+    `This payment: ${paymentLine(paid)}`,
+    paid.hstCents > 0
+      ? 'The HST is on top of your payment and does not count toward your balance.'
+      : '',
+    booking.status === 'booked' ? `Your date is booked: ${longDate(booking.eventDate)}` : `Date: ${longDate(booking.eventDate)}`,
+    `Package: ${booking.packageName}`,
+    '',
+    'Payments so far:',
+    ...payments.map((payment) => `- ${paymentLine(payment)}`),
+    '',
+    `Total: ${cad(invoice.totalCents)}`,
+    `Paid so far: ${cad(invoice.receivedCents)}`,
+    hstTotal > 0 ? `Card HST paid (on top): ${cad(hstTotal)}` : '',
+    `Remaining: ${cad(invoice.balanceCents)}`,
+    '',
+    `Invoice: ${url(`/p/${invoice.slug}`)}`,
+    `Your page: ${url(`/c/${booking.slug}`)}`,
+    '',
+    signOff(),
+  ]
+  return {
+    subject: subject('Payment received · Piper DJing', booking.sample),
+    text: compact(lines),
+  }
+}
+
 function greeting(booking: LetterBooking): string {
   return `Hello ${booking.partnerOne} and ${booking.partnerTwo},`
 }

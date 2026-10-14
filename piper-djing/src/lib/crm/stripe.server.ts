@@ -1,7 +1,14 @@
 import { torontoToday } from '../piper/rules.ts'
-import { cardQuote, checkoutForm, stripeNote, verifyStripeSignature } from './card-pay.ts'
+import {
+  cardPayment,
+  cardQuote,
+  checkoutForm,
+  dollars,
+  stripeNote,
+  verifyStripeSignature,
+} from './card-pay.ts'
 import type { CardKind, CardQuote } from './card-pay.ts'
-import { emailBooking, emailOwner } from './mail.server.ts'
+import { emailOwner, emailPayment } from './mail.server.ts'
 import { publicUrl } from './safe-origin.ts'
 import {
   addPayment,
@@ -76,6 +83,7 @@ export async function cardQuoteForInvoice(
  */
 export async function startCheckout(
   slug: string,
+  amountCents?: number,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const status = await cardStatus()
   const keys = secrets()
@@ -84,8 +92,11 @@ export async function startCheckout(
   }
   const context = await cardContextBySlug(slug)
   if (!context) return { ok: false, error: 'That invoice was not found.' }
-  const quote = cardQuote(context.invoice, context)
-  if (!quote) return { ok: false, error: 'Nothing is due on this invoice.' }
+  const due = cardQuote(context.invoice, context)
+  if (!due) return { ok: false, error: 'Nothing is due on this invoice.' }
+  const chosen = cardPayment(due, amountCents)
+  if (!chosen.ok) return chosen
+  const quote = chosen.quote
   const form = checkoutForm({
     quote,
     bookingId: context.bookingId,
@@ -208,7 +219,7 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
   if (!claimed) return Response.json({ received: true, duplicate: true })
 
   const charged = Number(session.amount_total)
-  const note = stripeNote({ paymentId, live, kind, hstCents: hst })
+  const note = stripeNote({ paymentId, live, kind })
   if (Number.isFinite(charged) && charged !== baseCents + hst) {
     // Recorded as Stripe says it was charged; the owner is told to look.
     await finishStripeSession(
@@ -222,8 +233,22 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
     }).catch(() => undefined)
     return Response.json({ received: true, attention: true })
   }
+  let recordedId: number | null = null
+  let overpaidCents = 0
   try {
-    await addPayment(bookingId, baseCents, note, torontoToday(), 'card')
+    const result = await addPayment(
+      bookingId,
+      baseCents,
+      note,
+      torontoToday(),
+      'card',
+      hst,
+    )
+    recordedId = result.paymentId
+    const invoice = result.view.invoice
+    if (invoice) {
+      overpaidCents = Math.max(0, invoice.receivedCents - invoice.totalCents)
+    }
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'Unknown error'
     // A date already taken by another booking, or a void invoice: the money
@@ -241,10 +266,17 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
     return new Response('Try again', { status: 500 })
   }
   await finishStripeSession(sessionId, 'recorded')
+  if (overpaidCents > 0) {
+    // Another payment (say an e-transfer) landed while this card was out.
+    await emailOwner({
+      subject: 'Card payment went over the balance',
+      text: `A card payment for booking ${bookingId} (${note}) took the total paid ${dollars(overpaidCents)} over the invoice. Refund the extra in Stripe if it is owed back.`,
+    }).catch(() => undefined)
+  }
   try {
-    await emailBooking(bookingId)
+    if (recordedId != null) await emailPayment(bookingId, recordedId)
   } catch {
-    // The payment stands even if the confirmation email cannot go.
+    // The payment stands even if the receipt cannot go.
   }
   return Response.json({ received: true, recorded: true })
 }

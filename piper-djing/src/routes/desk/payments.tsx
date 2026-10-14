@@ -16,7 +16,7 @@ import {
   recordPayment,
 } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
-import { dollarsToCents } from '../../lib/crm/money.ts'
+import { cad, dollarsToCents } from '../../lib/crm/money.ts'
 import { stripeFromNote } from '../../lib/crm/card-pay.ts'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
@@ -157,6 +157,7 @@ function PaymentCard({
     note: string
     paidOn: string
     method: string
+    hstCents: number
   }
 }) {
   const save = useServerFn(editPayment)
@@ -190,6 +191,13 @@ function PaymentCard({
             </>
           ) : null}
         </p>
+        {payment.hstCents > 0 ? (
+          <p className="text-sm text-white/75 sm:col-span-2">
+            Card HST {cad(payment.hstCents)} (13% of this payment) · charged{' '}
+            {cad(Math.abs(payment.cents) + payment.hstCents)}. HST is on top
+            and does not count toward the balance.
+          </p>
+        ) : null}
         <label className="field">
           Amount
           <input

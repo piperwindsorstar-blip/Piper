@@ -552,13 +552,15 @@ export const getInvoicePage = createServerFn({ method: 'POST' })
 
 /** Public: opens Stripe Checkout for what this invoice owes right now. */
 export const startCardPayment = createServerFn({ method: 'POST' })
-  .validator((data: { slug?: unknown }) => ({
+  .validator((data: { slug?: unknown; amountCents?: unknown }) => ({
     slug: typeof data.slug === 'string' ? data.slug.trim().slice(0, 120) : '',
+    amountCents:
+      typeof data.amountCents === 'number' ? data.amountCents : undefined,
   }))
   .handler(async ({ data }) => {
     if (!data.slug) return { ok: false as const, error: 'That invoice was not found.' }
     try {
-      return await startCheckout(data.slug)
+      return await startCheckout(data.slug, data.amountCents)
     } catch {
       return {
         ok: false as const,
