@@ -172,6 +172,9 @@ export function checkoutForm(input: {
 }): URLSearchParams {
   const form = new URLSearchParams()
   form.set('mode', 'payment')
+  // Always CAD: no converted price for cards from other countries.
+  form.set('currency', 'cad')
+  form.set('adaptive_pricing[enabled]', 'false')
   form.set('success_url', input.successUrl)
   form.set('cancel_url', input.cancelUrl)
   form.set('client_reference_id', input.invoiceSlug)

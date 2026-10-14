@@ -101,6 +101,28 @@ describe('status', () => {
     assert.equal(paid.newlyBooked, true)
   })
 
+  it('a deposit books an open booking (clause 4.5), even on a draft invoice', () => {
+    const sent = recordMoney(base(), { ...draft(), status: 'sent' }, 50000)
+    assert.equal(sent.booking.status, 'booked')
+    assert.equal(sent.newlyBooked, true)
+    const drafted = recordMoney(base(), draft(), 50000)
+    assert.equal(drafted.booking.status, 'booked')
+    const short = recordMoney(base(), draft(), 49999)
+    assert.equal(short.booking.status, 'open')
+  })
+
+  it('a deposit never books a void invoice or revives a cancelled or released date', () => {
+    assert.equal(recordMoney(base(), { ...draft(), status: 'void' }, 50000).booking.status, 'open')
+    assert.equal(recordMoney({ ...base(), status: 'cancelled' }, draft(), 50000).booking.status, 'cancelled')
+    assert.equal(recordMoney({ ...base(), status: 'released' }, draft(), 50000).booking.status, 'released')
+  })
+
+  it('a sample booking books too (it stays off the calendar)', () => {
+    const paid = recordMoney({ ...base(), sample: true }, draft(), 50000)
+    assert.equal(paid.booking.status, 'booked')
+    assert.equal(dateIsTaken([paid.booking], paid.booking.eventDate, '2026-10-13'), false)
+  })
+
   it('books a stag only after the flat $350 deposit', () => {
     const booking: BookingState = {
       ...base(),

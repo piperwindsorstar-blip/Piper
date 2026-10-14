@@ -1,13 +1,7 @@
 import { torontoToday } from '../piper/rules.ts'
-import {
-  cardPayment,
-  cardQuote,
-  checkoutForm,
-  dollars,
-  stripeNote,
-  verifyStripeSignature,
-} from './card-pay.ts'
-import type { CardKind, CardQuote } from './card-pay.ts'
+import { cardPayment, cardQuote, checkoutForm } from './card-pay.ts'
+import type { CardQuote } from './card-pay.ts'
+import { processStripeWebhook } from './stripe-webhook.ts'
 import { emailOwner, emailPayment } from './mail.server.ts'
 import { publicUrl } from './safe-origin.ts'
 import {
@@ -137,146 +131,39 @@ export async function startCheckout(
   }
 }
 
-type CheckoutSession = {
-  id?: string
-  payment_status?: string
-  amount_total?: number
-  currency?: string
-  livemode?: boolean
-  payment_intent?: string | { id?: string } | null
-  metadata?: Record<string, string>
-}
-
-function text(value: unknown): string {
-  return typeof value === 'string' ? value : ''
-}
-
 /**
- * POST /api/stripe/webhook. Checks Stripe's signature, then records a paid
- * Checkout session on the desk once: the booking money as a card payment
- * dated today in Toronto, the HST in the note. A paid deposit books the date
- * exactly like a deposit recorded by hand; nothing here ever unbooks one.
+ * POST /api/stripe/webhook, wired to the real book and mail. The rules live
+ * in stripe-webhook.ts so they can be tested without a database.
  */
 export async function handleStripeWebhook(request: Request): Promise<Response> {
   const keys = secrets()
   if (!keys) return new Response('Not configured', { status: 503 })
-  const payload = await request.text()
-  const signed = await verifyStripeSignature(
-    payload,
-    request.headers.get('stripe-signature') ?? '',
-    keys.webhook,
-  )
-  if (!signed) return new Response('Bad signature', { status: 400 })
-
-  let event: { type?: string; data?: { object?: CheckoutSession } }
-  try {
-    event = JSON.parse(payload) as typeof event
-  } catch {
-    return new Response('Bad body', { status: 400 })
-  }
-  if (
-    event.type !== 'checkout.session.completed' &&
-    event.type !== 'checkout.session.async_payment_succeeded'
-  ) {
-    return Response.json({ received: true, ignored: event.type ?? '' })
-  }
-  const session = event.data?.object ?? {}
-  if (session.payment_status !== 'paid') {
-    return Response.json({ received: true, waiting: session.payment_status ?? '' })
-  }
-  const meta = session.metadata ?? {}
-  const sessionId = text(session.id)
-  const bookingId = Number(meta.bookingId)
-  const baseCents = Number(meta.baseCents)
-  const hst = Number(meta.hstCents)
-  const kind = (['deposit', 'balance', 'full'].includes(text(meta.kind))
-    ? meta.kind
-    : 'balance') as CardKind
-  if (
-    !sessionId ||
-    !Number.isInteger(bookingId) ||
-    !Number.isInteger(baseCents) ||
-    !Number.isInteger(hst) ||
-    baseCents <= 0
-  ) {
-    return Response.json({ received: true, ignored: 'not a Piper invoice' })
-  }
-  const paymentId =
-    typeof session.payment_intent === 'string'
-      ? session.payment_intent
-      : text(session.payment_intent?.id) || sessionId
-  const live = session.livemode === true
-
-  const claimed = await claimStripeSession({
-    sessionId,
-    bookingId,
-    paymentId,
-    kind,
-    baseCents,
-    hstCents: hst,
-    live,
+  return processStripeWebhook(request, {
+    webhookSecret: keys.webhook,
+    today: torontoToday,
+    claim: claimStripeSession,
+    finish: finishStripeSession,
+    release: releaseStripeSession,
+    record: async (input) => {
+      const result = await addPayment(
+        input.bookingId,
+        input.cents,
+        input.note,
+        input.paidOn,
+        'card',
+        input.hstCents,
+      )
+      return {
+        paymentId: result.paymentId,
+        receivedCents: result.view.invoice?.receivedCents ?? 0,
+        totalCents: result.view.invoice?.totalCents ?? 0,
+      }
+    },
+    emailOwner: async (letter) => {
+      await emailOwner(letter)
+    },
+    emailReceipt: async (bookingId, paymentId) => {
+      await emailPayment(bookingId, paymentId)
+    },
   })
-  if (!claimed) return Response.json({ received: true, duplicate: true })
-
-  const charged = Number(session.amount_total)
-  const note = stripeNote({ paymentId, live, kind })
-  if (Number.isFinite(charged) && charged !== baseCents + hst) {
-    // Recorded as Stripe says it was charged; the owner is told to look.
-    await finishStripeSession(
-      sessionId,
-      'needs-attention',
-      `Charged ${charged}, expected ${baseCents + hst}.`,
-    )
-    await emailOwner({
-      subject: 'Card payment needs a look',
-      text: `Stripe session ${sessionId} charged ${charged} cents for booking ${bookingId}, but ${baseCents + hst} was expected. Nothing was recorded. Check the payment in Stripe and record it by hand.`,
-    }).catch(() => undefined)
-    return Response.json({ received: true, attention: true })
-  }
-  let recordedId: number | null = null
-  let overpaidCents = 0
-  try {
-    const result = await addPayment(
-      bookingId,
-      baseCents,
-      note,
-      torontoToday(),
-      'card',
-      hst,
-    )
-    recordedId = result.paymentId
-    const invoice = result.view.invoice
-    if (invoice) {
-      overpaidCents = Math.max(0, invoice.receivedCents - invoice.totalCents)
-    }
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Unknown error'
-    // A date already taken by another booking, or a void invoice: the money
-    // is in Stripe, so stop Stripe retrying and tell the owner instead.
-    if (/taken|booked|void|not on the book|no invoice/i.test(reason)) {
-      await finishStripeSession(sessionId, 'needs-attention', reason)
-      await emailOwner({
-        subject: 'Card payment needs a look',
-        text: `A card payment came in for booking ${bookingId} (${note}), but it could not be recorded: ${reason} Record it by hand once sorted.`,
-      }).catch(() => undefined)
-      return Response.json({ received: true, attention: true })
-    }
-    // Anything else (a database hiccup): let Stripe retry.
-    await releaseStripeSession(sessionId)
-    return new Response('Try again', { status: 500 })
-  }
-  await finishStripeSession(sessionId, 'recorded')
-  if (overpaidCents > 0) {
-    // Another payment (say an e-transfer) landed while this card was out.
-    await emailOwner({
-      subject: 'Card payment went over the balance',
-      text: `A card payment for booking ${bookingId} (${note}) took the total paid ${dollars(overpaidCents)} over the invoice. Refund the extra in Stripe if it is owed back.`,
-    }).catch(() => undefined)
-  }
-  try {
-    if (recordedId != null) await emailPayment(bookingId, recordedId)
-  } catch {
-    // The payment stands even if the receipt cannot go.
-  }
-  return Response.json({ received: true, recorded: true })
 }

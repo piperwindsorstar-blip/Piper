@@ -240,13 +240,16 @@ function bookIfCovered(
               withStag: booking.withStag,
               invoiceDepositCents: invoice.depositCents,
             })
+  // Clause 4.5: the deposit received is agreement, so it books an open or
+  // held date alike. A draft invoice counts once the couple has paid on it;
+  // a void one never does. Cancelled and released dates are never revived.
   const covered =
-    invoice.status === 'sent' &&
+    invoice.status !== 'void' &&
     invoice.totalCents > 0 &&
     required > 0 &&
     invoice.receivedCents >= required &&
     (booking.status === 'hold' || booking.status === 'open')
-  if (!covered || booking.status !== 'hold') {
+  if (!covered) {
     return { booking, invoice, newlyBooked: false }
   }
   return {

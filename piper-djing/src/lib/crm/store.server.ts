@@ -1663,7 +1663,8 @@ export async function addPayment(
   const before = toInvoice(invoiceRow)
   const prices = await packagePriceMap()
   const transition = recordMoney(toState(row), before, cents, prices.ceremony)
-  if (transition.newlyBooked) {
+  // A sample booking stays off the calendar, so it never clashes with one.
+  if (transition.newlyBooked && !toState(row).sample) {
     const state = toState(row)
     await ensureDateFree(
       state.eventDate,

@@ -163,3 +163,18 @@ test('the desk note links back to the Stripe dashboard', () => {
   assert.equal(stripeFromNote(stripeNote({ paymentId: 'pi_9', live: true, kind: 'deposit' }))?.dashboardUrl, 'https://dashboard.stripe.com/payments/pi_9')
   assert.equal(stripeFromNote('e-transfer from Mya'), null)
 })
+
+test('checkout is CAD only: CAD prices, CAD session, no adaptive pricing', () => {
+  for (const quote of [
+    cardQuote(invoice(0), wedding)!,
+    cardQuote(invoice(50000), wedding)!,
+    cardQuote(invoice(0, { totalCents: 35000, depositCents: 35000 }), { packageId: 'ceremony', packageName: 'The Aisle' })!,
+  ]) {
+    const form = checkoutForm({ quote, bookingId: 1, invoiceSlug: 'x', email: '', successUrl: 's', cancelUrl: 'c', couple: 'A & B' })
+    assert.equal(form.get('currency'), 'cad')
+    assert.equal(form.get('adaptive_pricing[enabled]'), 'false')
+    const currencies = [...form].filter(([key]) => key.endsWith('[currency]')).map(([, value]) => value)
+    assert.ok(currencies.length > 0)
+    assert.deepEqual([...new Set(currencies)], ['cad'])
+  }
+})
