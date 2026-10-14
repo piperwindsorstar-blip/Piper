@@ -215,7 +215,7 @@ html:has(.desk) {
 }
 
 .desk :is(a, button, input, select, textarea, summary) {
-  scroll-margin-bottom: 13rem;
+  scroll-margin-bottom: 6rem;
 }
 
 /* The desk wears the same paper-and-ink theme as /weddings: light pages, the
@@ -230,7 +230,8 @@ html:has(.desk) {
   --color-ink: #1c1533;
   --color-line: #e3dcf2;
   --color-muted: #5b5370;
-  background: var(--color-paper);
+  /* A faint lilac page so white cards stand out. */
+  background: #faf8fd;
   color: var(--color-ink);
   font-family: var(--font-sans);
   color-scheme: light;

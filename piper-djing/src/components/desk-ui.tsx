@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 
 const TONE = {
-  pink: 'border-neon/40 bg-neon/10 text-hot',
-  green: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
-  amber: 'border-amber-300/30 bg-amber-300/10 text-amber-200',
-  gray: 'border-white/15 bg-white/5 text-white/65',
-  red: 'border-rose-400/30 bg-rose-400/10 text-rose-300',
+  pink: 'border-pink-200 bg-pink-50 text-pink-700',
+  green: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  amber: 'border-amber-200 bg-amber-50 text-amber-800',
+  gray: 'border-[#e3dcf2] bg-[#f7f2fb] text-[#5b5370]',
+  red: 'border-rose-200 bg-rose-50 text-rose-700',
 } as const
 
 export type ChipTone = keyof typeof TONE
@@ -14,13 +14,13 @@ export type ChipTone = keyof typeof TONE
 export const deskSurface = 'light' as const
 
 export const deskPrimary =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-neon px-4 py-2 text-sm font-bold text-white shadow-[0_0_20px_rgba(255,0,127,.4)] transition hover:bg-hot disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-neon px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-hot disabled:opacity-40 desk-motion'
 export const deskGhost =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-bold text-white/85 transition hover:border-hot disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#e3dcf2] bg-white px-5 py-2 text-sm font-semibold text-[#1c1533] transition hover:border-[#ff007f] hover:text-[#d1006b] disabled:opacity-40 desk-motion'
 export const deskDanger =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-rose-400/40 px-4 py-2 text-sm font-bold text-rose-300 transition hover:bg-rose-400/10 disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-rose-200 bg-white px-5 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-40 desk-motion'
 export const deskCard =
-  'min-w-0 rounded-2xl border border-white/10 bg-ink-900 p-5'
+  'min-w-0 rounded-2xl border border-[#e3dcf2] bg-white p-5 shadow-[0_1px_2px_rgba(28,21,51,0.05)]'
 
 export function DeskTitle({
   kicker,
@@ -33,13 +33,19 @@ export function DeskTitle({
 }) {
   return (
     <div>
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-hot">
-        {kicker}
-      </p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight md:text-4xl">
+      {kicker && kicker !== title ? (
+        <p className="text-xs font-semibold tracking-wider text-[#d1006b] uppercase">
+          {kicker}
+        </p>
+      ) : null}
+      <h1 className="mt-1 font-display text-3xl font-bold tracking-tight md:text-4xl">
         {title}
       </h1>
-      {children}
+      {children ? (
+        <div className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5b5370]">
+          {children}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -94,7 +100,7 @@ export function ShowSwitch({
         />
         <span
           aria-hidden="true"
-          className={`block h-6 w-11 rounded-full ${checked ? 'bg-neon' : 'bg-white/20'}`}
+          className={`block h-6 w-11 rounded-full ${checked ? 'bg-neon' : 'bg-[#d9d1ea]'}`}
         />
         <span
           aria-hidden="true"
