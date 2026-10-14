@@ -547,8 +547,10 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             </div>
             <p className="mt-2 text-xs text-[var(--text-faint)]">
               Drag tables and room items to match your venue. Drag a corner to
-              resize, the round handle to turn. Pinch or use + and − to zoom;
-              drag the empty floor to move around.
+              resize, the round handle to turn. Pinch, scroll or use + and − to
+              zoom; drag the empty floor to move around. Zoomed in, a table
+              too crowded for names shows seat numbers: tap it (or point at
+              it) to see who sits where.
             </p>
             {selectedGuest && selectedTable ? (
               <section

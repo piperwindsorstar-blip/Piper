@@ -2,6 +2,10 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { sampleWedding } from './demo.ts'
 import {
+  labelRect,
+  nameListBox,
+  planSeatNames,
+  tableFootprint,
   seatNamePlan,
   enlargeRoomToFit,
   layoutSeatNames,
@@ -29,7 +33,7 @@ import {
   seatingChartCsv,
   validateSeating,
 } from './seating.ts'
-import type { SeatingPlan } from './seating.ts'
+import type { LabelRect, SeatingPlan } from './seating.ts'
 
 let counter = 0
 const makeId = () => {
@@ -518,5 +522,68 @@ describe('round 2 fixes', () => {
     assert.equal(result.unplaced, 0)
     assert.deepEqual(overlappingTables(result.plan), [])
     assert.ok(result.plan.tables.every((table) => table.rotation === 0))
+  })
+})
+
+describe('names round 4: 14 full tables of 10 after Auto-arrange', () => {
+  function fullRoom(): { plan: SeatingPlan; names: Map<string, string> } {
+    let plan = emptySeating()
+    plan.items.push({
+      id: 'floor', kind: 'dance-floor', label: 'Dance floor',
+      x: 504, y: 360, w: 192, h: 192, rotation: 0,
+    })
+    let n = 0
+    plan = addTables(plan, 14, () => `t${(n += 1)}`)
+    plan.tables = plan.tables.map((table) => ({ ...table, seats: 10, w: 74, h: 74 }))
+    plan = autoArrange(plan).plan
+    const names = new Map<string, string>()
+    let guest = 100
+    for (const table of plan.tables) {
+      for (let seat = 0; seat < 10; seat += 1) {
+        guest += 1
+        const id = `g${guest}`
+        names.set(id, `Mock Guest ${guest}`)
+        plan.seats[id] = { tableId: table.id, seat }
+      }
+    }
+    return { plan, names }
+  }
+
+  const overlap = (a: LabelRect, b: LabelRect) =>
+    a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
+
+  it('never draws a loose name: every shown name clears tables, items, other names and walls', () => {
+    const { plan, names } = fullRoom()
+    // The same geometry at 2×, 3× and 4× zoom: names are a fixed size on the floor.
+    const plans = planSeatNames(plan, (id) => names.get(id) ?? null, 9, 10)
+    const shown: LabelRect[] = []
+    for (const table of plan.tables) {
+      const entry = plans.get(table.id)!
+      if (entry.mode === 'numbers') {
+        assert.equal(entry.list.length, 10)
+        continue
+      }
+      for (const label of entry.labels) {
+        assert.ok(label, 'a names table shows every name')
+        shown.push(labelRect(label, 9))
+      }
+    }
+    for (const [i, a] of shown.entries()) {
+      assert.ok(a.x0 >= 0 && a.y0 >= 0 && a.x1 <= plan.room.width && a.y1 <= plan.room.length)
+      for (const b of shown.slice(i + 1)) assert.equal(overlap(a, b), false)
+    }
+  })
+
+  it('opens each name list inside the room, clear of other tables where there is room', () => {
+    const { plan } = fullRoom()
+    let clear = 0
+    for (const table of plan.tables) {
+      const box = nameListBox(plan, table, { w: 110, h: 150 }, 10)
+      assert.ok(box.x0 >= 0 && box.y0 >= 0)
+      assert.ok(box.x1 <= plan.room.width && box.y1 <= plan.room.length)
+      const others = plan.tables.filter((other) => other.id !== table.id)
+      if (others.every((other) => !overlap(box, tableFootprint(other)))) clear += 1
+    }
+    assert.ok(clear >= 7, `${clear} of 14 lists open on clear floor`)
   })
 })

@@ -672,6 +672,8 @@ const CHAR_WIDTH = 0.64
 /** Clear space kept between two names. */
 const LABEL_PAD = 2
 
+export type LabelRect = { x0: number; y0: number; x1: number; y1: number }
+
 export type SeatNameLayout = {
   lines: string[]
   x: number
@@ -691,14 +693,21 @@ export function layoutSeatNames(
   names: (string | null)[],
   fontSize: number,
   seatRadius: number,
+  /** Floor already taken by other tables, room items and their names. */
+  blocked: LabelRect[] = [],
+  /** Names must stay inside these bounds (the room). */
+  bounds?: LabelRect,
 ): SeatNameLayout[] {
-  type Rect = { x0: number; y0: number; x1: number; y1: number }
-  const placed: Rect[] = seats.map((seat) => ({
-    x0: seat.x - seatRadius,
-    y0: seat.y - seatRadius,
-    x1: seat.x + seatRadius,
-    y1: seat.y + seatRadius,
-  }))
+  type Rect = LabelRect
+  const placed: Rect[] = [
+    ...blocked,
+    ...seats.map((seat) => ({
+      x0: seat.x - seatRadius,
+      y0: seat.y - seatRadius,
+      x1: seat.x + seatRadius,
+      y1: seat.y + seatRadius,
+    })),
+  ]
   const clash = (a: Rect) =>
     placed.some(
       (b) =>
@@ -731,6 +740,15 @@ export function layoutSeatNames(
           y1: spot.y + (lines.length - 0.5) * spot.lineHeight,
         }
         if (clash(rect)) continue
+        if (
+          bounds &&
+          (rect.x0 < bounds.x0 ||
+            rect.y0 < bounds.y0 ||
+            rect.x1 > bounds.x1 ||
+            rect.y1 > bounds.y1)
+        ) {
+          continue
+        }
         placed.push(rect)
         return { lines, ...spot }
       }
@@ -760,6 +778,145 @@ export function seatNamePlan(
     mode: 'numbers',
     list: names.flatMap((name, seat) => (name ? [{ seat: seat + 1, name }] : [])),
   }
+}
+
+export type TableNames =
+  | { mode: 'names'; labels: SeatNameLayout[] }
+  | { mode: 'numbers'; list: { seat: number; name: string }[] }
+
+/** A name label's floor area, for collision checks. */
+export function labelRect(label: NonNullable<SeatNameLayout>, fontSize: number): LabelRect {
+  const longest = Math.max(1, ...label.lines.map((line) => line.length))
+  const halfW = (longest * fontSize * CHAR_WIDTH) / 2
+  return {
+    x0: label.x - halfW,
+    x1: label.x + halfW,
+    y0: label.y - label.lineHeight / 2,
+    y1: label.y + (label.lines.length - 0.5) * label.lineHeight,
+  }
+}
+
+/** The floor a table's body and chairs cover, for name collision checks. */
+function chairArea(table: SeatTable, seatRadius: number): LabelRect {
+  const box = boxOf(table.x, table.y, table.w, table.h, table.rotation, 0)
+  const reach = SEAT_GAP + seatRadius
+  return {
+    x0: box.x0 - reach,
+    y0: box.y0 - reach,
+    x1: box.x1 + reach,
+    y1: box.y1 + reach,
+  }
+}
+
+/**
+ * Names for every table in the room at once. A table keeps names beside its
+ * seats only when every one of its guests' names fits in full (or as
+ * "Elizabeth M.") without touching another table's chairs, a room item,
+ * another table's names or the room's walls. Otherwise that table shows seat
+ * numbers only, with no loose names at all, and its list of names opens when
+ * the table is tapped.
+ */
+export function planSeatNames(
+  plan: SeatingPlan,
+  nameOf: (guestId: string) => string | null,
+  fontSize: number,
+  seatRadius: number,
+): Map<string, TableNames> {
+  const result = new Map<string, TableNames>()
+  const bounds = { x0: 0, y0: 0, x1: plan.room.width, y1: plan.room.length }
+  const items: LabelRect[] = plan.items
+    .filter((item) => item.kind !== 'label')
+    .map((item) => boxOf(item.x, item.y, item.w, item.h, item.rotation, 0))
+  const areas = new Map(
+    plan.tables.map((table) => [table.id, chairArea(table, seatRadius)]),
+  )
+  const names: LabelRect[] = []
+  for (const table of plan.tables) {
+    const bySeat = new Map<number, string>()
+    for (const [guestId, spot] of Object.entries(plan.seats)) {
+      if (spot.tableId === table.id) bySeat.set(spot.seat, guestId)
+    }
+    const seated = Array.from({ length: table.seats }, (_, seat) => {
+      const guestId = bySeat.get(seat)
+      return guestId ? nameOf(guestId) : null
+    })
+    if (seated.every((name) => !name)) {
+      result.set(table.id, { mode: 'names', labels: [] })
+      continue
+    }
+    const others = plan.tables
+      .filter((other) => other.id !== table.id)
+      .map((other) => areas.get(other.id)!)
+    const labels = layoutSeatNames(
+      placedSeats(table),
+      { x: table.x, y: table.y },
+      seated,
+      fontSize,
+      seatRadius,
+      [...items, ...others, ...names],
+      bounds,
+    )
+    const fits = seated.every((name, index) => !name || labels[index])
+    if (fits) {
+      for (const label of labels) if (label) names.push(labelRect(label, fontSize))
+      result.set(table.id, { mode: 'names', labels })
+      continue
+    }
+    result.set(table.id, {
+      mode: 'numbers',
+      list: seated.flatMap((name, seat) => (name ? [{ seat: seat + 1, name }] : [])),
+    })
+  }
+  return result
+}
+
+/**
+ * Where a table's numbered name list opens: beside the table on the side
+ * with the most free floor, always fully inside the room.
+ */
+export function nameListBox(
+  plan: SeatingPlan,
+  table: SeatTable,
+  size: { w: number; h: number },
+  seatRadius: number,
+): LabelRect {
+  const area = chairArea(table, seatRadius)
+  const gap = 10
+  const fit = (x0: number, y0: number): LabelRect => {
+    const x = Math.min(Math.max(0, x0), Math.max(0, plan.room.width - size.w))
+    const y = Math.min(Math.max(0, y0), Math.max(0, plan.room.length - size.h))
+    return { x0: x, y0: y, x1: x + size.w, y1: y + size.h }
+  }
+  const candidates = [
+    fit(area.x1 + gap, table.y - size.h / 2),
+    fit(area.x0 - gap - size.w, table.y - size.h / 2),
+    fit(table.x - size.w / 2, area.y1 + gap),
+    fit(table.x - size.w / 2, area.y0 - gap - size.h),
+  ]
+  const others: LabelRect[] = [
+    ...plan.tables.map((other) =>
+      other.id === table.id ? area : chairArea(other, seatRadius),
+    ),
+    ...plan.items
+      .filter((item) => item.kind !== 'label')
+      .map((item) => boxOf(item.x, item.y, item.w, item.h, item.rotation, 0)),
+  ]
+  const overlap = (box: LabelRect) =>
+    others.reduce((sum, other) => {
+      const w = Math.min(box.x1, other.x1) - Math.max(box.x0, other.x0)
+      const h = Math.min(box.y1, other.y1) - Math.max(box.y0, other.y0)
+      return w > 0 && h > 0 ? sum + w * h : sum
+    }, 0)
+  let best = candidates[0]!
+  let bestOverlap = overlap(best)
+  for (const candidate of candidates.slice(1)) {
+    const value = overlap(candidate)
+    if (value < bestOverlap) {
+      best = candidate
+      bestOverlap = value
+    }
+  }
+  return best
 }
 
 /** Grows the room 5 ft at a time until Auto-arrange fits every table. */

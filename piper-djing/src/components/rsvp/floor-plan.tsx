@@ -10,8 +10,9 @@ import {
   guestsAt,
   normalAngle,
   placedSeats,
+  nameListBox,
+  planSeatNames,
   rotatePoint,
-  seatNamePlan,
   snapTo,
   tableLabel,
   tableLabelLayout,
@@ -22,6 +23,7 @@ import type {
   SeatTable,
   SeatableGuest,
   SeatingPlan,
+  TableNames,
 } from '../../lib/rsvp/seating.ts'
 
 /** Screen colours follow the RSVP theme; print is always ink on white. */
@@ -558,6 +560,22 @@ export function FloorPlan({
     print || box.w === 0 || box.h === 0
       ? 0
       : Math.max(shown.w / box.w, shown.h / box.h)
+  const [hovered, setHovered] = useState('')
+  const namesShown = !print && perPixel > 0 && NAME_SIZE / perPixel >= 8
+  // Names for the whole room are planned together, so no table's names land
+  // on another table, a room item, another table's names or a wall.
+  const namePlans = useMemo(
+    () =>
+      namesShown
+        ? planSeatNames(
+            plan,
+            (guestId) => guests.get(guestId)?.name ?? null,
+            NAME_SIZE,
+            SEAT_R,
+          )
+        : null,
+    [namesShown, plan, guests],
+  )
   const handleR = print ? 0 : Math.max(6, view.w / 90)
   const selectedTable =
     selection?.kind === 'table'
@@ -688,6 +706,12 @@ export function FloorPlan({
             placing={placing}
             interactive={!print}
             perPixel={perPixel}
+            names={namePlans?.get(table.id) ?? null}
+            onHover={setHovered}
+            active={
+              (selection?.kind === 'table' && selection.id === table.id) ||
+              hovered === table.id
+            }
           />
         ))}
         {plan.tables.map((table) => (
@@ -703,6 +727,12 @@ export function FloorPlan({
             placing={placing}
             interactive={!print}
             perPixel={perPixel}
+            names={namePlans?.get(table.id) ?? null}
+            onHover={setHovered}
+            active={
+              (selection?.kind === 'table' && selection.id === table.id) ||
+              hovered === table.id
+            }
           />
         ))}
 
@@ -869,6 +899,9 @@ function TableShape({
   interactive,
   perPixel,
   layer = 'table',
+  names = null,
+  active = false,
+  onHover,
 }: {
   table: SeatTable
   plan: SeatingPlan
@@ -882,6 +915,11 @@ function TableShape({
   perPixel: number
   /** Name lists draw in a second pass, above every table. */
   layer?: 'table' | 'callout'
+  /** This table's names, planned with the whole room; null hides names. */
+  names?: TableNames | null
+  /** Tapped or hovered: open the name list. */
+  active?: boolean
+  onHover?: (tableId: string) => void
 }) {
   const sitting = guestsAt(plan, table.id)
   const bySeat = new Map<number, string>()
@@ -899,49 +937,24 @@ function TableShape({
   )
   // Names only once they are big enough to read without running together;
   // at Fit zoom and in print the plan shows table numbers and counts only.
-  const showNames = !print && perPixel > 0 && NAME_SIZE / perPixel >= 8
-  // Every name at this table placed together, so none lands on another.
-  const namePlan = showNames
-    ? seatNamePlan(
-        spots,
-        { x: table.x, y: table.y },
-        spots.map((_, seat) => {
-          const guestId = bySeat.get(seat)
-          return guestId ? (guests.get(guestId)?.name ?? null) : null
-        }),
-        NAME_SIZE,
-        SEAT_R,
-      )
-    : null
-  const names = namePlan?.mode === 'names' ? namePlan.labels : []
-  // Names that cannot all fit around the table: numbers on the seats and a
-  // numbered list beside the table instead, so nothing overlaps.
+  const showNames = names !== null
+  const labels = names?.mode === 'names' ? names.labels : []
+  const numbered = names?.mode === 'numbers'
+  // A table whose names cannot all fit shows seat numbers only; its list of
+  // names opens beside it while the table is tapped or hovered.
   const callout =
-    namePlan?.mode === 'numbers' && namePlan.list.length > 0
+    names?.mode === 'numbers' && active && names.list.length > 0
       ? (() => {
           const lineHeight = NAME_SIZE * 1.3
-          const rows = namePlan.list.map(
-            (row) => `${row.seat}. ${row.name}`,
-          )
+          const rows = [
+            tableLabel(table.name),
+            ...names.list.map((row) => `${row.seat}. ${row.name}`),
+          ]
           const width =
             Math.max(...rows.map((row) => row.length)) * NAME_SIZE * 0.64 + 14
           const height = rows.length * lineHeight + 10
-          const angle = (table.rotation * Math.PI) / 180
-          const reach =
-            (Math.abs(table.w * Math.cos(angle)) +
-              Math.abs(table.h * Math.sin(angle))) /
-              2 +
-            SEAT_R * 2 +
-            18
-          const right = table.x + reach + width <= plan.room.width
-          return {
-            rows,
-            lineHeight,
-            width,
-            height,
-            x: right ? table.x + reach : table.x - reach - width,
-            y: table.y - height / 2,
-          }
+          const box = nameListBox(plan, table, { w: width, h: height }, SEAT_R)
+          return { rows, lineHeight, width, height, x: box.x0, y: box.y0 }
         })()
       : null
   if (layer === 'callout') {
@@ -955,6 +968,12 @@ function TableShape({
         data-hit="table"
         data-id={table.id}
         style={{ cursor: interactive ? 'move' : undefined }}
+        onPointerEnter={(event) => {
+          if (event.pointerType === 'mouse') onHover?.(table.id)
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType === 'mouse') onHover?.('')
+        }}
       >
         <title>{`${tableLabel(table.name)} · ${sitting.length} of ${table.seats} seated`}</title>
         {table.shape === 'round' ? (
@@ -1011,7 +1030,7 @@ function TableShape({
         const guestId = bySeat.get(seat) ?? null
         const guest = guestId ? guests.get(guestId) : undefined
         const chosen = guestId !== null && guestId === selectedGuest
-        const name = names[seat] ?? null
+        const name = labels[seat] ?? null
         return (
           <g
             key={seat}
@@ -1043,7 +1062,7 @@ function TableShape({
               strokeWidth={chosen ? 4 : 1.5}
               strokeDasharray={guest || !placing ? undefined : '3 3'}
             />
-            {guest && showNames && (name || callout) ? (
+            {guest && showNames && (name || numbered) ? (
               <>
                 <text
                   x={spot.x}
@@ -1055,9 +1074,9 @@ function TableShape({
                   fill={colours.seatText}
                   pointerEvents="none"
                 >
-                  {callout ? seat + 1 : initials(guest)}
+                  {numbered ? seat + 1 : initials(guest)}
                 </text>
-                {name ? (
+                {name && !numbered ? (
                 <text
                   textAnchor="middle"
                   dominantBaseline="central"
