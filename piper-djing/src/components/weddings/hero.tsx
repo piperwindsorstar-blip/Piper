@@ -26,8 +26,8 @@ export function Hero() {
             Lock in your Brantford wedding DJ.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-soft">
-            Packed dance floors, flawless transitions and zero stress for
-            Brantford and area couples. Check your date in 30 seconds and hear
+            Exciting dance floors, seamless track selection, and zero stress
+            for Brantford and area couples. Check your date in 30 seconds and hear
             back within one business day.
           </p>
           <ul className="mt-6 grid gap-2 sm:grid-cols-2">

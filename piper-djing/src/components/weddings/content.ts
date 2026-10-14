@@ -103,7 +103,7 @@ export const GEAR = [
   {
     i: 'headphones' as const,
     t: 'The Booth',
-    d: 'Pro controller, backup gear and a clean, low-profile setup.',
+    d: 'Pro controller and a clean, low-profile setup.',
   },
   {
     i: 'speaker' as const,
@@ -165,11 +165,11 @@ export const CHECKLIST = [
   'Custom playlists',
   'Pro sound & lighting',
   'Planner-friendly coordination',
-  'Backup gear included',
+  'Peace of mind wedding professional',
 ]
 
 export const TRUST = [
   ['zap', 'Reply within one business day'],
-  ['mic', 'Backup gear on site'],
+  ['mic', 'Peace of mind wedding professional'],
   ['pin', 'Brantford & area'],
 ] as const
