@@ -100,4 +100,19 @@ describe('terms', () => {
     const custom = `${TERMS_BODY}\n\nExtra note.`
     assert.equal(reviseTerms(custom), custom)
   })
+
+  it('repairs the doubled payment paragraph and clause 4.5 from the HST wording change', () => {
+    const OLD =
+      'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card adds 13% HST, which is charged on the balance, not the deposit.'
+    const NEW =
+      'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments toward the balance carry 13% HST on the amount paid by card. Deposits, e-transfer and cash carry no HST.'
+    const AGREEMENT = TERMS_BODY.slice(TERMS_BODY.indexOf('4.5 '), TERMS_BODY.indexOf('\n\n', TERMS_BODY.indexOf('4.5 ')))
+    const beforeChange = TERMS_BODY.replace(NEW, OLD)
+    assert.equal(reviseTerms(beforeChange), TERMS_BODY)
+    // What the live book held after one start: the old paragraph, then both again.
+    const doubled = TERMS_BODY.replace(NEW, `${OLD}\n\n${AGREEMENT}\n\n${NEW}`)
+    assert.equal(doubled.split('4.5 ').length - 1, 2)
+    assert.equal(reviseTerms(doubled), TERMS_BODY)
+    assert.equal(reviseTerms(TERMS_BODY), TERMS_BODY)
+  })
 })

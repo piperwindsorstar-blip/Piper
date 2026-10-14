@@ -177,17 +177,20 @@ export function GoogleReviewsSection({
   variant,
   pageUrl,
   heading = 'What couples say.',
+  anchorId = 'google-reviews',
 }: {
   google: GoogleReviews | null
   variant: Variant
   pageUrl: string
   heading?: string
+  /** "reviews" when this is the page's only review section (menu links). */
+  anchorId?: string
 }) {
   if (!google || google.reviews.length === 0) return null
   const look = LOOK[variant]
   return (
     <section
-      id="google-reviews"
+      id={anchorId}
       className="mx-auto max-w-7xl scroll-mt-24 px-5 py-20"
       aria-labelledby="google-reviews-title"
     >

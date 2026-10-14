@@ -28,6 +28,10 @@ export function HomePage({
   google?: GoogleReviews | null
   display?: ReviewDisplay
 }) {
+  // "Google only" with nothing from Google still shows the site's own
+  // reviews, so the page never loses its reviews or the #reviews anchor.
+  const googleShown = Boolean(google && google.reviews.length > 0)
+  const showMine = display !== 'google' || !googleShown
   return (
     <div className="home overflow-x-clip bg-ink-950 text-white">
       <script
@@ -51,11 +55,12 @@ export function HomePage({
           <GoogleReviewsSection
             google={google}
             variant="dark"
+            anchorId={showMine ? 'google-reviews' : 'reviews'}
             pageUrl={publicUrl('/')}
             heading="What people say."
           />
         )}
-        {display === 'google' ? null : <Reviews reviews={reviews} />}
+        {showMine ? <Reviews reviews={reviews} /> : null}
         <InstagramStrip />
         <FinalCta />
       </main>

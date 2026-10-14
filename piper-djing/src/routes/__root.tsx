@@ -2,8 +2,6 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import appCss from '../styles.css?url'
 
-const GROK_PROJECT_ID = '01a108f2-ed78-7520-b3dd-a811205b73ee'
-
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -20,8 +18,6 @@ export const Route = createRootRoute({
         name: 'google-site-verification',
         content: '1Ziqc7uNXcqZec7DG59aKU9SBArgU_ctZpsUYEepYQA',
       },
-      { name: 'grok-project-id', content: GROK_PROJECT_ID },
-      { property: 'grok:app_id', content: GROK_PROJECT_ID },
       { title: 'Piper DJing' },
     ],
     links: [
@@ -37,8 +33,8 @@ export const Route = createRootRoute({
         rel: 'stylesheet',
         href: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600;700;800&display=swap',
       },
-      { rel: 'manifest', href: '/__grok/manifest.webmanifest' },
-      { rel: 'apple-touch-icon', href: '/__grok/icon-180.png' },
+      { rel: 'manifest', href: '/manifest.webmanifest' },
+      { rel: 'apple-touch-icon', href: '/icons/icon-180.png' },
     ],
   }),
   shellComponent: RootDocument,
@@ -50,11 +46,6 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <script
-          src="https://grok.com/grok-app-builder/extensions.js"
-          data-project-id={GROK_PROJECT_ID}
-          defer
-        />
       </head>
       <body>
         {children}

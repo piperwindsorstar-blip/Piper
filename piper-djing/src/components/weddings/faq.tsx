@@ -26,11 +26,13 @@ export function Faq() {
                 className={`h-5 w-5 shrink-0 text-neon transition ${open === index ? 'rotate-45' : ''}`}
               />
             </button>
-            {open === index ? (
-              <p className="max-w-2xl pb-6 leading-relaxed text-soft">
-                {answer}
-              </p>
-            ) : null}
+            {/* Always in the page (search engines read it); hidden when closed. */}
+            <p
+              hidden={open !== index}
+              className="max-w-2xl pb-6 leading-relaxed text-soft"
+            >
+              {answer}
+            </p>
           </div>
         ))}
       </div>

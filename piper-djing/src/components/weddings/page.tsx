@@ -36,6 +36,10 @@ export function WeddingsPage({
   google?: GoogleReviews | null
   display?: ReviewDisplay
 }) {
+  // "Google only" with nothing from Google still shows the site's own
+  // reviews, so the page never loses its reviews or the #reviews anchor.
+  const googleShown = Boolean(google && google.reviews.length > 0)
+  const showMine = display !== 'google' || !googleShown
   return (
     <DateDraftProvider>
       <div className="weddings overflow-x-clip bg-paper pb-20 font-sans text-ink">
@@ -62,10 +66,11 @@ export function WeddingsPage({
             <GoogleReviewsSection
               google={google}
               variant="light"
+              anchorId={showMine ? 'google-reviews' : 'reviews'}
               pageUrl={publicUrl('/weddings')}
             />
           )}
-          {display === 'google' ? null : <Reviews reviews={reviews} />}
+          {showMine ? <Reviews reviews={reviews} /> : null}
           <Faq />
           <FinalCta />
         </main>

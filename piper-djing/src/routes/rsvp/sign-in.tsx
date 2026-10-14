@@ -28,7 +28,7 @@ function SignIn() {
       <h1 className="portal-display text-4xl">Couple sign in</h1>
       <p className="mt-2 text-[var(--text-muted)]">
         We&apos;ll email you a one-time sign-in link. No password to remember.
-        $20 with a paid Piper date. $30 on its own.
+        $20 with a Piper DJing booking (deposit paid), $30 on its own, plus 13% HST by card.
       </p>
       <form
         className="mt-6 grid gap-4"

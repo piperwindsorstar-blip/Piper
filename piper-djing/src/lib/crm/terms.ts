@@ -24,6 +24,22 @@ const SECOND_VENUE_PARAGRAPH =
 const PAYMENT_PARAGRAPH =
   'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments toward the balance carry 13% HST on the amount paid by card. Deposits, e-transfer and cash carry no HST.'
 
+/** The payment wording before card HST was per card payment (Oct 2026). */
+const PREVIOUS_PAYMENT_PARAGRAPH =
+  'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card adds 13% HST, which is charged on the balance, not the deposit.'
+
+/** Keeps the first copy of a paragraph and drops any later repeats. */
+function keepFirst(body: string, paragraph: string): string {
+  const first = body.indexOf(paragraph)
+  if (first < 0) return body
+  const head = body.slice(0, first + paragraph.length)
+  const tail = body
+    .slice(first + paragraph.length)
+    .split(`\n\n${paragraph}`)
+    .join('')
+  return head + tail
+}
+
 const AGREEMENT_PARAGRAPH =
   '4.5 Sending the deposit, or paying Ceremony only in full, is agreement to these terms. A signature is extra proof of that agreement. A signature by itself does not hold and does not book a date.'
 
@@ -76,6 +92,11 @@ ${BOOKED_PARAGRAPH}`
 
 export function reviseTerms(body: string): string {
   let next = body
+  // Older payment wording becomes the current one; a document that got both
+  // (one start inserted the new paragraph beside the old) keeps one copy.
+  next = next.split(PREVIOUS_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)
+  next = keepFirst(next, PAYMENT_PARAGRAPH)
+  next = keepFirst(next, AGREEMENT_PARAGRAPH)
   if (next.includes(PREVIOUS_DEPOSIT) || next.includes(PREVIOUS_TRAVEL)) {
     next = next
       .replace(PREVIOUS_DEPOSIT, DEPOSIT_PARAGRAPH)
