@@ -26,6 +26,8 @@ import {
 } from './mail.server.ts'
 import type { ReviewDraft } from './reviews.ts'
 import {
+  refreshTravel,
+  setTravelManual,
   addMedia,
   addPayment,
   addQuestion,
@@ -1031,4 +1033,47 @@ export const findGooglePlace = createServerFn({ method: 'POST' })
     await requireDesk()
     if (!data.query) return { ok: false as const, error: 'Type the business name and town.' }
     return searchGooglePlaces(data.query)
+  })
+
+// --- travel ----------------------------------------------------------------
+
+/** Recalculate: ask Google again for the driving distance, even if paid. */
+export const recalcTravel = createServerFn({ method: 'POST' })
+  .validator((data: { id?: unknown }) => ({ id: Number(data.id) }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, booking: await refreshTravel(data.id, { force: true }) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+/** The owner's own distance and/or fee; both blank goes back to automatic. */
+export const saveTravel = createServerFn({ method: 'POST' })
+  .validator((data: { id?: unknown; km?: unknown; fee?: unknown }) => {
+    const number = (value: unknown) => {
+      if (value === null || value === undefined) return null
+      const text = String(value).replace(/[$,\s]/g, '')
+      if (text === '') return null
+      const parsed = Number(text)
+      return Number.isFinite(parsed) ? parsed : Number.NaN
+    }
+    const fee = number(data.fee)
+    return {
+      id: Number(data.id),
+      km: number(data.km),
+      feeCents: fee == null ? null : Number.isNaN(fee) ? Number.NaN : Math.round(fee * 100),
+    }
+  })
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return {
+        ok: true as const,
+        booking: await setTravelManual(data.id, { km: data.km, feeCents: data.feeCents }),
+      }
+    } catch (error) {
+      return fail(error)
+    }
   })

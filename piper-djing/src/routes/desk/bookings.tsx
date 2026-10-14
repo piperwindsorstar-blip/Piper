@@ -42,7 +42,9 @@ import {
   deleteExternal,
   deleteVenue,
   getBookings,
+  recalcTravel,
   releaseExternal,
+  saveTravel,
   markSent,
   markVoid,
   recordPayment,
@@ -56,6 +58,8 @@ import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
 import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
+import { TRAVEL_FAILED_TEXT, distanceLabel } from '../../lib/crm/travel.ts'
+import type { TravelSource } from '../../lib/crm/travel.ts'
 import {
   applyDiscount,
   deposit30,
@@ -951,6 +955,15 @@ function BookingCard({
     holdLastDay: string | null
     stagReleased: boolean
     notes: string
+    travel: {
+      km: number | null
+      feeCents: number | null
+      tier: string | null
+      hotel: boolean
+      source: string
+      error: string
+      stale: boolean
+    }
     invoice: {
       id: number
       slug: string
@@ -1130,6 +1143,7 @@ function BookingCard({
             </Link>
           ) : null}
         </p>
+        <TravelPanel booking={booking} />
         {open ? <PortalDeskFields slug={booking.slug} /> : null}
         <form
           key={formKey}
@@ -1492,6 +1506,170 @@ function BookingCard({
   )
 }
 
+/**
+ * Travel on a booking: the distance (auto or manual), the fee, the hotel
+ * flag, an override for distance and fee, and Recalculate.
+ */
+function TravelPanel({
+  booking,
+}: {
+  booking: {
+    id: number
+    packageId: string
+    venueStreet: string
+    travel: {
+      km: number | null
+      feeCents: number | null
+      tier: string | null
+      hotel: boolean
+      source: string
+      error: string
+      stale: boolean
+    }
+    invoice: { receivedCents: number } | null
+  }
+}) {
+  const recalc = useServerFn(recalcTravel)
+  const saveManual = useServerFn(saveTravel)
+  const router = useRouter()
+  const [notice, setNotice] = useState<string | null>(null)
+  const travel = booking.travel
+  const paid = (booking.invoice?.receivedCents ?? 0) > 0
+  const label = distanceLabel(travel.km, travel.source as TravelSource)
+  const fee =
+    travel.feeCents == null
+      ? '—'
+      : travel.feeCents === 0
+        ? booking.packageId === 'ceremony'
+          ? 'Included with The Aisle'
+          : 'Included'
+        : cad(travel.feeCents)
+  return (
+    <section className="rounded-xl border border-white/10 bg-white/5 p-4" aria-label="Travel">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold">{label}</p>
+          <p className="text-sm text-white/65">
+            Travel fee: {fee}
+            {travel.source === 'manual' ? ' (manual)' : travel.source === 'auto' ? ' (auto)' : ''}
+          </p>
+          {travel.hotel ? (
+            <p className="mt-1 text-sm font-semibold text-amber-700">
+              Hotel required: over 200 km.
+            </p>
+          ) : null}
+          {!booking.venueStreet.trim() ? (
+            <p className="mt-1 text-sm text-white/65">
+              Add the venue address to work out travel.
+            </p>
+          ) : null}
+          {travel.source === 'failed' && travel.error ? (
+            <p className="mt-1 text-xs text-white/65">{travel.error}</p>
+          ) : null}
+          {travel.source === '' && travel.error ? (
+            <p className="mt-1 text-sm text-amber-700">{travel.error}</p>
+          ) : null}
+          {travel.stale ? (
+            <p className="mt-1 text-sm text-amber-700">
+              The venue address changed
+              {paid ? ' and this invoice has a payment, so travel was kept' : ''}.
+              Press Recalculate to update it.
+            </p>
+          ) : null}
+        </div>
+        <ActionButton
+          className={deskGhost}
+          busy="Working it out…"
+          done="Updated"
+          surface={deskSurface}
+          onRun={async (): Promise<RunResult> => {
+            const result = await recalc({ data: { id: booking.id } })
+            if (!result.ok) return { ok: false, message: result.error }
+            await router.invalidate()
+            const next = result.booking.travel
+            const message =
+              next.source === 'failed'
+                ? TRAVEL_FAILED_TEXT
+                : next.km != null
+                  ? `${next.km.toFixed(1)} km`
+                  : next.error || 'Updated.'
+            setNotice(message)
+            return { ok: next.source !== 'failed', message }
+          }}
+        >
+          Recalculate
+        </ActionButton>
+      </div>
+      <details className="group mt-3">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center text-sm font-semibold text-hot [&::-webkit-details-marker]:hidden">
+          {travel.source === 'manual' ? 'Change the manual distance or fee' : 'Enter distance or fee by hand'}
+        </summary>
+        <form
+          className="mt-2 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+          onSubmit={(event) => event.preventDefault()}
+        >
+          <label className="field">
+            Distance (km, one way)
+            <input
+              name="km"
+              inputMode="decimal"
+              defaultValue={travel.source === 'manual' && travel.km != null ? String(travel.km) : ''}
+              placeholder={travel.km != null ? String(travel.km) : 'e.g. 82.4'}
+            />
+          </label>
+          <label className="field">
+            Travel fee ($)
+            <input
+              name="fee"
+              inputMode="decimal"
+              defaultValue={
+                travel.source === 'manual' && travel.feeCents != null
+                  ? (travel.feeCents / 100).toFixed(2)
+                  : ''
+              }
+              placeholder="From the distance"
+            />
+          </label>
+          <ActionButton
+            className={deskPrimary}
+            busy="Saving…"
+            done="Saved"
+            surface={deskSurface}
+            onRun={async (form: FormData): Promise<RunResult> => {
+              const result = await saveManual({
+                data: {
+                  id: booking.id,
+                  km: String(form.get('km') ?? ''),
+                  fee: String(form.get('fee') ?? ''),
+                },
+              })
+              if (!result.ok) return { ok: false, message: result.error }
+              await router.invalidate()
+              const message =
+                result.booking.travel.source === 'manual'
+                  ? 'Saved. This sticks until you clear both boxes.'
+                  : 'Back to automatic.'
+              setNotice(message)
+              return { ok: true, message }
+            }}
+          >
+            Save
+          </ActionButton>
+          <p className="text-xs text-white/65 sm:col-span-3">
+            A fee you enter wins; a distance alone picks the fee from the
+            tiers. Clear both boxes and save to go back to automatic.
+          </p>
+        </form>
+      </details>
+      {notice ? (
+        <p className="mt-2 text-sm text-white/85" role="status">
+          {notice}
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
 function VenuePair({
   venues,
   chooseLabel,
@@ -1790,22 +1968,10 @@ function BookingFields({
           defaultValue={defaults?.uplights ?? 0}
         />
       </label>
-      <label className="field">
-        One-way kilometres to the venue
-        <input
-          name="kmOne"
-          inputMode="decimal"
-          defaultValue={defaults?.kmOne}
-        />
-      </label>
-      <label className="field">
-        One-way kilometres to the second venue
-        <input
-          name="kmTwo"
-          inputMode="decimal"
-          defaultValue={defaults?.kmTwo}
-        />
-      </label>
+      {/* Travel is worked out from the venue address now; older typed
+          kilometres ride along unchanged. */}
+      <input type="hidden" name="kmOne" defaultValue={defaults?.kmOne} />
+      <input type="hidden" name="kmTwo" defaultValue={defaults?.kmTwo} />
       <label className="field">
         Discount
         <input

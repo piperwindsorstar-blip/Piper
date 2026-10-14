@@ -1,4 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
+import { travelFromKm } from './travel.ts'
+import { drivingKm } from './travel.server.ts'
 import { isPackageId, packageName } from './defaults.ts'
 import { parseDateRequest, todayInToronto } from './date-request.ts'
 import { emailOwner } from './mail.server.ts'
@@ -160,4 +163,57 @@ export const sendInquiry = createServerFn({ method: 'POST' })
       // The lead is already saved. Mail trouble must not hide the inquiry.
     }
     return result
+  })
+
+const travelAsks = new Map<string, number[]>()
+
+/** 30 travel look-ups a minute per visitor is plenty for typing an address. */
+function travelAllowed(): boolean {
+  let ip = 'local'
+  try {
+    const request = getRequest()
+    ip =
+      (request.headers.get('cf-connecting-ip') ||
+        request.headers.get('x-forwarded-for') ||
+        'local').split(',')[0]?.trim() || 'local'
+  } catch {
+    // No request (tests): allow.
+  }
+  const now = Date.now()
+  const recent = (travelAsks.get(ip) ?? []).filter((at) => now - at < 60_000)
+  if (recent.length >= 30) return false
+  recent.push(now)
+  travelAsks.set(ip, recent)
+  return true
+}
+
+/**
+ * /book: the travel fee for the venue address the couple typed. Only the
+ * fee and tier go back; the distance from home is not shown publicly.
+ */
+export const estimateTravel = createServerFn({ method: 'POST' })
+  .validator((data: { address?: unknown; packageId?: unknown }) => ({
+    address: typeof data.address === 'string' ? data.address.trim().slice(0, 200) : '',
+    packageId:
+      typeof data.packageId === 'string' && isPackageId(data.packageId)
+        ? data.packageId
+        : 'full',
+  }))
+  .handler(async ({ data }) => {
+    if (!data.address) return { ok: false as const, reason: 'no-address' as const }
+    if (!travelAllowed()) return { ok: false as const, reason: 'busy' as const }
+    const found = await drivingKm(data.address)
+    if (!found.ok) {
+      return {
+        ok: false as const,
+        reason: found.reason === 'not-found' ? ('not-found' as const) : ('unavailable' as const),
+      }
+    }
+    const figure = travelFromKm(found.km, data.packageId)
+    return {
+      ok: true as const,
+      feeCents: figure.feeCents ?? 0,
+      tier: figure.tier,
+      hotel: figure.hotel,
+    }
   })

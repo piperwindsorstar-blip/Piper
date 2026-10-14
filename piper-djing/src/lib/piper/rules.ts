@@ -185,6 +185,14 @@ export function quote(
     withStag: boolean
     uplights: number
     venueKm: number[]
+    /**
+     * Travel worked out from the driving distance to the main venue (or set
+     * by hand). Null means the distance is unknown: no fee yet. Left out,
+     * the older typed kilometres decide.
+     */
+    travel?: TravelCharge | null
+    /** A separate ceremony venue; left out, a second typed distance decides. */
+    secondVenue?: boolean
   },
   prices: Record<PackageId, number> = PACKAGE_CENTS,
 ): { totalCents: number; depositCents: number; hotel: boolean } {
@@ -198,10 +206,13 @@ export function quote(
   const travel =
     input.packageId === 'ceremony'
       ? { cents: 0, hotel: false }
-      : travelForVenues(input.venueKm)
+      : input.travel !== undefined
+        ? (input.travel ?? { cents: 0, hotel: false })
+        : travelForVenues(input.venueKm)
+  const hasSecond = input.secondVenue ?? input.venueKm.length > 1
   const secondVenue =
     input.packageId === 'full' || input.packageId === 'reception'
-      ? input.venueKm.length > 1
+      ? hasSecond
         ? SECOND_VENUE_CENTS
         : 0
       : 0

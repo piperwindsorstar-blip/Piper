@@ -51,6 +51,7 @@ import {
 } from '../crm/store.server.ts'
 import type { BookingView, BotRole } from '../crm/store.server.ts'
 import { botSettings } from './settings.server.ts'
+import { travelFields } from './travel-fields.ts'
 
 type Bot = { id: number; name: string; role: BotRole }
 
@@ -122,7 +123,12 @@ export async function handleBot(request: Request): Promise<Response> {
 async function readResource(resource: string): Promise<Response> {
   switch (resource) {
     case 'bookings':
-      return Response.json({ bookings: await listBookings() })
+      return Response.json({
+        bookings: (await listBookings()).map((booking) => ({
+          ...booking,
+          ...travelFields(booking),
+        })),
+      })
     case 'invoices':
       return Response.json({
         invoices: (await listBookings())
@@ -132,6 +138,7 @@ async function readResource(resource: string): Promise<Response> {
                 bookingId: booking.id,
                 names: names(booking),
                 ...booking.invoice,
+                ...travelFields(booking),
               },
           )
           .filter(Boolean),

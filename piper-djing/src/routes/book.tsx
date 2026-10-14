@@ -9,10 +9,12 @@ import { Header } from '../components/weddings/header.tsx'
 import { SiteFooter } from '../components/weddings/site-footer.tsx'
 import { publicPackagePrice } from '../lib/crm/packages.ts'
 import {
+  estimateTravel,
   getPublicSite,
   sendEventInquiry,
   sendInquiry,
 } from '../lib/crm/public.functions.ts'
+import { cad } from '../lib/crm/money.ts'
 import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
 import { WEDDING_OG_IMAGE, publicHead } from '../lib/seo.ts'
 import type { PackageId } from '../lib/crm/defaults.ts'
@@ -115,6 +117,8 @@ function BookPage() {
     if (next) setPackageId(next)
   }, [requestedEvent])
   const [withStag, setWithStag] = useState(false)
+  const [venueStreet, setVenueStreet] = useState('')
+  const [secondVenue, setSecondVenue] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const eventForm = useRef<HTMLFormElement | null>(null)
@@ -373,15 +377,45 @@ function BookPage() {
               </label>
               <label className="text-sm font-medium">
                 Venue street address
-                <input name="venueStreet" required className={field} />
+                <input
+                  name="venueStreet"
+                  required
+                  autoComplete="street-address"
+                  className={field}
+                  onChange={(event) => setVenueStreet(event.target.value)}
+                />
               </label>
               <label className="text-sm font-medium">
                 Second (ceremony) venue name — optional
-                <input name="venueTwoName" className={field} />
+                <input
+                  name="venueTwoName"
+                  className={field}
+                  onChange={(event) => {
+                    const form = event.currentTarget.form
+                    setSecondVenue(
+                      Boolean(
+                        event.target.value.trim() ||
+                          String(new FormData(form ?? undefined).get('venueTwoStreet') ?? '').trim(),
+                      ),
+                    )
+                  }}
+                />
               </label>
               <label className="text-sm font-medium">
                 Second (ceremony) venue address — optional
-                <input name="venueTwoStreet" className={field} />
+                <input
+                  name="venueTwoStreet"
+                  className={field}
+                  onChange={(event) => {
+                    const form = event.currentTarget.form
+                    setSecondVenue(
+                      Boolean(
+                        event.target.value.trim() ||
+                          String(new FormData(form ?? undefined).get('venueTwoName') ?? '').trim(),
+                      ),
+                    )
+                  }}
+                />
               </label>
               <p className="text-sm text-soft">
                 A separate ceremony venue adds a $75 second-venue fee.
@@ -434,6 +468,19 @@ function BookPage() {
                   />
                 </label>
               ) : null}
+              <PriceEstimate
+                packageId={packageId}
+                withStag={withStag}
+                venueStreet={venueStreet}
+                secondVenue={secondVenue}
+                prices={Object.fromEntries(
+                  packageChoices.map((item) => [
+                    item.id,
+                    packages.find((offer) => offer.id === item.id)?.cents ??
+                      PACKAGE_CENTS[item.id],
+                  ]),
+                )}
+              />
               <label className="text-sm font-medium">
                 Did someone refer you? If so, who? — optional
                 <input name="referral" className={field} />
@@ -478,4 +525,125 @@ function BookPage() {
       </div>
     </DateDraftProvider>
   )
+}
+
+type TravelEstimate =
+  | { state: 'idle' }
+  | { state: 'working' }
+  | { state: 'ready'; feeCents: number; hotel: boolean }
+  | { state: 'unknown' }
+
+/**
+ * The price estimate: package, stag, second venue and travel, worked out
+ * from the venue address once it is typed. Travel comes from the server.
+ */
+function PriceEstimate({
+  packageId,
+  withStag,
+  venueStreet,
+  secondVenue,
+  prices,
+}: {
+  packageId: string
+  withStag: boolean
+  venueStreet: string
+  secondVenue: boolean
+  prices: Record<string, number>
+}) {
+  const estimate = useServerFn(estimateTravel)
+  const [travel, setTravel] = useState<TravelEstimate>({ state: 'idle' })
+  const address = venueStreet.trim()
+
+  useEffect(() => {
+    if (address.length < 6 || packageId === 'custom') {
+      setTravel({ state: 'idle' })
+      return
+    }
+    let stale = false
+    setTravel({ state: 'working' })
+    const timer = window.setTimeout(() => {
+      void estimate({ data: { address, packageId } })
+        .then((result) => {
+          if (stale) return
+          setTravel(
+            result.ok
+              ? { state: 'ready', feeCents: result.feeCents, hotel: result.hotel }
+              : { state: 'unknown' },
+          )
+        })
+        .catch(() => {
+          if (!stale) setTravel({ state: 'unknown' })
+        })
+    }, 900)
+    return () => {
+      stale = true
+      window.clearTimeout(timer)
+    }
+  }, [address, packageId, estimate])
+
+  if (packageId === 'custom') {
+    return (
+      <p className="rounded-lg bg-mist px-4 py-3 text-sm text-soft">
+        Piper sends a custom price for this one.
+      </p>
+    )
+  }
+  const lines: [string, number][] = [[PACKAGE_TITLES_SHORT[packageId] ?? 'Package', prices[packageId] ?? 0]]
+  if (withStag && (packageId === 'full' || packageId === 'reception')) {
+    lines.push(['The Pre-Party (stag and doe)', prices.stag ?? 0])
+    if (packageId === 'full') lines.push(['Main Event + Pre-Party together', -25000])
+  }
+  if (secondVenue && (packageId === 'full' || packageId === 'reception')) {
+    lines.push(['Separate ceremony venue', 7500])
+  }
+  const travelCents = travel.state === 'ready' ? travel.feeCents : 0
+  const total = lines.reduce((sum, [, cents]) => sum + cents, 0) + travelCents
+  return (
+    <section
+      aria-label="Price estimate"
+      aria-live="polite"
+      className="rounded-xl border border-line bg-mist px-4 py-4 text-sm"
+    >
+      <p className="font-semibold">Your estimate</p>
+      <dl className="mt-2 grid gap-1">
+        {lines.map(([label, cents]) => (
+          <div key={label} className="flex justify-between gap-3">
+            <dt className="text-soft">{label}</dt>
+            <dd className="tabular-nums">{cents < 0 ? `−${cad(-cents)}` : cad(cents)}</dd>
+          </div>
+        ))}
+        <div className="flex justify-between gap-3">
+          <dt className="text-soft">Travel</dt>
+          <dd className="tabular-nums">
+            {packageId === 'ceremony'
+              ? 'Included'
+              : address.length < 6
+                ? 'Add the venue address'
+                : travel.state === 'working'
+                  ? 'Working it out…'
+                  : travel.state === 'ready'
+                    ? travel.feeCents === 0
+                      ? 'Included'
+                      : cad(travel.feeCents)
+                    : 'Piper will confirm'}
+          </dd>
+        </div>
+        <div className="mt-1 flex justify-between gap-3 border-t border-line pt-2 font-semibold">
+          <dt>Estimated total</dt>
+          <dd className="tabular-nums">{cad(total)}</dd>
+        </div>
+      </dl>
+      {travel.state === 'ready' && travel.hotel ? (
+        <p className="mt-2 text-soft">That far out, a hotel night is added. Piper will confirm it with you.</p>
+      ) : null}
+      <p className="mt-2 text-xs text-soft">Travel based on driving distance from Brantford.</p>
+    </section>
+  )
+}
+
+const PACKAGE_TITLES_SHORT: Record<string, string> = {
+  full: 'The Main Event',
+  reception: 'The After Party',
+  stag: 'The Pre-Party',
+  ceremony: 'The Aisle (paid in full)',
 }

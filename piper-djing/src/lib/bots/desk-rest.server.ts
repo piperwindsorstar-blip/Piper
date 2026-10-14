@@ -57,6 +57,7 @@ import {
 import type { BookingView, BotRole, LeadView } from '../crm/store.server.ts'
 import type { ReviewDraft } from '../crm/reviews.ts'
 import { botSettings } from './settings.server.ts'
+import { travelFields } from './travel-fields.ts'
 import { isPackageId } from '../crm/defaults.ts'
 import { dollarsToCents, optionalDiscount } from '../crm/money.ts'
 import {
@@ -636,6 +637,7 @@ async function invoices(
         bookingId: booking.id,
         names: `${booking.partnerOne} and ${booking.partnerTwo}`,
         ...booking.invoice,
+        ...travelFields(booking),
       }))
   if (method === 'GET' && !id) return botJson({ invoices: await rows() })
   if (method === 'GET') {
@@ -1185,6 +1187,7 @@ function reviewDraft(
 
 function botBooking(booking: BookingView) {
   return {
+    ...travelFields(booking),
     ...booking,
     couple: `${booking.partnerOne} and ${booking.partnerTwo}`,
     weddingDate: booking.eventDate,

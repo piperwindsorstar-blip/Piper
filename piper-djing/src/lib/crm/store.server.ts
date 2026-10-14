@@ -35,6 +35,9 @@ import {
   planningFromUnknown,
 } from './planning.ts'
 import type { Planning, PlanningSeed } from './planning.ts'
+import { addressKey, travelFromKm } from './travel.ts'
+import type { TravelSource, TravelTier } from './travel.ts'
+import { drivingKm } from './travel.server.ts'
 import {
   findDuplicateReview,
   isReviewSource,
@@ -104,7 +107,24 @@ export type BookingView = {
   holdLastDay: string | null
   stagReleased: boolean
   notes: string
+  travel: TravelView
   invoice: InvoiceView | null
+}
+
+/** Travel on a booking: what the desk shows and the bot API returns. */
+export type TravelView = {
+  /** One-way km to the main venue, to one decimal, or null. */
+  km: number | null
+  /** The travel fee in cents, or null when the distance is unknown. */
+  feeCents: number | null
+  tier: TravelTier | null
+  hotel: boolean
+  /** auto, manual, failed, or '' when not worked out yet. */
+  source: TravelSource
+  /** Why the last automatic try failed. */
+  error: string
+  /** The venue address changed since the distance was worked out. */
+  stale: boolean
 }
 
 export type LeadView = {
@@ -161,6 +181,12 @@ type BookingRow = {
   hold_started_on: string | null
   stag_released: unknown
   notes: string
+  travel_km_tenths?: unknown
+  travel_fee_cents?: unknown
+  travel_hotel?: unknown
+  travel_source?: string | null
+  travel_address?: string | null
+  travel_error?: string | null
 }
 
 type InvoiceRow = {
@@ -257,6 +283,60 @@ function toState(row: BookingRow): BookingState {
     lockedTotal: flag(row.locked_total),
     holdStartedOn: row.hold_started_on,
     stagReleased: flag(row.stag_released),
+    ...travelPricing(row),
+  }
+}
+
+function travelSourceOf(row: BookingRow): TravelSource {
+  const value = row.travel_source ?? ''
+  return value === 'auto' || value === 'manual' || value === 'failed' ? value : ''
+}
+
+function nullableWhole(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.round(number) : null
+}
+
+/**
+ * What travel the price uses. Worked-out or hand-set travel prices the main
+ * venue; a failed lookup prices no travel yet; a booking never worked out
+ * keeps the older typed kilometres.
+ */
+function travelPricing(row: BookingRow): {
+  travel?: { cents: number; hotel: boolean } | null
+  secondVenue?: boolean
+} {
+  const source = travelSourceOf(row)
+  if (source === '') return {}
+  const fee = nullableWhole(row.travel_fee_cents)
+  return {
+    travel:
+      source === 'failed' || fee == null
+        ? null
+        : { cents: fee, hotel: flag(row.travel_hotel) },
+    secondVenue: Boolean(
+      (row.venue_two_name ?? '').trim() || (row.venue_two_street ?? '').trim(),
+    ),
+  }
+}
+
+function travelViewOf(row: BookingRow): TravelView {
+  const source = travelSourceOf(row)
+  const tenths = nullableWhole(row.travel_km_tenths)
+  const km = tenths == null ? null : tenths / 10
+  const feeCents = nullableWhole(row.travel_fee_cents)
+  const figure = km == null ? null : travelFromKm(km, asPackage(row.package_id))
+  return {
+    km,
+    feeCents,
+    tier: figure?.tier ?? null,
+    hotel: flag(row.travel_hotel),
+    source,
+    error: row.travel_error ?? '',
+    stale:
+      (source === 'auto' || source === 'failed') &&
+      (row.travel_address ?? '') !== addressKey(row.venue_street ?? ''),
   }
 }
 
@@ -313,6 +393,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     holdLastDay: state.holdStartedOn ? holdLastDay(state.holdStartedOn) : null,
     stagReleased: state.stagReleased,
     notes: row.notes,
+    travel: travelViewOf(row),
     invoice: invoice ? toInvoiceView(invoice) : null,
   }
 }
@@ -379,10 +460,46 @@ async function ensurePaymentColumns(): Promise<void> {
   }
 }
 
+let travelColumnsReady: Promise<void> | null = null
+
+/** The travel columns on bookings, added once per Worker. */
+function ensureTravelColumns(): Promise<void> {
+  if (!travelColumnsReady) {
+    travelColumnsReady = (async () => {
+      try {
+        await query('SELECT travel_source FROM bookings LIMIT 0')
+        return
+      } catch {
+        // Missing: add them below.
+      }
+      for (const [name, definition] of [
+        ['travel_km_tenths', 'integer'],
+        ['travel_fee_cents', 'integer'],
+        ['travel_hotel', 'integer NOT NULL DEFAULT 0'],
+        ['travel_source', "text NOT NULL DEFAULT ''"],
+        ['travel_address', "text NOT NULL DEFAULT ''"],
+        ['travel_error', "text NOT NULL DEFAULT ''"],
+      ] as const) {
+        try {
+          await query(`ALTER TABLE bookings ADD COLUMN ${name} ${definition}`)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          if (!/duplicate column|already exists/i.test(message)) throw error
+        }
+      }
+    })().catch((error: unknown) => {
+      travelColumnsReady = null
+      throw error
+    })
+  }
+  return travelColumnsReady
+}
+
 async function bookingRows(): Promise<BookingRow[]> {
   await ensurePlanningColumn()
   await ensureDiscountColumn()
   await ensureCustomColumns()
+  await ensureTravelColumns()
   return query<BookingRow>('SELECT * FROM bookings ORDER BY id DESC')
 }
 
@@ -397,6 +514,7 @@ async function invoiceFor(bookingId: number): Promise<InvoiceRow | null> {
 async function bookingRow(id: number): Promise<BookingRow> {
   await ensureDiscountColumn()
   await ensureCustomColumns()
+  await ensureTravelColumns()
   const rows = await query<BookingRow>('SELECT * FROM bookings WHERE id = $1', [
     id,
   ])
@@ -1008,8 +1126,179 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   )
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
+  await refreshTravel(id).catch((error: unknown) => {
+    console.warn('[travel] not worked out:', error)
+  })
   const row = await bookingRow(id)
   return present(toView(row, await invoiceFor(id)))
+}
+
+// --- travel ------------------------------------------------------------------
+
+/**
+ * Works travel out from the driving distance to the main venue.
+ * Automatic runs (force false) leave alone: a hand-set distance or fee, an
+ * address that has not changed, and any booking whose invoice already has a
+ * payment. Recalculate (force true) always asks Google again.
+ */
+export async function refreshTravel(
+  bookingId: number,
+  options: { force?: boolean } = {},
+): Promise<BookingView> {
+  const row = await bookingRow(bookingId)
+  const invoiceRow = await invoiceFor(bookingId)
+  const source = travelSourceOf(row)
+  const street = (row.venue_street ?? '').trim()
+  const key = addressKey(street)
+  const paid = Boolean(invoiceRow && whole(invoiceRow.received_cents, 'Received') > 0)
+  const done = async () => present(toView(await bookingRow(bookingId), await invoiceFor(bookingId)))
+  if (!options.force) {
+    if (source === 'manual') return done()
+    if (source !== '' && (row.travel_address ?? '') === key) return done()
+    if (paid) return done()
+  }
+  if (!street) {
+    if (source === '' && !options.force) return done()
+    await writeTravel(bookingId, { km: null, feeCents: null, hotel: false, source: '', address: '', error: '' })
+    await repriceBooking(bookingId)
+    return done()
+  }
+  const found = await drivingKm(street)
+  if (!found.ok && found.reason === 'no-key') {
+    // Not set up yet: leave travel as it is and say why on the desk.
+    if (options.force) {
+      await query('UPDATE bookings SET travel_error = $1 WHERE id = $2', [
+        'Add GOOGLE_MAPS_API_KEY in Cloudflare to work travel out automatically.',
+        bookingId,
+      ])
+    }
+    return done()
+  }
+  if (found.ok) {
+    const figure = travelFromKm(found.km, asPackage(row.package_id))
+    await writeTravel(bookingId, {
+      km: found.km,
+      feeCents: figure.feeCents,
+      hotel: figure.hotel,
+      source: 'auto',
+      address: key,
+      error: '',
+    })
+  } else {
+    await writeTravel(bookingId, {
+      km: null,
+      feeCents: null,
+      hotel: false,
+      source: 'failed',
+      address: key,
+      error: found.detail,
+    })
+  }
+  await repriceBooking(bookingId)
+  return done()
+}
+
+/**
+ * The owner's own distance and/or fee. A fee given wins; a distance alone
+ * picks its tier. Both left blank goes back to automatic. The Aisle always
+ * includes travel.
+ */
+export async function setTravelManual(
+  bookingId: number,
+  input: { km: number | null; feeCents: number | null },
+): Promise<BookingView> {
+  if (input.km == null && input.feeCents == null) {
+    await query("UPDATE bookings SET travel_source = '' WHERE id = $1", [bookingId])
+    return refreshTravel(bookingId, { force: true })
+  }
+  if (input.km != null && (!Number.isFinite(input.km) || input.km < 0 || input.km > 5000)) {
+    throw new Error('Enter the distance in kilometres.')
+  }
+  if (input.feeCents != null && (!Number.isInteger(input.feeCents) || input.feeCents < 0)) {
+    throw new Error('Enter the travel fee in dollars.')
+  }
+  const row = await bookingRow(bookingId)
+  const packageId = asPackage(row.package_id)
+  const km = input.km == null ? null : Math.round(input.km * 10) / 10
+  const figure = km == null ? null : travelFromKm(km, packageId)
+  const feeCents =
+    packageId === 'ceremony' ? 0 : (input.feeCents ?? figure?.feeCents ?? 0)
+  await writeTravel(bookingId, {
+    km,
+    feeCents,
+    hotel: figure?.hotel ?? false,
+    source: 'manual',
+    address: addressKey(row.venue_street ?? ''),
+    error: '',
+  })
+  await repriceBooking(bookingId)
+  return present(toView(await bookingRow(bookingId), await invoiceFor(bookingId)))
+}
+
+async function writeTravel(
+  bookingId: number,
+  travel: {
+    km: number | null
+    feeCents: number | null
+    hotel: boolean
+    source: TravelSource
+    address: string
+    error: string
+  },
+): Promise<void> {
+  await ensureTravelColumns()
+  await query(
+    `UPDATE bookings SET travel_km_tenths = $1, travel_fee_cents = $2, travel_hotel = $3,
+       travel_source = $4, travel_address = $5, travel_error = $6
+     WHERE id = $7`,
+    [
+      travel.km == null ? null : Math.round(travel.km * 10),
+      travel.feeCents,
+      travel.hotel ? 1 : 0,
+      travel.source,
+      travel.address,
+      travel.error.slice(0, 300),
+      bookingId,
+    ],
+  )
+}
+
+/**
+ * Prices the booking again with its stored travel, and its invoice too.
+ * Agreed (locked) totals and Custom prices never move.
+ */
+async function repriceBooking(bookingId: number): Promise<void> {
+  const row = await bookingRow(bookingId)
+  const state = toState(row)
+  if (state.lockedTotal || state.packageId === 'custom') return
+  if (matchCustom(state.partnerOne, state.partnerTwo, state.eventDate)) return
+  const prices = await packagePriceMap()
+  const figures = figuresFor(
+    { ...state, discountCents: state.discountCents },
+    prices,
+  )
+  if (
+    figures.totalCents === state.totalCents &&
+    figures.depositCents === state.depositCents
+  ) {
+    return
+  }
+  await query(
+    'UPDATE bookings SET total_cents = $1, deposit_cents = $2 WHERE id = $3',
+    [figures.totalCents, figures.depositCents, bookingId],
+  )
+  const invoiceRow = await invoiceFor(bookingId)
+  if (invoiceRow && invoiceRow.status !== 'void') {
+    const invoice = toInvoice(invoiceRow)
+    const refreshed = toState(await bookingRow(bookingId))
+    const transition = recordMoney(
+      refreshed,
+      { ...invoice, totalCents: figures.totalCents, depositCents: figures.depositCents },
+      0,
+      prices.ceremony,
+    )
+    await saveBooking(bookingId, transition.booking, transition.invoice)
+  }
 }
 
 export type InquiryInput = {
@@ -1489,6 +1778,11 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
           discountCents: next.discountCents,
           customTotalCents: next.customTotalCents,
           customDepositCents: next.customDepositCents,
+          ...travelPricing({
+            ...current,
+            venue_two_name: next.venueTwoName,
+            venue_two_street: next.venueTwoStreet,
+          }),
         },
         prices,
       )
@@ -1539,6 +1833,10 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   }
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
+  // A new venue address works travel out again, unless set by hand or paid.
+  await refreshTravel(current.id).catch((error: unknown) => {
+    console.warn('[travel] not refreshed:', error)
+  })
   return present(
     toView(await bookingRow(current.id), await invoiceFor(current.id)),
   )

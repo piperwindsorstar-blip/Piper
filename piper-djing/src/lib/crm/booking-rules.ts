@@ -37,6 +37,10 @@ export type WeddingInput = {
   customDepositCents?: number
   /** A locked booking keeps its agreed total and is never repriced. */
   lockedTotal?: boolean
+  /** Automatic or manual travel; null = distance unknown; undefined = typed km. */
+  travel?: { cents: number; hotel: boolean } | null
+  /** A separate ceremony venue (the $75 fee). */
+  secondVenue?: boolean
 }
 
 export type BookingState = Omit<WeddingInput, 'discountCents'> & {

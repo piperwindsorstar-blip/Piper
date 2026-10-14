@@ -67,6 +67,8 @@ export function usageDocument(packages: UsagePackage[]) {
         'PATCH /api/bots/v1/packages/{full|reception|stag|ceremony} with name, detail, and cents or priceCents. includes and blurb are saved as the detail. Names and prices can be changed. Do not add a fifth package and do not delete one. The public listing and the next quote use the saved price. A date already on the book keeps its total until that booking is saved again.',
       payments:
         'POST /api/bots/v1/payments with {bookingId, cents, paidOn, method}. paidOn is YYYY-MM-DD and method is e-transfer, cash, or card. PATCH /api/bots/v1/payments/{id} with {cents, note, paidOn, method}. A payment edit can book a date; it never unbooks one.',
+      travel:
+        'Travel is worked out from the main venue address: one-way driving km from Brantford (Google Routes). Bookings and invoices include distanceKm, travelFee (dollars), travelFeeCents, travelTier (included, near, far, hotel, ceremony), hotelRequired and travelSource (auto, manual, failed, or empty). Changing venueStreet on a booking works it out again unless Piper set it by hand or the invoice has a payment.',
       terms:
         'PATCH /api/bots/v1/terms with {body}. CEO only. There is one document. Change it. Do not delete it.',
       settings:
