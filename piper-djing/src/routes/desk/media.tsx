@@ -7,6 +7,7 @@ import {
   deskDanger,
   deskPrimary,
   deskSurface,
+  ConfirmDelete,
 } from '../../components/desk-ui.tsx'
 import {
   deleteMedia,
@@ -140,18 +141,17 @@ function MediaCard({
           >
             Save
           </ActionButton>
-          <button
-            type="button"
-            className={deskDanger}
-            onClick={() => {
+          <ConfirmDelete
+                className={deskDanger}
+                onConfirm={() => {
               void remove({ data: { id: item.id } }).then(async (result) => {
                 setNotice(result.ok ? 'Deleted.' : result.error)
                 if (result.ok) await router.invalidate()
               })
             }}
-          >
-            Delete
-          </button>
+              >
+                Delete
+              </ConfirmDelete>
         </div>
       </form>
       {notice ? <p className="mt-3 text-sm text-white/85">{notice}</p> : null}

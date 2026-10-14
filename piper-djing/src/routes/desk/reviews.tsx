@@ -7,6 +7,8 @@ import {
   deskCard,
   deskPrimary,
   deskSurface,
+  ConfirmDelete,
+  deskDanger,
 } from '../../components/desk-ui.tsx'
 import {
   deleteReview,
@@ -167,18 +169,17 @@ function SavedReview({ review }: { review: ReviewView }) {
           >
             Save
           </ActionButton>
-          <button
-            type="button"
-            className="min-h-11 text-sm font-semibold text-rose-300"
-            onClick={() => {
+          <ConfirmDelete
+                className={deskDanger}
+                onConfirm={() => {
               void remove({ data: { id: review.id } }).then(async (result) => {
                 setNotice(result.ok ? 'Review deleted.' : result.error)
                 if (result.ok) await router.invalidate()
               })
             }}
-          >
-            Delete
-          </button>
+              >
+                Delete
+              </ConfirmDelete>
         </div>
       </form>
       {notice ? <p className="text-sm text-white/85">{notice}</p> : null}

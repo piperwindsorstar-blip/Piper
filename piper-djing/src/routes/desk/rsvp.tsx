@@ -7,6 +7,8 @@ import {
   deskGhost,
   deskPrimary,
   deskSurface,
+  ConfirmDelete,
+  deskDanger,
 } from '../../components/desk-ui.tsx'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
@@ -99,17 +101,16 @@ function RsvpDesk() {
               >
                 {row.paid ? 'Mark unpaid' : 'Mark paid'}
               </button>
-              <button
-                type="button"
-                className={deskGhost}
-                onClick={() => {
+              <ConfirmDelete
+                className={deskDanger}
+                onConfirm={() => {
                   void remove({ data: { slug: row.slug } }).then(() =>
                     router.invalidate(),
                   )
                 }}
               >
                 Delete
-              </button>
+              </ConfirmDelete>
             </div>
             <DeskTimeline moments={row.timeline} />
           </li>

@@ -8,6 +8,7 @@ import {
   deskDanger,
   deskPrimary,
   deskSurface,
+  ConfirmDelete,
 } from '../../components/desk-ui.tsx'
 import {
   deleteBot,
@@ -175,18 +176,17 @@ function BotCard({ bot }: { bot: { id: number; name: string; role: string } }) {
           >
             Save
           </ActionButton>
-          <button
-            type="button"
-            className={deskDanger}
-            onClick={() => {
+          <ConfirmDelete
+                className={deskDanger}
+                onConfirm={() => {
               void remove({ data: { id: bot.id } }).then(async (result) => {
                 setNotice(result.ok ? 'Removed.' : result.error)
                 if (result.ok) await router.invalidate()
               })
             }}
-          >
-            Remove
-          </button>
+              >
+                Remove
+              </ConfirmDelete>
         </div>
       </form>
       {notice ? <p className="mt-3 text-sm text-white/85">{notice}</p> : null}

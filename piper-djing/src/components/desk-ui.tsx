@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { cad } from '../lib/crm/money.ts'
 
@@ -164,3 +165,36 @@ export function MoneyBar({
   )
 }
 
+
+/**
+ * A delete that asks twice: the first tap turns it into "Tap again to
+ * delete", the second does it. Tapping elsewhere cancels.
+ */
+export function ConfirmDelete({
+  onConfirm,
+  children = 'Delete',
+  className = deskDanger,
+}: {
+  onConfirm: () => void
+  children?: ReactNode
+  className?: string
+}) {
+  const [asking, setAsking] = useState(false)
+  return (
+    <button
+      type="button"
+      className={className}
+      onBlur={() => setAsking(false)}
+      onClick={() => {
+        if (!asking) {
+          setAsking(true)
+          return
+        }
+        setAsking(false)
+        onConfirm()
+      }}
+    >
+      {asking ? 'Tap again to confirm' : children}
+    </button>
+  )
+}

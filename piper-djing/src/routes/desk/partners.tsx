@@ -6,6 +6,8 @@ import {
   deskCard,
   deskPrimary,
   deskSurface,
+  ConfirmDelete,
+  deskDanger,
 } from '../../components/desk-ui.tsx'
 import {
   deletePartner,
@@ -218,18 +220,17 @@ function PartnerCard({
           >
             Save
           </ActionButton>
-          <button
-            type="button"
-            className="min-h-11 text-sm font-semibold text-rose-300"
-            onClick={() => {
+          <ConfirmDelete
+                className={deskDanger}
+                onConfirm={() => {
               void remove({ data: { id: partner.id } }).then(async (result) => {
                 onNotice(result.ok ? 'Removed.' : result.error)
                 if (result.ok) await router.invalidate()
               })
             }}
-          >
-            Remove
-          </button>
+              >
+                Remove
+              </ConfirmDelete>
         </div>
       </form>
     </li>
