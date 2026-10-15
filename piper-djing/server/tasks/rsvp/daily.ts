@@ -1,6 +1,7 @@
 import { defineTask } from 'nitro/task'
 import { deliverDueReminders } from '../../../src/lib/rsvp/reminders.server.ts'
 import { listRsvps } from '../../../src/lib/rsvp/store.server.ts'
+import { noteJobRun } from '../../../src/lib/job-runs.server.ts'
 
 /**
  * Every morning: the 7-day guest reminder and the deadline-day summary for
@@ -24,6 +25,7 @@ export default defineTask({
         console.error('[rsvp:daily]', wedding.slug, error)
       }
     }
+    await noteJobRun('rsvp:daily', `Checked ${checked} RSVP site${checked === 1 ? '' : 's'}.`)
     return { result: { checked } }
   },
 })

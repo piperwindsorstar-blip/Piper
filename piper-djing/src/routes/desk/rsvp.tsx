@@ -16,6 +16,7 @@ import { priceLabel } from '../../lib/rsvp/model.ts'
 import {
   createRsvpByHand,
   createSampleRsvp,
+  getRsvpDailyStatus,
   getRsvpDesk,
   markRsvpPaid,
   makeRsvpSignInLink,
@@ -26,12 +27,15 @@ import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/rsvp')({
   head: () => deskHead('RSVP · DJ Piper P'),
-  loader: () => getRsvpDesk(),
+  loader: async () => {
+    const [rows, daily] = await Promise.all([getRsvpDesk(), getRsvpDailyStatus()])
+    return { rows, daily }
+  },
   component: RsvpDesk,
 })
 
 function RsvpDesk() {
-  const rows = Route.useLoaderData()
+  const { rows, daily } = Route.useLoaderData()
   const sample = useServerFn(createSampleRsvp)
   const open = useServerFn(openRsvpDesk)
   const signInLink = useServerFn(makeRsvpSignInLink)
@@ -69,6 +73,15 @@ function RsvpDesk() {
         </Link>
       </div>
       {notice ? <p className="text-sm text-emerald-700">{notice}</p> : null}
+      <p className="text-sm text-white/60">
+        {daily
+          ? `Automatic reminders last ran ${new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'America/Toronto',
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }).format(new Date(daily.ranAt))}. ${daily.note}`
+          : 'Automatic reminders run every morning around 8. They have not run yet.'}
+      </p>
       <MakeByHand onMade={setNotice} />
       <ul className="grid gap-3">
         {rows.map((row) => (

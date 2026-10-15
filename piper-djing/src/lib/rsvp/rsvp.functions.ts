@@ -1244,6 +1244,15 @@ export const sendRsvpReminders = createServerFn({ method: 'POST' })
     }
   })
 
+/** When the daily reminder job last ran, for a line on the desk. */
+export const getRsvpDailyStatus = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    if (!(await isDesk())) return null
+    const { lastJobRun } = await import('../job-runs.server.ts')
+    return lastJobRun('rsvp:daily').catch(() => null)
+  },
+)
+
 export const getRsvpDesk = createServerFn({ method: 'GET' }).handler(
   async () => {
     if (!(await isDesk())) return []
