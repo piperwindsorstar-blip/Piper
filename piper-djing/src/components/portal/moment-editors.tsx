@@ -196,62 +196,63 @@ function Speakers({
   disabled: boolean
 }) {
   const entries = row.entries
+  // An empty list still shows one speech to fill in.
+  const shown: MomentEntry[] =
+    entries.length > 0
+      ? entries
+      : [{ id: 'custom-1', name: '', time: '', song: '', artist: '', link: '' }]
+  function edit(entry: MomentEntry, change: Partial<Omit<MomentEntry, 'id'>>) {
+    patch({
+      entries: entries.some((item) => item.id === entry.id)
+        ? patchEntry(entries, entry.id, change)
+        : [{ ...entry, ...change }],
+    })
+  }
   return (
     <div>
-      {entries.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">
-          Add each person who will speak and about when.
-        </p>
-      ) : null}
       <ul className="grid gap-3">
-        {entries.map((entry, index) => (
+        {shown.map((entry, index) => (
           <li
             key={entry.id}
             className="grid gap-3 min-[1024px]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
           >
             <Field
-              label={`Speaker ${index + 1}`}
-              placeholder="Speaker, as their name should be said"
+              label={`Who is speaking (speech ${index + 1})`}
+              placeholder="Person speaking"
               value={entry.name}
               disabled={disabled}
-              onChange={(name) =>
-                patch({ entries: patchEntry(entries, entry.id, { name }) })
-              }
+              onChange={(name) => edit(entry, { name })}
             />
             <Field
-              label={`Time for speaker ${index + 1}`}
-              placeholder="Time: 7:15 pm"
+              label={`When (speech ${index + 1})`}
+              placeholder="When: 7:15 pm"
               value={entry.time}
               disabled={disabled}
-              onChange={(time) =>
-                patch({ entries: patchEntry(entries, entry.id, { time }) })
-              }
+              onChange={(time) => edit(entry, { time })}
             />
-            <button
-              type="button"
-              className="min-h-11 text-left text-sm text-[var(--text-muted)] underline"
-              disabled={disabled}
-              onClick={() => patch({ entries: removeEntry(entries, entry.id) })}
-            >
-              Remove
-            </button>
+            {entries.length > 0 ? (
+              <button
+                type="button"
+                className="min-h-11 text-left text-sm text-[var(--text-muted)] underline"
+                disabled={disabled}
+                onClick={() =>
+                  patch({ entries: removeEntry(entries, entry.id) })
+                }
+              >
+                Remove
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
       <button
         type="button"
         className="mt-3 min-h-11 text-left text-sm text-[var(--pink-soft)]"
-        disabled={disabled}
+        disabled={disabled || entries.length === 0}
         onClick={() => patch({ entries: addCustomEntry(entries) })}
       >
-        + Add a speaker
+        + Add another speech
       </button>
-      <TimeAndNotes
-        row={row}
-        patch={patch}
-        disabled={disabled}
-        placeholder="Notes: toast order, who has the mic, anything the MC should say"
-      />
     </div>
   )
 }
