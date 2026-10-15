@@ -543,7 +543,7 @@ function SongList({
     editSongs(id, next)
   }
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
       {items.map((item, index) => {
         const open = editing === index || !item.song.trim()
         return (
@@ -1215,7 +1215,7 @@ function SongSearch({
   }, [disabled, draft])
 
   return (
-    <div>
+    <div className="min-w-0">
       <label className="block">
         <span className="sr-only">{label}</span>
         <input
@@ -1240,7 +1240,7 @@ function SongSearch({
         </p>
       ) : null}
       {hits.length > 0 ? (
-        <ul className="mt-2 grid gap-2">
+        <ul className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-2">
           {hits.map((hit, index) => (
             <li key={`${hit.link}-${index}`}>
               <button
@@ -1253,7 +1253,7 @@ function SongSearch({
                   setStatus('idle')
                 }}
               >
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold">{hit.title}</span>
                   <span className="block truncate text-sm text-[var(--pink-soft)]">
                     {hit.artist}

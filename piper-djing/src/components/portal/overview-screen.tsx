@@ -87,18 +87,20 @@ export function OverviewScreen() {
             Review and send
           </Link>
         )}
-        <Link
-          to="/portal/plan"
-          className="inline-flex min-h-11 items-center text-sm underline"
-        >
-          See our plan
-        </Link>
-        <a
-          href={sayHelloHref()}
-          className="inline-flex min-h-11 items-center text-sm underline"
-        >
-          Say hello
-        </a>
+        <div className="flex gap-6">
+          <Link
+            to="/portal/plan"
+            className="inline-flex min-h-11 items-center text-sm underline"
+          >
+            See our plan
+          </Link>
+          <a
+            href={sayHelloHref()}
+            className="inline-flex min-h-11 items-center text-sm underline"
+          >
+            Say hello
+          </a>
+        </div>
       </div>
       <DjBubble text={note} reserve />
     </PortalColumns>
