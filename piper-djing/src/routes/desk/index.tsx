@@ -9,16 +9,17 @@ import { todayInToronto } from '../../lib/crm/date-request.ts'
 import { moneySummary } from '../../lib/crm/money-summary.ts'
 import { attention, daysUntil, onTheBook } from '../../lib/desk-console.ts'
 import type { Attention } from '../../lib/desk-console.ts'
+import type { getDesk } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
-
-const deskRoute = getRouteApi('/desk')
 
 export const Route = createFileRoute('/desk/')({
   head: () => deskHead('Overview · DJ Piper P'),
   component: OverviewPage,
 })
 
-type DeskData = ReturnType<typeof deskRoute.useLoaderData>
+const deskRoute = getRouteApi('/desk')
+
+type DeskData = Awaited<ReturnType<typeof getDesk>>
 type Booking = DeskData['bookings'][number]
 
 const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']

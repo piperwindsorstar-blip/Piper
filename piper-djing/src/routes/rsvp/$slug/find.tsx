@@ -9,7 +9,7 @@ export const Route = createFileRoute('/rsvp/$slug/find')({
     // Only the couple's shared text number, for "can't find your name".
     const home = await getRsvpHome({ data: { slug: params.slug } })
     if (!('contactPhone' in home)) return { name: '', phone: '' }
-    return { name: home.contactName, phone: home.contactPhone }
+    return { name: home.contactName ?? '', phone: home.contactPhone ?? '' }
   },
   component: function Page() {
     const { slug } = Route.useParams()

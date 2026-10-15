@@ -110,15 +110,12 @@ describe('portal progress', () => {
 
   it('passes over skipped and optional questions on Continue, and leaves extras out of the count', () => {
     const planning = blankPlanning({
-      partnerOne: 'Roxana',
-      partnerTwo: 'Ibu',
-      eventDate: '2026-10-29',
+      coupleNames: 'Roxana and Ibu',
       email: '',
       phone: '',
+      weddingDate: '2026-10-29',
       venueName: '',
-      venueStreet: '',
-      venueTwoStreet: '',
-    } as Parameters<typeof blankPlanning>[0])
+    })
     const first = firstUnanswered(planning)
     assert.ok(first)
     const skipped = withSkipped(planning, first.id)

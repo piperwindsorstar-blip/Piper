@@ -1083,7 +1083,7 @@ function NewBooking({
         <BookingFields
           key={draft}
           packageId={packageId}
-          onPackage={setPackageId}
+          onPackage={(value) => setPackageId(value as typeof packageId)}
           packages={packages}
           venues={venues}
           defaults={

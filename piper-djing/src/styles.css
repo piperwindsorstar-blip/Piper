@@ -637,3 +637,9 @@ button:focus-visible,
     transform: none;
   }
 }
+
+/* Native checkboxes and radios take the accent, not the browser's blue. */
+.portal input[type='checkbox'],
+.portal input[type='radio'] {
+  accent-color: var(--pink);
+}
