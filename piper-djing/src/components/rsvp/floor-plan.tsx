@@ -631,7 +631,7 @@ export function FloorPlan({
   )
 
   return (
-    <div className="relative">
+    <div className="relative flex flex-col">
       <svg
         ref={svg}
         viewBox={`${shown.x} ${shown.y} ${shown.w} ${shown.h}`}
@@ -639,7 +639,7 @@ export function FloorPlan({
         className={
           print
             ? 'block h-auto w-full'
-            : 'block h-[min(62vh,520px)] w-full select-none rounded-3xl sm:h-[min(70vh,640px)]'
+            : 'block h-[min(62vh,520px)] w-full select-none sm:h-[min(70vh,640px)]'
         }
         style={print ? undefined : { touchAction: 'none' }}
         role="img"
@@ -793,7 +793,8 @@ export function FloorPlan({
         ) : null}
       </svg>
       {print ? null : (
-        <div className="absolute right-3 top-3 flex flex-col gap-2">
+        // Above the plan, not on it, so the buttons never cover a table.
+        <div className="order-first flex items-center justify-end gap-2 border-b border-[var(--border)] px-3 py-2">
           <ZoomButton label="Zoom in" onClick={() => zoomCentre(1.25)}>
             +
           </ZoomButton>
@@ -844,7 +845,7 @@ function ZoomButton({
       type="button"
       aria-label={label}
       title={label}
-      className={`grid h-11 ${wide ? 'px-3' : 'w-11'} place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] text-base font-semibold text-[var(--text)] shadow-sm`}
+      className={`grid h-11 ${wide ? 'px-4' : 'w-11'} place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] text-base font-semibold text-[var(--text)]`}
       onClick={onClick}
     >
       {children}
