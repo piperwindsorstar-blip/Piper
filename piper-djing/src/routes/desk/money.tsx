@@ -25,8 +25,10 @@ import {
   markSent,
   markVoid,
   recordPayment,
+  saveBalanceRemindersDesk,
   sendInvoiceMail,
 } from '../../lib/crm/desk.functions.ts'
+import type { BalanceRow } from '../../lib/crm/balance-nudges.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
 import { cad, dollarsToCents } from '../../lib/crm/money.ts'
@@ -208,6 +210,7 @@ function MoneyPage() {
 
           {tab === 'owes' ? (
             <div className="grid gap-3">
+              <BalanceReminders on={data.reminders.on} />
               {noEmail > 0 ? (
                 <div className="rounded-2xl border border-dashed border-[#f3b6d3] bg-[#fff5fa] p-4">
                   <p className="font-semibold text-[#a3004f]">
@@ -232,6 +235,11 @@ function MoneyPage() {
                     <OwingCard
                       key={row.bookingId}
                       row={row}
+                      reminder={
+                        data.reminders.on
+                          ? data.reminders.rows.find((item) => item.id === row.bookingId)
+                          : undefined
+                      }
                       sample={booking?.sample ?? false}
                       onRecord={() => startPayment(row.bookingId, row.leftCents)}
                     />
@@ -413,12 +421,62 @@ function monthName(month: string): string {
   })
 }
 
+function BalanceReminders({ on }: { on: boolean }) {
+  const save = useServerFn(saveBalanceRemindersDesk)
+  const router = useRouter()
+  return (
+    <section className={`${deskCard} flex flex-wrap items-center justify-between gap-3`} aria-labelledby="balance-reminders">
+      <div className="min-w-0 flex-[1_1_20rem]">
+        <h2 id="balance-reminders" className="font-semibold text-[#1c1533]">
+          Balance reminders {on ? 'are on' : 'are off'}
+        </h2>
+        <p className="mt-1 text-sm text-[#5b5370]">
+          {on
+            ? 'Booked couples who still owe get a friendly email with their invoice link about a month before the wedding and again in the last week. Each goes once, and nothing goes once they have paid in full.'
+            : 'No balance reminders go out. You can still send an invoice by hand.'}
+        </p>
+      </div>
+      <ActionButton
+        className={on ? deskGhost : deskDark}
+        busy={on ? 'Turning off…' : 'Turning on…'}
+        done={on ? 'Off' : 'On'}
+        surface={deskSurface}
+        onRun={async (): Promise<RunResult> => {
+          const result = await save({ data: { on: !on } })
+          if (result.ok) await router.invalidate()
+          return result.ok
+            ? { ok: true, message: result.on ? 'Balance reminders are on.' : 'Balance reminders are off.' }
+            : { ok: false, message: result.error }
+        }}
+      >
+        {on ? 'Turn off' : 'Turn on'}
+      </ActionButton>
+    </section>
+  )
+}
+
+function reminderText(row: BalanceRow): string {
+  const last = row.last
+    ? ` Last sent: ${row.last.step.toLowerCase()}, ${shortDay(row.last.at.slice(0, 10))}${row.last.delivered ? '' : ' (did not send)'}.`
+    : ''
+  if (row.block === 'More than a month to go') {
+    const day = new Date(`${row.eventDate}T12:00:00Z`)
+    day.setUTCDate(day.getUTCDate() - 30)
+    return `First balance reminder around ${shortDay(day.toISOString().slice(0, 10))}.${last}`
+  }
+  if (row.block === 'No email on file') return `A balance reminder is due, but there is no email to send it to.${last}`
+  if (row.block) return `${row.block}.${last}`
+  return `Reminder window: ${row.due.toLowerCase()}.${last}`
+}
+
 function OwingCard({
   row,
+  reminder,
   sample,
   onRecord,
 }: {
   row: ReturnType<typeof moneySummary>['whoOwes'][number]
+  reminder?: BalanceRow
   sample: boolean
   onRecord: () => void
 }) {
@@ -450,6 +508,11 @@ function OwingCard({
         </div>
       </div>
       <Bar value={paidPct} label={`${cad(row.paidCents)} of ${cad(row.totalCents)} paid`} />
+      {reminder ? (
+        <p className={`text-sm ${reminder.block === 'No email on file' ? 'font-semibold text-[#a3004f]' : 'text-[#5b5370]'}`}>
+          {reminderText(reminder)}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={deskDark} onClick={onRecord}>
           Record payment

@@ -4,6 +4,7 @@ import { listRsvps } from '../../../src/lib/rsvp/store.server.ts'
 import { noteJobRun } from '../../../src/lib/job-runs.server.ts'
 import { runWeeklyBackup } from '../../../src/lib/backup.server.ts'
 import { deliverPlanNudges } from '../../../src/lib/portal/nudges.server.ts'
+import { deliverBalanceNudges } from '../../../src/lib/crm/balance-nudges.server.ts'
 
 /**
  * Every morning: the 7-day guest reminder and the deadline-day summary for
@@ -37,6 +38,16 @@ export default defineTask({
     } catch (error) {
       plan = ' Plan reminders failed.'
       console.error('[plan:nudges]', error)
+    }
+    // Balance reminders to couples who still owe, a month and a week out.
+    try {
+      const owed = await deliverBalanceNudges()
+      plan += owed.off
+        ? ' Balance reminders are off.'
+        : ` Balance reminders: ${owed.sent} sent${owed.failed ? `, ${owed.failed} failed` : ''}${owed.noEmail ? `, ${owed.noEmail} with no email` : ''}.`
+    } catch (error) {
+      plan += ' Balance reminders failed.'
+      console.error('[balance:nudges]', error)
     }
     // Sundays also email the weekly backup. A failure here must not stop the reminders.
     try {

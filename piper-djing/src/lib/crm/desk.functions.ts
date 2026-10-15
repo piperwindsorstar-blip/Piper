@@ -98,6 +98,8 @@ import {
   setBookingNotes,
 } from './store.server.ts'
 import { planNudgeOverview, setPlanReminders } from '../portal/nudges.server.ts'
+import { balanceNudgeOverview, setBalanceReminders } from './balance-nudges.server.ts'
+import type { BalanceRow } from './balance-nudges.ts'
 import type { BookingPatch } from './store.server.ts'
 
 function fail(error: unknown) {
@@ -347,7 +349,11 @@ export const getPayments = createServerFn({ method: 'GET' }).handler(
       listPayments(),
       listRsvpPurchases().catch(() => []),
     ])
-    return { bookings, payments, rsvp }
+    const reminders = await balanceNudgeOverview(bookings).catch(() => ({
+      on: true,
+      rows: [] as BalanceRow[],
+    }))
+    return { bookings, payments, rsvp, reminders }
   },
 )
 
@@ -951,6 +957,17 @@ export const getPortalDesk = createServerFn({ method: 'GET' }).handler(
     return { ...portals, nudges, emails }
   },
 )
+
+export const saveBalanceRemindersDesk = createServerFn({ method: 'POST' })
+  .validator((data: { on?: unknown }) => ({ on: data.on === true }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, on: await setBalanceReminders(data.on) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const savePlanRemindersDesk = createServerFn({ method: 'POST' })
   .validator((data: { on?: unknown }) => ({ on: data.on === true }))
