@@ -1,7 +1,7 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import type { KeyboardEvent } from 'react'
-import { djLine, questionAnswered, stepFrom } from '../../lib/portal/progress.ts'
+import { answeredLabel, djLine, questionAnswered, stepFrom } from '../../lib/portal/progress.ts'
 import {
   SECTION_LABEL,
   isVisible,
@@ -14,7 +14,6 @@ import { DjBubble } from './dj-bubble.tsx'
 import {
   MobileQuestionBar,
   PortalColumns,
-  sectionCounts,
 } from './portal-chrome.tsx'
 import { usePortal } from './portal-state.tsx'
 import { QuestionControl } from './question-controls.tsx'
@@ -38,7 +37,6 @@ export function SectionFlow({ section }: { section: SectionId }) {
     ? visible.findIndex((question) => question.id === current.id)
     : -1
   const currentId = current?.id
-  const counts = sectionCounts(planning, section, master)
 
   useEffect(() => {
     if (!currentId) return
@@ -84,24 +82,23 @@ export function SectionFlow({ section }: { section: SectionId }) {
   return (
     <PortalColumns
       railTitle={SECTION_LABEL[section]}
-      railSubtitle={`${counts.answered} of ${counts.total} answered`}
+      railSubtitle={answeredLabel(planning, master, section)}
       rail={<QuestionRail section={section} currentId={current.id} />}
     >
       <div onKeyDown={onKeyDown}>
         <MobileQuestionBar
           section={SECTION_LABEL[section]}
           subsection={current.subsection}
-          index={place < 0 ? 0 : place + 1}
-          total={visible.length}
+          count={place < 0 ? '' : `Question ${place + 1} of ${visible.length}`}
           current={section}
         />
-        <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
+        <p className="hidden text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase min-[1024px]:block">
           {SECTION_LABEL[section]}
           {current.subsection !== SECTION_LABEL[section]
             ? ` · ${current.subsection}`
             : ''}{' '}
           ·{' '}
-          {place < 0 ? 'Hidden' : `${place + 1} of ${visible.length}`}
+          {place < 0 ? 'Hidden' : `Question ${place + 1} of ${visible.length}`}
         </p>
         <h1 className="portal-display mt-3 max-w-[18ch] text-[32px] leading-[1.02] break-words min-[1024px]:text-[64px]">
           {current.label}

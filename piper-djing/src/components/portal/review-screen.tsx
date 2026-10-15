@@ -6,6 +6,7 @@ import {
   sendPortalPlan,
 } from '../../lib/portal/portal.functions.ts'
 import {
+  answeredLabel,
   overallProgress,
   questionAnswered,
   sectionProgress,
@@ -38,14 +39,13 @@ export function ReviewScreen() {
   return (
     <PortalColumns
       railTitle="Review"
-      railSubtitle={`${progress.answered} of ${progress.total} answered`}
+      railSubtitle={answeredLabel(planning, page.master)}
       rail={<ReviewRail />}
     >
       <MobileQuestionBar
         section="Review"
         subsection=""
-        index={progress.answered}
-        total={progress.total}
+        count={`${progress.percent}% planned`}
         current="review"
       />
       <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">

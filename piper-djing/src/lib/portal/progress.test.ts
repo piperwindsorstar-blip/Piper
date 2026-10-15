@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { blankPlanning } from '../crm/planning.ts'
 import {
+  answeredLabel,
   daysUntil,
   extrasProgress,
   firstUnanswered,
@@ -130,5 +131,12 @@ describe('portal progress', () => {
     assert.ok(all.total > 0)
     const details = sectionProgress(planning, 'details')
     assert.equal(details.total, 21 - 3)
+  })
+  it('labels required answers first and counts extras on their own', () => {
+    const planning = blankPlanning(seed)
+    const label = answeredLabel(planning)
+    const total = overallProgress(planning).total
+    const extras = extrasProgress(planning).total
+    assert.equal(label, `0 of ${total} answered · ${extras} extras`)
   })
 })

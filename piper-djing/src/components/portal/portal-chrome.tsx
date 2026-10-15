@@ -300,14 +300,13 @@ const BAR_SEGMENTS = [
 export function MobileQuestionBar({
   section,
   subsection,
-  index,
-  total,
+  count,
   current,
 }: {
   section: string
   subsection: string
-  index: number
-  total: number
+  /** What the right side says when nothing is saving, e.g. "Question 3 of 11". */
+  count: string
   current: StepId
 }) {
   const { page, planning, saveState, savedLabel } = usePortal()
@@ -326,7 +325,7 @@ export function MobileQuestionBar({
               ? "Couldn't save, retrying"
               : saveState === 'saved' && savedLabel
                 ? `Saved ${savedLabel}`
-                : `${index} of ${total}`}
+                : count}
         </p>
       </div>
       <div
@@ -361,9 +360,11 @@ function segmentWidth(
   planning: ReturnType<typeof usePortal>['planning'],
   master: ReturnType<typeof usePortal>['page']['master'],
 ): string {
-  if (id === current) return '50%'
   if (id === 'overview') return '100%'
-  return sectionPercent(planning, id, master) === 100 ? '100%' : '0%'
+  if (id === 'review') return id === current ? '100%' : '0%'
+  const percent = sectionPercent(planning, id, master)
+  // The section you're in always shows a sliver, so you can see where you are.
+  return `${id === current ? Math.max(percent, 12) : percent}%`
 }
 
 export function sectionCounts(

@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { longDate } from '../../lib/crm/dates.ts'
 import {
+  answeredLabel,
   daysUntil,
   firstUnanswered,
   overallProgress,
@@ -41,14 +42,13 @@ export function OverviewScreen() {
   return (
     <PortalColumns
       railTitle="Your plan"
-      railSubtitle={`${progress.answered} of ${progress.total} answered`}
+      railSubtitle={answeredLabel(planning, page.master)}
       rail={<PlanRail current={next?.section ?? null} />}
     >
       <MobileQuestionBar
         section="Overview"
         subsection=""
-        index={progress.answered}
-        total={progress.total}
+        count={`${progress.percent}% planned`}
         current="overview"
       />
       <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
@@ -61,30 +61,30 @@ export function OverviewScreen() {
         One question at a time. Answer what you know, skip what you don't, and
         come back whenever.
       </p>
-      <div className="mt-8 grid gap-3 min-[1024px]:grid-cols-3">
-        <Stat value={String(days)} label="days to go" />
+      <div className="mt-6 grid grid-cols-3 gap-2 min-[1024px]:mt-8 min-[1024px]:gap-3">
+        <Stat value={days < 0 ? '0' : String(days)} label={days === 1 ? 'day to go' : 'days to go'} />
         <Stat value={`${progress.percent}%`} label="planned" pink />
         <Stat
-          value={finish ? longDate(finish) : '—'}
+          value={finish ? shortDate(finish) : '—'}
           label={planning.dueDate ? 'finish by' : 'suggested finish'}
+          title={finish ? longDate(finish) : undefined}
         />
       </div>
-      <DjBubble text={note} reserve />
-      <div className="mt-8 flex flex-col gap-4 min-[1024px]:flex-row min-[1024px]:items-center">
+      <div className="mt-6 flex flex-col gap-4 min-[1024px]:mt-8 min-[1024px]:flex-row min-[1024px]:items-center">
         {next ? (
           <Link
             to={sectionPath(next.section)}
             search={{ q: next.id }}
             className="inline-flex min-h-[54px] w-full items-center justify-center rounded-[18px] bg-[var(--pink)] px-6 text-base font-bold text-[#0d0d0d] min-[1024px]:min-h-[60px] min-[1024px]:w-auto"
           >
-            Continue: {SECTION_LABEL[next.section]} →
+            {progress.answered === 0 ? 'Start' : 'Continue'}: {next.rail}
           </Link>
         ) : (
           <Link
             to="/portal/review"
             className="inline-flex min-h-[54px] w-full items-center justify-center rounded-[18px] bg-[var(--pink)] px-6 text-base font-bold text-[#0d0d0d] min-[1024px]:min-h-[60px] min-[1024px]:w-auto"
           >
-            Continue: review →
+            Review and send
           </Link>
         )}
         <Link
@@ -100,6 +100,7 @@ export function OverviewScreen() {
           Say hello
         </a>
       </div>
+      <DjBubble text={note} reserve />
     </PortalColumns>
   )
 }
@@ -108,21 +109,34 @@ function Stat({
   value,
   label,
   pink = false,
+  title,
 }: {
   value: string
   label: string
   pink?: boolean
+  title?: string
 }) {
   return (
-    <div className="rounded-[18px] bg-[var(--field)] px-4 py-5">
+    <div className="min-w-0 rounded-[14px] bg-[var(--field)] px-3 py-3 min-[1024px]:rounded-[18px] min-[1024px]:px-4 min-[1024px]:py-5" title={title}>
       <p
-        className={`portal-display text-3xl ${pink ? 'text-[var(--pink)]' : 'text-white'}`}
+        className={`portal-display truncate text-[22px] min-[1024px]:text-3xl ${pink ? 'text-[var(--pink)]' : 'text-white'}`}
       >
         {value}
       </p>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">{label}</p>
+      <p className="mt-0.5 text-xs text-[var(--text-muted)] min-[1024px]:mt-1 min-[1024px]:text-sm">{label}</p>
     </div>
   )
+}
+
+/** "Sep 12" for the small finish-by tile; the full date sits in its title. */
+function shortDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  if (!year || !month || !day) return iso
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-CA', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 function PlanRail({

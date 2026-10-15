@@ -533,6 +533,8 @@ function SongList({
   const { planning, editSongs } = usePortal()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
+  // The row a pasted link went into, so more typing updates it, not adds rows.
+  const linkRow = useRef<number | null>(null)
   const items =
     id === 'mustPlay'
       ? songsOrLegacy(planning.mustPlayItems, planning.mustPlay)
@@ -621,6 +623,7 @@ function SongList({
                   <button
                     type="button"
                     className="mt-1 min-h-11 text-sm underline"
+                    disabled={disabled}
                     onClick={() => setEditing(index)}
                   >
                     Edit
@@ -648,16 +651,62 @@ function SongList({
                 </button>
               </div>
             </div>
+            {open && !disabled ? (
+              <div className="mt-2 flex justify-end gap-4 pl-[46px]">
+                <button
+                  type="button"
+                  className="min-h-11 text-sm text-[var(--text-muted)] underline"
+                  onClick={() => {
+                    linkRow.current = null
+                    setEditing(null)
+                    update(items.filter((_, rowIndex) => rowIndex !== index))
+                  }}
+                >
+                  Remove
+                </button>
+                {item.song.trim() ? (
+                  <button
+                    type="button"
+                    className="min-h-11 text-sm font-bold underline"
+                    onClick={() => setEditing(null)}
+                  >
+                    Done
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </article>
         )
       })}
+      <SongSearch
+        disabled={disabled}
+        label={id === 'mustPlay' ? 'Add a must-play song' : 'Add a song not to play'}
+        onLink={(link) => {
+          const row = linkRow.current
+          if (row !== null && items[row] && !items[row].song.trim()) {
+            update(items.map((item, rowIndex) => (rowIndex === row ? { ...item, link } : item)))
+            return
+          }
+          linkRow.current = items.length
+          setEditing(items.length)
+          update([...items, { song: '', artist: '', link }])
+        }}
+        onPick={(hit) => {
+          linkRow.current = null
+          update([...items, { song: hit.title, artist: hit.artist, link: hit.link }])
+        }}
+      />
       <button
         type="button"
         disabled={disabled}
-        className="min-h-11 text-left text-sm text-[var(--text-muted)]"
-        onClick={() => update([...items, { song: '', artist: '', link: '' }])}
+        className="min-h-11 text-left text-sm text-[var(--text-muted)] underline"
+        onClick={() => {
+          linkRow.current = null
+          setEditing(items.length)
+          update([...items, { song: '', artist: '', link: '' }])
+        }}
       >
-        + Add a song
+        Type one in instead
       </button>
     </div>
   )

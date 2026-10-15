@@ -30,6 +30,7 @@ import { HOME_BASE } from './home-base.ts'
 import type { PackageOffer } from './packages.ts'
 import {
   isPlanLocked,
+  contactToFill,
   mergeCoupleSave,
   parsePlanning,
   planningFromUnknown,
@@ -3260,6 +3261,15 @@ export async function saveCouplePlanning(
     JSON.stringify(planning),
     row.id,
   ])
+  // A couple who booked without an email or phone fills it in here; copy it
+  // onto the booking so Piper can reach them. Never replaces what he has.
+  const fill = contactToFill({ email: row.email ?? '', phone: row.phone ?? '' }, planning)
+  if (fill.email) {
+    await query("UPDATE bookings SET email = $1 WHERE id = $2 AND COALESCE(email, '') = ''", [fill.email, row.id])
+  }
+  if (fill.phone) {
+    await query("UPDATE bookings SET phone = $1 WHERE id = $2 AND COALESCE(phone, '') = ''", [fill.phone, row.id])
+  }
   return planning
 }
 

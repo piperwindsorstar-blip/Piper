@@ -117,6 +117,18 @@ export function overallProgress(
   }
 }
 
+/** "3 of 5 answered · 6 extras": required questions first, extras after. */
+export function answeredLabel(
+  planning: Planning,
+  master: MasterMap = {},
+  section?: SectionId,
+): string {
+  const questions = countedQuestions(planning, section, master)
+  const answered = questions.filter((question) => questionAnswered(planning, question)).length
+  const extras = extrasProgress(planning, section, master).total
+  return `${answered} of ${questions.length} answered${extras ? ` · ${extras} ${extras === 1 ? 'extra' : 'extras'}` : ''}`
+}
+
 export function sectionPercent(
   planning: Planning,
   section: SectionId,

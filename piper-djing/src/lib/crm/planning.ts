@@ -872,3 +872,22 @@ export function parsePlanning(
     return { planning: blankPlanning(seed), saved: false }
   }
 }
+
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Contact details the couple typed in the portal that the booking is missing.
+ * Only fills blanks: a booking email or phone Piper already has is never
+ * replaced from the portal.
+ */
+export function contactToFill(
+  booking: { email: string; phone: string },
+  planning: { email: string; phone: string },
+): { email?: string; phone?: string } {
+  const fill: { email?: string; phone?: string } = {}
+  const email = planning.email.trim()
+  if (!booking.email.trim() && EMAIL_SHAPE.test(email)) fill.email = email.slice(0, 200)
+  const phone = planning.phone.trim()
+  if (!booking.phone.trim() && phone.replace(/\D/g, '').length >= 7) fill.phone = phone.slice(0, 40)
+  return fill
+}
