@@ -6,7 +6,7 @@ import { useRef, useState } from 'react'
 import { foldName } from '../../lib/rsvp/model.ts'
 import { partyLabel, splitPartyPaste } from '../../lib/rsvp/guest-list.ts'
 import { saveRsvpGuestList } from '../../lib/rsvp/rsvp.functions.ts'
-import { rsvpButton, rsvpField, rsvpGhost, useRsvpTheme } from './shell.tsx'
+import { rsvpButton, rsvpButtonFit, rsvpField, rsvpGhost, useRsvpTheme } from './shell.tsx'
 
 type Row = {
   key: string
@@ -319,7 +319,7 @@ export function GuestPaste({
         meal.
       </p>
       <ActionButton
-        className={`${rsvpButton} mt-4 w-auto`}
+        className={`${rsvpButtonFit} mt-4`}
         wrapperClassName="inline-grid w-auto"
         busy="Saving…"
         done="Saved"

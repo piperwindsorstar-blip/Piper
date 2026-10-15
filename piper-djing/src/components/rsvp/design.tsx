@@ -19,7 +19,11 @@ import { RSVP_TEMPLATES, templateFor } from '../../lib/rsvp/templates.ts'
 import type { RsvpTemplateId } from '../../lib/rsvp/templates.ts'
 import { ActionButton, Spinner } from '../action-button.tsx'
 import type { RunResult } from '../action-button.tsx'
-import { rsvpButton, rsvpGhost, useRsvpTheme } from './shell.tsx'
+import {
+  rsvpButtonFit,
+  rsvpGhostFit,
+  useRsvpTheme,
+} from './shell.tsx'
 import type { ReadyManage } from './manage.tsx'
 
 type Draft = {
@@ -218,7 +222,7 @@ export function Design({ data }: { data: ReadyManage }) {
 
             <div className="flex flex-wrap items-center gap-3">
               <label
-                className={`${rsvpGhost} w-auto cursor-pointer gap-2 px-4`}
+                className={`${rsvpGhostFit} cursor-pointer gap-2 px-4`}
                 aria-disabled={reading}
               >
                 {reading ? <Spinner label="Reading the photo" /> : null}
@@ -239,7 +243,7 @@ export function Design({ data }: { data: ReadyManage }) {
               </label>
               {draft ? (
                 <ActionButton
-                  className={`${rsvpButton} w-auto px-5`}
+                  className={`${rsvpButtonFit} px-5`}
                   busy="Uploading…"
                   done="Saved"
                   surface={surface}
@@ -275,7 +279,7 @@ export function Design({ data }: { data: ReadyManage }) {
               ) : null}
               {!draft && data.photo ? (
                 <ActionButton
-                  className={`${rsvpGhost} w-auto px-4`}
+                  className={`${rsvpGhostFit} px-4`}
                   busy="Removing…"
                   done="Removed"
                   surface={surface}
@@ -497,7 +501,7 @@ function TemplateCard({
         </p>
       ) : (
         <ActionButton
-          className={`${rsvpGhost} w-auto justify-self-start px-4`}
+          className={`${rsvpGhostFit} justify-self-start px-4`}
           busy="Applying…"
           done="In use"
           surface={surface}

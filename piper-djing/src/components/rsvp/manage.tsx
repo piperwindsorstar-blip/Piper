@@ -42,9 +42,9 @@ import {
   RsvpLogo,
   RsvpThemeProvider,
   downloadText,
-  rsvpButton,
+  rsvpButton, rsvpButtonFit,
   rsvpField,
-  rsvpGhost,
+  rsvpGhost, rsvpGhostFit,
   useRsvpTheme,
 } from './shell.tsx'
 import { ActionButton } from '../action-button.tsx'
@@ -507,7 +507,7 @@ function ReplyEmail({ data }: { data: ReadyManage }) {
       </label>
       <p className="text-sm text-[var(--text-muted)]">{hint}</p>
       <ActionButton
-        className={`${rsvpButton} w-auto justify-self-start px-6`}
+        className={`${rsvpButtonFit} justify-self-start px-6`}
         busy="Saving…"
         done="Saved"
         surface={surface}
@@ -564,7 +564,7 @@ function AskQuestion({ questions }: { questions: ReadyManage['questions'] }) {
           />
         </label>
         <button
-          className={`${rsvpButton} w-auto`}
+          className={`${rsvpButtonFit}`}
           type="submit"
           disabled={busy}
         >
@@ -1251,7 +1251,7 @@ function EmailPartyButton({
   return (
     <div className="mt-4 flex flex-wrap items-center gap-3">
       <ActionButton
-        className={`${rsvpGhost} w-auto`}
+        className={`${rsvpGhostFit}`}
         busy="Sending…"
         done="Sent"
         surface={surface}
@@ -1426,7 +1426,7 @@ export function Events({ data }: { data: ReadyManage }) {
         <Link
           to="/rsvp/$slug/find"
           params={{ slug: data.wedding.slug }}
-          className={`${rsvpButton} w-auto`}
+          className={`${rsvpButtonFit}`}
         >
           Preview guest form
         </Link>
@@ -1504,7 +1504,7 @@ export function Events({ data }: { data: ReadyManage }) {
                     />
                   </label>
                   <span className="flex flex-wrap gap-3 sm:col-span-2">
-                    <button type="button" className={`${rsvpGhost} w-auto`} onClick={() => setEditing('')}>
+                    <button type="button" className={`${rsvpGhostFit}`} onClick={() => setEditing('')}>
                       Done
                     </button>
                     {item.id === 'ceremony' || events.length <= 1 ? null : (
@@ -1545,7 +1545,7 @@ export function Events({ data }: { data: ReadyManage }) {
       {events.length < 8 ? (
         <button
           type="button"
-          className={`${rsvpGhost} w-auto justify-self-start`}
+          className={`${rsvpGhostFit} justify-self-start`}
           onClick={() => {
             const id = `event-${Date.now().toString(36)}`
             setEvents((current) => [
@@ -1893,7 +1893,7 @@ export function Exports({
               ))}
             </select>
             <ActionButton
-              className={`${rsvpGhost} w-auto`}
+              className={`${rsvpGhostFit}`}
               busy="Sending…"
               done="Sent"
               surface={surface}

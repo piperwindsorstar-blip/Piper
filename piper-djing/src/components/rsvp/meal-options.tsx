@@ -7,7 +7,10 @@ import {
   cleanMealList,
 } from '../../lib/rsvp/guest-list.ts'
 import { saveRsvpMeals } from '../../lib/rsvp/rsvp.functions.ts'
-import { rsvpField, rsvpGhost } from './shell.tsx'
+import {
+  rsvpField,
+  rsvpGhostFit,
+} from './shell.tsx'
 
 type Box = { key: string; value: string }
 
@@ -137,7 +140,7 @@ export function MealOptions({
       <div className="mt-3 flex flex-wrap items-start gap-3">
         <button
           type="button"
-          className={`${rsvpGhost} w-auto`}
+          className={`${rsvpGhostFit}`}
           disabled={boxes.length >= MAX_MEALS}
           onClick={() => {
             const key = next()

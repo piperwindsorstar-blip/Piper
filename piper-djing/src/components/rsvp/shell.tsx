@@ -54,6 +54,9 @@ export const rsvpButton =
   'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--pink)] px-5 text-base font-semibold text-[#0D0D0D] transition hover:brightness-110 active:brightness-90 disabled:opacity-60'
 export const rsvpGhost =
   'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-transparent px-5 text-base font-semibold text-[var(--text)] transition hover:border-[var(--pink)] active:brightness-90'
+/** The same buttons sized to their label instead of the full width. */
+export const rsvpButtonFit = rsvpButton.replace(' w-full', ' w-auto')
+export const rsvpGhostFit = rsvpGhost.replace(' w-full', ' w-auto')
 export const rsvpField =
   'min-h-12 w-full rounded-2xl border border-[var(--border-strong)] bg-[var(--field)] px-4 text-base text-[var(--text)] outline-none'
 

@@ -10,6 +10,7 @@ import {
   enlargeRoomToFit,
   layoutSeatNames,
   autoArrange,
+  contentBox,
   overlappingTables,
   seatNameSpot,
   tableLabelLayout,
@@ -585,5 +586,19 @@ describe('names round 4: 14 full tables of 10 after Auto-arrange', () => {
       if (others.every((other) => !overlap(box, tableFootprint(other)))) clear += 1
     }
     assert.ok(clear >= 7, `${clear} of 14 lists open on clear floor`)
+  })
+})
+
+describe('framing the floor plan', () => {
+  it('frames tables and room items, and nothing for an empty room', () => {
+    const empty = { ...emptySeating(), items: [] }
+    assert.equal(contentBox(empty), null)
+    const plan = autoArrange(addTables(empty, 3, (() => { let n = 0; return () => `t${(n += 1)}` })())).plan
+    const box = contentBox(plan)
+    assert.ok(box)
+    for (const table of plan.tables) {
+      assert.ok(table.x > box.x0 && table.x < box.x1)
+      assert.ok(table.y > box.y0 && table.y < box.y1)
+    }
   })
 })

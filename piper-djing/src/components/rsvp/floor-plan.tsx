@@ -4,6 +4,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
+  contentBox,
   MIN_SIZE,
   fitTableSize,
   gridStep,
@@ -87,6 +88,8 @@ export type FloorPlanProps = {
   onCommit?: (plan: SeatingPlan) => void
   onTapSeat?: (tableId: string, seat: number, guestId: string | null) => void
   onDropGuest?: (guestId: string, tableId: string, seat?: number) => void
+  /** Change it to zoom back to the tables, e.g. after adding or arranging. */
+  fitKey?: number
 }
 
 type View = { x: number; y: number; w: number; h: number }
@@ -156,6 +159,29 @@ function fitView(plan: SeatingPlan): View {
   }
 }
 
+/** Smallest view when zoomed to the tables: about 20 by 14 ft. */
+const MIN_FIT_W = 240
+const MIN_FIT_H = 170
+
+/**
+ * Frames what is in the room (tables, chairs and room items) so tables are
+ * big enough to read. An empty room shows whole.
+ */
+function fitContent(plan: SeatingPlan): View {
+  const box = contentBox(plan)
+  if (!box) return fitView(plan)
+  const pad = 30
+  let w = Math.max(MIN_FIT_W, box.x1 - box.x0 + pad * 2)
+  let h = Math.max(MIN_FIT_H, box.y1 - box.y0 + pad * 2)
+  const room = fitView(plan)
+  // Never zoomed out further than the whole room.
+  w = Math.min(w, room.w)
+  h = Math.min(h, room.h)
+  const cx = (box.x0 + box.x1) / 2
+  const cy = (box.y0 + box.y1) / 2
+  return { x: cx - w / 2, y: cy - h / 2, w, h }
+}
+
 function initials(guest: SeatableGuest | undefined): string {
   if (!guest) return ''
   return guest.name
@@ -190,12 +216,15 @@ export function FloorPlan({
   onCommit,
   onTapSeat,
   onDropGuest,
+  fitKey = 0,
 }: FloorPlanProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const svg = useRef<SVGSVGElement | null>(null)
   const colours = print ? PRINT : SCREEN
   const editable = !print && Boolean(onChange)
-  const [view, setView] = useState<View>(() => fitView(plan))
+  const [view, setView] = useState<View>(() =>
+    print ? fitView(plan) : fitContent(plan),
+  )
   const viewRef = useRef(view)
   viewRef.current = view
   const planRef = useRef(plan)
@@ -204,6 +233,16 @@ export function FloorPlan({
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const roomKey = `${plan.room.width}x${plan.room.length}`
   const step = gridStep(plan.room.unit)
+
+  // The page asks for a fresh fit after it adds or arranges tables.
+  const lastFit = useRef(fitKey)
+  useEffect(() => {
+    if (lastFit.current === fitKey) return
+    lastFit.current = fitKey
+    const next = fitContent(planRef.current)
+    viewRef.current = next
+    setView(next)
+  }, [fitKey])
 
   // A new room size refits the view so the whole room shows.
   const lastRoom = useRef(roomKey)
@@ -600,7 +639,7 @@ export function FloorPlan({
         className={
           print
             ? 'block h-auto w-full'
-            : 'block h-[min(70vh,640px)] w-full select-none rounded-3xl'
+            : 'block h-[min(62vh,520px)] w-full select-none rounded-3xl sm:h-[min(70vh,640px)]'
         }
         style={print ? undefined : { touchAction: 'none' }}
         role="img"
@@ -762,7 +801,18 @@ export function FloorPlan({
             −
           </ZoomButton>
           <ZoomButton
-            label="Fit to screen"
+            label="Zoom to the tables"
+            wide
+            onClick={() => {
+              const next = fitContent(planRef.current)
+              viewRef.current = next
+              setView(next)
+            }}
+          >
+            Fit
+          </ZoomButton>
+          <ZoomButton
+            label="Show the whole room"
             wide
             onClick={() => {
               const next = fitView(planRef.current)
@@ -770,7 +820,7 @@ export function FloorPlan({
               setView(next)
             }}
           >
-            Fit
+            Room
           </ZoomButton>
         </div>
       )}

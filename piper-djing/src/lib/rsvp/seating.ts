@@ -1022,6 +1022,24 @@ function itemFootprint(item: RoomItem): Box {
   return boxOf(item.x, item.y, item.w, item.h, item.rotation, 0)
 }
 
+/**
+ * The part of the room that has something in it: every table with its
+ * chairs, and every room item. Null for an empty room.
+ */
+export function contentBox(plan: SeatingPlan): Box | null {
+  const boxes = [
+    ...plan.tables.map((table) => tableFootprint(table)),
+    ...plan.items.map((item) => itemFootprint(item)),
+  ]
+  if (boxes.length === 0) return null
+  return {
+    x0: Math.min(...boxes.map((box) => box.x0)),
+    y0: Math.min(...boxes.map((box) => box.y0)),
+    x1: Math.max(...boxes.map((box) => box.x1)),
+    y1: Math.max(...boxes.map((box) => box.y1)),
+  }
+}
+
 function overlaps(a: Box, b: Box, gap: number): boolean {
   return (
     a.x0 < b.x1 + gap && b.x0 < a.x1 + gap && a.y0 < b.y1 + gap && b.y0 < a.y1 + gap

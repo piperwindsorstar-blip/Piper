@@ -17,7 +17,10 @@ import { saveRsvpTimeline } from '../../lib/rsvp/rsvp.functions.ts'
 import type { getRsvpTimeline } from '../../lib/rsvp/rsvp.functions.ts'
 import { SaveStatus, useAutosave } from './autosave.tsx'
 import { PrintTimeline, usePrintSheet } from './print.tsx'
-import { rsvpButton, rsvpGhost } from './shell.tsx'
+import {
+  rsvpButtonFit,
+  rsvpGhostFit,
+} from './shell.tsx'
 
 export type TimelineData = NonNullable<
   Awaited<ReturnType<typeof getRsvpTimeline>>
@@ -179,7 +182,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
             {timeline.moments.length > 0 ? (
               <button
                 type="button"
-                className={`${rsvpGhost} w-auto`}
+                className={`${rsvpGhostFit}`}
                 onClick={() => print('timeline')}
               >
                 Print / PDF
@@ -198,7 +201,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
             <span className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                className={`${rsvpButton} w-auto`}
+                className={`${rsvpButtonFit}`}
                 onClick={() => {
                   if (!ready(current.current.moments)) {
                     autosave.hold(
@@ -214,7 +217,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
               </button>
               <button
                 type="button"
-                className={`${rsvpGhost} w-auto`}
+                className={`${rsvpGhostFit}`}
                 onClick={() => {
                   const empty = { manualOrder: false, moments: [] }
                   current.current = empty
@@ -232,7 +235,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
           {timeline.moments.length === 0 || draft ? null : (
             <button
               type="button"
-              className={`${rsvpGhost} w-auto`}
+              className={`${rsvpGhostFit}`}
               disabled={!timeline.manualOrder}
               onClick={() =>
                 commit(
@@ -247,7 +250,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
           {timeline.moments.length === 0 ? (
             <button
               type="button"
-              className={`${rsvpGhost} w-auto`}
+              className={`${rsvpGhostFit}`}
               onClick={() => {
                 const sample = { manualOrder: false, moments: sampleDay(newId) }
                 current.current = sample
@@ -425,7 +428,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
                     {complete ? (
                       <button
                         type="button"
-                        className={`${rsvpGhost} w-auto justify-self-start sm:col-span-2`}
+                        className={`${rsvpGhostFit} justify-self-start sm:col-span-2`}
                         onClick={() => {
                           setOpenId('')
                           sortSoon()
@@ -464,7 +467,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
         <div className="mt-4 flex flex-wrap items-start gap-3">
           <button
             type="button"
-            className={`${rsvpGhost} w-auto`}
+            className={`${rsvpGhostFit}`}
             disabled={timeline.moments.length >= MAX_MOMENTS}
             onClick={() => {
               const id = newId()

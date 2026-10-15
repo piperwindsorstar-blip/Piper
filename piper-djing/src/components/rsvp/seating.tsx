@@ -51,7 +51,10 @@ import { SaveStatus, useAutosave } from './autosave.tsx'
 import { FloorPlan } from './floor-plan.tsx'
 import type { Selection } from './floor-plan.tsx'
 import { SeatingPrintDialog } from './print.tsx'
-import { rsvpButton, rsvpGhost } from './shell.tsx'
+import {
+  rsvpButtonFit,
+  rsvpGhostFit,
+} from './shell.tsx'
 
 export type SeatingData = NonNullable<
   Awaited<ReturnType<typeof getRsvpSeating>>
@@ -85,6 +88,9 @@ export function SeatingChart({ data }: { data: SeatingData }) {
   const [roomOpen, setRoomOpen] = useState(false)
   const [arranged, setArranged] = useState(false)
   const [enlarge, setEnlarge] = useState(0)
+  /** Bumped to make the floor plan zoom back to the tables. */
+  const [fitKey, setFitKey] = useState(0)
+  const planSpot = useRef<HTMLElement | null>(null)
   const planRef = useRef(plan)
   planRef.current = plan
 
@@ -244,7 +250,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             {plan.tables.length === 0 ? null : (
               <button
                 type="button"
-                className={`${rsvpGhost} w-auto`}
+                className={`${rsvpGhostFit}`}
                 onClick={() => setPrinting(true)}
               >
                 Print / PDF
@@ -307,14 +313,20 @@ export function SeatingChart({ data }: { data: SeatingData }) {
               </label>
               <button
                 type="button"
-                className={`${rsvpButton} w-auto`}
+                className={`${rsvpButtonFit}`}
                 onClick={() => {
                   const wanted = Number(count)
                   if (!Number.isFinite(wanted) || wanted < 1) {
                     setProblem('Enter how many tables to create, from 1.')
                     return
                   }
-                  commit(addTables(planRef.current, wanted, newId), true)
+                  // Spread the new tables across the room straight away.
+                  const result = autoArrange(
+                    addTables(planRef.current, wanted, newId),
+                  )
+                  setEnlarge(result.unplaced)
+                  commit(result.plan, true)
+                  setFitKey((key) => key + 1)
                 }}
               >
                 Create tables
@@ -333,7 +345,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
           <>
           <button
             type="button"
-            className={`${rsvpGhost} w-auto`}
+            className={`${rsvpGhostFit}`}
             disabled={plan.tables.length >= MAX_TABLES}
             onClick={() => {
               const current = planRef.current
@@ -352,7 +364,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
           </button>
           <button
             type="button"
-            className={`${rsvpGhost} w-auto`}
+            className={`${rsvpGhostFit}`}
             disabled={plan.tables.length === 0}
             onClick={() => {
               // Always arranges and saves. A table that finds no clear floor
@@ -361,6 +373,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
               setEnlarge(result.unplaced)
               setArranged(true)
               commit(result.plan, true)
+              setFitKey((key) => key + 1)
             }}
           >
             Auto-arrange tables
@@ -408,14 +421,14 @@ export function SeatingChart({ data }: { data: SeatingData }) {
           </label>
           <button
             type="button"
-            className={`${rsvpGhost} w-auto`}
+            className={`${rsvpGhostFit}`}
             aria-expanded={roomOpen}
             onClick={() => setRoomOpen((open) => !open)}
           >
             Room {formatLength(plan.room.width, unit, 'room')} ×{' '}
             {formatLength(plan.room.length, unit, 'room')}
           </button>
-          <label className={`${rsvpGhost} w-auto cursor-pointer`}>
+          <label className={`${rsvpGhostFit} cursor-pointer`}>
             {image ? 'Replace floor plan' : 'Upload floor plan'}
             <input
               type="file"
@@ -457,7 +470,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             </span>
             <button
               type="button"
-              className={`${rsvpButton} w-auto`}
+              className={`${rsvpButtonFit}`}
               onClick={() => {
                 const grown = enlargeRoomToFit(planRef.current)
                 if (grown.unplaced > 0) {
@@ -508,9 +521,10 @@ export function SeatingChart({ data }: { data: SeatingData }) {
         ) : null}
 
         <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="min-w-0">
+          <section className="min-w-0 scroll-mt-4" ref={planSpot}>
             <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]">
               <FloorPlan
+                fitKey={fitKey}
                 plan={plan}
                 guests={byId}
                 image={image}
@@ -552,11 +566,9 @@ export function SeatingChart({ data }: { data: SeatingData }) {
               />
             </div>
             <p className="mt-2 text-xs text-[var(--text-faint)]">
-              Drag tables and room items to match your venue. Drag a corner to
-              resize, the round handle to turn. Pinch, scroll or use + and − to
-              zoom; drag the empty floor to move around. Zoomed in, a table
-              too crowded for names shows seat numbers: tap it (or point at
-              it) to see who sits where.
+              Drag tables to match your venue; drag a corner to resize and the
+              round handle to turn. Pinch or use + and − to zoom. Tap a table
+              to rename it or change its seats.
             </p>
             {selectedGuest && selectedTable ? (
               <section
@@ -586,7 +598,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
                   />
                   <button
                     type="button"
-                    className={`${rsvpGhost} w-auto`}
+                    className={`${rsvpGhostFit}`}
                     onClick={() => {
                       commit(unseat(planRef.current, selectedGuest.id))
                       setSelected('')
@@ -724,11 +736,20 @@ export function SeatingChart({ data }: { data: SeatingData }) {
                           guest={guest}
                           plan={plan}
                           picked={placing === guest.id}
-                          onPick={() =>
-                            setPlacing((current) =>
-                              current === guest.id ? '' : guest.id,
-                            )
-                          }
+                          onPick={() => {
+                            const next = placing === guest.id ? '' : guest.id
+                            setPlacing(next)
+                            // On a phone the plan is above this list: bring it
+                            // into view so the empty seat can be tapped.
+                            if (next && window.innerWidth < 1280) {
+                              planSpot.current?.scrollIntoView({
+                                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                                  ? 'auto'
+                                  : 'smooth',
+                                block: 'start',
+                              })
+                            }
+                          }}
                           onTable={(tableId) => seatGuest(guest.id, tableId)}
                         />
                       ))}
@@ -802,6 +823,24 @@ export function SeatingChart({ data }: { data: SeatingData }) {
               })}
             </div>
           </section>
+        ) : null}
+        {placing && byId.get(placing) ? (
+          <div
+            className="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 rounded-2xl border border-[var(--pink)] bg-[var(--surface)] px-4 py-3 shadow-lg md:bottom-6 md:left-auto md:right-6 md:max-w-md"
+            role="status"
+          >
+            <span className="min-w-0 text-sm">
+              Tap an empty seat for{' '}
+              <span className="font-semibold">{byId.get(placing)?.name}</span>
+            </span>
+            <button
+              type="button"
+              className="min-h-11 shrink-0 px-2 text-sm text-[var(--pink-soft)] underline"
+              onClick={() => setPlacing('')}
+            >
+              Cancel
+            </button>
+          </div>
         ) : null}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <span className="text-sm text-[var(--text-muted)]">
