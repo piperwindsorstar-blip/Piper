@@ -8,6 +8,7 @@ import {
   partiesToRemind,
   partiesWaiting,
   rsvpPath,
+  shiftDate,
 } from './model.ts'
 import type { RsvpParty, RsvpWedding } from './model.ts'
 import { sendKey, sendRsvpEmail } from './mailer.server.ts'
@@ -86,8 +87,9 @@ export async function deliverDeadlineSummary(
 ): Promise<void> {
   if (!wedding.paid) return
   if (!/^\d{4}-\d{2}-\d{2}$/.test(wedding.deadline)) return
-  if (today !== wedding.deadline) return
-  if (wedding.deadlineSummaryOn === today) return
+  // On the deadline day, or caught up within three days if that day was missed.
+  if (today < wedding.deadline || today > shiftDate(wedding.deadline, 3)) return
+  if (wedding.deadlineSummaryOn >= wedding.deadline) return
   const to = coupleReplyAddress(wedding, await coupleBookings())
   if (!to.includes('@')) return
   wedding.deadlineSummaryOn = today

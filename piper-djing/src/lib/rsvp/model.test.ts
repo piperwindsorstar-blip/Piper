@@ -393,12 +393,18 @@ describe('rsvp songs, mail, and csv', () => {
     )
   })
 
-  it('reminds only unanswered parties seven days out', () => {
+  it('reminds unanswered parties from seven days out until the deadline', () => {
     const names = partiesToRemind(sampleWedding(), '2027-05-01').map(
       (party) => party.id,
     )
     assert.deepEqual(names, ['thompson'])
-    assert.deepEqual(partiesToRemind(sampleWedding(), '2027-05-02'), [])
+    // A missed day is caught up later in the week.
+    assert.deepEqual(
+      partiesToRemind(sampleWedding(), '2027-05-07').map((party) => party.id),
+      ['thompson'],
+    )
+    assert.deepEqual(partiesToRemind(sampleWedding(), '2027-04-30'), [])
+    assert.deepEqual(partiesToRemind(sampleWedding(), '2027-05-08'), [])
     assert.deepEqual(
       partiesWaiting(sampleWedding()).map((party) => party.id),
       ['thompson'],

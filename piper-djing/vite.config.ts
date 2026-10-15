@@ -41,6 +41,12 @@ const config = defineConfig({
   plugins: [
     devtools(),
     nitro({
+      // Daily jobs live in server/tasks. On Cloudflare the schedule becomes a
+      // Cron Trigger at build time. 12:13 UTC is 8:13 AM in Toronto (7:13 in
+      // winter).
+      serverDir: './server',
+      experimental: { tasks: true },
+      scheduledTasks: { '13 12 * * *': ['rsvp:daily'] },
       ...(cloudflareBuild
         ? {
             preset: 'cloudflare_module' as const,

@@ -1039,8 +1039,11 @@ export function partiesToRemind(
   today: string,
 ): RsvpParty[] {
   if (!wedding.autoRemind || !wedding.paid) return []
-  if (shiftDate(wedding.deadline, -7) !== today) return []
-  if (wedding.remindedOn === today) return []
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(wedding.deadline)) return []
+  // Due from seven days out until the day before the deadline, so a day the
+  // check did not run is caught up on the next. Each party is still reminded
+  // only once (the caller skips parties already in remindedIds).
+  if (today < shiftDate(wedding.deadline, -7) || today >= wedding.deadline) return []
   return unansweredParties(wedding)
 }
 
