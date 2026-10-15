@@ -91,10 +91,41 @@ describe('ordered moments', () => {
     assert.equal(bouquet?.hidden, true)
     assert.equal(planning.fromInquiry.length, 0)
     const added = addCustomMoment(planning.timeline, 'Reception', 'Shoe game')
+    const bouquetAt = added.findIndex((row) => row.presetKey === 'bouquet')
+    assert.equal(added[bouquetAt + 1]?.activity, 'Shoe game')
+  })
+
+  it('names the wedding party entrance without "whole" and needs only a time for cocktail hour', () => {
+    const blank = blankPlanning(seed)
     assert.equal(
-      added.filter((row) => row.section === 'Reception').at(-1)?.activity,
-      'Shoe game',
+      blank.timeline.find((row) => row.presetKey === 'entrance-party')
+        ?.activity,
+      'Grand entrance: wedding party',
     )
+    const saved = planningFromUnknown(
+      {
+        timeline: blank.timeline.map((row) =>
+          row.presetKey === 'entrance-party'
+            ? {
+                ...row,
+                mode: 'whole',
+                entries: [{ id: 'whole', name: 'Whole wedding party' }],
+              }
+            : row,
+        ),
+      },
+      seed,
+    )
+    const party = saved.timeline.find(
+      (row) => row.presetKey === 'entrance-party',
+    )
+    assert.equal(party?.entries[0]?.name, 'Wedding party')
+    const cocktail = blank.timeline.find(
+      (row) => row.presetKey === 'cocktail-hour',
+    )
+    assert.ok(cocktail)
+    assert.equal(momentFilled({ ...cocktail, link: 'https://x.test' }), false)
+    assert.equal(momentFilled({ ...cocktail, time: '5:00 pm' }), true)
   })
 
   it('has no dinner music moment and drops it from saved plans', () => {

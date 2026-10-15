@@ -429,8 +429,8 @@ export function momentHelper(presetKey: string): string {
   switch (momentKind(presetKey)) {
     case 'time':
       return 'Just the time is enough here.'
-    case 'playlist':
-      return 'Share a playlist, and tell me when it should start.'
+    case 'time-notes':
+      return 'When it starts, and anything I should know.'
     case 'speakers':
       return 'Who is speaking, and about when.'
     case 'party':

@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { momentFilled } from '../../lib/crm/planning.ts'
 import type { TimelineRow } from '../../lib/crm/planning.ts'
 import { momentSummary } from '../../lib/portal/progress.ts'
@@ -70,6 +70,58 @@ export function OrderedMoments({
     reorderTimeline(section, id, target)
   }
 
+  // Reception: the add button sits right after the bouquet toss.
+  let addAfter = shown.findIndex((item) => item.row.presetKey === 'bouquet')
+  while (
+    addAfter >= 0 &&
+    shown[addAfter + 1] &&
+    shown[addAfter + 1].row.presetKey === ''
+  )
+    addAfter += 1
+  const inlineAdd = section === 'Reception' && addAfter >= 0
+  const add = (
+    <>
+      {adding ? (
+        <form
+          className="mt-3 grid gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            addMoment(section, name)
+            setName('')
+            setAdding(false)
+          }}
+        >
+          <label className="block">
+            <span className="sr-only">Moment name</span>
+            <input
+              className="portal-input"
+              value={name}
+              disabled={locked}
+              placeholder="Unity candle"
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+          <button
+            type="submit"
+            className="min-h-11 text-left text-sm text-[var(--pink-soft)]"
+            disabled={locked || name.trim() === '' || customs >= 12}
+          >
+            Add this moment
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          className="mt-3 min-h-11 text-left text-sm text-[var(--text-muted)]"
+          disabled={locked || customs >= 12}
+          onClick={() => setAdding(true)}
+        >
+          + Add your own moment
+        </button>
+      )}
+    </>
+  )
+
   return (
     <DndContext
       sensors={sensors}
@@ -82,15 +134,17 @@ export function OrderedMoments({
       >
         <ol className="mt-3 grid gap-1">
           {shown.map((item, index) => (
-            <MomentRow
-              key={item.row.id}
-              item={item}
-              currentId={currentId}
-              disabled={locked}
-              first={index === 0}
-              last={index === shown.length - 1}
-              onMove={move}
-            />
+            <Fragment key={item.row.id}>
+              <MomentRow
+                item={item}
+                currentId={currentId}
+                disabled={locked}
+                first={index === 0}
+                last={index === shown.length - 1}
+                onMove={move}
+              />
+              {inlineAdd && index === addAfter ? <li>{add}</li> : null}
+            </Fragment>
           ))}
         </ol>
       </SortableContext>
@@ -127,44 +181,7 @@ export function OrderedMoments({
           ) : null}
         </div>
       ) : null}
-      {adding ? (
-        <form
-          className="mt-3 grid gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            addMoment(section, name)
-            setName('')
-            setAdding(false)
-          }}
-        >
-          <label className="block">
-            <span className="sr-only">Moment name</span>
-            <input
-              className="portal-input"
-              value={name}
-              disabled={locked}
-              placeholder="Unity candle"
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-          <button
-            type="submit"
-            className="min-h-11 text-left text-sm text-[var(--pink-soft)]"
-            disabled={locked || name.trim() === '' || customs >= 12}
-          >
-            Add this moment
-          </button>
-        </form>
-      ) : (
-        <button
-          type="button"
-          className="mt-3 min-h-11 text-left text-sm text-[var(--text-muted)]"
-          disabled={locked || customs >= 12}
-          onClick={() => setAdding(true)}
-        >
-          + Add a moment
-        </button>
-      )}
+      {inlineAdd ? null : add}
     </DndContext>
   )
 }
@@ -185,6 +202,7 @@ function MomentRow({
   onMove: (id: string, direction: -1 | 1) => void
 }) {
   const close = useCloseSheet()
+  const { removeMoment } = usePortal()
   const {
     attributes,
     listeners,
@@ -271,6 +289,17 @@ function MomentRow({
           >
             Down
           </button>
+          {item.row.presetKey === '' ? (
+            <button
+              type="button"
+              className="min-h-11 px-2 text-xs text-[var(--pink-soft)]"
+              aria-label={`Remove ${name}`}
+              disabled={disabled}
+              onClick={() => removeMoment(item.row.id)}
+            >
+              Remove
+            </button>
+          ) : null}
         </span>
       </div>
     </li>

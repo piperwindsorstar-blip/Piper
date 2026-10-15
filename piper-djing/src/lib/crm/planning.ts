@@ -50,7 +50,7 @@ export const MOMENTS: ReadonlyArray<{
   {
     key: 'entrance-party',
     section: 'Reception',
-    activity: 'Grand entrance: whole wedding party',
+    activity: 'Grand entrance: wedding party',
     sortable: true,
   },
   {
@@ -144,7 +144,7 @@ export type EntranceMode = 'pairs' | 'split' | 'whole'
 export type MomentKind =
   | 'song'
   | 'time'
-  | 'playlist'
+  | 'time-notes'
   | 'speakers'
   | 'party'
   | 'entrance-party'
@@ -152,7 +152,7 @@ export type MomentKind =
 
 export function momentKind(presetKey: string): MomentKind {
   if (presetKey === 'guest-arrival') return 'time'
-  if (presetKey === 'cocktail-hour') return 'playlist'
+  if (presetKey === 'cocktail-hour') return 'time-notes'
   if (presetKey === 'speeches') return 'speakers'
   if (presetKey === 'bridal-party') return 'party'
   if (presetKey === 'entrance-party') return 'entrance-party'
@@ -486,6 +486,7 @@ const LEGACY_MOMENT: Record<string, string> = {
   'cocktail hour': 'cocktail-hour',
   'grand entrance (whole wedding party)': 'entrance-party',
   'grand entrance: whole wedding party': 'entrance-party',
+  'grand entrance: wedding party': 'entrance-party',
   'grand entrance (bride and groom)': 'entrance-couple',
   'grand entrance: the couple': 'entrance-couple',
   'first dance': 'first-dance',
@@ -551,7 +552,7 @@ function carryLegacySong(fields: MomentFields, key: string): MomentFields {
       entries: [
         {
           id: 'whole',
-          name: 'Whole wedding party',
+          name: 'Wedding party',
           time: '',
           song: fields.song,
           artist: fields.artist,
@@ -735,10 +736,17 @@ export function addCustomMoment(
     mode: '',
     direct: false,
   }
-  const last = timeline.reduce(
-    (found, row, index) => (row.section === section ? index : found),
-    -1,
-  )
+  const bouquet =
+    section === 'Reception'
+      ? timeline.findIndex((row) => row.presetKey === 'bouquet')
+      : -1
+  const last =
+    bouquet >= 0
+      ? bouquet
+      : timeline.reduce(
+          (found, row, index) => (row.section === section ? index : found),
+          -1,
+        )
   const next = timeline.slice()
   next.splice(last + 1, 0, moment)
   return next
@@ -760,7 +768,7 @@ function readEntries(value: unknown): MomentEntry[] {
     seen.add(id)
     entries.push({
       id,
-      name: clip(item.name, SHORT),
+      name: renamedEntry(clip(item.name, SHORT)),
       time: clip(item.time, 40),
       song: clip(item.song, SHORT),
       artist: clip(item.artist, SHORT),
@@ -768,6 +776,11 @@ function readEntries(value: unknown): MomentEntry[] {
     })
   }
   return entries
+}
+
+/** Entries saved as "Whole wedding party" now read "Wedding party". */
+function renamedEntry(name: string): string {
+  return name === 'Whole wedding party' ? 'Wedding party' : name
 }
 
 function blankEntry(id: string, name = ''): MomentEntry {
@@ -868,7 +881,7 @@ export function setEntranceMode(
   else
     standard = [
       entries.find((entry) => entry.id === 'whole') ??
-        blankEntry('whole', 'Whole wedding party'),
+        blankEntry('whole', 'Wedding party'),
     ]
   return [...standard, ...customs].slice(0, ENTRY_MAX)
 }
@@ -887,8 +900,7 @@ export function pairCount(entries: MomentEntry[]): number {
 /** True when a moment has something filled in, whatever kind it is. */
 export function momentFilled(row: TimelineRow): boolean {
   const kind = momentKind(row.presetKey)
-  if (kind === 'time') return row.time.trim() !== ''
-  if (kind === 'playlist') return row.link.trim() !== ''
+  if (kind === 'time' || kind === 'time-notes') return row.time.trim() !== ''
   if (kind === 'speakers')
     return row.entries.some((entry) => entry.name.trim() !== '')
   if (kind === 'party' || kind === 'entrance-party')

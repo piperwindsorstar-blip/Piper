@@ -248,16 +248,7 @@ type SheetLine = { text: string; choice: boolean }
 /** What the DJ reads in the song column, whatever kind of moment it is. */
 function momentLines(row: TimelineRow): SheetLine[] {
   const kind = momentKind(row.presetKey)
-  if (kind === 'time') return []
-  if (kind === 'playlist') {
-    const platform = linkPlatform(row.link)
-    if (platform) return [{ text: `${platform} playlist`, choice: false }]
-    return [
-      row.link.trim()
-        ? { text: 'Playlist link', choice: false }
-        : { text: "DJ's choice", choice: true },
-    ]
-  }
+  if (kind === 'time' || kind === 'time-notes') return []
   if (kind === 'speakers') {
     const named = row.entries.filter((entry) => entry.name.trim())
     if (named.length === 0) return [{ text: '—', choice: false }]

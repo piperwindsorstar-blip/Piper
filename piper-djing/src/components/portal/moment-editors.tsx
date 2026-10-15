@@ -43,8 +43,8 @@ export function MomentEditor({
     <div>
       {kind === 'time' ? (
         <TimeOnly row={row} patch={patch} disabled={disabled} />
-      ) : kind === 'playlist' ? (
-        <PlaylistMoment row={row} patch={patch} disabled={disabled} />
+      ) : kind === 'time-notes' ? (
+        <TimeNotesMoment row={row} patch={patch} disabled={disabled} />
       ) : kind === 'speakers' ? (
         <Speakers row={row} patch={patch} disabled={disabled} />
       ) : kind === 'party' ? (
@@ -61,7 +61,7 @@ export function MomentEditor({
         patch={patch}
         disabled={disabled}
         renamable={
-          kind !== 'time' && kind !== 'playlist' && kind !== 'speakers'
+          kind !== 'time' && kind !== 'time-notes' && kind !== 'speakers'
         }
       />
     </div>
@@ -155,7 +155,7 @@ function TimeOnly({
   )
 }
 
-function PlaylistMoment({
+function TimeNotesMoment({
   row,
   patch,
   disabled,
@@ -165,26 +165,12 @@ function PlaylistMoment({
   disabled: boolean
 }) {
   return (
-    <div>
-      <label className="block">
-        <span className="sr-only">Playlist link</span>
-        <input
-          className="portal-input"
-          type="url"
-          placeholder="Playlist link (Spotify, YouTube, Apple Music or SoundCloud)"
-          value={row.link}
-          disabled={disabled}
-          onChange={(event) => patch({ link: event.target.value })}
-        />
-      </label>
-      <Platform value={row.link} />
-      <TimeAndNotes
-        row={row}
-        patch={patch}
-        disabled={disabled}
-        placeholder="Notes: songs to skip, how loud, anything for the room"
-      />
-    </div>
+    <TimeAndNotes
+      row={row}
+      patch={patch}
+      disabled={disabled}
+      placeholder="Notes: anything for the room or the MC"
+    />
   )
 }
 
@@ -394,7 +380,7 @@ function WholePartyEntrance({
             if (entry.id.startsWith('pair-')) return `Pair ${entry.id.slice(5)}`
             if (entry.id === 'bridesmaids') return 'Bridesmaids'
             if (entry.id === 'groomsmen') return 'Groomsmen'
-            if (entry.id === 'whole') return 'Whole wedding party'
+            if (entry.id === 'whole') return 'Wedding party'
             return 'Added'
           }}
           renamePairs

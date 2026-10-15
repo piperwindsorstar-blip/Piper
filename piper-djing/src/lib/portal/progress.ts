@@ -183,13 +183,13 @@ export function momentSummary(row: TimelineRow): string {
   const kind = momentKind(row.presetKey)
   if (!momentFilled(row)) {
     if (kind === 'time') return 'Set a time'
-    if (kind === 'playlist') return 'Add a playlist'
+    if (kind === 'time-notes') return 'Set a time'
     if (kind === 'speakers') return 'Add speakers'
     if (kind === 'party' || kind === 'entrance-party') return 'Pick songs'
     return 'Pick a song'
   }
   if (kind === 'time') return row.time.trim()
-  if (kind === 'playlist') return row.time.trim() || 'Playlist added'
+  if (kind === 'time-notes') return row.time.trim()
   if (kind === 'speakers') {
     const count = row.entries.filter((entry) => entry.name.trim()).length
     return count === 1 ? '1 speaker' : `${count} speakers`
