@@ -155,7 +155,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
 
   return (
     <div>
-      <div className="print:hidden">
+      <div className="max-w-3xl print:hidden">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">

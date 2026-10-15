@@ -1418,7 +1418,7 @@ export function Events({ data }: { data: ReadyManage }) {
     )
   }
   return (
-    <div className="grid gap-8">
+    <div className="grid max-w-3xl gap-8">
     <form
       className="grid gap-4"
       onSubmit={(event) => event.preventDefault()}
@@ -1514,11 +1514,19 @@ export function Events({ data }: { data: ReadyManage }) {
                     <button type="button" className={`${rsvpGhost} w-auto`} onClick={() => setEditing('')}>
                       Done
                     </button>
-                    {original.has(item.id) || events.length <= 1 ? null : (
+                    {item.id === 'ceremony' || events.length <= 1 ? null : (
                       <button
                         type="button"
                         className="min-h-11 text-sm text-[var(--text-muted)] underline"
                         onClick={() => {
+                          if (
+                            original.has(item.id) &&
+                            !window.confirm(
+                              `Remove ${item.name || 'this event'}? Any replies guests gave for it are removed too.`,
+                            )
+                          ) {
+                            return
+                          }
                           setEditing('')
                           setEvents((current) => current.filter((event) => event.id !== item.id))
                         }}
@@ -1660,7 +1668,7 @@ export function Songs({ data }: { data: ReadyManage }) {
           {error}
         </p>
       ) : null}
-      <ol className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
+      <ol className="mt-4 grid max-w-3xl grid-cols-[minmax(0,1fr)] gap-3">
         {data.songs.map((song, index) => {
           const key = `${song.title}\u0000${song.artist}`
           const status = picked[key] ?? (song.status as SongStatus)
@@ -1686,7 +1694,7 @@ export function Songs({ data }: { data: ReadyManage }) {
                 <p className="mt-1 text-sm text-[var(--text-faint)]">Asked by {song.who}</p>
               ) : null}
               <div
-                className="mt-3 grid grid-cols-3 gap-1 rounded-full border border-[var(--border-strong)] p-1"
+                className="mt-3 grid grid-cols-3 gap-1 rounded-full border border-[var(--border-strong)] p-1 sm:max-w-md"
                 role="group"
                 aria-label={`What to do with ${song.title}`}
               >
