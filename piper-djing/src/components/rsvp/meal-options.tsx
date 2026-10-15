@@ -1,15 +1,13 @@
-import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useRef, useState } from 'react'
-import { ActionButton } from '../action-button.tsx'
-import type { RunResult } from '../action-button.tsx'
+import { useEffect, useRef, useState } from 'react'
+import { SaveStatus, useAutosave } from './autosave.tsx'
 import {
   MAX_MEALS,
   MEAL_MAX_LENGTH,
   cleanMealList,
 } from '../../lib/rsvp/guest-list.ts'
 import { saveRsvpMeals } from '../../lib/rsvp/rsvp.functions.ts'
-import { rsvpButton, rsvpField, rsvpGhost, useRsvpTheme } from './shell.tsx'
+import { rsvpField, rsvpGhost } from './shell.tsx'
 
 type Box = { key: string; value: string }
 
@@ -25,8 +23,6 @@ export function MealOptions({
   title?: string
 }) {
   const save = useServerFn(saveRsvpMeals)
-  const router = useRouter()
-  const surface = useRsvpTheme()
   const counter = useRef(0)
   const next = () => {
     counter.current += 1
@@ -47,6 +43,35 @@ export function MealOptions({
           index,
     ),
   )
+
+  // Saves a moment after typing stops. The page is not reloaded after a
+  // save, so the box being typed in keeps its place.
+  const autosave = useAutosave<string[]>(async (values) => {
+    const cleaned = cleanMealList(values)
+    if (!cleaned.ok) return { ok: false, error: cleaned.error }
+    try {
+      const result = await save({ data: { meals: cleaned.meals } })
+      return result.ok ? { ok: true } : { ok: false, error: result.error }
+    } catch {
+      return { ok: false, error: 'The meals did not save.' }
+    }
+  }, 1000)
+  const first = useRef(true)
+  const listKey = keys.join('\u0000')
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    if (repeated.size > 0) {
+      autosave.hold(`${[...repeated][0]} is listed twice. Remove one to save.`)
+      return
+    }
+    autosave.schedule(boxes.map((box) => box.value))
+    // Saves when the list of meals changes, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listKey])
+  useEffect(() => () => autosave.flush(), [autosave.flush])
 
   return (
     <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -109,11 +134,6 @@ export function MealOptions({
           )
         })}
       </ul>
-      {repeated.size > 0 ? (
-        <p className="mt-2 text-sm text-[var(--pink-soft)]" role="alert">
-          {[...repeated][0]} is listed twice. Remove one before saving.
-        </p>
-      ) : null}
       <div className="mt-3 flex flex-wrap items-start gap-3">
         <button
           type="button"
@@ -127,41 +147,10 @@ export function MealOptions({
         >
           + Add meal
         </button>
-        <ActionButton
-          className={`${rsvpButton} w-auto`}
-          wrapperClassName="inline-grid w-auto"
-          busy="Saving…"
-          done="Saved"
-          surface={surface}
-          onRun={async (): Promise<RunResult> => {
-            const cleaned = cleanMealList(boxes.map((box) => box.value))
-            if (!cleaned.ok) return { ok: false, message: cleaned.error }
-            try {
-              const result = await save({ data: { meals: cleaned.meals } })
-              if (!result.ok) return { ok: false, message: result.error }
-              setBoxes(
-                (result.meals.length > 0 ? result.meals : ['']).map(
-                  (value) => ({ key: next(), value }),
-                ),
-              )
-              await router.invalidate()
-              return {
-                ok: true,
-                message:
-                  result.meals.length === 0
-                    ? 'Saved. Guests are not asked for a meal.'
-                    : `Saved. Guests choose from ${result.meals.length} meal${result.meals.length === 1 ? '' : 's'}.`,
-              }
-            } catch {
-              return { ok: false, message: 'The meals did not save.' }
-            }
-          }}
-        >
-          Save meals
-        </ActionButton>
+        <SaveStatus phase={autosave.phase} error={autosave.error} />
       </div>
       <p className="mt-2 text-xs text-[var(--text-faint)]">
-        {filled} of {MAX_MEALS} meals · empty boxes are left out
+        {filled} of {MAX_MEALS} meals · empty boxes are left out · changes save on their own
       </p>
     </section>
   )
