@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { blankPlanning } from '../crm/planning.ts'
-import { isSongLink, itunesHits, lookupSongs, songHits } from './song-search.ts'
+import { deezerHits, isSongLink, itunesHits, lookupSongs, songHits } from './song-search.ts'
 import { timelineQuestions } from './questions.ts'
 
 describe('song search', { concurrency: false }, () => {
@@ -106,9 +106,9 @@ describe('song search', { concurrency: false }, () => {
       )
       assert.deepEqual(await lookupSongs('P'), [])
       assert.equal(calls, 0)
-      // No Spotify keys: Apple's search is tried, and a failure is just no hits.
+      // No Spotify keys: Apple, then Deezer, are tried; failures are just no hits.
       assert.deepEqual(await lookupSongs('Perfect'), [])
-      assert.equal(calls, 1)
+      assert.equal(calls, 2)
     } finally {
       globalThis.fetch = previousFetch
       restoreEnv('SPOTIFY_CLIENT_ID', previousId)
@@ -171,6 +171,15 @@ describe('song search', { concurrency: false }, () => {
       restoreEnv('SPOTIFY_CLIENT_ID', previousId)
       restoreEnv('SPOTIFY_CLIENT_SECRET', previousSecret)
     }
+  })
+})
+
+describe('deezer song search', () => {
+  it('reads Deezer tracks', () => {
+    assert.deepEqual(
+      deezerHits({ data: [{ title: 'At Last', artist: { name: 'Etta James' }, link: 'https://www.deezer.com/track/1' }, { title: 'x' }] }),
+      [{ title: 'At Last', artist: 'Etta James', link: 'https://www.deezer.com/track/1' }],
+    )
   })
 })
 

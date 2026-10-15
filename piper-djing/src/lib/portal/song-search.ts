@@ -8,6 +8,9 @@ const TOKEN_URL = 'https://accounts.spotify.com/api/token'
 const SEARCH_URL = 'https://api.spotify.com/v1/search'
 /** Apple's public music search. No keys, so it works when Spotify is not set up. */
 const ITUNES_URL = 'https://itunes.apple.com/search'
+/** Deezer's public search, also keyless: the last resort. */
+const DEEZER_URL = 'https://api.deezer.com/search/track'
+const AGENT = 'PiperDJing/1.0 (+https://piperpweddingdj.services)'
 const TOKEN_REFRESH_MS = 60_000
 
 type SpotifyEnv = {
@@ -92,9 +95,11 @@ async function searchItunes(term: string): Promise<SongHit[]> {
     url.searchParams.set('entity', 'song')
     url.searchParams.set('limit', '10')
     url.searchParams.set('country', 'CA')
-    const response = await fetch(url, { headers: { Accept: 'application/json' } })
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': AGENT },
+    })
     if (!response.ok) return []
-    return itunesHits(await response.json())
+    return itunesHits(JSON.parse(await response.text()))
   } catch {
     return []
   }
@@ -109,7 +114,48 @@ export async function lookupSongs(query: string): Promise<SongHit[]> {
   if (term.length < 2 || isSongLink(term)) return []
   const spotify = await searchSpotify(term)
   if (spotify.length > 0) return spotify
-  return searchItunes(term)
+  const apple = await searchItunes(term)
+  if (apple.length > 0) return apple
+  return searchDeezer(term)
+}
+
+/** Reads a Deezer search payload (`data`). */
+export function deezerHits(payload: unknown): SongHit[] {
+  if (!payload || typeof payload !== 'object') return []
+  const data = Reflect.get(payload, 'data')
+  if (!Array.isArray(data)) return []
+  const hits: SongHit[] = []
+  for (const item of data) {
+    if (!item || typeof item !== 'object') continue
+    const title = textField(item, 'title')
+    const artistRow = Reflect.get(item, 'artist')
+    const artist =
+      artistRow && typeof artistRow === 'object' ? textField(artistRow, 'name') : ''
+    if (!title || !artist) continue
+    const link = textField(item, 'link')
+    hits.push({
+      title: title.slice(0, 120),
+      artist: artist.slice(0, 120),
+      link: /^https:\/\//.test(link) ? link.slice(0, 300) : '',
+    })
+    if (hits.length === 6) break
+  }
+  return hits
+}
+
+async function searchDeezer(term: string): Promise<SongHit[]> {
+  try {
+    const url = new URL(DEEZER_URL)
+    url.searchParams.set('q', term)
+    url.searchParams.set('limit', '6')
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': AGENT },
+    })
+    if (!response.ok) return []
+    return deezerHits(await response.json())
+  } catch {
+    return []
+  }
 }
 
 async function searchSpotify(term: string): Promise<SongHit[]> {
