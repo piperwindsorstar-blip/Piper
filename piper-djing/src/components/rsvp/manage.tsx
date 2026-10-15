@@ -213,6 +213,14 @@ export function ManageShell({
   )
 }
 
+/** A party that has a plus-one, or a guest allowed to bring one. */
+function mayBringSomeone(party: ReadyManage['wedding']['parties'][number]): boolean {
+  return (
+    party.plusOneAllowed ||
+    party.guests.some((guest) => guest.isPlusOne || guest.plusOneAllowed)
+  )
+}
+
 /** "2027-06-12" → "Sat, Jun 12, 2027" for the dashboard header. */
 function headerDate(iso: string): string {
   const [year, month, day] = iso.split('-').map(Number)
@@ -614,10 +622,7 @@ export function Guests({ data }: { data: ReadyManage }) {
     all: everyone.length,
     waiting: everyone.filter((party) => !party.lastRepliedAt).length,
     replied: everyone.filter((party) => party.lastRepliedAt).length,
-    plus: everyone.filter(
-      (party) =>
-        party.guests.some((guest) => guest.isPlusOne) || party.plusOneAllowed,
-    ).length,
+    plus: everyone.filter(mayBringSomeone).length,
   }
   const parties = data.wedding.parties.filter((party) => {
     const blob =
@@ -625,10 +630,7 @@ export function Guests({ data }: { data: ReadyManage }) {
     if (query && !blob.includes(query.toLowerCase())) return false
     if (filter === 'waiting') return !party.lastRepliedAt
     if (filter === 'replied') return Boolean(party.lastRepliedAt)
-    if (filter === 'plus')
-      return (
-        party.guests.some((guest) => guest.isPlusOne) || party.plusOneAllowed
-      )
+    if (filter === 'plus') return mayBringSomeone(party)
     return true
   })
   const current =
@@ -794,11 +796,17 @@ function PartyDrawer({
 }) {
   const [name, setName] = useState(party?.name ?? '')
   const [email, setEmail] = useState(party?.email ?? '')
-  const [plusOneAllowed, setPlus] = useState(party?.plusOneAllowed ?? false)
   const [eventIds, setEventIds] = useState<string[]>(
     party?.eventIds ?? events.map((event) => event.id),
   )
   const surface = useSurface()
+  // The old party-wide "plus-one allowed" box meant the first guest could
+  // bring someone. It shows here as that guest's own box, which says the same.
+  const firstHost = party?.guests.find((guest) => !guest.isPlusOne)?.id
+  const legacyPlus = Boolean(
+    party?.plusOneAllowed &&
+      !party.guests.some((guest) => !guest.isPlusOne && guest.plusOneAllowed),
+  )
   const [guests, setGuests] = useState(
     party?.guests.map((guest) => ({
       id: guest.id,
@@ -807,7 +815,7 @@ function PartyDrawer({
       altNames: guest.altNames.join(', '),
       isChild: guest.isChild,
       isPlusOne: guest.isPlusOne,
-      plusOneAllowed: guest.plusOneAllowed,
+      plusOneAllowed: guest.plusOneAllowed || (legacyPlus && guest.id === firstHost),
     })) ?? [
       {
         id: '',
@@ -938,14 +946,6 @@ function PartyDrawer({
         >
           Add a guest
         </button>
-        <label className="mt-4 flex min-h-11 items-center justify-between text-sm">
-          Plus-one allowed
-          <input
-            type="checkbox"
-            checked={plusOneAllowed}
-            onChange={(event) => setPlus(event.target.checked)}
-          />
-        </label>
         <fieldset className="mt-3">
           <legend className="text-sm">Invited to</legend>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -1003,7 +1003,7 @@ function PartyDrawer({
                 id: party?.id ?? '',
                 name,
                 email,
-                plusOneAllowed,
+                plusOneAllowed: false,
                 eventIds,
                 guests,
               })
