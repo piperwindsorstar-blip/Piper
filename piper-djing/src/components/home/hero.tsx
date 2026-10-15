@@ -17,8 +17,8 @@ export function Hero() {
         <img
           src={LOGO_SRC}
           alt={LOGO_ALT}
-          width={819}
-          height={562}
+          width={600}
+          height={412}
           className="h-36 w-auto sm:h-48"
         />
         <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
