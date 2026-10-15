@@ -42,9 +42,11 @@ import {
   RsvpLogo,
   RsvpThemeProvider,
   downloadText,
-  rsvpButton, rsvpButtonFit,
+  rsvpButton,
+  rsvpButtonFit,
   rsvpField,
-  rsvpGhost, rsvpGhostFit,
+  rsvpGhost,
+  rsvpGhostFit,
   useRsvpTheme,
 } from './shell.tsx'
 import { ActionButton } from '../action-button.tsx'
@@ -101,7 +103,7 @@ export function ManageShell({
         className={`portal min-h-screen print:block print:min-h-0 print:!bg-none md:grid md:grid-cols-[240px_1fr] ${theme === 'light' ? 'light' : ''}`}
         style={
           theme === 'light'
-            ? undefined
+            ? ({ '--on-accent': '#FFFFFF' } as React.CSSProperties)
             : {
                 backgroundImage:
                   'radial-gradient(ellipse at left, #2A1220 0%, #0D0D0D 55%)',
@@ -214,7 +216,9 @@ export function ManageShell({
 }
 
 /** A party that has a plus-one, or a guest allowed to bring one. */
-function mayBringSomeone(party: ReadyManage['wedding']['parties'][number]): boolean {
+function mayBringSomeone(
+  party: ReadyManage['wedding']['parties'][number],
+): boolean {
   return (
     party.plusOneAllowed ||
     party.guests.some((guest) => guest.isPlusOne || guest.plusOneAllowed)
@@ -396,7 +400,7 @@ export function Overview({ data }: { data: ReadyManage }) {
             {stats.waitingParties > 0 ? (
               <Link
                 to="/rsvp/manage/guests"
-                className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[var(--pink)] px-5 text-sm font-semibold text-[#0D0D0D]"
+                className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[var(--pink)] px-5 text-sm font-semibold text-[var(--on-accent,#0D0D0D)]"
               >
                 See who is still waiting →
               </Link>
@@ -491,7 +495,7 @@ function ReplyEmail({ data }: { data: ReadyManage }) {
       : "Enter the couple's email. A confirmed RSVP is emailed to them."
   return (
     <form
-      className="mt-6 grid gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4"
+      className="grid gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4"
       onSubmit={(event) => event.preventDefault()}
     >
       <label className="text-sm" htmlFor="reply-email">
@@ -563,11 +567,7 @@ function AskQuestion({ questions }: { questions: ReadyManage['questions'] }) {
             onChange={(event) => setText(event.target.value)}
           />
         </label>
-        <button
-          className={`${rsvpButtonFit}`}
-          type="submit"
-          disabled={busy}
-        >
+        <button className={`${rsvpButtonFit}`} type="submit" disabled={busy}>
           Send
         </button>
       </form>
@@ -616,6 +616,7 @@ export function Guests({ data }: { data: ReadyManage }) {
     'all',
   )
   const [editing, setEditing] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
   const everyone = data.wedding.parties
   const counts = {
@@ -658,12 +659,27 @@ export function Guests({ data }: { data: ReadyManage }) {
           <button
             type="button"
             className={`${rsvpButton} !w-auto`}
-            onClick={() => setEditing('new')}
+            aria-expanded={adding}
+            onClick={() => setAdding((open) => !open)}
           >
-            + Add party
+            {adding ? 'Close' : '+ Add party'}
           </button>
         </div>
       </div>
+      {adding ? (
+        <div className="mt-4">
+          <GuestPaste
+            key={data.wedding.parties
+              .map(
+                (party) =>
+                  `${party.id}:${party.token}:${party.guests.map((guest) => guest.id).join('.')}`,
+              )
+              .join('|')}
+            parties={data.wedding.parties}
+            publicLink={data.publicLink}
+          />
+        </div>
+      ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
         <input
           className={`${rsvpField} max-w-xs`}
@@ -805,7 +821,7 @@ function PartyDrawer({
   const firstHost = party?.guests.find((guest) => !guest.isPlusOne)?.id
   const legacyPlus = Boolean(
     party?.plusOneAllowed &&
-      !party.guests.some((guest) => !guest.isPlusOne && guest.plusOneAllowed),
+    !party.guests.some((guest) => !guest.isPlusOne && guest.plusOneAllowed),
   )
   const [guests, setGuests] = useState(
     party?.guests.map((guest) => ({
@@ -815,7 +831,8 @@ function PartyDrawer({
       altNames: guest.altNames.join(', '),
       isChild: guest.isChild,
       isPlusOne: guest.isPlusOne,
-      plusOneAllowed: guest.plusOneAllowed || (legacyPlus && guest.id === firstHost),
+      plusOneAllowed:
+        guest.plusOneAllowed || (legacyPlus && guest.id === firstHost),
     })) ?? [
       {
         id: '',
@@ -1376,7 +1393,10 @@ export function Events({ data }: { data: ReadyManage }) {
   const autosave = useAutosave<Record<string, unknown>>(async (payload) => {
     const result = await save({ data: payload })
     if (!result.ok) {
-      return { ok: false, error: 'error' in result ? result.error : 'Could not save.' }
+      return {
+        ok: false,
+        error: 'error' in result ? result.error : 'Could not save.',
+      }
     }
     await router.invalidate()
     return { ok: true }
@@ -1412,210 +1432,227 @@ export function Events({ data }: { data: ReadyManage }) {
   }
   return (
     <div className="grid max-w-3xl gap-8">
-    <form
-      className="grid gap-4"
-      onSubmit={(event) => event.preventDefault()}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
-            EVENTS & QUESTIONS
-          </p>
-          <h1 className="portal-display text-4xl">What guests are asked</h1>
+      <form className="grid gap-4" onSubmit={(event) => event.preventDefault()}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
+              EVENTS & QUESTIONS
+            </p>
+            <h1 className="portal-display text-4xl">What guests are asked</h1>
+          </div>
+          <Link
+            to="/rsvp/$slug/find"
+            params={{ slug: data.wedding.slug }}
+            className={`${rsvpButtonFit}`}
+          >
+            Preview guest form
+          </Link>
         </div>
-        <Link
-          to="/rsvp/$slug/find"
-          params={{ slug: data.wedding.slug }}
-          className={`${rsvpButtonFit}`}
-        >
-          Preview guest form
-        </Link>
-      </div>
-      <ul className="grid gap-2">
-        {events.map((item) => {
-          const open = editing === item.id
-          return (
-            <li
-              key={item.id}
-              className={`rounded-2xl border px-4 py-3 ${item.enabled ? 'border-[var(--border)]' : 'border-dashed border-[var(--border)] opacity-80'}`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="min-w-0">
-                  <span className="block font-semibold">{item.name || 'Name this event'}</span>
-                  <span className="block text-sm text-[var(--text-muted)]">
-                    {[item.dateLabel, item.time, item.location].filter(Boolean).join(' · ') ||
-                      'Add a time and place'}
+        <ul className="grid gap-2">
+          {events.map((item) => {
+            const open = editing === item.id
+            return (
+              <li
+                key={item.id}
+                className={`rounded-2xl border px-4 py-3 ${item.enabled ? 'border-[var(--border)]' : 'border-dashed border-[var(--border)] opacity-80'}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block font-semibold">
+                      {item.name || 'Name this event'}
+                    </span>
+                    <span className="block text-sm text-[var(--text-muted)]">
+                      {[item.dateLabel, item.time, item.location]
+                        .filter(Boolean)
+                        .join(' · ') || 'Add a time and place'}
+                    </span>
                   </span>
-                </span>
-                <button
-                  type="button"
-                  aria-pressed={item.enabled}
-                  aria-label={`${item.name}: ${item.enabled ? 'guests are asked' : 'off'}`}
-                  className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ${
-                    item.enabled
-                      ? 'bg-[var(--pink)] text-[#0D0D0D]'
-                      : 'border border-[var(--border-strong)] text-[var(--text-muted)]'
-                  }`}
-                  onClick={() => patchEvent(item.id, { enabled: !item.enabled })}
-                >
-                  {item.enabled ? 'On' : 'Off'}
-                </button>
-              </div>
-              {open ? (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="text-sm sm:col-span-2">
-                    Name
-                    <input
-                      className={`${rsvpField} mt-1`}
-                      maxLength={80}
-                      value={item.name}
-                      placeholder="Sunday brunch"
-                      onChange={(event) => patchEvent(item.id, { name: event.target.value })}
-                    />
-                  </label>
-                  <label className="text-sm">
-                    Day
-                    <input
-                      className={`${rsvpField} mt-1`}
-                      maxLength={80}
-                      value={item.dateLabel}
-                      placeholder="Saturday, June 12"
-                      onChange={(event) => patchEvent(item.id, { dateLabel: event.target.value })}
-                    />
-                  </label>
-                  <label className="text-sm">
-                    Time
-                    <input
-                      className={`${rsvpField} mt-1`}
-                      maxLength={40}
-                      value={item.time}
-                      placeholder="4:00 PM"
-                      onChange={(event) => patchEvent(item.id, { time: event.target.value })}
-                    />
-                  </label>
-                  <label className="text-sm sm:col-span-2">
-                    Place
-                    <input
-                      className={`${rsvpField} mt-1`}
-                      maxLength={80}
-                      value={item.location}
-                      placeholder={data.wedding.venue || 'The venue'}
-                      onChange={(event) => patchEvent(item.id, { location: event.target.value })}
-                    />
-                  </label>
-                  <span className="flex flex-wrap gap-3 sm:col-span-2">
-                    <button type="button" className={`${rsvpGhostFit}`} onClick={() => setEditing('')}>
-                      Done
-                    </button>
-                    {item.id === 'ceremony' || events.length <= 1 ? null : (
+                  <button
+                    type="button"
+                    aria-pressed={item.enabled}
+                    aria-label={`${item.name}: ${item.enabled ? 'guests are asked' : 'off'}`}
+                    className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ${
+                      item.enabled
+                        ? 'bg-[var(--pink)] text-[var(--on-accent,#0D0D0D)]'
+                        : 'border border-[var(--border-strong)] text-[var(--text-muted)]'
+                    }`}
+                    onClick={() =>
+                      patchEvent(item.id, { enabled: !item.enabled })
+                    }
+                  >
+                    {item.enabled ? 'On' : 'Off'}
+                  </button>
+                </div>
+                {open ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label className="text-sm sm:col-span-2">
+                      Name
+                      <input
+                        className={`${rsvpField} mt-1`}
+                        maxLength={80}
+                        value={item.name}
+                        placeholder="Sunday brunch"
+                        onChange={(event) =>
+                          patchEvent(item.id, { name: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="text-sm">
+                      Day
+                      <input
+                        className={`${rsvpField} mt-1`}
+                        maxLength={80}
+                        value={item.dateLabel}
+                        placeholder="Saturday, June 12"
+                        onChange={(event) =>
+                          patchEvent(item.id, { dateLabel: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="text-sm">
+                      Time
+                      <input
+                        className={`${rsvpField} mt-1`}
+                        maxLength={40}
+                        value={item.time}
+                        placeholder="4:00 PM"
+                        onChange={(event) =>
+                          patchEvent(item.id, { time: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="text-sm sm:col-span-2">
+                      Place
+                      <input
+                        className={`${rsvpField} mt-1`}
+                        maxLength={80}
+                        value={item.location}
+                        placeholder={data.wedding.venue || 'The venue'}
+                        onChange={(event) =>
+                          patchEvent(item.id, { location: event.target.value })
+                        }
+                      />
+                    </label>
+                    <span className="flex flex-wrap gap-3 sm:col-span-2">
                       <button
                         type="button"
-                        className="min-h-11 text-sm text-[var(--text-muted)] underline"
-                        onClick={() => {
-                          if (
-                            original.has(item.id) &&
-                            !window.confirm(
-                              `Remove ${item.name || 'this event'}? Any replies guests gave for it are removed too.`,
-                            )
-                          ) {
-                            return
-                          }
-                          setEditing('')
-                          setEvents((current) => current.filter((event) => event.id !== item.id))
-                        }}
+                        className={`${rsvpGhostFit}`}
+                        onClick={() => setEditing('')}
                       >
-                        Remove this event
+                        Done
                       </button>
-                    )}
-                  </span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="mt-1 min-h-11 text-sm text-[var(--text-muted)] underline"
-                  onClick={() => setEditing(item.id)}
-                >
-                  Edit name, time and place
-                </button>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      {events.length < 8 ? (
-        <button
-          type="button"
-          className={`${rsvpGhostFit} justify-self-start`}
-          onClick={() => {
-            const id = `event-${Date.now().toString(36)}`
-            setEvents((current) => [
-              ...current,
-              {
-                id,
-                name: '',
-                dateLabel: '',
-                time: '',
-                location: '',
-                note: '',
-                enabled: true,
-                asksMeal: false,
-                hidden: false,
-              },
-            ])
-            setEditing(id)
-          }}
-        >
-          + Add an event
-        </button>
-      ) : null}
-      {events.some((item) => !original.has(item.id)) ? (
-        <p className="text-sm text-[var(--text-muted)]">
-          Everyone already on your list is invited to a new event. You can untick it for a party in Guests.
+                      {item.id === 'ceremony' || events.length <= 1 ? null : (
+                        <button
+                          type="button"
+                          className="min-h-11 text-sm text-[var(--text-muted)] underline"
+                          onClick={() => {
+                            if (
+                              original.has(item.id) &&
+                              !window.confirm(
+                                `Remove ${item.name || 'this event'}? Any replies guests gave for it are removed too.`,
+                              )
+                            ) {
+                              return
+                            }
+                            setEditing('')
+                            setEvents((current) =>
+                              current.filter((event) => event.id !== item.id),
+                            )
+                          }}
+                        >
+                          Remove this event
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-1 min-h-11 text-sm text-[var(--text-muted)] underline"
+                    onClick={() => setEditing(item.id)}
+                  >
+                    Edit name, time and place
+                  </button>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+        {events.length < 8 ? (
+          <button
+            type="button"
+            className={`${rsvpGhostFit} justify-self-start`}
+            onClick={() => {
+              const id = `event-${Date.now().toString(36)}`
+              setEvents((current) => [
+                ...current,
+                {
+                  id,
+                  name: '',
+                  dateLabel: '',
+                  time: '',
+                  location: '',
+                  note: '',
+                  enabled: true,
+                  asksMeal: false,
+                  hidden: false,
+                },
+              ])
+              setEditing(id)
+            }}
+          >
+            + Add an event
+          </button>
+        ) : null}
+        {events.some((item) => !original.has(item.id)) ? (
+          <p className="text-sm text-[var(--text-muted)]">
+            Everyone already on your list is invited to a new event. You can
+            untick it for a party in Guests.
+          </p>
+        ) : null}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm" htmlFor="deadline">
+            Deadline
+            <input
+              id="deadline"
+              type="date"
+              className={`${rsvpField} mt-1`}
+              value={deadline}
+              onChange={(event) => setDeadline(event.target.value)}
+            />
+          </label>
+          <label className="text-sm" htmlFor="caterer">
+            Caterer needs counts
+            <input
+              id="caterer"
+              type="date"
+              className={`${rsvpField} mt-1`}
+              value={caterer}
+              onChange={(event) => setCaterer(event.target.value)}
+            />
+          </label>
+        </div>
+        <label className="flex min-h-11 items-center justify-between">
+          Auto-reminder 7 days before deadline
+          <input
+            type="checkbox"
+            checked={autoRemind}
+            onChange={(event) => setRemind(event.target.checked)}
+          />
+        </label>
+        <label className="flex min-h-11 items-center justify-between">
+          Lock replies after deadline
+          <input
+            type="checkbox"
+            checked={lockAfter}
+            onChange={(event) => setLock(event.target.checked)}
+          />
+        </label>
+        <p className="flex min-h-11 flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
+          Changes save on their own.
+          <SaveStatus phase={autosave.phase} error={autosave.error} />
         </p>
-      ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm" htmlFor="deadline">
-          Deadline
-          <input
-            id="deadline"
-            type="date"
-            className={`${rsvpField} mt-1`}
-            value={deadline}
-            onChange={(event) => setDeadline(event.target.value)}
-          />
-        </label>
-        <label className="text-sm" htmlFor="caterer">
-          Caterer needs counts
-          <input
-            id="caterer"
-            type="date"
-            className={`${rsvpField} mt-1`}
-            value={caterer}
-            onChange={(event) => setCaterer(event.target.value)}
-          />
-        </label>
-      </div>
-      <label className="flex min-h-11 items-center justify-between">
-        Auto-reminder 7 days before deadline
-        <input
-          type="checkbox"
-          checked={autoRemind}
-          onChange={(event) => setRemind(event.target.checked)}
-        />
-      </label>
-      <label className="flex min-h-11 items-center justify-between">
-        Lock replies after deadline
-        <input
-          type="checkbox"
-          checked={lockAfter}
-          onChange={(event) => setLock(event.target.checked)}
-        />
-      </label>
-      <p className="flex min-h-11 flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
-        Changes save on their own.
-        <SaveStatus phase={autosave.phase} error={autosave.error} />
-      </p>
-    </form>
+      </form>
       <MealOptions
         key={mealsOf(data).join('\u0000')}
         meals={mealsOf(data)}
@@ -1684,7 +1721,9 @@ export function Songs({ data }: { data: ReadyManage }) {
                 </p>
               </div>
               {song.who ? (
-                <p className="mt-1 text-sm text-[var(--text-faint)]">Asked by {song.who}</p>
+                <p className="mt-1 text-sm text-[var(--text-faint)]">
+                  Asked by {song.who}
+                </p>
               ) : null}
               <div
                 className="mt-3 grid grid-cols-3 gap-1 rounded-full border border-[var(--border-strong)] p-1 sm:max-w-md"
@@ -1702,15 +1741,22 @@ export function Songs({ data }: { data: ReadyManage }) {
                         on
                           ? choice.value === 'no'
                             ? 'bg-[var(--text)] text-[var(--bg,#0d0d0d)]'
-                            : 'bg-[var(--pink)] text-[#0D0D0D]'
+                            : 'bg-[var(--pink)] text-[var(--on-accent,#0D0D0D)]'
                           : 'text-[var(--text-muted)]'
                       }`}
                       onClick={() => {
                         if (on) return
                         setError('')
-                        setPicked((current) => ({ ...current, [key]: choice.value }))
+                        setPicked((current) => ({
+                          ...current,
+                          [key]: choice.value,
+                        }))
                         void save({
-                          data: { title: song.title, artist: song.artist, status: choice.value },
+                          data: {
+                            title: song.title,
+                            artist: song.artist,
+                            status: choice.value,
+                          },
                         })
                           .then((result) => {
                             if (!result.ok) throw new Error('not saved')
@@ -1722,7 +1768,9 @@ export function Songs({ data }: { data: ReadyManage }) {
                               delete next[key]
                               return next
                             })
-                            setError(`Couldn't save the change to ${song.title}. Try again.`)
+                            setError(
+                              `Couldn't save the change to ${song.title}. Try again.`,
+                            )
                           })
                       }}
                     >
@@ -2030,7 +2078,10 @@ export function Settings({ data }: { data: ReadyManage }) {
   const autosave = useAutosave<Record<string, unknown>>(async (payload) => {
     const result = await save({ data: payload })
     if (!result.ok) {
-      return { ok: false, error: 'error' in result ? result.error : 'Could not save.' }
+      return {
+        ok: false,
+        error: 'error' in result ? result.error : 'Could not save.',
+      }
     }
     await router.invalidate()
     return { ok: true }

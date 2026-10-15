@@ -121,7 +121,10 @@ export function PrintSeating({
     </header>
   )
   return (
-    <div style={{ ...sheetStyle, background: 'transparent' }} className="seating-print">
+    <div
+      style={{ ...sheetStyle, background: 'transparent' }}
+      className="seating-print"
+    >
       <style>{`
         @page seating-plan { size: ${page.size} landscape; margin: 0.45in; }
         @page { size: ${page.size} portrait; margin: 0.55in 0.55in 0.75in; }
@@ -294,7 +297,7 @@ export function PrintDialog({
         <div className="flex gap-2">
           <button
             type="button"
-            className="min-h-11 rounded-full bg-[var(--pink)] px-5 font-semibold text-[#0D0D0D]"
+            className="min-h-11 rounded-full bg-[var(--pink)] px-5 font-semibold text-[var(--on-accent,#0D0D0D)]"
             onClick={() => window.print()}
           >
             Print / Save as PDF
@@ -399,7 +402,10 @@ export function CatererPrint({
     </header>
   )
   return (
-    <div style={{ ...sheetStyle, background: 'transparent' }} className="caterer-print">
+    <div
+      style={{ ...sheetStyle, background: 'transparent' }}
+      className="caterer-print"
+    >
       <style>{`
         @page { size: ${page.size} portrait; margin: 0.55in 0.55in 0.75in; }
         @media print {
@@ -409,16 +415,27 @@ export function CatererPrint({
       `}</style>
       <section className="sheet-page">
         {header('Caterer report')}
-        <table style={{ fontSize: 13, borderCollapse: 'collapse', marginBottom: 14 }}>
+        <table
+          style={{ fontSize: 13, borderCollapse: 'collapse', marginBottom: 14 }}
+        >
           <tbody>
             {[
               ['Couple', sheet.couple],
               ['Date', sheet.dateLabel],
-              ['Venue', [sheet.venue, sheet.address].filter(Boolean).join(', ')],
+              [
+                'Venue',
+                [sheet.venue, sheet.address].filter(Boolean).join(', '),
+              ],
               ['RSVP deadline', sheet.deadline],
             ].map(([label, value]) => (
               <tr key={label}>
-                <th style={{ textAlign: 'left', padding: '2px 16px 2px 0', fontWeight: 600 }}>
+                <th
+                  style={{
+                    textAlign: 'left',
+                    padding: '2px 16px 2px 0',
+                    fontWeight: 600,
+                  }}
+                >
                   {label}
                 </th>
                 <td style={{ padding: '2px 0' }}>{value || '—'}</td>
@@ -434,7 +451,9 @@ export function CatererPrint({
           </span>
         </p>
         <h2 style={{ fontSize: 15, margin: '0 0 4px' }}>Meals</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table
+          style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
+        >
           <thead>
             <tr>
               <th style={{ ...head, width: 34 }} />
@@ -460,14 +479,37 @@ export function CatererPrint({
             ))}
             <tr>
               <td style={{ ...cell, borderBottom: 0 }} />
-              <td style={{ ...cell, borderBottom: 0, fontWeight: 700 }}>Total</td>
-              <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700 }}>
+              <td style={{ ...cell, borderBottom: 0, fontWeight: 700 }}>
+                Total
+              </td>
+              <td
+                style={{
+                  ...cell,
+                  borderBottom: 0,
+                  textAlign: 'right',
+                  fontWeight: 700,
+                }}
+              >
                 {sheet.meals.reduce((sum, meal) => sum + meal.adults, 0)}
               </td>
-              <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700 }}>
+              <td
+                style={{
+                  ...cell,
+                  borderBottom: 0,
+                  textAlign: 'right',
+                  fontWeight: 700,
+                }}
+              >
                 {sheet.meals.reduce((sum, meal) => sum + meal.kids, 0)}
               </td>
-              <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700 }}>
+              <td
+                style={{
+                  ...cell,
+                  borderBottom: 0,
+                  textAlign: 'right',
+                  fontWeight: 700,
+                }}
+              >
                 {sheet.attending}
               </td>
             </tr>
@@ -481,7 +523,9 @@ export function CatererPrint({
             No guest has added a dietary or allergy note.
           </p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <table
+            style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}
+          >
             <thead>
               <tr>
                 <th style={head}>Guest</th>
@@ -499,7 +543,8 @@ export function CatererPrint({
                   </td>
                   <td style={cell}>{guest.table || 'Not seated'}</td>
                   <td style={cell}>
-                    <MealMark code={guest.code} /> {guest.meal || (guest.child ? "Kids' meal" : 'Not chosen')}
+                    <MealMark code={guest.code} />{' '}
+                    {guest.meal || (guest.child ? "Kids' meal" : 'Not chosen')}
                   </td>
                   <td style={{ ...cell, fontWeight: 700 }}>{guest.dietary}</td>
                 </tr>
@@ -528,13 +573,25 @@ export function CatererPrint({
               : []),
           ].map((group) => (
             <div key={group.table} style={{ breakInside: 'avoid' }}>
-              <h2 style={{ fontSize: 16, margin: '0 0 4px', borderBottom: '1px solid #999' }}>
+              <h2
+                style={{
+                  fontSize: 16,
+                  margin: '0 0 4px',
+                  borderBottom: '1px solid #999',
+                }}
+              >
                 {group.table}{' '}
                 <span style={{ fontSize: 11, fontWeight: 400, color: '#555' }}>
                   · {group.guests.length} guests
                 </span>
               </h2>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <table
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: 12,
+                }}
+              >
                 <tbody>
                   {group.guests.map((guest) => (
                     <tr key={guest.id}>
@@ -606,7 +663,9 @@ export function PrintTimeline({
           </>
         ) : null}
       </p>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <table
+        style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
+      >
         <thead>
           <tr style={{ textAlign: 'left', borderBottom: '2px solid #222' }}>
             <th style={{ padding: '6px 8px 6px 0', width: 90 }}>Time</th>
@@ -627,7 +686,9 @@ export function PrintTimeline({
               </td>
               <td style={{ padding: '6px 8px' }}>{moment.title}</td>
               <td style={{ padding: '6px 8px' }}>
-                {moment.location && moment.location !== venue ? moment.location : ''}
+                {moment.location && moment.location !== venue
+                  ? moment.location
+                  : ''}
               </td>
               <td style={{ padding: '6px 8px', color: '#444' }}>
                 {moment.note}
