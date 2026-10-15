@@ -121,3 +121,76 @@ export function distanceLabel(km: number | null, source: TravelSource): string {
   const how = source === 'manual' ? 'manual' : 'auto'
   return `Distance: ${km.toFixed(1)} km (${how})`
 }
+
+/* OpenRouteService (OpenStreetMap): the first choice, with Google as backup. */
+
+const ORS = 'https://api.openrouteservice.org'
+
+/** Pelias layers too broad to route to (a whole province or country). */
+const TOO_BROAD = new Set(['country', 'macroregion', 'region', 'macrocounty', 'county'])
+
+/** Address to map point, kept to Canada. */
+export function orsGeocodeUrl(address: string, key: string): string {
+  const params = new URLSearchParams({
+    api_key: key,
+    text: address.trim(),
+    'boundary.country': 'CA',
+    size: '1',
+  })
+  return `${ORS}/geocode/search?${params}`
+}
+
+/** [lon, lat] of the best match, or null when nothing specific enough came back. */
+export function pointFromOrsGeocode(body: unknown): [number, number] | null {
+  const features = (body as { features?: unknown } | null)?.features
+  if (!Array.isArray(features) || features.length === 0) return null
+  const feature = features[0] as {
+    geometry?: { coordinates?: unknown }
+    properties?: { layer?: unknown }
+  }
+  const layer = typeof feature.properties?.layer === 'string' ? feature.properties.layer : ''
+  if (TOO_BROAD.has(layer)) return null
+  const coords = feature.geometry?.coordinates
+  if (!Array.isArray(coords) || coords.length < 2) return null
+  const lon = Number(coords[0])
+  const lat = Number(coords[1])
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null
+  return [lon, lat]
+}
+
+/** One driving route between two points, distance in metres. */
+export function orsRouteRequest(
+  from: [number, number],
+  to: [number, number],
+  key: string,
+): { url: string; init: RequestInit } {
+  return {
+    url: `${ORS}/v2/directions/driving-car`,
+    init: {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        authorization: key,
+      },
+      body: JSON.stringify({ coordinates: [from, to], units: 'm' }),
+    },
+  }
+}
+
+/** The one-way km from a directions reply, or null when there is no route. */
+export function kmFromOrsRoute(body: unknown): number | null {
+  const routes = (body as { routes?: unknown } | null)?.routes
+  if (!Array.isArray(routes) || routes.length === 0) return null
+  const meters = Number((routes[0] as { summary?: { distance?: unknown } }).summary?.distance)
+  if (!Number.isFinite(meters) || meters <= 0) return null
+  return roundKm(meters)
+}
+
+/** ORS error text: {error: "..."} or {error: {message}}. */
+export function orsErrorText(body: unknown, status: number): string {
+  const error = (body as { error?: unknown } | null)?.error
+  if (typeof error === 'string') return error
+  const message = (error as { message?: unknown } | null)?.message
+  return typeof message === 'string' ? message : `HTTP ${status}`
+}

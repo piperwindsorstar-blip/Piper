@@ -1105,7 +1105,7 @@ export const checkDistance = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireDesk()
     if (!mapsConfigured()) {
-      return { ok: false as const, error: 'GOOGLE_MAPS_API_KEY is not set in Cloudflare.' }
+      return { ok: false as const, error: 'ORS_API_KEY is not set in Cloudflare.' }
     }
     const found = await drivingKm(data.address)
     if (!found.ok) return { ok: false as const, error: `${found.reason}: ${found.detail}` }

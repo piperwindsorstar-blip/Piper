@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import test, { describe, it } from 'node:test'
 import { quote } from '../piper/rules.ts'
 import {
   HOME_ADDRESS,
   addressKey,
   distanceLabel,
+  kmFromOrsRoute,
   kmFromRoutes,
+  orsErrorText,
+  orsGeocodeUrl,
+  orsRouteRequest,
+  pointFromOrsGeocode,
   roundKm,
   routesRequest,
   travelFromKm,
@@ -79,4 +84,42 @@ describe('the price with automatic travel', () => {
   it('bookings without worked-out travel keep the older typed kilometres', () => {
     assert.equal(quote({ ...base, venueKm: [60] }).totalCents, 165000 + 11000)
   })
+})
+
+test('OpenRouteService: geocode stays in Canada and takes the first specific match', () => {
+  const url = new URL(orsGeocodeUrl(' 97 Grand River St N, Paris, ON ', 'k'))
+  assert.equal(url.origin + url.pathname, 'https://api.openrouteservice.org/geocode/search')
+  assert.equal(url.searchParams.get('boundary.country'), 'CA')
+  assert.equal(url.searchParams.get('text'), '97 Grand River St N, Paris, ON')
+  assert.deepEqual(
+    pointFromOrsGeocode({
+      features: [{ geometry: { coordinates: [-80.38, 43.2] }, properties: { layer: 'address' } }],
+    }),
+    [-80.38, 43.2],
+  )
+  // A whole province is too broad to route to.
+  assert.equal(
+    pointFromOrsGeocode({
+      features: [{ geometry: { coordinates: [-85, 50] }, properties: { layer: 'region' } }],
+    }),
+    null,
+  )
+  assert.equal(pointFromOrsGeocode({ features: [] }), null)
+  assert.equal(pointFromOrsGeocode(null), null)
+})
+
+test('OpenRouteService: driving route in metres becomes km to one decimal', () => {
+  const request = orsRouteRequest([-80.26, 43.14], [-80.38, 43.2], 'k')
+  assert.equal(request.url, 'https://api.openrouteservice.org/v2/directions/driving-car')
+  assert.equal((request.init.headers as Record<string, string>).authorization, 'k')
+  assert.deepEqual(JSON.parse(String(request.init.body)).coordinates, [
+    [-80.26, 43.14],
+    [-80.38, 43.2],
+  ])
+  assert.equal(kmFromOrsRoute({ routes: [{ summary: { distance: 12345 } }] }), 12.3)
+  assert.equal(kmFromOrsRoute({ routes: [{ summary: {} }] }), null)
+  assert.equal(kmFromOrsRoute({ routes: [] }), null)
+  assert.equal(orsErrorText({ error: 'Access to this API has been disallowed' }, 403), 'Access to this API has been disallowed')
+  assert.equal(orsErrorText({ error: { code: 2010, message: 'Could not find point' } }, 404), 'Could not find point')
+  assert.equal(orsErrorText(null, 500), 'HTTP 500')
 })

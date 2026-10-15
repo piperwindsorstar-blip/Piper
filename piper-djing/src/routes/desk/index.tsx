@@ -162,7 +162,7 @@ function NextWedding({
     travel.km != null
       ? `${travel.km.toFixed(1)} km${travel.hotel ? ' · hotel' : ''}`
       : travel.error
-        ? 'Google Maps did not answer'
+        ? 'Distance not found yet'
         : 'Not worked out yet'
 
   return (

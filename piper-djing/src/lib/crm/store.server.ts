@@ -1172,8 +1172,8 @@ export async function refreshTravel(
     if (options.force) {
       await query('UPDATE bookings SET travel_error = $1 WHERE id = $2', [
         found.reason === 'no-key'
-          ? 'Add GOOGLE_MAPS_API_KEY in Cloudflare to work travel out automatically.'
-          : `Google could not work out the distance right now (${found.detail}). Enter it by hand or try Recalculate later.`,
+          ? 'Add ORS_API_KEY in Cloudflare to work travel out automatically.'
+          : `The distance could not be worked out right now (${found.detail}). Enter it by hand or try Recalculate later.`,
         bookingId,
       ])
     }

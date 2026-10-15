@@ -1,9 +1,21 @@
 import { query } from '../db.server.ts'
-import { addressKey, kmFromRoutes, routableAddress, routesRequest } from './travel.ts'
+import {
+  HOME_ADDRESS,
+  addressKey,
+  kmFromOrsRoute,
+  kmFromRoutes,
+  orsErrorText,
+  orsGeocodeUrl,
+  orsRouteRequest,
+  pointFromOrsGeocode,
+  routableAddress,
+  routesRequest,
+} from './travel.ts'
 
 /**
- * Driving distance from home, through the Google Routes API, in the Worker
- * only. The key (GOOGLE_MAPS_API_KEY) never reaches the browser. Each address
+ * Driving distance from home, worked out in the Worker only: OpenRouteService
+ * (ORS_API_KEY, OpenStreetMap data) first, then the Google Routes API
+ * (GOOGLE_MAPS_API_KEY) as a backup. Neither key reaches the browser. Each address
  * is cached for 30 days; a miss is remembered for a day so a bad address does
  * not call Google on every save.
  */
@@ -24,17 +36,26 @@ export type DistanceResult =
   | { ok: true; km: number; cached: boolean }
   | { ok: false; reason: 'no-key' | 'no-address' | 'not-found' | 'error'; detail: string }
 
+function orsKey(): string {
+  return process.env.ORS_API_KEY?.trim() ?? ''
+}
+
+function googleKey(): string {
+  return process.env.GOOGLE_MAPS_API_KEY?.trim() ?? ''
+}
+
 export function mapsConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_MAPS_API_KEY?.trim())
+  return Boolean(orsKey() || googleKey())
 }
 
 export async function drivingKm(address: string, now = Date.now()): Promise<DistanceResult> {
   if (!routableAddress(address)) {
     return { ok: false, reason: 'no-address', detail: 'No venue address yet.' }
   }
-  const key = process.env.GOOGLE_MAPS_API_KEY?.trim()
-  if (!key) {
-    return { ok: false, reason: 'no-key', detail: 'GOOGLE_MAPS_API_KEY is not set.' }
+  const ors = orsKey()
+  const google = googleKey()
+  if (!ors && !google) {
+    return { ok: false, reason: 'no-key', detail: 'ORS_API_KEY is not set.' }
   }
   const cacheKey = addressKey(address)
   try {
@@ -62,31 +83,12 @@ export async function drivingKm(address: string, now = Date.now()): Promise<Dist
     // The cache is a saving, never a blocker.
   }
 
-  let result: DistanceResult
-  try {
-    const request = routesRequest(address, key)
-    const response = await fetch(request.url, request.init)
-    const body = (await response.json().catch(() => null)) as unknown
-    const km = response.ok ? kmFromRoutes(body) : null
-    if (km != null) {
-      result = { ok: true, km, cached: false }
-    } else if (response.ok) {
-      result = { ok: false, reason: 'not-found', detail: 'Google found no driving route to that address.' }
-    } else {
-      const message = googleError(body, response.status)
-      console.warn('[travel] routes refused:', message)
-      // A bad request is usually an address Google cannot place.
-      result =
-        response.status === 400
-          ? { ok: false, reason: 'not-found', detail: message.slice(0, 200) }
-          : { ok: false, reason: 'error', detail: message.slice(0, 200) }
-    }
-  } catch (error) {
-    result = {
-      ok: false,
-      reason: 'error',
-      detail: error instanceof Error ? error.message.slice(0, 200) : 'Google could not be reached.',
-    }
+  let result: DistanceResult = { ok: false, reason: 'error', detail: 'Not tried.' }
+  if (ors) result = await orsKm(address, ors)
+  // Google only steps in when ORS is missing or down, never to overrule a real miss.
+  if (google && (!ors || (!result.ok && result.reason === 'error'))) {
+    const backup = await googleKm(address, google)
+    if (backup.ok || !ors) result = backup
   }
 
   // Remember found routes and real misses; a network or key error is not cached.
@@ -125,4 +127,77 @@ function googleError(body: unknown, status: number): string {
     .map((item) => (item as { reason?: unknown })?.reason)
     .find((value): value is string => typeof value === 'string')
   return reason ? `${message} (${reason})` : message
+}
+
+async function orsJson(url: string, init?: RequestInit): Promise<{ status: number; ok: boolean; body: unknown }> {
+  const response = await fetch(url, init)
+  const body = (await response.json().catch(() => null)) as unknown
+  return { status: response.status, ok: response.ok, body }
+}
+
+/** Home's map point, looked up once per Worker instance. */
+let homePoint: Promise<[number, number] | null> | null = null
+
+async function orsPoint(address: string, key: string): Promise<[number, number] | null> {
+  const reply = await orsJson(orsGeocodeUrl(address, key))
+  if (!reply.ok) throw new Error(`OpenRouteService: ${orsErrorText(reply.body, reply.status)}`)
+  return pointFromOrsGeocode(reply.body)
+}
+
+async function orsKm(address: string, key: string): Promise<DistanceResult> {
+  try {
+    homePoint ??= orsPoint(HOME_ADDRESS, key).catch((error: unknown) => {
+      homePoint = null
+      throw error
+    })
+    const [from, to] = await Promise.all([homePoint, orsPoint(address, key)])
+    if (!from) {
+      homePoint = null
+      return { ok: false, reason: 'error', detail: 'OpenRouteService could not place the home address.' }
+    }
+    if (!to) {
+      return { ok: false, reason: 'not-found', detail: 'OpenRouteService could not find that address.' }
+    }
+    const request = orsRouteRequest(from, to, key)
+    const reply = await orsJson(request.url, request.init)
+    const km = reply.ok ? kmFromOrsRoute(reply.body) : null
+    if (km != null) return { ok: true, km, cached: false }
+    if (reply.ok || reply.status === 404) {
+      return { ok: false, reason: 'not-found', detail: 'No driving route to that address.' }
+    }
+    const message = orsErrorText(reply.body, reply.status)
+    console.warn('[travel] ors refused:', message)
+    return { ok: false, reason: 'error', detail: `OpenRouteService: ${message}`.slice(0, 200) }
+  } catch (error) {
+    return {
+      ok: false,
+      reason: 'error',
+      detail: (error instanceof Error ? error.message : 'OpenRouteService could not be reached.').slice(0, 200),
+    }
+  }
+}
+
+async function googleKm(address: string, key: string): Promise<DistanceResult> {
+  try {
+    const request = routesRequest(address, key)
+    const response = await fetch(request.url, request.init)
+    const body = (await response.json().catch(() => null)) as unknown
+    const km = response.ok ? kmFromRoutes(body) : null
+    if (km != null) return { ok: true, km, cached: false }
+    if (response.ok) {
+      return { ok: false, reason: 'not-found', detail: 'Google found no driving route to that address.' }
+    }
+    const message = googleError(body, response.status)
+    console.warn('[travel] routes refused:', message)
+    // A bad request is usually an address Google cannot place.
+    return response.status === 400
+      ? { ok: false, reason: 'not-found', detail: message.slice(0, 200) }
+      : { ok: false, reason: 'error', detail: `Google: ${message}`.slice(0, 200) }
+  } catch (error) {
+    return {
+      ok: false,
+      reason: 'error',
+      detail: error instanceof Error ? error.message.slice(0, 200) : 'Google could not be reached.',
+    }
+  }
 }
