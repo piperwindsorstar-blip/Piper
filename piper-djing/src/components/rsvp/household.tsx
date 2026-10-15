@@ -199,29 +199,31 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
                 </fieldset>
               ))}
               {mealEvent && !guest.isChild ? (
-                <Field id={`${guest.id}-meal`} label="Dinner">
-                  <select
-                    id={`${guest.id}-meal`}
-                    className={rsvpField}
-                    value={guest.meal}
-                    onChange={(event) =>
-                      setGuests((current) =>
-                        current.map((item) =>
-                          item.id === guest.id
-                            ? { ...item, meal: event.target.value }
-                            : item,
-                        ),
-                      )
-                    }
-                  >
-                    <option value="">Choose a meal</option>
-                    {data.meals.map((meal) => (
-                      <option key={meal} value={meal}>
-                        {meal}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                <div className="mt-4">
+                  <Field id={`${guest.id}-meal`} label="Dinner">
+                    <select
+                      id={`${guest.id}-meal`}
+                      className={rsvpField}
+                      value={guest.meal}
+                      onChange={(event) =>
+                        setGuests((current) =>
+                          current.map((item) =>
+                            item.id === guest.id
+                              ? { ...item, meal: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="">Choose a meal</option>
+                      {data.meals.map((meal) => (
+                        <option key={meal} value={meal}>
+                          {meal}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
               ) : null}
               {coming ? (
                 <fieldset className="mt-4">
@@ -282,26 +284,28 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
                 </fieldset>
               ) : null}
               {coming && data.song ? (
-                <Field
-                  id={`${guest.id}-song`}
-                  label="What song gets you on the dance floor?"
-                >
-                  <input
+                <div className="mt-4">
+                  <Field
                     id={`${guest.id}-song`}
-                    className={rsvpField}
-                    placeholder="Song – Artist"
-                    value={guest.song}
-                    onChange={(event) =>
-                      setGuests((current) =>
-                        current.map((item) =>
-                          item.id === guest.id
-                            ? { ...item, song: event.target.value }
-                            : item,
-                        ),
-                      )
-                    }
-                  />
-                </Field>
+                    label="What song gets you on the dance floor?"
+                  >
+                    <input
+                      id={`${guest.id}-song`}
+                      className={rsvpField}
+                      placeholder="Song – Artist"
+                      value={guest.song}
+                      onChange={(event) =>
+                        setGuests((current) =>
+                          current.map((item) =>
+                            item.id === guest.id
+                              ? { ...item, song: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                </div>
               ) : null}
               {coming && canBring(guest.id) ? (
                 <PlusOneFields
@@ -497,13 +501,14 @@ function PlusOneFields({
 }
 
 function choiceClass(on: boolean, decline = false) {
+  const base = 'min-h-12 rounded-2xl border text-sm font-semibold transition'
   if (!on) {
-    return 'min-h-11 rounded-2xl border border-[var(--border-strong)] text-sm text-[var(--text-muted)]'
+    return `${base} border-[var(--border-strong)] text-[var(--text-muted)]`
   }
   if (decline) {
-    return 'min-h-11 rounded-2xl border border-rose-400 text-sm text-rose-200'
+    return `${base} border-rose-400 bg-rose-400/15 text-rose-200 [.light_&]:text-rose-800`
   }
-  return 'min-h-11 rounded-2xl border border-emerald-400 text-sm text-emerald-200'
+  return `${base} border-emerald-400 bg-emerald-400/15 text-emerald-200 [.light_&]:text-emerald-800`
 }
 
 export function ReviewReply({ data }: { data: HouseholdData }) {
@@ -579,6 +584,29 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
         className="mt-6 grid gap-4"
         onSubmit={(event) => event.preventDefault()}
       >
+        <Field id="confirm-email" label="Confirmation email">
+          <input
+            id="confirm-email"
+            type="email"
+            autoComplete="email"
+            className={rsvpField}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </Field>
+        <Field id="couple-note" label="Note to the couple (optional)">
+          <input
+            id="couple-note"
+            className={rsvpField}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </Field>
+        {error ? (
+          <p className="text-sm text-[var(--pink-soft)]" role="alert">
+            {error}
+          </p>
+        ) : null}
         <SaveReply
           onRun={async () => {
             setError('')
@@ -619,29 +647,6 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
             return { ok: true, message: 'Sent.' }
           }}
         />
-        <Field id="confirm-email" label="Confirmation email">
-          <input
-            id="confirm-email"
-            type="email"
-            autoComplete="email"
-            className={rsvpField}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </Field>
-        <Field id="couple-note" label="Note to the couple (optional)">
-          <input
-            id="couple-note"
-            className={rsvpField}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </Field>
-        {error ? (
-          <p className="text-sm text-[var(--pink-soft)]" role="alert">
-            {error}
-          </p>
-        ) : null}
       </form>
     </RsvpFrame>
   )
