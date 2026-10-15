@@ -97,6 +97,25 @@ describe('ordered moments', () => {
     )
   })
 
+  it('has no dinner music moment and drops it from saved plans', () => {
+    assert.equal(
+      blankPlanning(seed).timeline.some((row) => row.presetKey === 'dinner'),
+      false,
+    )
+    const saved = planningFromUnknown(
+      {
+        timeline: [
+          { presetKey: 'dinner', activity: 'Dinner music', song: 'Moon River' },
+        ],
+      },
+      seed,
+    )
+    assert.equal(
+      saved.timeline.some((row) => /dinner/i.test(row.activity)),
+      false,
+    )
+  })
+
   it('has no cake cutting and drops it from saved plans', () => {
     assert.equal(
       blankPlanning(seed).timeline.some((row) => row.presetKey === 'cake'),

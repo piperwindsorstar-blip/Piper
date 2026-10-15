@@ -66,12 +66,6 @@ export const MOMENTS: ReadonlyArray<{
     sortable: true,
   },
   {
-    key: 'dinner',
-    section: 'Reception',
-    activity: 'Dinner music',
-    sortable: true,
-  },
-  {
     key: 'speeches',
     section: 'Reception',
     activity: 'Speeches',
@@ -495,7 +489,6 @@ const LEGACY_MOMENT: Record<string, string> = {
   'grand entrance (bride and groom)': 'entrance-couple',
   'grand entrance: the couple': 'entrance-couple',
   'first dance': 'first-dance',
-  'dinner music': 'dinner',
   speeches: 'speeches',
   'mother/son dance': 'mother-son',
   'father/daughter dance': 'father-daughter',
@@ -577,7 +570,12 @@ function readMoment(
   const activity = clip(row.activity, SHORT)
   const presetKey =
     clip(row.presetKey, 80) || LEGACY_MOMENT[activity.toLowerCase()] || ''
-  if (presetKey === 'cake' || /^cake cutting$/i.test(activity)) return null
+  if (
+    presetKey === 'cake' ||
+    presetKey === 'dinner' ||
+    /^(cake cutting|dinner music)$/i.test(activity)
+  )
+    return null
   const preset = MOMENTS.find((moment) => moment.key === presetKey)
   const songBits = timelineSong(row)
   const shared = {

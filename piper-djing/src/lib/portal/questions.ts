@@ -575,7 +575,6 @@ export function questionById(id: string): Question | undefined {
 export function songTitle(activity: string): string {
   const lower = activity.toLowerCase()
   if (lower.includes('first dance')) return 'Your first dance song'
-  if (lower.includes('dinner')) return 'Dinner music'
   if (lower.includes('cocktail')) return 'Cocktail hour'
   return activity
 }

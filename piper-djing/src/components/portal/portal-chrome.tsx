@@ -20,6 +20,12 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]['id'] | 'review'
 
+/** Every place a couple can jump to, in order. */
+const JUMPS = [
+  ...STEPS,
+  { id: 'review', label: 'Review & send', to: '/portal/review' },
+] as const
+
 const SheetClose = createContext<() => void>(() => {})
 
 export function useCloseSheet(): () => void {
@@ -87,6 +93,16 @@ export function PortalChrome({ children }: { children: ReactNode }) {
               </li>
             )
           })}
+          <li className="flex items-center">
+            <span className="mx-3 h-0.5 w-8 bg-[var(--line)]" />
+            <Link
+              to="/portal/review"
+              aria-current={current === 'review' ? 'step' : undefined}
+              className={`text-sm ${current === 'review' ? 'text-white underline' : 'text-[var(--text-muted)]'}`}
+            >
+              Review & send
+            </Link>
+          </li>
         </ol>
       </nav>
       {children}
@@ -281,6 +297,7 @@ function MobileSheet({
         </button>
         {open ? (
           <div className="h-[calc(85vh-4rem)] overflow-y-auto">
+            <SectionJump onNavigate={() => setOpen(false)} />
             <div>{children}</div>
           </div>
         ) : null}
@@ -289,7 +306,44 @@ function MobileSheet({
   )
 }
 
+function SectionJump({ onNavigate }: { onNavigate: () => void }) {
+  const path = useRouterState({ select: (state) => state.location.pathname })
+  const current = stepFor(path)
+  return (
+    <nav aria-label="Jump to a section" className="mb-5">
+      <p className="text-[11px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
+        Jump to
+      </p>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {JUMPS.map((step) => (
+          <li key={step.id}>
+            <Link
+              to={step.to}
+              onClick={onNavigate}
+              aria-current={step.id === current ? 'step' : undefined}
+              className={`inline-flex min-h-11 items-center rounded-full border-[1.5px] px-4 text-sm font-bold ${
+                step.id === current
+                  ? 'border-[var(--pink)] bg-[var(--pink-tint)]'
+                  : 'border-[var(--border-strong)]'
+              }`}
+            >
+              {step.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
 const BAR_SEGMENTS = ['overview', 'details', 'music', 'timeline'] as const
+
+const SHORT_LABEL: Record<(typeof BAR_SEGMENTS)[number], string> = {
+  overview: 'Overview',
+  details: 'Details',
+  music: 'Music',
+  timeline: 'Timeline',
+}
 
 export function MobileQuestionBar({
   section,
@@ -323,26 +377,39 @@ export function MobileQuestionBar({
         </p>
       </div>
       <div
-        className="mt-3 flex gap-1.5"
+        className="mt-1 flex gap-1.5"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progress.percent}
         aria-label="Plan progress"
       >
-        {BAR_SEGMENTS.map((id) => (
-          <span
-            key={id}
-            className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--line)]"
-          >
-            <span
-              className="block h-full bg-[var(--pink)]"
-              style={{
-                width: segmentWidth(id, current, planning, page.master),
-              }}
-            />
-          </span>
-        ))}
+        {BAR_SEGMENTS.map((id) => {
+          const step = STEPS.find((item) => item.id === id)
+          return (
+            <Link
+              key={id}
+              to={step?.to ?? '/portal'}
+              aria-label={step?.label ?? id}
+              aria-current={id === current ? 'step' : undefined}
+              className="block flex-1 py-2"
+            >
+              <span className="block h-1 overflow-hidden rounded-full bg-[var(--line)]">
+                <span
+                  className="block h-full bg-[var(--pink)]"
+                  style={{
+                    width: segmentWidth(id, current, planning, page.master),
+                  }}
+                />
+              </span>
+              <span
+                className={`mt-1 block truncate text-[11px] ${id === current ? 'text-white' : 'text-[var(--text-muted)]'}`}
+              >
+                {SHORT_LABEL[id]}
+              </span>
+            </Link>
+          )
+        })}
       </div>
     </div>
   )
