@@ -165,11 +165,12 @@ const MIN_FIT_H = 170
 
 /**
  * Frames what is in the room (tables, chairs and room items) so tables are
- * big enough to read. An empty room shows whole.
+ * big enough to read. A room with no tables yet shows whole: its DJ booth
+ * and dance floor alone would zoom in on one corner.
  */
 function fitContent(plan: SeatingPlan): View {
   const box = contentBox(plan)
-  if (!box) return fitView(plan)
+  if (!box || plan.tables.length === 0) return fitView(plan)
   const pad = 30
   let w = Math.max(MIN_FIT_W, box.x1 - box.x0 + pad * 2)
   let h = Math.max(MIN_FIT_H, box.y1 - box.y0 + pad * 2)

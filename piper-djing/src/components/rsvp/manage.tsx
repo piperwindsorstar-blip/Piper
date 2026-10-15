@@ -296,7 +296,7 @@ export function Overview({ data }: { data: ReadyManage }) {
           ? 'Paste the names, and each party gets one link to reply.'
           : 'Your guest list, meal choices, reply email and questions.'}
       </p>
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <GuestPaste
           key={data.wedding.parties
             .map(
@@ -307,7 +307,7 @@ export function Overview({ data }: { data: ReadyManage }) {
           parties={data.wedding.parties}
           publicLink={data.publicLink}
         />
-        <div className="grid content-start gap-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
           <ReplyEmail data={data} />
           <AskQuestion questions={data.questions} />
         </div>
@@ -651,7 +651,9 @@ export function Guests({ data }: { data: ReadyManage }) {
             GUESTS & PARTIES
           </p>
           <h1 className="portal-display text-4xl">
-            {data.stats.guests} guests in {data.stats.parties} parties
+            {data.stats.guests} {data.stats.guests === 1 ? 'guest' : 'guests'} in{' '}
+            {data.stats.parties}{' '}
+            {data.stats.parties === 1 ? 'party' : 'parties'}
           </h1>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -1902,7 +1904,7 @@ export function Exports({
                 ? `Sent ${shortWhen(data.wedding.remindedManualAt)}`
                 : ''
             }
-            confirmMessage={`Email the reminder to ${data.stats.waitingParties} parties still waiting?`}
+            confirmMessage={`Email the reminder to ${data.stats.waitingParties} ${data.stats.waitingParties === 1 ? 'party' : 'parties'} still waiting?`}
             onRun={async (): Promise<RunResult> => {
               const result = await remind({ data: { now: true } })
               await router.invalidate()
@@ -1915,8 +1917,9 @@ export function Exports({
             Email parties still waiting
           </ActionButton>
           <p className="max-w-xs text-sm text-[var(--text-muted)]">
-            Still waiting on {data.stats.waitingParties} parties. The automatic
-            note goes out 7 days before the deadline.
+            Still waiting on {data.stats.waitingParties}{' '}
+            {data.stats.waitingParties === 1 ? 'party' : 'parties'}. The
+            automatic note goes out 7 days before the deadline.
           </p>
         </div>
         <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -2039,12 +2042,12 @@ function ExportCard({
 }) {
   return (
     <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex h-full flex-col justify-between gap-3">
         <div>
           <h2 className="font-semibold">{title}</h2>
           <p className="mt-1 text-sm text-[var(--text-muted)]">{body}</p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             className="min-h-11 rounded-full border border-[var(--border-strong)] px-4 text-sm"
