@@ -177,7 +177,7 @@ describe('song search', { concurrency: false }, () => {
 describe('deezer song search', () => {
   it('reads Deezer tracks', () => {
     assert.deepEqual(
-      deezerHits({ data: [{ title: 'At Last', artist: { name: 'Etta James' }, link: 'https://www.deezer.com/track/1' }, { title: 'x' }] }),
+      deezerHits({ data: [{ title: 'At Last', artist: { name: 'Etta James' }, link: 'https://www.deezer.com/track/1' }, { title: 'At Last', artist: { name: 'Etta James' }, link: 'https://www.deezer.com/track/2' }, { title: 'x' }] }),
       [{ title: 'At Last', artist: 'Etta James', link: 'https://www.deezer.com/track/1' }],
     )
   })

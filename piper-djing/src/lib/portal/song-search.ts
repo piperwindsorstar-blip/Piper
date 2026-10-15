@@ -125,6 +125,7 @@ export function deezerHits(payload: unknown): SongHit[] {
   const data = Reflect.get(payload, 'data')
   if (!Array.isArray(data)) return []
   const hits: SongHit[] = []
+  const seen = new Set<string>()
   for (const item of data) {
     if (!item || typeof item !== 'object') continue
     const title = textField(item, 'title')
@@ -132,6 +133,9 @@ export function deezerHits(payload: unknown): SongHit[] {
     const artist =
       artistRow && typeof artistRow === 'object' ? textField(artistRow, 'name') : ''
     if (!title || !artist) continue
+    const key = `${title.toLowerCase()}|${artist.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
     const link = textField(item, 'link')
     hits.push({
       title: title.slice(0, 120),
@@ -147,7 +151,7 @@ async function searchDeezer(term: string): Promise<SongHit[]> {
   try {
     const url = new URL(DEEZER_URL)
     url.searchParams.set('q', term)
-    url.searchParams.set('limit', '6')
+    url.searchParams.set('limit', '15')
     const response = await fetch(url, {
       headers: { Accept: 'application/json', 'User-Agent': AGENT },
     })
