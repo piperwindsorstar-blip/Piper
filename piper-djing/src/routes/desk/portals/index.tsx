@@ -12,9 +12,12 @@ import {
 import { longDate } from '../../../lib/crm/dates.ts'
 import {
   getPortalDesk,
+  saveCoupleEmailDesk,
   saveCouplePasscodeDesk,
+  savePlanRemindersDesk,
   savePortalMasterDesk,
 } from '../../../lib/crm/desk.functions.ts'
+import type { NudgeRow } from '../../../lib/portal/nudges.ts'
 import { deskHead } from '../../../lib/desk-head.ts'
 import { SECTION_LABEL, SECTION_ORDER } from '../../../lib/portal/questions.ts'
 import type { MasterDraft } from '../../../lib/portal/master.ts'
@@ -46,6 +49,11 @@ function PortalsPage() {
           their own plan.
         </p>
       </DeskTitle>
+      <PlanReminders
+        on={data.nudges.on}
+        lastRun={data.nudges.lastRun}
+        missing={data.nudges.rows.filter((row) => row.block === 'No email on file').length}
+      />
       <section className="grid gap-3">
         <h2 className="font-display text-2xl font-extrabold">Couples</h2>
         {data.portals.length === 0 ? (
@@ -64,6 +72,11 @@ function PortalsPage() {
                 {longDate(portal.eventDate)} · {portal.percent}% planned ·{' '}
                 {portal.answered} of {portal.total}
               </p>
+              <ReminderLine
+                row={data.nudges.rows.find((row) => row.slug === portal.slug)}
+                on={data.nudges.on}
+              />
+              <EmailField slug={portal.slug} email={data.emails[portal.slug] ?? ''} />
               <PasscodeField slug={portal.slug} passcode={portal.passcode} />
               <div className="flex flex-wrap gap-2">
                 <Link
@@ -135,6 +148,136 @@ function PortalsPage() {
         </button>
       </section>
     </div>
+  )
+}
+
+function PlanReminders({
+  on,
+  lastRun,
+  missing,
+}: {
+  on: boolean
+  lastRun: { ranAt: string; note: string } | null
+  missing: number
+}) {
+  const save = useServerFn(savePlanRemindersDesk)
+  const router = useRouter()
+  return (
+    <section className={deskCard} aria-labelledby="plan-reminders">
+      <h2 id="plan-reminders" className="font-display text-xl font-bold">
+        Plan reminders
+      </h2>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/85">
+        {on
+          ? 'On. Booked couples whose plan is not finished get a short email from you 8, 4, 2 and 1 weeks before their finish-by date, 2 days before, and once if it passes. Each one goes once, and a finished or locked plan gets nothing.'
+          : 'Off. No plan reminders go out. Couples can still open their plan any time.'}
+      </p>
+      {missing > 0 ? (
+        <p className="mt-2 text-sm text-amber-200">
+          {missing === 1 ? '1 booked couple has' : `${missing} booked couples have`} no email on
+          file, so reminders can't reach them. Add it on their card below.
+        </p>
+      ) : null}
+      {lastRun ? (
+        <p className="mt-2 text-xs text-white/55">
+          Last daily run {new Date(lastRun.ranAt).toLocaleString('en-CA', { timeZone: 'America/Toronto', dateStyle: 'medium', timeStyle: 'short' })}
+          {' · '}
+          {lastRun.note}
+        </p>
+      ) : null}
+      <ActionButton
+        className={`${on ? deskGhost : deskPrimary} mt-4 w-fit`}
+        busy={on ? 'Turning off…' : 'Turning on…'}
+        done={on ? 'Off' : 'On'}
+        surface={deskSurface}
+        onRun={async (): Promise<RunResult> => {
+          const result = await save({ data: { on: !on } })
+          if (result.ok) await router.invalidate()
+          return result.ok
+            ? { ok: true, message: result.on ? 'Plan reminders are on.' : 'Plan reminders are off.' }
+            : { ok: false, message: result.error }
+        }}
+      >
+        {on ? 'Turn off plan reminders' : 'Turn on plan reminders'}
+      </ActionButton>
+    </section>
+  )
+}
+
+function shortDay(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  if (!year || !month || !day) return iso
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-CA', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+function ReminderLine({ row, on }: { row: NudgeRow | undefined; on: boolean }) {
+  if (!row || !on) return null
+  const last = row.last
+    ? `Last reminder: ${row.last.step}, ${new Date(row.last.at).toLocaleDateString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric' })}${row.last.delivered ? '' : ` (not sent: ${row.last.detail})`}`
+    : ''
+  const status = row.block
+    ? row.block === 'No email on file'
+      ? `Finish by ${shortDay(row.finish)}. No email on file, so no reminders.`
+      : `Finish by ${shortDay(row.finish)}. ${row.block}.`
+    : `Finish by ${shortDay(row.finish)}. Reminder window: ${row.due}.`
+  return (
+    <p className={`text-sm ${row.block === 'No email on file' ? 'text-amber-200' : 'text-white/70'}`}>
+      {status}
+      {last ? <span className="block text-white/55">{last}</span> : null}
+    </p>
+  )
+}
+
+function EmailField({ slug, email }: { slug: string; email: string }) {
+  const save = useServerFn(saveCoupleEmailDesk)
+  const router = useRouter()
+  const [value, setValue] = useState(email)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    setValue(email)
+  }, [email])
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(event) => event.preventDefault()}
+    >
+      <label className="field min-w-64 flex-1 sm:flex-none">
+        Couple email
+        <input
+          type="email"
+          value={value}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="Not on file yet"
+          onChange={(event) => setValue(event.target.value)}
+        />
+      </label>
+      <ActionButton
+        className={deskGhost}
+        checkForm
+        busy="Saving…"
+        done="Saved"
+        surface={deskSurface}
+        onRun={async (): Promise<RunResult | undefined> => {
+          setError('')
+          const result = await save({ data: { slug, email: value } })
+          if (!result.ok) {
+            setError(result.error)
+            return { ok: false, message: result.error }
+          }
+          setValue(result.email)
+          await router.invalidate()
+          return { ok: true, message: result.email ? 'Email saved.' : 'Email cleared.' }
+        }}
+      >
+        Save email
+      </ActionButton>
+      {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+    </form>
   )
 }
 

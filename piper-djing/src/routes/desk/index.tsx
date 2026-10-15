@@ -7,8 +7,8 @@ import { externalCouple, externalVenues } from '../../lib/crm/external-dates.ts'
 import { cad } from '../../lib/crm/money.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
 import { moneySummary } from '../../lib/crm/money-summary.ts'
-import { attention, daysUntil, onTheBook } from '../../lib/desk-console.ts'
-import type { Attention } from '../../lib/desk-console.ts'
+import { attention, comingUp, daysUntil, onTheBook } from '../../lib/desk-console.ts'
+import type { Attention, WeddingChecklist } from '../../lib/desk-console.ts'
 import type { getDesk } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
@@ -128,8 +128,74 @@ function OverviewPage() {
         <MoneyCard summary={money} />
       </div>
 
+      <ComingUp
+        rows={comingUp(
+          desk.bookings.map((booking) => ({
+            ...booking,
+            venueStreet: booking.venueStreet,
+            travelKm: booking.travel.km,
+          })),
+          plans,
+          today,
+        )}
+      />
+
       <Season desk={desk} today={today} />
     </div>
+  )
+}
+
+function ComingUp({ rows }: { rows: WeddingChecklist[] }) {
+  if (rows.length === 0) return null
+  return (
+    <section aria-labelledby="coming-up" className={`${deskCard} grid content-start gap-3.5`}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="coming-up" className={deskH2}>
+          Coming up
+        </h2>
+        <span className="text-sm text-[#5b5370]">Next 30 days</span>
+      </div>
+      <ul className="grid gap-2.5">
+        {rows.map((row) => (
+          <li key={row.id} className="grid gap-3 rounded-2xl border border-[#efe9f8] bg-[#faf8fe] p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="grid min-w-0">
+                <span className="font-semibold">{row.couple}</span>
+                <span className="text-sm text-[#5b5370]">
+                  {shortDate(row.eventDate)} · {inDays(row.days)} ·{' '}
+                  {row.open === 0 ? 'Ready' : `${row.open} still to sort`}
+                </span>
+              </span>
+              <Link
+                to="/desk/bookings"
+                search={{ couple: row.id }}
+                className={`${deskGhost} shrink-0 !min-h-11 !px-4`}
+              >
+                Open booking
+              </Link>
+            </div>
+            <ul className="flex flex-wrap gap-2" aria-label={`Checklist for ${row.couple}`}>
+              {row.items.map((item) => (
+                <li
+                  key={item.id}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
+                    item.done ? 'bg-[#e6f6ee] text-[#0b5e41]' : 'bg-[#ffe3f0] text-[#a30054]'
+                  }`}
+                >
+                  {item.done ? (
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <span aria-hidden="true" className="h-2 w-2 rounded-full bg-current" />
+                  )}
+                  <span className="sr-only">{item.done ? 'Done: ' : 'To do: '}</span>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

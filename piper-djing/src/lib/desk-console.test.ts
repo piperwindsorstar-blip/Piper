@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  comingUp,
   attention,
   bookChartLabel,
   channelMeter,
@@ -226,3 +227,55 @@ function blank(bookings: ConsoleBooking[]) {
     totalCents: 0,
   }
 }
+
+describe('coming up checklist', () => {
+  const base = {
+    id: 7,
+    partnerOne: 'Roxana',
+    partnerTwo: 'Ibu',
+    eventDate: '2026-10-29',
+    sample: false,
+    status: 'booked',
+    totalCents: 100_000,
+    holdLastDay: null,
+    email: '',
+    venueStreet: '97 Grand River St N',
+    travelKm: 13.8,
+    invoice: { status: 'sent', receivedCents: 30_000, balanceCents: 70_000 },
+  } as ConsoleBooking & { venueStreet: string; travelKm: number | null }
+
+  it('lists what is still missing for weddings in the next 30 days', () => {
+    const [row] = comingUp(
+      [base],
+      [{ bookingId: 7, percent: 53, answered: 20, total: 38, arrivalTime: '' }],
+      '2026-10-15',
+    )
+    assert.equal(row.days, 14)
+    assert.deepEqual(
+      row.items.map((item) => [item.id, item.done]),
+      [
+        ['plan', false],
+        ['email', false],
+        ['paid', false],
+        ['arrival', false],
+        ['venue', true],
+      ],
+    )
+    assert.equal(row.items.find((item) => item.id === 'paid')?.label, '$700 still owing')
+    assert.equal(row.open, 4)
+  })
+
+  it('skips far-off, past, test and unbooked dates', () => {
+    const plans = [{ bookingId: 7, percent: 100, answered: 38, total: 38, arrivalTime: '4 pm' }]
+    assert.equal(comingUp([base], plans, '2026-09-01').length, 0)
+    assert.equal(comingUp([base], plans, '2026-10-30').length, 0)
+    assert.equal(comingUp([{ ...base, sample: true }], plans, '2026-10-15').length, 0)
+    assert.equal(comingUp([{ ...base, status: 'hold' }], plans, '2026-10-15').length, 0)
+    const done = comingUp(
+      [{ ...base, email: 'a@b.co', travelKm: 13.8, invoice: { status: 'sent', receivedCents: 100_000, balanceCents: 0 } }],
+      plans,
+      '2026-10-15',
+    )[0]
+    assert.equal(done.open, 0)
+  })
+})

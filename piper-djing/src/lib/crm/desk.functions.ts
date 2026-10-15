@@ -36,6 +36,8 @@ import {
   coupleBySlug,
   couplePortalForDesk,
   listCouplePortals,
+  listPlanContacts,
+  setCoupleEmail,
   saveCouplePasscode,
   saveCouplePlanning,
   saveDeskPlanning,
@@ -95,6 +97,7 @@ import {
   listPlanProgress,
   setBookingNotes,
 } from './store.server.ts'
+import { planNudgeOverview, setPlanReminders } from '../portal/nudges.server.ts'
 import type { BookingPatch } from './store.server.ts'
 
 function fail(error: unknown) {
@@ -939,9 +942,40 @@ type MasterDraftInput = {
 export const getPortalDesk = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireDesk()
-    return listCouplePortals()
+    const [portals, nudges, contacts] = await Promise.all([
+      listCouplePortals(),
+      planNudgeOverview().catch(() => ({ on: true, lastRun: null, rows: [] })),
+      listPlanContacts(),
+    ])
+    const emails = Object.fromEntries(contacts.map((item) => [item.slug, item.email]))
+    return { ...portals, nudges, emails }
   },
 )
+
+export const savePlanRemindersDesk = createServerFn({ method: 'POST' })
+  .validator((data: { on?: unknown }) => ({ on: data.on === true }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, on: await setPlanReminders(data.on) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const saveCoupleEmailDesk = createServerFn({ method: 'POST' })
+  .validator((data: { slug?: unknown; email?: unknown }) => ({
+    slug: typeof data.slug === 'string' ? data.slug : '',
+    email: typeof data.email === 'string' ? data.email : '',
+  }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      return { ok: true as const, email: await setCoupleEmail(data.slug, data.email) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
 
 export const savePortalMasterDesk = createServerFn({ method: 'POST' })
   .validator((data: { drafts: MasterDraftInput[] }) => data)

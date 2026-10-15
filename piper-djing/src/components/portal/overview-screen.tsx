@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
 import { longDate } from '../../lib/crm/dates.ts'
 import {
   answeredLabel,
@@ -70,6 +71,7 @@ export function OverviewScreen() {
           title={finish ? longDate(finish) : undefined}
         />
       </div>
+      {!locked && !planning.email.trim() ? <EmailAsk /> : null}
       <div className="mt-6 flex flex-col gap-4 min-[1024px]:mt-8 min-[1024px]:flex-row min-[1024px]:items-center">
         {next ? (
           <Link
@@ -104,6 +106,56 @@ export function OverviewScreen() {
       </div>
       <DjBubble text={note} reserve />
     </PortalColumns>
+  )
+}
+
+/** Asked once, up front, when there is no email to reach the couple at. */
+function EmailAsk() {
+  const { editText } = usePortal()
+  const [value, setValue] = useState('')
+  const [error, setError] = useState('')
+  return (
+    <form
+      className="mt-6 grid gap-3 rounded-[18px] border-[1.5px] border-[var(--pink)] bg-[var(--pink-tint)] p-4 min-[1024px]:mt-8 min-[1024px]:p-5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const email = value.trim()
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setError('Check the email address.')
+          return
+        }
+        setError('')
+        editText('email', email)
+      }}
+    >
+      <label className="grid gap-2">
+        <span className="text-base font-bold">What email should I use?</span>
+        <span className="text-sm text-[var(--text-muted)]">
+          For your invoice, receipts and a heads-up before your plan is due.
+        </span>
+        <input
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          required
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          className="min-h-12 w-full min-w-0 rounded-[14px] border border-[var(--border-strong)] bg-[var(--field)] px-4 text-base text-white"
+          placeholder="you@example.com"
+        />
+      </label>
+      {error ? (
+        <p className="text-sm text-[var(--pink)]" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <button
+        type="submit"
+        className="inline-flex min-h-12 w-full items-center justify-center rounded-[14px] bg-white px-5 text-base font-bold text-[#0d0d0d] min-[1024px]:w-fit"
+      >
+        Save email
+      </button>
+    </form>
   )
 }
 

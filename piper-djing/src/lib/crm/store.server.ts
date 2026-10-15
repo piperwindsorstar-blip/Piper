@@ -56,7 +56,7 @@ import { masterDrafts, parseMaster } from '../portal/master.ts'
 import { rankSuggestions, songsFromPlans } from '../portal/song-suggestions.ts'
 import type { SongHit } from '../portal/song-search.ts'
 import type { MasterMap } from '../portal/questions.ts'
-import { overallProgress } from '../portal/progress.ts'
+import { firstUnanswered, overallProgress } from '../portal/progress.ts'
 import { forgetPublicSite } from './public-memory.ts'
 import {
   holdLastDay,
@@ -3405,10 +3405,53 @@ export type PlanProgress = {
   percent: number
   answered: number
   total: number
+  arrivalTime: string
+  locked: boolean
 }
 
 /** How far each couple is with their plan, for the desk. Read only. */
 export async function listPlanProgress(): Promise<PlanProgress[]> {
+  await ensurePlanningColumn()
+  const master = await readPortalMaster()
+  const rows = await query<BookingRow & { planning?: string }>(
+    'SELECT * FROM bookings ORDER BY event_date, id',
+  )
+  const today = torontoToday()
+  return rows.map((row) => {
+    const planning = parsePlanning(row.planning, planningSeed(row)).planning
+    const progress = overallProgress(planning, master)
+    return {
+      bookingId: row.id,
+      slug: row.slug,
+      percent: progress.percent,
+      answered: progress.answered,
+      total: progress.total,
+      arrivalTime: planning.arrivalTime.trim(),
+      locked: isPlanLocked(planning, today),
+    }
+  })
+}
+
+export type PlanContact = {
+  bookingId: number
+  slug: string
+  partnerOne: string
+  partnerTwo: string
+  eventDate: string
+  status: string
+  sample: boolean
+  email: string
+  phone: string
+  venueName: string
+  planning: Planning
+  percent: number
+  answered: number
+  total: number
+  next: string
+}
+
+/** Every couple with their contact details and plan, for reminders and the desk. Read only. */
+export async function listPlanContacts(): Promise<PlanContact[]> {
   await ensurePlanningColumn()
   const master = await readPortalMaster()
   const rows = await query<BookingRow & { planning?: string }>(
@@ -3420,11 +3463,35 @@ export async function listPlanProgress(): Promise<PlanProgress[]> {
     return {
       bookingId: row.id,
       slug: row.slug,
+      partnerOne: row.partner_one,
+      partnerTwo: row.partner_two,
+      eventDate: row.event_date,
+      status: row.status,
+      sample: flag(row.sample),
+      email: (row.email ?? '').trim(),
+      phone: (row.phone ?? '').trim(),
+      venueName: (row.venue_name ?? '').trim(),
+      planning,
       percent: progress.percent,
       answered: progress.answered,
       total: progress.total,
+      next: firstUnanswered(planning, master)?.rail ?? '',
     }
   })
+}
+
+/** The couple's email on their booking, from the desk. Blank clears it. */
+export async function setCoupleEmail(slugValue: string, email: string): Promise<string> {
+  const clean = email.trim().slice(0, 200)
+  if (clean && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+    throw new Error('That does not look like an email address.')
+  }
+  const rows = await query<{ id: number }>(
+    'UPDATE bookings SET email = $1 WHERE slug = $2 RETURNING id',
+    [clean, slugValue],
+  )
+  if (rows.length === 0) throw new Error('That booking is not on the book.')
+  return clean
 }
 
 /** Piper's private notes on a booking, saved on their own. */

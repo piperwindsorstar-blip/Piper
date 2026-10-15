@@ -51,6 +51,88 @@ export type ConsolePlan = {
   percent: number
   answered: number
   total: number
+  /** When the DJ arrives, from the plan. Left out, the check is skipped. */
+  arrivalTime?: string
+  /** The plan is locked (sent in, or past its finish date). */
+  locked?: boolean
+}
+
+/** Weddings this close get the Coming up checklist. */
+export const CHECKLIST_DAYS = 30
+
+export type CheckItem = { id: string; label: string; done: boolean }
+
+export type WeddingChecklist = {
+  id: number
+  couple: string
+  eventDate: string
+  days: number
+  items: CheckItem[]
+  open: number
+}
+
+/**
+ * What is still missing for each wedding in the next 30 days: the plan, a way
+ * to reach the couple, the money, when Piper arrives and where he is going.
+ */
+export function comingUp(
+  bookings: (ConsoleBooking & { venueStreet?: string; travelKm?: number | null })[],
+  plans: ConsolePlan[],
+  today: string,
+): WeddingChecklist[] {
+  return bookings
+    .filter(
+      (booking) =>
+        !booking.sample &&
+        booking.status === 'booked' &&
+        booking.eventDate >= today &&
+        daysUntil(today, booking.eventDate) <= CHECKLIST_DAYS,
+    )
+    .sort((a, b) => a.eventDate.localeCompare(b.eventDate))
+    .map((booking) => {
+      const plan = plans.find((row) => row.bookingId === booking.id)
+      const balance = booking.invoice?.balanceCents ?? booking.totalCents
+      const items: CheckItem[] = []
+      if (plan) {
+        items.push({
+          id: 'plan',
+          label: plan.percent >= 100 ? 'Plan finished' : `Plan ${plan.percent}% done`,
+          done: plan.percent >= 100,
+        })
+      }
+      if (booking.email !== undefined) {
+        items.push({ id: 'email', label: booking.email.trim() ? 'Email on file' : 'No email on file', done: Boolean(booking.email.trim()) })
+      }
+      items.push({
+        id: 'paid',
+        label: balance > 0 ? `${dollarText(balance)} still owing` : 'Paid in full',
+        done: balance <= 0,
+      })
+      if (plan && plan.arrivalTime !== undefined) {
+        const arrival = plan.arrivalTime.trim()
+        items.push({ id: 'arrival', label: arrival ? `Arriving ${arrival}` : 'No arrival time set', done: Boolean(arrival) })
+      }
+      if (booking.venueStreet !== undefined) {
+        const street = booking.venueStreet.trim()
+        items.push({
+          id: 'venue',
+          label: !street
+            ? 'No venue address'
+            : booking.travelKm == null
+              ? 'Distance not worked out'
+              : `Venue ${booking.travelKm.toFixed(1)} km away`,
+          done: Boolean(street) && booking.travelKm != null,
+        })
+      }
+      return {
+        id: booking.id,
+        couple: `${booking.partnerOne} & ${booking.partnerTwo}`,
+        eventDate: booking.eventDate,
+        days: daysUntil(today, booking.eventDate),
+        items,
+        open: items.filter((item) => !item.done).length,
+      }
+    })
 }
 
 /** A balance this close to the wedding goes on Needs you. */

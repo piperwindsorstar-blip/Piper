@@ -59,6 +59,32 @@ export function PlanSheet({
           </p>
         </div>
 
+        <Section title="Songs">
+          <div className="plan-lists grid gap-6 min-[720px]:grid-cols-2">
+            <SongColumn
+              title="Must play"
+              items={songsOf(planning.mustPlayItems, planning.mustPlay)}
+            />
+            <SongColumn
+              title="Do not play"
+              items={songsOf(planning.doNotPlayItems, planning.doNotPlay)}
+            />
+          </div>
+          <p className="mt-4 text-sm">
+            Playlists:{' '}
+            <Playlist label="Pre-ceremony" href={planning.preCeremony} />
+            {' · '}
+            <Playlist label="Cocktail" href={planning.cocktail} />
+            {' · '}
+            <Playlist label="Dinner" href={planning.dinner} />
+            {' · '}
+            <Playlist label="Dance" href={planning.dance} />
+          </p>
+          {planning.specialPlaylists.trim() ? (
+            <p className="mt-2 text-sm">{planning.specialPlaylists}</p>
+          ) : null}
+        </Section>
+
         <Section title="Key details">
           <dl className="grid gap-x-8 gap-y-3 min-[720px]:grid-cols-2">
             <Pair label="Date" value={planDate(eventDate)} />
@@ -172,29 +198,6 @@ export function PlanSheet({
           <p className="mt-1 text-sm text-[#C2185B]">
             Requests: {shown(planning.guestRequests)}
           </p>
-          <div className="plan-lists mt-4 grid gap-6 min-[720px]:grid-cols-2">
-            <SongColumn
-              title="Must play"
-              items={songsOf(planning.mustPlayItems, planning.mustPlay)}
-            />
-            <SongColumn
-              title="Do not play"
-              items={songsOf(planning.doNotPlayItems, planning.doNotPlay)}
-            />
-          </div>
-          <p className="mt-4 text-sm">
-            Playlists:{' '}
-            <Playlist label="Pre-ceremony" href={planning.preCeremony} />
-            {' · '}
-            <Playlist label="Cocktail" href={planning.cocktail} />
-            {' · '}
-            <Playlist label="Dinner" href={planning.dinner} />
-            {' · '}
-            <Playlist label="Dance" href={planning.dance} />
-          </p>
-          {planning.specialPlaylists.trim() ? (
-            <p className="mt-2 text-sm">{planning.specialPlaylists}</p>
-          ) : null}
         </Section>
 
         <Section title="Notes">
