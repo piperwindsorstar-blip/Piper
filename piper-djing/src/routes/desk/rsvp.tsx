@@ -79,7 +79,7 @@ function RsvpDesk() {
               timeZone: 'America/Toronto',
               dateStyle: 'medium',
               timeStyle: 'short',
-            }).format(new Date(daily.ranAt))}. ${daily.note}`
+            }).format(new Date(daily.ranAt))} · ${daily.note}`
           : 'Automatic reminders run every morning around 8. They have not run yet.'}
       </p>
       <MakeByHand onMade={setNotice} />
