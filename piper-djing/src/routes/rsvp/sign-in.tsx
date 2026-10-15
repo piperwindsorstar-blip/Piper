@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import {
@@ -27,8 +27,8 @@ function SignIn() {
       <RsvpHeader />
       <h1 className="portal-display text-4xl">Couple sign in</h1>
       <p className="mt-2 text-[var(--text-muted)]">
-        We&apos;ll email you a one-time sign-in link. No password to remember.
-        $20 with a Piper DJing booking (deposit paid), $30 on its own, plus 13% HST by card.
+        Use the email you set up your RSVP with. We&apos;ll send a one-time
+        sign-in link. No password to remember.
       </p>
       <form
         className="mt-6 grid gap-4"
@@ -63,8 +63,16 @@ function SignIn() {
         </button>
       </form>
       {notice ? (
-        <p className="mt-4 text-sm text-[var(--text-muted)]">{notice}</p>
+        <p className="mt-4 text-sm text-[var(--text-muted)]" role="status">
+          {notice}
+        </p>
       ) : null}
+      <p className="mt-8 text-sm text-[var(--text-muted)]">
+        No RSVP site yet?{' '}
+        <Link to="/rsvp" className="text-[var(--pink-soft)] underline">
+          See how it works
+        </Link>
+      </p>
     </RsvpFrame>
   )
 }

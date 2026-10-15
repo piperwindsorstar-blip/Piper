@@ -168,10 +168,8 @@ export function Design({ data }: { data: ReadyManage }) {
       <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <h2 className="font-semibold">Your photo</h2>
         <p className="mt-1 text-sm text-[var(--text-muted)]">
-          JPG, PNG or HEIC up to 10 MB. Your whole photo is used, at its own
-          shape — nothing is cropped. It is resized to 1200px and kept under 300
-          KB, the rotation is fixed and the location data is stripped. The photo
-          is stored on this site and served from piperpweddingdj.services.
+          A JPG, PNG or iPhone photo up to 10 MB. We show the whole photo,
+          never cropped, and remove the location it was taken.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
