@@ -171,7 +171,10 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
               {data.events.map((event) => (
                 <fieldset key={event.id} className="mt-4">
                   <legend className="text-sm text-[var(--text-muted)]">
-                    {event.name}
+                    <span className="font-semibold text-[var(--text)]">{event.name}</span>
+                    {eventWhen(event) ? (
+                      <span className="block">{eventWhen(event)}</span>
+                    ) : null}
                   </legend>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <button
@@ -737,4 +740,16 @@ export function ReplyDone({
       <TheDay moments={data.day} />
     </RsvpFrame>
   )
+}
+
+/** "Sunday, June 13 · 9:00 AM · Brantford Golf" under an event's name. */
+function eventWhen(event: {
+  dateLabel?: string
+  time: string
+  location: string
+}): string {
+  return [event.dateLabel, event.time, event.location]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean)
+    .join(' · ')
 }

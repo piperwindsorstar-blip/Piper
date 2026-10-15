@@ -374,7 +374,9 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
       deadline: shortMonthDay(wedding.deadline),
       daysLeft: daysUntil(wedding.deadline, torontoToday()),
       caterer: shortMonthDay(wedding.catererDeadline),
-      schedule: wedding.schedule,
+      // Shown when the couple has no timeline yet. It comes from their
+      // events, which they can edit, so guests never see a made-up time.
+      schedule: guestSchedule(wedding),
       day: guestMoments(await readTimeline(wedding.slug), wedding.venue),
       notes: wedding.notes,
       showContact: wedding.showContact,
@@ -443,6 +445,23 @@ export const findInvitation = createServerFn({ method: 'POST' })
     }
   })
 
+function guestSchedule(
+  wedding: RsvpWedding,
+): { name: string; time: string; place: string; note: string }[] {
+  const weddingDay = longWeddingDate(wedding.eventDate)
+  return wedding.events
+    .filter((event) => event.enabled && !event.hidden)
+    .map((event) => ({
+      name: event.name,
+      time: [event.dateLabel === weddingDay ? '' : event.dateLabel, event.time]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' · '),
+      place: event.location,
+      note: '',
+    }))
+}
+
 function householdPayload(
   wedding: RsvpWedding,
   token: string,
@@ -486,6 +505,7 @@ function householdPayload(
     events: invitedEvents(wedding, party).map((event) => ({
       id: event.id,
       name: event.name,
+      dateLabel: event.dateLabel,
       time: event.time,
       location: event.location,
       asksMeal: event.asksMeal,

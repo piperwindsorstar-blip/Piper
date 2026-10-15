@@ -8,7 +8,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { priceLabel } from '../../lib/rsvp/model.ts'
 import {
@@ -27,6 +27,7 @@ import {
 } from '../../lib/rsvp/rsvp.functions.ts'
 import { GuestPaste } from './guest-paste.tsx'
 import { MealOptions } from './meal-options.tsx'
+import { SaveStatus, useAutosave } from './autosave.tsx'
 import {
   CatererPrintDialog,
   PrintTimeline,
@@ -1370,11 +1371,48 @@ export function Events({ data }: { data: ReadyManage }) {
   const [caterer, setCaterer] = useState(data.wedding.catererDeadline)
   const [lockAfter, setLock] = useState(data.wedding.lockAfterDeadline)
   const [autoRemind, setRemind] = useState(data.wedding.autoRemind)
-  const [notice, setNotice] = useState('')
   const [editing, setEditing] = useState('')
   const original = new Set(data.wedding.events.map((item) => item.id))
+  const autosave = useAutosave<Record<string, unknown>>(async (payload) => {
+    const result = await save({ data: payload })
+    if (!result.ok) {
+      return { ok: false, error: 'error' in result ? result.error : 'Could not save.' }
+    }
+    await router.invalidate()
+    return { ok: true }
+  })
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    if (events.some((item) => !item.name.trim())) {
+      autosave.hold('Give every event a name to save.')
+      return
+    }
+    autosave.schedule({
+      deadline,
+      catererDeadline: caterer,
+      lockAfterDeadline: lockAfter,
+      autoRemind,
+      events,
+      questions: data.wedding.questions,
+      schedule: data.wedding.schedule,
+      notes: data.wedding.notes,
+      accessMode: data.wedding.accessMode,
+      inviteCode: data.wedding.inviteCode,
+      showContact: data.wedding.showContact,
+      contactPhone: data.wedding.contactPhone,
+      venue: data.wedding.venue,
+      address: data.wedding.address,
+    })
+    // Only the couple's own edits trigger a save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, deadline, caterer, lockAfter, autoRemind])
+  // A change made just before leaving the page still saves.
+  useEffect(() => () => autosave.flush(), [autosave.flush])
   function patchEvent(id: string, change: Partial<(typeof events)[number]>) {
-    setNotice('')
     setEvents((current) =>
       current.map((item) => (item.id === id ? { ...item, ...change } : item)),
     )
@@ -1383,38 +1421,7 @@ export function Events({ data }: { data: ReadyManage }) {
     <div className="grid gap-8">
     <form
       className="grid gap-4"
-      onSubmit={(event) => {
-        event.preventDefault()
-        // The meals keep their own boxes and their own save below.
-        const questions = data.wedding.questions
-        void save({
-          data: {
-            deadline,
-            catererDeadline: caterer,
-            lockAfterDeadline: lockAfter,
-            autoRemind,
-            events,
-            questions,
-            schedule: data.wedding.schedule,
-            notes: data.wedding.notes,
-            accessMode: data.wedding.accessMode,
-            inviteCode: data.wedding.inviteCode,
-            showContact: data.wedding.showContact,
-            contactPhone: data.wedding.contactPhone,
-            venue: data.wedding.venue,
-            address: data.wedding.address,
-          },
-        }).then(async (result) => {
-          setNotice(
-            result.ok
-              ? 'Saved.'
-              : 'error' in result
-                ? result.error
-                : 'Could not save.',
-          )
-          if (result.ok) await router.invalidate()
-        })
-      }}
+      onSubmit={(event) => event.preventDefault()}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -1603,19 +1610,10 @@ export function Events({ data }: { data: ReadyManage }) {
           onChange={(event) => setLock(event.target.checked)}
         />
       </label>
-      <button
-        className={`${rsvpButton} w-auto`}
-        type="submit"
-        disabled={events.some((item) => !item.name.trim())}
-      >
-        Save changes
-      </button>
-      {events.some((item) => !item.name.trim()) ? (
-        <p className="text-sm text-[var(--text-muted)]">Give every event a name to save.</p>
-      ) : null}
-      {notice ? (
-        <p className="text-sm text-[var(--text-muted)]" role="status">{notice}</p>
-      ) : null}
+      <p className="flex min-h-11 flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
+        Changes save on their own.
+        <SaveStatus phase={autosave.phase} error={autosave.error} />
+      </p>
     </form>
       <MealOptions
         key={mealsOf(data).join('\u0000')}
@@ -2028,7 +2026,44 @@ export function Settings({ data }: { data: ReadyManage }) {
   const [showContact, setShow] = useState(data.wedding.showContact)
   const [contactPhone, setPhone] = useState(data.wedding.contactPhone)
   const [copied, setCopied] = useState(false)
-  const surface = useSurface()
+  const autosave = useAutosave<Record<string, unknown>>(async (payload) => {
+    const result = await save({ data: payload })
+    if (!result.ok) {
+      return { ok: false, error: 'error' in result ? result.error : 'Could not save.' }
+    }
+    await router.invalidate()
+    return { ok: true }
+  })
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    if (accessMode === 'code' && !inviteCode.trim()) {
+      autosave.hold('Add an invite code, or pick another way in.')
+      return
+    }
+    autosave.schedule({
+      accessMode,
+      inviteCode,
+      showContact,
+      contactPhone,
+      deadline: data.wedding.deadline,
+      catererDeadline: data.wedding.catererDeadline,
+      lockAfterDeadline: data.wedding.lockAfterDeadline,
+      autoRemind: data.wedding.autoRemind,
+      events: data.wedding.events,
+      questions: data.wedding.questions,
+      schedule: data.wedding.schedule,
+      notes: data.wedding.notes,
+      venue: data.wedding.venue,
+      address: data.wedding.address,
+    })
+    // Only the couple's own edits trigger a save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessMode, inviteCode, showContact, contactPhone])
+  useEffect(() => () => autosave.flush(), [autosave.flush])
   return (
     <form
       className="grid max-w-xl gap-4"
@@ -2124,39 +2159,10 @@ export function Settings({ data }: { data: ReadyManage }) {
           />
         </label>
       ) : null}
-      <ActionButton
-        className={`${rsvpButton} w-auto`}
-        busy="Saving…"
-        done="Saved"
-        surface={surface}
-        onRun={async () => {
-          const result = await save({
-            data: {
-              accessMode,
-              inviteCode,
-              showContact,
-              contactPhone,
-              deadline: data.wedding.deadline,
-              catererDeadline: data.wedding.catererDeadline,
-              lockAfterDeadline: data.wedding.lockAfterDeadline,
-              autoRemind: data.wedding.autoRemind,
-              events: data.wedding.events,
-              questions: data.wedding.questions,
-              schedule: data.wedding.schedule,
-              notes: data.wedding.notes,
-              venue: data.wedding.venue,
-              address: data.wedding.address,
-            },
-          })
-          if (result.ok) await router.invalidate()
-          return {
-            ok: result.ok,
-            message: result.ok ? 'Saved.' : 'Could not save.',
-          }
-        }}
-      >
-        Save changes
-      </ActionButton>
+      <p className="flex min-h-11 flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
+        Changes save on their own.
+        <SaveStatus phase={autosave.phase} error={autosave.error} />
+      </p>
     </form>
   )
 }

@@ -155,7 +155,7 @@ function WeddingHome({ data }: { data: ShownHome }) {
       </section>
       {data.day.length > 0 ? (
         <TheDay moments={data.day} />
-      ) : (
+      ) : data.schedule.length === 0 ? null : (
         <>
         <h2 className="mt-8 text-xs tracking-[0.18em] text-[var(--text-muted)]">
           SCHEDULE
