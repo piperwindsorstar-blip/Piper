@@ -79,3 +79,16 @@ describe('security headers', () => {
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff')
   })
 })
+
+describe('pictures the visitor picks', () => {
+  it('lets a just-chosen photo or floor plan show before it is saved', () => {
+    const response = applySecurityHeaders(
+      new Response('ok'),
+      request('https://piperpweddingdj.services/rsvp/manage/seating'),
+    )
+    const policy = response.headers.get('content-security-policy') ?? ''
+    const images = policy.split(';').map((part) => part.trim()).find((part) => part.startsWith('img-src')) ?? ''
+    assert.match(images, /\bblob:/)
+    assert.doesNotMatch(images, /\*/)
+  })
+})
