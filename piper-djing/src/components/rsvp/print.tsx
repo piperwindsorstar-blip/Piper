@@ -599,13 +599,19 @@ export function PrintTimeline({
       <p style={{ margin: '4px 0 16px', color: '#444' }}>
         {couple}
         {dateLabel ? ` · ${dateLabel}` : ''} · for the couple and DJ Piper P
+        {venue ? (
+          <>
+            <br />
+            Everything is at {venue} unless a place is given.
+          </>
+        ) : null}
       </p>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr style={{ textAlign: 'left', borderBottom: '2px solid #222' }}>
             <th style={{ padding: '6px 8px 6px 0', width: 90 }}>Time</th>
             <th style={{ padding: '6px 8px' }}>Moment</th>
-            <th style={{ padding: '6px 8px' }}>Location</th>
+            <th style={{ padding: '6px 8px' }}>Place</th>
             <th style={{ padding: '6px 8px' }}>Note</th>
             <th style={{ padding: '6px 0 6px 8px', width: 70 }}>Guests</th>
           </tr>
@@ -621,7 +627,7 @@ export function PrintTimeline({
               </td>
               <td style={{ padding: '6px 8px' }}>{moment.title}</td>
               <td style={{ padding: '6px 8px' }}>
-                {moment.location || venue}
+                {moment.location && moment.location !== venue ? moment.location : ''}
               </td>
               <td style={{ padding: '6px 8px', color: '#444' }}>
                 {moment.note}
