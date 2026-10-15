@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   PARTY_OPTIONS,
@@ -56,6 +57,7 @@ export function MomentEditor({
       ) : (
         <SingleSong row={row} patch={patch} disabled={disabled} />
       )}
+      {row.presetKey === 'bouquet' ? <AddYourOwn disabled={disabled} /> : null}
       <MomentFooter
         row={row}
         patch={patch}
@@ -732,5 +734,76 @@ function MomentFooter({
         )}
       </div>
     </>
+  )
+}
+
+/** On the bouquet toss: add a moment of the couple's own, right after it. */
+function AddYourOwn({ disabled }: { disabled: boolean }) {
+  const { planning, addMoment } = usePortal()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [added, setAdded] = useState('')
+  const customs = planning.timeline.filter((row) => row.presetKey === '').length
+  return (
+    <div className="mt-6 border-t border-[var(--border)] pt-4">
+      {open ? (
+        <form
+          className="grid gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const label = name.trim()
+            if (!label) return
+            addMoment('Reception', label)
+            setAdded(label)
+            setName('')
+            setOpen(false)
+          }}
+        >
+          <label className="block">
+            <span className="sr-only">Name of your moment</span>
+            <input
+              className="portal-input"
+              placeholder="Unity candle, shoe game, anniversary dance..."
+              value={name}
+              disabled={disabled}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              className="min-h-11 rounded-full bg-[var(--pink)] px-5 text-sm font-bold text-[#0d0d0d]"
+              disabled={disabled || name.trim() === ''}
+            >
+              Add this moment
+            </button>
+            <button
+              type="button"
+              className="min-h-11 text-sm text-[var(--text-muted)] underline"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          className="min-h-11 rounded-full border-[1.5px] border-[var(--pink)] px-5 text-sm font-bold"
+          disabled={disabled || customs >= 12}
+          onClick={() => {
+            setAdded('')
+            setOpen(true)
+          }}
+        >
+          + Add your own moment
+        </button>
+      )}
+      {added ? (
+        <p className="mt-2 text-sm text-[var(--pink-soft)]">
+          Added "{added}" after the bouquet toss. Find it in the list.
+        </p>
+      ) : null}
+    </div>
   )
 }
