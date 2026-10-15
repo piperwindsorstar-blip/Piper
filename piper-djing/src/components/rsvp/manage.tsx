@@ -1,5 +1,13 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
+import {
+  Armchair,
+  CalendarDays,
+  Ellipsis,
+  LayoutDashboard,
+  Users,
+  X,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { priceLabel } from '../../lib/rsvp/model.ts'
@@ -56,6 +64,17 @@ const LINKS = [
   { to: '/rsvp/manage/settings', label: 'Site settings' },
 ] as const
 
+const PRIMARY = [
+  { to: '/rsvp/manage', label: 'Overview', Icon: LayoutDashboard },
+  { to: '/rsvp/manage/guests', label: 'Guests', Icon: Users },
+  { to: '/rsvp/manage/events', label: 'Events', Icon: CalendarDays },
+  { to: '/rsvp/manage/seating', label: 'Seating', Icon: Armchair },
+] as const
+
+const MORE = LINKS.filter(
+  (link) => !PRIMARY.some((primary) => primary.to === link.to),
+)
+
 export function ManageShell({
   data,
   children,
@@ -64,6 +83,9 @@ export function ManageShell({
   children: ReactNode
 }) {
   const theme = data.wedding.theme
+  const [more, setMore] = useState(false)
+  const couple = `${data.wedding.partnerOne} & ${data.wedding.partnerTwo}`
+  const when = `${data.wedding.eventDate}${data.daysLeft !== null ? ` · ${data.daysLeft} days` : ''}`
   return (
     <RsvpThemeProvider theme={theme}>
       <div
@@ -77,26 +99,28 @@ export function ManageShell({
               }
         }
       >
-        <aside className="border-b border-[var(--border)] p-4 print:hidden md:border-b-0 md:border-r">
+        <header className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 print:hidden md:hidden">
+          <RsvpLogo className="h-8 w-auto" />
+          <div className="min-w-0 text-right">
+            <p className="truncate text-sm font-semibold">{couple}</p>
+            <p className="truncate text-xs text-[var(--text-muted)]">{when}</p>
+          </div>
+        </header>
+        <aside className="hidden p-4 print:hidden md:block md:border-r md:border-[var(--border)]">
           <div className="mb-6">
             <RsvpLogo />
           </div>
           <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
             WEDDING
           </p>
-          <p className="mt-1 font-semibold">
-            {data.wedding.partnerOne} & {data.wedding.partnerTwo}
-          </p>
-          <p className="text-sm text-[var(--text-muted)]">
-            {data.wedding.eventDate}
-            {data.daysLeft !== null ? ` · ${data.daysLeft} days` : ''}
-          </p>
-          <nav className="mt-6 flex gap-2 overflow-x-auto md:grid">
+          <p className="mt-1 font-semibold">{couple}</p>
+          <p className="text-sm text-[var(--text-muted)]">{when}</p>
+          <nav className="mt-6 grid gap-1" aria-label="Wedding sections">
             {LINKS.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="min-h-11 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-[var(--text-muted)] data-[status=active]:bg-[var(--field)] data-[status=active]:text-white"
+                className="min-h-11 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-[var(--text-muted)] data-[status=active]:bg-[var(--field)] data-[status=active]:text-[var(--text)]"
                 activeOptions={{ exact: link.to === '/rsvp/manage' }}
               >
                 {link.label}
@@ -104,11 +128,77 @@ export function ManageShell({
             ))}
           </nav>
           <ThemeToggle theme={theme} />
-          <p className="mt-8 hidden text-sm text-[var(--text-faint)] md:block">
+          <p className="mt-8 text-sm text-[var(--text-faint)]">
             DJ Piper P keeps the song requests with the wedding plan.
           </p>
         </aside>
-        <div className="min-w-0 p-4 print:p-0 md:p-8">{children}</div>
+        <div className="min-w-0 p-4 pb-28 print:p-0 md:p-8 md:pb-8">
+          {children}
+        </div>
+        <nav
+          aria-label="Wedding sections"
+          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--border)] bg-[var(--surface)] pb-[env(safe-area-inset-bottom)] print:hidden md:hidden"
+        >
+          {PRIMARY.map(({ to, label, Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              onClick={() => setMore(false)}
+              className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] text-[var(--text-muted)] data-[status=active]:text-[var(--pink)]"
+              activeOptions={{ exact: to === '/rsvp/manage' }}
+            >
+              <Icon size={20} aria-hidden="true" />
+              {label}
+            </Link>
+          ))}
+          <button
+            type="button"
+            aria-expanded={more}
+            onClick={() => setMore((open) => !open)}
+            className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] ${more ? 'text-[var(--pink)]' : 'text-[var(--text-muted)]'}`}
+          >
+            <Ellipsis size={20} aria-hidden="true" />
+            More
+          </button>
+        </nav>
+        {more ? (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 print:hidden md:hidden"
+            onClick={() => setMore(false)}
+          >
+            <div
+              role="dialog"
+              aria-label="More sections"
+              className="absolute inset-x-0 bottom-0 rounded-t-[24px] border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <p className="font-semibold">More</p>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="grid h-11 w-11 place-items-center"
+                  onClick={() => setMore(false)}
+                >
+                  <X size={20} aria-hidden="true" />
+                </button>
+              </div>
+              <nav className="mt-2 grid gap-1">
+                {MORE.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setMore(false)}
+                    className="min-h-12 rounded-xl px-3 py-3 text-base data-[status=active]:bg-[var(--field)]"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+              <ThemeToggle theme={theme} />
+            </div>
+          </div>
+        ) : null}
       </div>
     </RsvpThemeProvider>
   )
@@ -161,6 +251,38 @@ export function Overview({ data }: { data: ReadyManage }) {
   const { stats } = data
   const replied = stats.attending + stats.declined
   const total = Math.max(stats.guests, 1)
+  const empty = stats.guests === 0
+  const setup = (
+    <section aria-labelledby="rsvp-setup">
+      <h2 id="rsvp-setup" className="portal-display text-2xl">
+        {empty ? 'Start with your guest list' : 'Set up'}
+      </h2>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">
+        {empty
+          ? 'Paste the names, and each party gets one link to reply.'
+          : 'Your guest list, meal choices, reply email and questions.'}
+      </p>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <GuestPaste
+          key={data.wedding.parties
+            .map(
+              (party) =>
+                `${party.id}:${party.token}:${party.guests.map((guest) => guest.id).join('.')}`,
+            )
+            .join('|')}
+          parties={data.wedding.parties}
+          publicLink={data.publicLink}
+        />
+        <div className="grid content-start gap-4">
+          <ReplyEmail data={data} />
+          <AskQuestion questions={data.questions} />
+        </div>
+      </div>
+      <div className="mt-4">
+        <MealOptions key={mealsOf(data).join('\u0000')} meals={mealsOf(data)} />
+      </div>
+    </section>
+  )
   return (
     <div>
       <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
@@ -176,110 +298,147 @@ export function Overview({ data }: { data: ReadyManage }) {
           View guest site →
         </Link>
       </div>
-      <ReplyEmail data={data} />
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <AskQuestion questions={data.questions} />
-        <GuestPaste
-          key={data.wedding.parties
-            .map(
-              (party) =>
-                `${party.id}:${party.token}:${party.guests.map((guest) => guest.id).join('.')}`,
-            )
-            .join('|')}
-          parties={data.wedding.parties}
-          publicLink={data.publicLink}
-        />
-      </div>
-      <div className="mt-4">
-        <MealOptions
-          key={mealsOf(data).join('\u0000')}
-          meals={mealsOf(data)}
-        />
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-4">
-        <Stat
-          label="Attending"
-          value={String(stats.attending)}
-          hint={`of ${stats.guests} invited`}
-        />
-        <Stat label="Can't make it" value={String(stats.declined)} />
-        <Stat
-          label="Waiting on"
-          value={String(stats.waitingGuests)}
-          hint={`${stats.waitingParties} parties`}
-        />
-        <Stat
-          label="RSVP deadline"
-          value={data.deadlineLabel || '—'}
-          hint={data.catererLabel ? `Caterer ${data.catererLabel}` : ''}
-          pink
-        />
-      </div>
-      <section className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <div className="flex justify-between text-sm">
-          <span>Replies</span>
-          <span>
-            {replied} of {stats.guests} guests replied
-          </span>
-        </div>
-        <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-[var(--field)]">
-          <span
-            className="bg-emerald-400"
-            style={{ width: `${(stats.attending / total) * 100}%` }}
-          />
-          <span
-            className="bg-rose-400"
-            style={{ width: `${(stats.declined / total) * 100}%` }}
-          />
-          <span
-            className="bg-amber-400"
-            style={{ width: `${(stats.waitingGuests / total) * 100}%` }}
-          />
-        </div>
-      </section>
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <h2 className="font-semibold">Latest replies</h2>
-          <ul className="mt-3 grid gap-3">
-            {stats.latest.map((party) => (
-              <li
-                key={party.partyId}
-                className="flex items-center justify-between gap-3 text-sm"
+      {empty ? (
+        <div className="mt-6">{setup}</div>
+      ) : (
+        <>
+          <section
+            aria-label="Replies"
+            className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5"
+          >
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs tracking-[0.14em] text-[var(--text-muted)]">
+                  REPLIES
+                </p>
+                <p className="mt-1 text-4xl font-semibold">
+                  {replied}
+                  <span className="text-xl font-normal text-[var(--text-muted)]">
+                    {' '}
+                    of {stats.guests} guests
+                  </span>
+                </p>
+              </div>
+              <div className="text-right text-sm">
+                <p className="text-[var(--text-muted)]">RSVP deadline</p>
+                <p className="font-semibold text-[var(--pink)]">
+                  {data.deadlineLabel || '—'}
+                </p>
+                {data.catererLabel ? (
+                  <p className="text-[var(--text-faint)]">
+                    Caterer {data.catererLabel}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <div
+              className="mt-4 flex h-3 overflow-hidden rounded-full bg-[var(--field)]"
+              role="img"
+              aria-label={`${stats.attending} attending, ${stats.declined} can't make it, ${stats.waitingGuests} waiting`}
+            >
+              <span
+                className="bg-emerald-400"
+                style={{ width: `${(stats.attending / total) * 100}%` }}
+              />
+              <span
+                className="bg-rose-400"
+                style={{ width: `${(stats.declined / total) * 100}%` }}
+              />
+              <span
+                className="bg-amber-400"
+                style={{ width: `${(stats.waitingGuests / total) * 100}%` }}
+              />
+            </div>
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+              <Legend
+                dot="bg-emerald-400"
+                text={`${stats.attending} attending`}
+              />
+              <Legend
+                dot="bg-rose-400"
+                text={`${stats.declined} can't make it`}
+              />
+              <Legend
+                dot="bg-amber-400"
+                text={`${stats.waitingGuests} waiting · ${stats.waitingParties} ${stats.waitingParties === 1 ? 'party' : 'parties'}`}
+              />
+            </ul>
+            {stats.waitingParties > 0 ? (
+              <Link
+                to="/rsvp/manage/guests"
+                className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[var(--pink)] px-5 text-sm font-semibold text-[#0D0D0D]"
               >
-                <span>{party.name}</span>
-                <span
-                  className={
-                    party.tone === 'no' ? 'text-rose-300' : 'text-emerald-300'
-                  }
-                >
-                  {party.label}
-                </span>
-                <span className="text-[var(--text-faint)]">{party.ago}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <h2 className="font-semibold">By event</h2>
-          <ul className="mt-3 grid gap-2 text-sm">
-            {stats.byEvent.map((event) => (
-              <li key={event.id} className="flex justify-between">
-                <span>{event.name}</span>
-                <span>{event.attending} attending</span>
-              </li>
-            ))}
-          </ul>
-          <h2 className="mt-4 font-semibold">Meals so far</h2>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
-            {stats.meals.length === 0
-              ? 'No meals yet.'
-              : stats.meals
-                  .map((meal) => `${meal.label} ${meal.count}`)
-                  .join(' · ')}
-          </p>
-        </section>
-      </div>
+                See who is still waiting →
+              </Link>
+            ) : null}
+          </section>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <h2 className="font-semibold">Latest replies</h2>
+              {stats.latest.length === 0 ? (
+                <p className="mt-3 text-sm text-[var(--text-muted)]">
+                  Nobody has replied yet.
+                </p>
+              ) : (
+                <ul className="mt-3 grid gap-3">
+                  {stats.latest.map((party) => (
+                    <li
+                      key={party.partyId}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 text-sm"
+                    >
+                      <span className="truncate font-medium">{party.name}</span>
+                      <span className="text-[var(--text-faint)]">
+                        {party.ago}
+                      </span>
+                      <span
+                        className={
+                          party.tone === 'no'
+                            ? 'text-rose-300 [.light_&]:text-rose-700'
+                            : 'text-emerald-300 [.light_&]:text-emerald-700'
+                        }
+                      >
+                        {party.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <h2 className="font-semibold">By event</h2>
+              <ul className="mt-3 grid gap-2 text-sm">
+                {stats.byEvent.map((event) => (
+                  <li key={event.id} className="flex justify-between gap-3">
+                    <span>{event.name}</span>
+                    <span className="shrink-0">
+                      {event.attending} attending
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <h2 className="mt-5 font-semibold">Meals so far</h2>
+              <p className="mt-2 text-sm text-[var(--text-muted)]">
+                {stats.meals.length === 0
+                  ? 'No meals yet.'
+                  : stats.meals
+                      .map((meal) => `${meal.label} ${meal.count}`)
+                      .join(' · ')}
+              </p>
+            </section>
+          </div>
+          <div className="mt-8">{setup}</div>
+        </>
+      )}
     </div>
+  )
+}
+
+function Legend({ dot, text }: { dot: string; text: string }) {
+  return (
+    <li className="flex items-center gap-2 text-[var(--text-muted)]">
+      <span className={`h-2.5 w-2.5 rounded-full ${dot}`} aria-hidden="true" />
+      {text}
+    </li>
   )
 }
 
@@ -418,34 +577,6 @@ function askedWhen(iso: string): string {
   }).format(date)
 }
 
-function Stat({
-  label,
-  value,
-  hint,
-  pink,
-}: {
-  label: string
-  value: string
-  hint?: string
-  pink?: boolean
-}) {
-  return (
-    <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <p className="text-xs tracking-[0.14em] text-[var(--text-muted)]">
-        {label.toUpperCase()}
-      </p>
-      <p
-        className={`mt-2 text-3xl font-semibold ${pink ? 'text-[var(--pink)]' : ''}`}
-      >
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-1 text-sm text-[var(--text-faint)]">{hint}</p>
-      ) : null}
-    </section>
-  )
-}
-
 export function Guests({ data }: { data: ReadyManage }) {
   const save = useServerFn(saveRsvpParty)
   const remove = useServerFn(removeRsvpParty)
@@ -456,6 +587,16 @@ export function Guests({ data }: { data: ReadyManage }) {
   )
   const [editing, setEditing] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const everyone = data.wedding.parties
+  const counts = {
+    all: everyone.length,
+    waiting: everyone.filter((party) => !party.lastRepliedAt).length,
+    replied: everyone.filter((party) => party.lastRepliedAt).length,
+    plus: everyone.filter(
+      (party) =>
+        party.guests.some((guest) => guest.isPlusOne) || party.plusOneAllowed,
+    ).length,
+  }
   const parties = data.wedding.parties.filter((party) => {
     const blob =
       `${party.name} ${party.guests.map((guest) => `${guest.firstName} ${guest.lastName} ${guest.altNames.join(' ')}`).join(' ')}`.toLowerCase()
@@ -488,11 +629,11 @@ export function Guests({ data }: { data: ReadyManage }) {
             {data.stats.guests} guests in {data.stats.parties} parties
           </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           <EmailAllButton data={data} />
           <button
             type="button"
-            className={`${rsvpButton} w-auto`}
+            className={`${rsvpButton} !w-auto`}
             onClick={() => setEditing('new')}
           >
             + Add party
@@ -519,10 +660,13 @@ export function Guests({ data }: { data: ReadyManage }) {
             key={id}
             type="button"
             aria-pressed={filter === id}
-            className={`min-h-11 rounded-full border px-3 text-sm ${filter === id ? 'border-[var(--pink)] text-white' : 'border-[var(--border-strong)] text-[var(--text-muted)]'}`}
+            className={`min-h-11 rounded-full border px-3 text-sm ${filter === id ? 'border-[var(--pink)] bg-[var(--pink-tint)] text-[var(--text)]' : 'border-[var(--border-strong)] text-[var(--text-muted)]'}`}
             onClick={() => setFilter(id)}
           >
             {label}
+            <span className="ml-1.5 text-[var(--text-faint)]">
+              {counts[id]}
+            </span>
           </button>
         ))}
       </div>
@@ -545,8 +689,16 @@ export function Guests({ data }: { data: ReadyManage }) {
                     .join(', ')}
                 </span>
               </span>
-              <span className="grid justify-items-end text-sm text-[var(--text-faint)]">
-                <span>
+              <span className="grid shrink-0 justify-items-end gap-1 pl-3 text-sm">
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    party.lastRepliedAt
+                      ? party.phoneReply
+                        ? 'bg-sky-400/15 text-sky-300 [.light_&]:text-sky-700'
+                        : 'bg-emerald-400/15 text-emerald-300 [.light_&]:text-emerald-700'
+                      : 'bg-amber-400/15 text-amber-300 [.light_&]:text-amber-700'
+                  }`}
+                >
                   {party.lastRepliedAt
                     ? party.phoneReply
                       ? 'Marked by you'
@@ -882,7 +1034,9 @@ function MarkReply({
           const value = guest.replies[event.id]
           return [
             event.id,
-            (value === 'attending' || value === 'declined' ? value : 'pending') as Reply,
+            (value === 'attending' || value === 'declined'
+              ? value
+              : 'pending') as Reply,
           ]
         }),
       ) as Record<string, Reply>,
@@ -1007,7 +1161,9 @@ function MarkReply({
                 return {
                   ok: false,
                   message:
-                    'error' in result ? result.error : 'Could not save that reply.',
+                    'error' in result
+                      ? result.error
+                      : 'Could not save that reply.',
                 }
               }
               await router.invalidate()
@@ -1032,7 +1188,7 @@ function EmailAllButton({ data }: { data: ReadyManage }) {
   const label = ready === 1 ? '1 party' : `${ready} parties`
   return (
     <ActionButton
-      className={`${rsvpGhost} w-auto`}
+      className={`${rsvpGhost} !w-auto`}
       busy="Sending…"
       done="Sent"
       surface={surface}
@@ -1467,175 +1623,177 @@ export function Exports({
         </div>
       ) : null}
       <div className="print:hidden">
-      <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
-        EXPORTS
-      </p>
-      <h1 className="portal-display text-4xl">Send the numbers</h1>
-      <p className="mt-2 text-[var(--text-muted)]">
-        Every file opens in Excel or Google Sheets. Accents and commas are
-        handled.
-      </p>
-      <div className="mt-6 grid gap-3 md:grid-cols-2">
-        <ExportCard
-          title="Caterer report"
-          body="Attending guests per event: name, party, meal, dietary needs, child"
-          onClick={() => void grab('caterer', 'caterer-report')}
-          onPrint={sheets.caterer ? () => setCatererPrint(true) : undefined}
-        />
-        <ExportCard
-          title="DJ song list"
-          body="Unique songs, artist, request count, who asked, do-not-play"
-          onClick={() => void grab('songs', 'dj-song-requests')}
-        />
-        <ExportCard
-          title="Full guest list"
-          body="Every guest, every event, status, contact email"
-          onClick={() => void grab('guests', 'guest-list')}
-        />
-        <ExportCard
-          title="Seating chart"
-          body="Table, seat, party, guest, child, meal, event. Unseated attending guests are listed last."
-          onClick={() => void grab('seating', 'seating-chart')}
-          onPrint={sheets.seating ? () => setSeatingPrint(true) : undefined}
-        />
-        <ExportCard
-          title="Timeline"
-          body="Every moment of the day, private ones included, for you and the DJ"
-          onClick={() => void grab('timeline', 'timeline')}
-          onPrint={sheets.timeline ? () => print('timeline') : undefined}
-        />
-      </div>
-      <div className="mt-4 flex flex-wrap items-start gap-3">
-        <ActionButton
-          className={rsvpButton}
-          wrapperClassName="inline-grid w-auto"
-          busy="Sending…"
-          done="Sent"
-          surface={surface}
-          disabled={!canRemind}
-          disabledHint="A manual reminder already went out in the last 24 hours."
-          lastUsed={
-            data.wedding.remindedManualAt
-              ? `Sent ${shortWhen(data.wedding.remindedManualAt)}`
-              : ''
-          }
-          confirmMessage={`Email the reminder to ${data.stats.waitingParties} parties still waiting?`}
-          onRun={async (): Promise<RunResult> => {
-            const result = await remind({ data: { now: true } })
-            await router.invalidate()
-            return {
-              ok: result.ok,
-              message: result.detail || 'The email was not sent.',
-            }
-          }}
-        >
-          Email parties still waiting
-        </ActionButton>
-        <p className="max-w-xs text-sm text-[var(--text-muted)]">
-          Still waiting on {data.stats.waitingParties} parties. The automatic
-          note goes out 7 days before the deadline.
+        <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
+          EXPORTS
         </p>
-      </div>
-      <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h2 className="font-semibold">Send me a test</h2>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Any email goes to the couple&apos;s own address only.
+        <h1 className="portal-display text-4xl">Send the numbers</h1>
+        <p className="mt-2 text-[var(--text-muted)]">
+          Every file opens in Excel or Google Sheets. Accents and commas are
+          handled.
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <select
-            className={`${rsvpField} max-w-xs`}
-            aria-label="Email to test"
-            value={testKind}
-            onChange={(event) => {
-              setTestKind(event.target.value)
-              setTestNote('')
-            }}
-          >
-            {TEST_EMAILS.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <ExportCard
+            title="Caterer report"
+            body="Attending guests per event: name, party, meal, dietary needs, child"
+            onClick={() => void grab('caterer', 'caterer-report')}
+            onPrint={sheets.caterer ? () => setCatererPrint(true) : undefined}
+          />
+          <ExportCard
+            title="DJ song list"
+            body="Unique songs, artist, request count, who asked, do-not-play"
+            onClick={() => void grab('songs', 'dj-song-requests')}
+          />
+          <ExportCard
+            title="Full guest list"
+            body="Every guest, every event, status, contact email"
+            onClick={() => void grab('guests', 'guest-list')}
+          />
+          <ExportCard
+            title="Seating chart"
+            body="Table, seat, party, guest, child, meal, event. Unseated attending guests are listed last."
+            onClick={() => void grab('seating', 'seating-chart')}
+            onPrint={sheets.seating ? () => setSeatingPrint(true) : undefined}
+          />
+          <ExportCard
+            title="Timeline"
+            body="Every moment of the day, private ones included, for you and the DJ"
+            onClick={() => void grab('timeline', 'timeline')}
+            onPrint={sheets.timeline ? () => print('timeline') : undefined}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap items-start gap-3">
           <ActionButton
-            className={`${rsvpGhost} w-auto`}
+            className={rsvpButton}
+            wrapperClassName="inline-grid w-auto"
             busy="Sending…"
             done="Sent"
             surface={surface}
+            disabled={!canRemind}
+            disabledHint="A manual reminder already went out in the last 24 hours."
             lastUsed={
-              !testNote && data.testedAt
-                ? `Last test sent ${shortWhen(data.testedAt)}`
+              data.wedding.remindedManualAt
+                ? `Sent ${shortWhen(data.wedding.remindedManualAt)}`
                 : ''
             }
+            confirmMessage={`Email the reminder to ${data.stats.waitingParties} parties still waiting?`}
             onRun={async (): Promise<RunResult> => {
-              setTestNote('')
-              try {
-                const result = await test({ data: { kind: testKind } })
-                if (result.ok) {
-                  const label =
-                    TEST_EMAILS.find(([id]) => id === testKind)?.[1] ?? 'Test'
-                  setTestNote(
-                    `✓ ${result.detail.replace(/\.$/, '')} · ${label} · ${shortWhen(new Date().toISOString())}`,
-                  )
-                }
-                await router.invalidate()
-                return {
-                  ok: result.ok,
-                  message: result.ok ? '' : result.detail || 'The test did not send.',
-                }
-              } catch {
-                return {
-                  ok: false,
-                  message: 'The test did not send. Check your connection.',
-                }
+              const result = await remind({ data: { now: true } })
+              await router.invalidate()
+              return {
+                ok: result.ok,
+                message: result.detail || 'The email was not sent.',
               }
             }}
           >
-            Send me a test
+            Email parties still waiting
           </ActionButton>
+          <p className="max-w-xs text-sm text-[var(--text-muted)]">
+            Still waiting on {data.stats.waitingParties} parties. The automatic
+            note goes out 7 days before the deadline.
+          </p>
         </div>
-        {testNote ? (
-          <p
-            className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${surface === 'light' ? 'border-emerald-600/40 text-emerald-700' : 'border-emerald-400/40 text-emerald-300'}`}
-            role="status"
-            aria-live="polite"
-          >
-            {testNote}
+        <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h2 className="font-semibold">Send me a test</h2>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            Any email goes to the couple&apos;s own address only.
           </p>
-        ) : null}
-      </section>
-      <section className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h2 className="font-semibold">Emails sent</h2>
-        {data.emails.length === 0 ? (
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
-            Nothing sent yet.
-          </p>
-        ) : (
-          <ul className="mt-3 grid gap-2 text-sm">
-            {data.emails.map((row) => (
-              <li
-                key={row.id}
-                className="flex flex-wrap items-center justify-between gap-2"
-              >
-                <span>
-                  <span className="font-semibold">{emailLabel(row)}</span>{' '}
-                  <span className="text-[var(--text-muted)]">→ {row.to}</span>
-                </span>
-                <span
-                  className={
-                    row.delivered
-                      ? 'text-emerald-300'
-                      : 'text-[var(--text-faint)]'
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <select
+              className={`${rsvpField} max-w-xs`}
+              aria-label="Email to test"
+              value={testKind}
+              onChange={(event) => {
+                setTestKind(event.target.value)
+                setTestNote('')
+              }}
+            >
+              {TEST_EMAILS.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <ActionButton
+              className={`${rsvpGhost} w-auto`}
+              busy="Sending…"
+              done="Sent"
+              surface={surface}
+              lastUsed={
+                !testNote && data.testedAt
+                  ? `Last test sent ${shortWhen(data.testedAt)}`
+                  : ''
+              }
+              onRun={async (): Promise<RunResult> => {
+                setTestNote('')
+                try {
+                  const result = await test({ data: { kind: testKind } })
+                  if (result.ok) {
+                    const label =
+                      TEST_EMAILS.find(([id]) => id === testKind)?.[1] ?? 'Test'
+                    setTestNote(
+                      `✓ ${result.detail.replace(/\.$/, '')} · ${label} · ${shortWhen(new Date().toISOString())}`,
+                    )
                   }
+                  await router.invalidate()
+                  return {
+                    ok: result.ok,
+                    message: result.ok
+                      ? ''
+                      : result.detail || 'The test did not send.',
+                  }
+                } catch {
+                  return {
+                    ok: false,
+                    message: 'The test did not send. Check your connection.',
+                  }
+                }
+              }}
+            >
+              Send me a test
+            </ActionButton>
+          </div>
+          {testNote ? (
+            <p
+              className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${surface === 'light' ? 'border-emerald-600/40 text-emerald-700' : 'border-emerald-400/40 text-emerald-300'}`}
+              role="status"
+              aria-live="polite"
+            >
+              {testNote}
+            </p>
+          ) : null}
+        </section>
+        <section className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h2 className="font-semibold">Emails sent</h2>
+          {data.emails.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              Nothing sent yet.
+            </p>
+          ) : (
+            <ul className="mt-3 grid gap-2 text-sm">
+              {data.emails.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex flex-wrap items-center justify-between gap-2"
                 >
-                  {row.delivered ? 'Sent' : 'Not sent'} ·{' '}
-                  {emailWhen(row.sentAt)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                  <span>
+                    <span className="font-semibold">{emailLabel(row)}</span>{' '}
+                    <span className="text-[var(--text-muted)]">→ {row.to}</span>
+                  </span>
+                  <span
+                    className={
+                      row.delivered
+                        ? 'text-emerald-300'
+                        : 'text-[var(--text-faint)]'
+                    }
+                  >
+                    {row.delivered ? 'Sent' : 'Not sent'} ·{' '}
+                    {emailWhen(row.sentAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   )
