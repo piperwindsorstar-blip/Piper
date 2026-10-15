@@ -158,7 +158,7 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
                   </h2>
                 )}
                 {guest.isChild ? (
-                  <span className="rounded-full bg-amber-900/60 px-2 py-1 text-xs text-amber-200">
+                  <span className="rounded-full bg-amber-900/60 px-2 py-1 text-xs text-amber-200 [.light_&]:bg-amber-100 [.light_&]:text-amber-900">
                     Child
                   </span>
                 ) : null}
@@ -171,7 +171,9 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
               {data.events.map((event) => (
                 <fieldset key={event.id} className="mt-4">
                   <legend className="text-sm text-[var(--text-muted)]">
-                    <span className="font-semibold text-[var(--text)]">{event.name}</span>
+                    <span className="font-semibold text-[var(--text)]">
+                      {event.name}
+                    </span>
                     {eventWhen(event) ? (
                       <span className="block">{eventWhen(event)}</span>
                     ) : null}
@@ -575,8 +577,8 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
                   <span
                     className={
                       guest.replies[event.id] === 'declined'
-                        ? 'text-sm text-rose-300'
-                        : 'text-sm text-emerald-300'
+                        ? 'text-sm text-rose-300 [.light_&]:text-rose-700'
+                        : 'text-sm text-emerald-300 [.light_&]:text-emerald-700'
                     }
                   >
                     {guest.replies[event.id] === 'declined'
@@ -691,7 +693,7 @@ export function ReplyDone({
   return (
     <RsvpFrame>
       <RsvpHeader />
-      <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-emerald-400 text-2xl text-emerald-300">
+      <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-emerald-400 text-2xl text-emerald-300 [.light_&]:text-emerald-700">
         ✓
       </div>
       <h1 className="portal-display mt-4 text-center text-4xl">

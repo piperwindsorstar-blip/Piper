@@ -157,30 +157,30 @@ function WeddingHome({ data }: { data: ShownHome }) {
         <TheDay moments={data.day} />
       ) : data.schedule.length === 0 ? null : (
         <>
-        <h2 className="mt-8 text-xs tracking-[0.18em] text-[var(--text-muted)]">
-          SCHEDULE
-        </h2>
-        <ul className="mt-3 grid gap-3">
-          {data.schedule.map((item) => (
-            <li
-              key={`${item.name}-${item.time}`}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
-            >
-              <span>
-                <span className="block font-semibold">{item.name}</span>
-                <span className="text-sm text-[var(--text-muted)]">
-                  {item.time}
-                  {item.place ? ` · ${item.place}` : ''}
+          <h2 className="mt-8 text-xs tracking-[0.18em] text-[var(--text-muted)]">
+            SCHEDULE
+          </h2>
+          <ul className="mt-3 grid gap-3">
+            {data.schedule.map((item) => (
+              <li
+                key={`${item.name}-${item.time}`}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+              >
+                <span>
+                  <span className="block font-semibold">{item.name}</span>
+                  <span className="text-sm text-[var(--text-muted)]">
+                    {item.time}
+                    {item.place ? ` · ${item.place}` : ''}
+                  </span>
                 </span>
-              </span>
-              {item.note ? (
-                <span className="text-sm text-[var(--text-faint)]">
-                  {item.note}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+                {item.note ? (
+                  <span className="text-sm text-[var(--text-faint)]">
+                    {item.note}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </>
       )}
       {data.notes.length > 0 ? (
@@ -285,7 +285,7 @@ export function FindInvitation({
       </form>
       {found ? (
         <section className="mt-4 rounded-3xl border border-emerald-500/70 bg-[var(--surface)] p-4">
-          <p className="text-xs tracking-[0.16em] text-emerald-300">
+          <p className="text-xs tracking-[0.16em] text-emerald-300 [.light_&]:text-emerald-700">
             WE FOUND YOU
           </p>
           <h2 className="portal-display mt-2 text-2xl">{found.partyName}</h2>
@@ -329,7 +329,11 @@ export function FindInvitation({
             Text {contact.name || 'the couple'} at {contact.phone}
           </a>
         ) : (
-          <Link to="/rsvp/$slug" params={{ slug }} className={`${rsvpGhost} mt-4`}>
+          <Link
+            to="/rsvp/$slug"
+            params={{ slug }}
+            className={`${rsvpGhost} mt-4`}
+          >
             Back to the invitation
           </Link>
         )

@@ -51,7 +51,7 @@ export function useRsvpStyle(): RsvpStyle {
 }
 
 export const rsvpButton =
-  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--pink)] px-5 text-base font-semibold text-[#0D0D0D] transition hover:brightness-110 active:brightness-90 disabled:opacity-60'
+  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--pink)] px-5 text-base font-semibold text-[var(--on-accent,#0D0D0D)] transition hover:brightness-110 active:brightness-90 disabled:opacity-60'
 export const rsvpGhost =
   'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-transparent px-5 text-base font-semibold text-[var(--text)] transition hover:border-[var(--pink)] active:brightness-90'
 /** The same buttons sized to their label instead of the full width. */
@@ -64,6 +64,24 @@ export const rsvpField =
  * The guest page wears the couple's template: the same paper tint, the same
  * accent, the same display face as the letter, plus their photo at the top.
  */
+/**
+ * The ink for text on an accent-coloured button: white on a dark accent (the
+ * Minimal black, the Kraft green), near-black on a light one (the pinks, the
+ * gold). A fixed dark ink made the buttons unreadable on the dark accents.
+ */
+export function onAccentInk(accent: string | undefined): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(accent ?? '')
+  if (!match) return '#0D0D0D'
+  const value = parseInt(match[1], 16)
+  const channel = (shift: number) => {
+    const part = ((value >> shift) & 255) / 255
+    return part <= 0.03928 ? part / 12.92 : ((part + 0.055) / 1.055) ** 2.4
+  }
+  const luminance =
+    0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0)
+  return luminance < 0.18 ? '#FFFFFF' : '#0D0D0D'
+}
+
 export function RsvpFrame({ children }: { children: ReactNode }) {
   const { theme, template, photo } = useRsvpStyle()
   const { skin } = templateFor(template)
@@ -81,6 +99,7 @@ export function RsvpFrame({ children }: { children: ReactNode }) {
         {
           ...(web?.vars ?? {}),
           '--display-font': skin.displayFont,
+          '--on-accent': onAccentInk(web?.vars['--pink']),
           backgroundImage: backdrop,
         } as React.CSSProperties
       }
