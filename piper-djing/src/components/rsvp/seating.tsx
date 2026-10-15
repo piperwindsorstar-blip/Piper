@@ -241,13 +241,15 @@ export function SeatingChart({ data }: { data: SeatingData }) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <SaveStatus phase={autosave.phase} error={autosave.error} />
-            <button
-              type="button"
-              className={`${rsvpGhost} w-auto`}
-              onClick={() => setPrinting(true)}
-            >
-              Print / PDF
-            </button>
+            {plan.tables.length === 0 ? null : (
+              <button
+                type="button"
+                className={`${rsvpGhost} w-auto`}
+                onClick={() => setPrinting(true)}
+              >
+                Print / PDF
+              </button>
+            )}
           </div>
         </div>
 
@@ -327,6 +329,8 @@ export function SeatingChart({ data }: { data: SeatingData }) {
 
         {/* Toolbar */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          {plan.tables.length === 0 ? null : (
+          <>
           <button
             type="button"
             className={`${rsvpGhost} w-auto`}
@@ -361,6 +365,8 @@ export function SeatingChart({ data }: { data: SeatingData }) {
           >
             Auto-arrange tables
           </button>
+          </>
+          )}
           {arranged ? (
             <SaveStatus phase={autosave.phase} error={autosave.error} />
           ) : null}

@@ -194,7 +194,6 @@ export function sampleDay(makeId: () => string): Moment[] {
     ['18:30', 'Vendor meals', false, ''],
     ['19:30', 'First dance', true, ''],
     ['19:40', 'Speeches', true, ''],
-    ['20:15', 'Cake cutting', true, ''],
     ['20:30', 'Open dancing', true, ''],
     ['00:45', 'Last song', true, ''],
   ]

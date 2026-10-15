@@ -1115,8 +1115,15 @@ export const saveRsvpSetup = createServerFn({ method: 'POST' })
     parsed.partnerTwo = wedding.partnerTwo
     parsed.eventDate = wedding.eventDate
     const ids = new Set(parsed.events.map((event) => event.id))
+    // An event the couple just added starts with everyone already invited;
+    // they can untick it for a party in the guest list.
+    const before = new Set(wedding.events.map((event) => event.id))
+    const added = parsed.events
+      .map((event) => event.id)
+      .filter((id) => !before.has(id))
     for (const party of parsed.parties) {
-      party.eventIds = party.eventIds.filter((id) => ids.has(id))
+      const kept = party.eventIds.filter((id) => ids.has(id))
+      party.eventIds = [...kept, ...added.filter((id) => !kept.includes(id))]
     }
     await writeRsvp(parsed)
     return { ok: true as const }

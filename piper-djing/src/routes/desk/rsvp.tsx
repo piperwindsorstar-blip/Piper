@@ -50,9 +50,12 @@ function RsvpDesk() {
           className={deskPrimary}
           onClick={() => {
             void sample().then(async (result) => {
-              if (!result.ok) return
-              setNotice('Sample wedding is ready.')
-              await router.invalidate()
+              if (!result.ok) {
+                setNotice('The sample wedding could not open. Try again.')
+                return
+              }
+              // Creating it also signs the desk into it, so go straight there.
+              await router.navigate({ to: '/rsvp/manage' })
             })
           }}
         >

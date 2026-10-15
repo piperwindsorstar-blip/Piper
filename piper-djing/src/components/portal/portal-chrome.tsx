@@ -422,7 +422,6 @@ function segmentWidth(
   master: ReturnType<typeof usePortal>['page']['master'],
 ): string {
   if (id === 'overview') return '100%'
-  if (id === 'review') return id === current ? '100%' : '0%'
   const percent = sectionPercent(planning, id, master)
   // The section you're in always shows a sliver, so you can see where you are.
   return `${id === current ? Math.max(percent, 12) : percent}%`

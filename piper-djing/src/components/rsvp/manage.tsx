@@ -8,7 +8,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { priceLabel } from '../../lib/rsvp/model.ts'
 import {
@@ -85,7 +85,15 @@ export function ManageShell({
   const theme = data.wedding.theme
   const [more, setMore] = useState(false)
   const couple = `${data.wedding.partnerOne} & ${data.wedding.partnerTwo}`
-  const when = `${data.wedding.eventDate}${data.daysLeft !== null ? ` · ${data.daysLeft} days` : ''}`
+  const days =
+    data.daysLeft === null
+      ? ''
+      : data.daysLeft === 0
+        ? ' · today'
+        : data.daysLeft < 0
+          ? ''
+          : ` · ${data.daysLeft} ${data.daysLeft === 1 ? 'day' : 'days'}`
+  const when = `${headerDate(data.wedding.eventDate)}${days}`
   return (
     <RsvpThemeProvider theme={theme}>
       <div
@@ -202,6 +210,19 @@ export function ManageShell({
       </div>
     </RsvpThemeProvider>
   )
+}
+
+/** "2027-06-12" → "Sat, Jun 12, 2027" for the dashboard header. */
+function headerDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  if (!year || !month || !day) return iso
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(Date.UTC(year, month - 1, day)))
 }
 
 function ThemeToggle({ theme }: { theme: 'dark' | 'light' }) {
@@ -1350,7 +1371,16 @@ export function Events({ data }: { data: ReadyManage }) {
   const [lockAfter, setLock] = useState(data.wedding.lockAfterDeadline)
   const [autoRemind, setRemind] = useState(data.wedding.autoRemind)
   const [notice, setNotice] = useState('')
+  const [editing, setEditing] = useState('')
+  const original = new Set(data.wedding.events.map((item) => item.id))
+  function patchEvent(id: string, change: Partial<(typeof events)[number]>) {
+    setNotice('')
+    setEvents((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...change } : item)),
+    )
+  }
   return (
+    <div className="grid gap-8">
     <form
       className="grid gap-4"
       onSubmit={(event) => {
@@ -1402,36 +1432,139 @@ export function Events({ data }: { data: ReadyManage }) {
         </Link>
       </div>
       <ul className="grid gap-2">
-        {events.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between rounded-2xl border border-[var(--border)] px-4 py-3"
-          >
-            <span>
-              <span className="block font-semibold">{item.name}</span>
-              <span className="text-sm text-[var(--text-muted)]">
-                {item.time} · {item.location}
-              </span>
-            </span>
-            <button
-              type="button"
-              aria-pressed={item.enabled}
-              className="min-h-11 min-w-11 rounded-full bg-[var(--pink)] text-xs font-semibold text-[#0D0D0D]"
-              onClick={() =>
-                setEvents((current) =>
-                  current.map((event) =>
-                    event.id === item.id
-                      ? { ...event, enabled: !event.enabled }
-                      : event,
-                  ),
-                )
-              }
+        {events.map((item) => {
+          const open = editing === item.id
+          return (
+            <li
+              key={item.id}
+              className={`rounded-2xl border px-4 py-3 ${item.enabled ? 'border-[var(--border)]' : 'border-dashed border-[var(--border)] opacity-80'}`}
             >
-              {item.enabled ? 'On' : 'Off'}
-            </button>
-          </li>
-        ))}
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block font-semibold">{item.name || 'Name this event'}</span>
+                  <span className="block text-sm text-[var(--text-muted)]">
+                    {[item.dateLabel, item.time, item.location].filter(Boolean).join(' · ') ||
+                      'Add a time and place'}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={item.enabled}
+                  aria-label={`${item.name}: ${item.enabled ? 'guests are asked' : 'off'}`}
+                  className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ${
+                    item.enabled
+                      ? 'bg-[var(--pink)] text-[#0D0D0D]'
+                      : 'border border-[var(--border-strong)] text-[var(--text-muted)]'
+                  }`}
+                  onClick={() => patchEvent(item.id, { enabled: !item.enabled })}
+                >
+                  {item.enabled ? 'On' : 'Off'}
+                </button>
+              </div>
+              {open ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm sm:col-span-2">
+                    Name
+                    <input
+                      className={`${rsvpField} mt-1`}
+                      maxLength={80}
+                      value={item.name}
+                      placeholder="Sunday brunch"
+                      onChange={(event) => patchEvent(item.id, { name: event.target.value })}
+                    />
+                  </label>
+                  <label className="text-sm">
+                    Day
+                    <input
+                      className={`${rsvpField} mt-1`}
+                      maxLength={80}
+                      value={item.dateLabel}
+                      placeholder="Saturday, June 12"
+                      onChange={(event) => patchEvent(item.id, { dateLabel: event.target.value })}
+                    />
+                  </label>
+                  <label className="text-sm">
+                    Time
+                    <input
+                      className={`${rsvpField} mt-1`}
+                      maxLength={40}
+                      value={item.time}
+                      placeholder="4:00 PM"
+                      onChange={(event) => patchEvent(item.id, { time: event.target.value })}
+                    />
+                  </label>
+                  <label className="text-sm sm:col-span-2">
+                    Place
+                    <input
+                      className={`${rsvpField} mt-1`}
+                      maxLength={80}
+                      value={item.location}
+                      placeholder={data.wedding.venue || 'The venue'}
+                      onChange={(event) => patchEvent(item.id, { location: event.target.value })}
+                    />
+                  </label>
+                  <span className="flex flex-wrap gap-3 sm:col-span-2">
+                    <button type="button" className={`${rsvpGhost} w-auto`} onClick={() => setEditing('')}>
+                      Done
+                    </button>
+                    {original.has(item.id) || events.length <= 1 ? null : (
+                      <button
+                        type="button"
+                        className="min-h-11 text-sm text-[var(--text-muted)] underline"
+                        onClick={() => {
+                          setEditing('')
+                          setEvents((current) => current.filter((event) => event.id !== item.id))
+                        }}
+                      >
+                        Remove this event
+                      </button>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="mt-1 min-h-11 text-sm text-[var(--text-muted)] underline"
+                  onClick={() => setEditing(item.id)}
+                >
+                  Edit name, time and place
+                </button>
+              )}
+            </li>
+          )
+        })}
       </ul>
+      {events.length < 8 ? (
+        <button
+          type="button"
+          className={`${rsvpGhost} w-auto justify-self-start`}
+          onClick={() => {
+            const id = `event-${Date.now().toString(36)}`
+            setEvents((current) => [
+              ...current,
+              {
+                id,
+                name: '',
+                dateLabel: '',
+                time: '',
+                location: '',
+                note: '',
+                enabled: true,
+                asksMeal: false,
+                hidden: false,
+              },
+            ])
+            setEditing(id)
+          }}
+        >
+          + Add an event
+        </button>
+      ) : null}
+      {events.some((item) => !original.has(item.id)) ? (
+        <p className="text-sm text-[var(--text-muted)]">
+          Everyone already on your list is invited to a new event. You can untick it for a party in Guests.
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm" htmlFor="deadline">
           Deadline
@@ -1470,25 +1603,44 @@ export function Events({ data }: { data: ReadyManage }) {
           onChange={(event) => setLock(event.target.checked)}
         />
       </label>
-      <button className={`${rsvpButton} w-auto`} type="submit">
+      <button
+        className={`${rsvpButton} w-auto`}
+        type="submit"
+        disabled={events.some((item) => !item.name.trim())}
+      >
         Save changes
       </button>
-      {notice ? (
-        <p className="text-sm text-[var(--text-muted)]">{notice}</p>
+      {events.some((item) => !item.name.trim()) ? (
+        <p className="text-sm text-[var(--text-muted)]">Give every event a name to save.</p>
       ) : null}
+      {notice ? (
+        <p className="text-sm text-[var(--text-muted)]" role="status">{notice}</p>
+      ) : null}
+    </form>
       <MealOptions
         key={mealsOf(data).join('\u0000')}
         meals={mealsOf(data)}
         title="Dinner options"
       />
-    </form>
+    </div>
   )
 }
+
+const SONG_CHOICES = [
+  { value: 'queued', label: 'Fine to play' },
+  { value: 'must', label: 'Must play' },
+  { value: 'no', label: 'Do not play' },
+] as const
+
+type SongStatus = (typeof SONG_CHOICES)[number]['value']
 
 export function Songs({ data }: { data: ReadyManage }) {
   const save = useServerFn(saveSongStatus)
   const router = useRouter()
-  const unique = useMemo(() => data.songs.length, [data.songs.length])
+  /** Choices shown straight away while the save is on its way. */
+  const [picked, setPicked] = useState<Record<string, SongStatus>>({})
+  const [error, setError] = useState('')
+  const unique = data.songs.length
   const requests = data.songs.reduce((sum, song) => sum + song.count, 0)
   return (
     <div>
@@ -1496,66 +1648,94 @@ export function Songs({ data }: { data: ReadyManage }) {
         SONG REQUESTS
       </p>
       <h1 className="portal-display text-4xl">
-        {requests} requests · {unique} unique songs
+        {requests === 0
+          ? 'No requests yet'
+          : `${requests} ${requests === 1 ? 'request' : 'requests'} · ${unique} ${unique === 1 ? 'song' : 'songs'}`}
       </h1>
       <p className="mt-2 text-sm text-[var(--text-muted)]">
-        Mark any you never want played. Do-not-play stays off the dance floor.
+        {requests === 0
+          ? 'Guests can ask for a song when they reply. Their picks land here.'
+          : 'Mark the ones that have to play, and any you never want played.'}
       </p>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="text-[var(--text-faint)]">
-            <tr>
-              <th className="py-2">Song</th>
-              <th>Artist</th>
-              <th>Requests</th>
-              <th>Requested by</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.songs.map((song, index) => (
-              <tr
-                key={`${song.title}-${song.artist}`}
-                className="border-t border-[var(--border)]"
+      {error ? (
+        <p className="mt-3 text-sm text-[var(--danger,#f87171)]" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <ol className="mt-4 grid gap-3">
+        {data.songs.map((song, index) => {
+          const key = `${song.title}\u0000${song.artist}`
+          const status = picked[key] ?? (song.status as SongStatus)
+          return (
+            <li
+              key={key}
+              className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold">
+                    {index + 1}. {song.title}
+                  </p>
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {song.artist || 'Artist not given'}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm text-[var(--text-muted)]">
+                  {song.count} {song.count === 1 ? 'request' : 'requests'}
+                </p>
+              </div>
+              {song.who ? (
+                <p className="mt-1 text-sm text-[var(--text-faint)]">Asked by {song.who}</p>
+              ) : null}
+              <div
+                className="mt-3 grid grid-cols-3 gap-1 rounded-full border border-[var(--border-strong)] p-1"
+                role="group"
+                aria-label={`What to do with ${song.title}`}
               >
-                <td className="py-3 font-semibold">
-                  {index + 1}. {song.title}
-                </td>
-                <td>{song.artist}</td>
-                <td>{song.count}</td>
-                <td>{song.who}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="min-h-11 rounded-full border border-[var(--border-strong)] px-3"
-                    onClick={() => {
-                      const status =
-                        song.status === 'queued'
-                          ? 'must'
-                          : song.status === 'must'
-                            ? 'no'
-                            : 'queued'
-                      void save({
-                        data: {
-                          title: song.title,
-                          artist: song.artist,
-                          status,
-                        },
-                      }).then(() => router.invalidate())
-                    }}
-                  >
-                    {song.status === 'must'
-                      ? 'Must play'
-                      : song.status === 'no'
-                        ? 'Do not play'
-                        : 'Queued'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                {SONG_CHOICES.map((choice) => {
+                  const on = status === choice.value
+                  return (
+                    <button
+                      key={choice.value}
+                      type="button"
+                      aria-pressed={on}
+                      className={`min-h-11 rounded-full px-2 text-sm font-semibold ${
+                        on
+                          ? choice.value === 'no'
+                            ? 'bg-[var(--text)] text-[var(--bg,#0d0d0d)]'
+                            : 'bg-[var(--pink)] text-[#0D0D0D]'
+                          : 'text-[var(--text-muted)]'
+                      }`}
+                      onClick={() => {
+                        if (on) return
+                        setError('')
+                        setPicked((current) => ({ ...current, [key]: choice.value }))
+                        void save({
+                          data: { title: song.title, artist: song.artist, status: choice.value },
+                        })
+                          .then((result) => {
+                            if (!result.ok) throw new Error('not saved')
+                            return router.invalidate()
+                          })
+                          .catch(() => {
+                            setPicked((current) => {
+                              const next = { ...current }
+                              delete next[key]
+                              return next
+                            })
+                            setError(`Couldn't save the change to ${song.title}. Try again.`)
+                          })
+                      }}
+                    >
+                      {choice.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }
@@ -1812,23 +1992,23 @@ function ExportCard({
 }) {
   return (
     <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="font-semibold">{title}</h2>
           <p className="mt-1 text-sm text-[var(--text-muted)]">{body}</p>
         </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
           <button
             type="button"
-            className="min-h-11 rounded-full border border-[var(--border-strong)] px-3 text-sm"
+            className="min-h-11 rounded-full border border-[var(--border-strong)] px-4 text-sm"
             onClick={onClick}
           >
-            CSV
+            Download CSV
           </button>
           {onPrint ? (
             <button
               type="button"
-              className="min-h-11 rounded-full border border-[var(--border-strong)] px-3 text-sm"
+              className="min-h-11 rounded-full border border-[var(--border-strong)] px-4 text-sm"
               onClick={onPrint}
             >
               Print / PDF
@@ -1861,39 +2041,6 @@ export function Settings({ data }: { data: ReadyManage }) {
           </p>
           <h1 className="portal-display text-4xl">Share & privacy</h1>
         </div>
-        <ActionButton
-          className={`${rsvpButton} w-auto`}
-          busy="Saving…"
-          done="Saved"
-          surface={surface}
-          onRun={async () => {
-            const result = await save({
-              data: {
-                accessMode,
-                inviteCode,
-                showContact,
-                contactPhone,
-                deadline: data.wedding.deadline,
-                catererDeadline: data.wedding.catererDeadline,
-                lockAfterDeadline: data.wedding.lockAfterDeadline,
-                autoRemind: data.wedding.autoRemind,
-                events: data.wedding.events,
-                questions: data.wedding.questions,
-                schedule: data.wedding.schedule,
-                notes: data.wedding.notes,
-                venue: data.wedding.venue,
-                address: data.wedding.address,
-              },
-            })
-            if (result.ok) await router.invalidate()
-            return {
-              ok: result.ok,
-              message: result.ok ? 'Saved.' : 'Could not save.',
-            }
-          }}
-        >
-          Save changes
-        </ActionButton>
       </div>
       <fieldset className="grid gap-2">
         <legend className="text-sm text-[var(--text-muted)]">
@@ -1927,15 +2074,17 @@ export function Settings({ data }: { data: ReadyManage }) {
           </label>
         ))}
       </fieldset>
-      <label className="text-sm" htmlFor="invite-code">
-        Invite code
-        <input
-          id="invite-code"
-          className={`${rsvpField} mt-1`}
-          value={inviteCode}
-          onChange={(event) => setCode(event.target.value)}
-        />
-      </label>
+      {accessMode === 'code' ? (
+        <label className="text-sm" htmlFor="invite-code">
+          Invite code
+          <input
+            id="invite-code"
+            className={`${rsvpField} mt-1`}
+            value={inviteCode}
+            onChange={(event) => setCode(event.target.value)}
+          />
+        </label>
+      ) : null}
       <label className="text-sm" htmlFor="site-address">
         Site address
         <input
@@ -1975,6 +2124,39 @@ export function Settings({ data }: { data: ReadyManage }) {
           />
         </label>
       ) : null}
+      <ActionButton
+        className={`${rsvpButton} w-auto`}
+        busy="Saving…"
+        done="Saved"
+        surface={surface}
+        onRun={async () => {
+          const result = await save({
+            data: {
+              accessMode,
+              inviteCode,
+              showContact,
+              contactPhone,
+              deadline: data.wedding.deadline,
+              catererDeadline: data.wedding.catererDeadline,
+              lockAfterDeadline: data.wedding.lockAfterDeadline,
+              autoRemind: data.wedding.autoRemind,
+              events: data.wedding.events,
+              questions: data.wedding.questions,
+              schedule: data.wedding.schedule,
+              notes: data.wedding.notes,
+              venue: data.wedding.venue,
+              address: data.wedding.address,
+            },
+          })
+          if (result.ok) await router.invalidate()
+          return {
+            ok: result.ok,
+            message: result.ok ? 'Saved.' : 'Could not save.',
+          }
+        }}
+      >
+        Save changes
+      </ActionButton>
     </form>
   )
 }

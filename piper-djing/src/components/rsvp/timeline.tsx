@@ -53,6 +53,8 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
   const [draft, setDraft] = useState(false)
   const [dragging, setDragging] = useState('')
   const [focusId, setFocusId] = useState('')
+  /** The one moment open for editing; finished moments show as one line. */
+  const [openId, setOpenId] = useState('')
   const { sheet, print } = usePrintSheet()
   const current = useRef(timeline)
   current.current = timeline
@@ -174,13 +176,15 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
             ) : (
               <SaveStatus phase={autosave.phase} error={autosave.error} />
             )}
-            <button
-              type="button"
-              className={`${rsvpGhost} w-auto`}
-              onClick={() => print('timeline')}
-            >
-              Print / PDF
-            </button>
+            {timeline.moments.length > 0 ? (
+              <button
+                type="button"
+                className={`${rsvpGhost} w-auto`}
+                onClick={() => print('timeline')}
+              >
+                Print / PDF
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -259,6 +263,37 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
         <ol className="mt-4 grid gap-3">
           {timeline.moments.map((moment, index) => {
             const time = cleanTime(moment.time)
+            const complete = Boolean(time && moment.title.trim())
+            if (complete && openId !== moment.id) {
+              return (
+                <li key={moment.id}>
+                  <button
+                    type="button"
+                    className="flex min-h-14 w-full items-center gap-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left hover:border-[var(--border-strong)]"
+                    aria-label={`Edit ${moment.title} at ${timeLabel(time)}`}
+                    onClick={() => setOpenId(moment.id)}
+                  >
+                    <span className="w-[4.75rem] shrink-0 text-sm font-semibold text-[var(--pink-soft)]">
+                      {timeLabel(time)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold">{moment.title}</span>
+                      {moment.location || moment.note ? (
+                        <span className="block truncate text-sm text-[var(--text-muted)]">
+                          {[moment.location, moment.note].filter(Boolean).join(' · ')}
+                        </span>
+                      ) : null}
+                    </span>
+                    {moment.guests ? null : (
+                      <span className="shrink-0 rounded-full border border-[var(--border-strong)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
+                        Private
+                      </span>
+                    )}
+                    <span className="shrink-0 text-sm text-[var(--text-muted)] underline">Edit</span>
+                  </button>
+                </li>
+              )
+            }
             return (
               <li
                 key={moment.id}
@@ -387,6 +422,18 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
                         </span>
                       ) : null}
                     </label>
+                    {complete ? (
+                      <button
+                        type="button"
+                        className={`${rsvpGhost} w-auto justify-self-start sm:col-span-2`}
+                        onClick={() => {
+                          setOpenId('')
+                          sortSoon()
+                        }}
+                      >
+                        Done
+                      </button>
+                    ) : null}
                   </div>
                   <button
                     type="button"
@@ -422,6 +469,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
             onClick={() => {
               const id = newId()
               setFocusId(id)
+              setOpenId(id)
               const next = {
                 ...current.current,
                 moments: [
