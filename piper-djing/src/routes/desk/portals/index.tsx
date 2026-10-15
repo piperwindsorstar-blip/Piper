@@ -18,6 +18,7 @@ import {
   savePortalMasterDesk,
 } from '../../../lib/crm/desk.functions.ts'
 import type { NudgeRow } from '../../../lib/portal/nudges.ts'
+import { shiftIso } from '../../../lib/portal/progress.ts'
 import { deskHead } from '../../../lib/desk-head.ts'
 import { SECTION_LABEL, SECTION_ORDER } from '../../../lib/portal/questions.ts'
 import type { MasterDraft } from '../../../lib/portal/master.ts'
@@ -52,7 +53,7 @@ function PortalsPage() {
       <PlanReminders
         on={data.nudges.on}
         lastRun={data.nudges.lastRun}
-        missing={data.nudges.rows.filter((row) => row.block === 'No email on file').length}
+        missing={data.nudges.rows.filter((row) => !row.email).length}
       />
       <section className="grid gap-3">
         <h2 className="font-display text-2xl font-extrabold">Couples</h2>
@@ -175,7 +176,8 @@ function PlanReminders({
       {missing > 0 ? (
         <p className="mt-2 text-sm text-amber-200">
           {missing === 1 ? '1 booked couple has' : `${missing} booked couples have`} no email on
-          file, so reminders can't reach them. Add it on their card below.
+          file, so reminders, invoices and receipts can't reach them. Add it on their card below,
+          or they'll be asked for it the next time they open their plan.
         </p>
       ) : null}
       {lastRun ? (
@@ -219,13 +221,16 @@ function ReminderLine({ row, on }: { row: NudgeRow | undefined; on: boolean }) {
   const last = row.last
     ? `Last reminder: ${row.last.step}, ${new Date(row.last.at).toLocaleDateString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric' })}${row.last.delivered ? '' : ` (not sent: ${row.last.detail})`}`
     : ''
-  const status = row.block
-    ? row.block === 'No email on file'
-      ? `Finish by ${shortDay(row.finish)}. No email on file, so no reminders.`
-      : `Finish by ${shortDay(row.finish)}. ${row.block}.`
-    : `Finish by ${shortDay(row.finish)}. Reminder window: ${row.due}.`
+  const noEmail = !row.email
+  const status = row.block === 'More than 8 weeks to go'
+    ? `Finish by ${shortDay(row.finish)}. First reminder around ${shortDay(shiftIso(row.finish, -60))}.${noEmail ? ' Add their email before then.' : ''}`
+    : row.block
+      ? row.block === 'No email on file'
+        ? `Finish by ${shortDay(row.finish)}. No email on file, so no reminders.`
+        : `Finish by ${shortDay(row.finish)}. ${row.block}.`
+      : `Finish by ${shortDay(row.finish)}. Reminder window: ${row.due}.`
   return (
-    <p className={`text-sm ${row.block === 'No email on file' ? 'text-amber-200' : 'text-white/70'}`}>
+    <p className={`text-sm ${noEmail ? 'text-amber-200' : 'text-white/70'}`}>
       {status}
       {last ? <span className="block text-white/55">{last}</span> : null}
     </p>
