@@ -150,8 +150,8 @@ export const sendInquiry = createServerFn({ method: 'POST' })
           `Wedding date: ${data.eventDate}`,
           `Package: ${packageLabel}`,
           `Stag and doe: ${stag}`,
-          `Venue: ${data.venueName.trim()}`,
-          `Venue street: ${data.venueStreet.trim()}`,
+          `Venue: ${data.venueName.trim() || 'not booked yet'}`,
+          data.venueStreet.trim() ? `Venue street: ${data.venueStreet.trim()}` : '',
           data.venueTwoName.trim()
             ? `Second venue: ${data.venueTwoName.trim()} (${data.venueTwoStreet.trim()})`
             : '',

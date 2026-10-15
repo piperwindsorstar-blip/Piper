@@ -206,9 +206,16 @@ function BookPage() {
             Welcome to your first step of finding a DJ that truly cares about
             every aspect of your wedding.
           </p>
-          <p className="mt-2 text-lg text-soft">
-            Tell Piper the date. The reply comes by email.
-          </p>
+          {requestedDate && !done ? (
+            <p className="mt-6 rounded-xl border border-neon/40 bg-neon/10 px-4 py-3 text-lg font-semibold">
+              {openDateLabel(requestedDate)} is open. Tell Piper a little more
+              and the reply comes by email.
+            </p>
+          ) : (
+            <p className="mt-2 text-lg text-soft">
+              Tell Piper the date. The reply comes by email.
+            </p>
+          )}
           {done ? (
             <p className="mt-10 font-display text-3xl font-bold tracking-tight">
               {message}
@@ -373,13 +380,15 @@ function BookPage() {
               </label>
               <label className="text-sm font-medium">
                 Venue name
-                <input name="venueName" required className={field} />
+                <span className="block text-xs font-normal text-soft">
+                  Not booked yet? Leave the venue blank.
+                </span>
+                <input name="venueName" className={field} />
               </label>
               <label className="text-sm font-medium">
                 Venue street address
                 <input
                   name="venueStreet"
-                  required
                   autoComplete="street-address"
                   className={field}
                   onChange={(event) => setVenueStreet(event.target.value)}
@@ -646,4 +655,17 @@ const PACKAGE_TITLES_SHORT: Record<string, string> = {
   reception: 'The After Party',
   stag: 'The Pre-Party',
   ceremony: 'The Aisle (paid in full)',
+}
+
+/** "Saturday, June 12, 2027" for the open-date note. */
+function openDateLabel(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  if (!year || !month || !day) return 'Your date'
+  return new Intl.DateTimeFormat('en-CA', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)))
 }

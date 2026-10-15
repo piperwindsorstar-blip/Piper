@@ -71,11 +71,6 @@ export function DateCalendarDialog() {
   if (!calendarOpen) return null
 
   const weeks = calendarWeeks(year, month)
-  const title = new Intl.DateTimeFormat('en-CA', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month, 1)))
   const currentMonth = today.slice(0, 7)
   const cursorMonth = `${year}-${String(month + 1).padStart(2, '0')}`
 
@@ -197,7 +192,27 @@ export function DateCalendarDialog() {
             >
               Prev
             </button>
-            <p className="font-display text-lg font-bold">{title}</p>
+            {/* Jump straight to a month: most couples book a year or more out. */}
+            <label className="relative">
+              <span className="sr-only">Month</span>
+              <select
+                value={cursorMonth}
+                onChange={(event) => {
+                  const [nextYear = year, nextMonth = month + 1] = event.target.value
+                    .split('-')
+                    .map(Number)
+                  setYear(nextYear)
+                  setMonth(nextMonth - 1)
+                }}
+                className="cursor-pointer appearance-none rounded-lg bg-transparent px-2 py-2 text-center font-display text-lg font-bold underline decoration-white/30 underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-neon"
+              >
+                {monthChoices(currentMonth).map((choice) => (
+                  <option key={choice.value} value={choice.value} className="bg-ink-950 text-base">
+                    {choice.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               aria-label="Next month"
@@ -265,4 +280,19 @@ export function DateCalendarDialog() {
       </div>
     </div>
   )
+}
+
+/** This month and the next three years, for the month picker. */
+function monthChoices(current: string): { value: string; label: string }[] {
+  const [startYear = 2026, startMonth = 1] = current.split('-').map(Number)
+  return Array.from({ length: 37 }, (_, index) => {
+    const date = new Date(Date.UTC(startYear, startMonth - 1 + index, 1))
+    const value = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+    const label = new Intl.DateTimeFormat('en-CA', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(date)
+    return { value, label }
+  })
 }
