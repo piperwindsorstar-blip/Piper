@@ -2,6 +2,7 @@ import type { Planning } from '../crm/planning.ts'
 import {
   SECTION_ORDER,
   allQuestions,
+  isOptional,
   isVisible,
   isYesNo,
   itemAt,
@@ -57,12 +58,36 @@ export function visibleQuestions(
   return source.filter((question) => isVisible(planning, question))
 }
 
+/** The questions that count toward progress: visible and not optional. */
+export function countedQuestions(
+  planning: Planning,
+  section?: SectionId,
+  master: MasterMap = {},
+): Question[] {
+  return visibleQuestions(planning, section, master).filter(
+    (question) => !isOptional(question),
+  )
+}
+
+/** Optional extras answered, for a light "and 2 extras" note. */
+export function extrasProgress(
+  planning: Planning,
+  section?: SectionId,
+  master: MasterMap = {},
+): { answered: number; total: number } {
+  const extras = visibleQuestions(planning, section, master).filter(isOptional)
+  return {
+    answered: extras.filter((question) => questionAnswered(planning, question)).length,
+    total: extras.length,
+  }
+}
+
 export function sectionProgress(
   planning: Planning,
   section: SectionId,
   master: MasterMap = {},
 ): SectionProgress {
-  const questions = visibleQuestions(planning, section, master)
+  const questions = countedQuestions(planning, section, master)
   return {
     id: section,
     answered: questions.filter((question) =>
@@ -80,7 +105,7 @@ export function overallProgress(
   total: number
   percent: number
 } {
-  const questions = visibleQuestions(planning, undefined, master)
+  const questions = countedQuestions(planning, undefined, master)
   const answered = questions.filter((question) =>
     questionAnswered(planning, question),
   ).length
@@ -102,17 +127,32 @@ export function sectionPercent(
   return Math.round((progress.answered / progress.total) * 100)
 }
 
+/**
+ * The first question still open. Questions the couple skipped are passed
+ * over, so Continue never sends them back to something they chose to leave.
+ */
 export function firstUnanswered(
   planning: Planning,
   master: MasterMap = {},
+  { includeSkipped = false }: { includeSkipped?: boolean } = {},
 ): Question | null {
+  const skipped = new Set(planning.skipped ?? [])
   for (const section of SECTION_ORDER) {
-    const next = visibleQuestions(planning, section, master).find(
-      (question) => !questionAnswered(planning, question),
+    const next = countedQuestions(planning, section, master).find(
+      (question) =>
+        !questionAnswered(planning, question) &&
+        (includeSkipped || !skipped.has(question.id)),
     )
     if (next) return next
   }
   return null
+}
+
+/** Adds a question to the skipped list once. */
+export function withSkipped(planning: Planning, id: string): Planning {
+  const skipped = planning.skipped ?? []
+  if (skipped.includes(id)) return planning
+  return { ...planning, skipped: [...skipped, id].slice(-80) }
 }
 
 export function stepFrom(

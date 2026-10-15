@@ -1171,7 +1171,7 @@ function SongSearch({
         <span className="sr-only">{label}</span>
         <input
           className="portal-input"
-          placeholder="Search Spotify or paste a link"
+          placeholder="Search a song or paste a link"
           value={draft}
           disabled={disabled}
           onChange={(event) => {
@@ -1186,7 +1186,8 @@ function SongSearch({
       ) : null}
       {status === 'empty' ? (
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          No song under that name. Paste a link instead.
+          Nothing came up for that. Type the song and artist below, or paste a
+          link.
         </p>
       ) : null}
       {hits.length > 0 ? (

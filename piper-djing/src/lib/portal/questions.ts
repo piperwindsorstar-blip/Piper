@@ -433,7 +433,7 @@ const APPEARANCE_QUESTIONS: Question[] = [
 ]
 
 export const SONG_HELPER =
-  'Search Spotify, or paste a YouTube, Spotify or SoundCloud link.'
+  'Search for the song, or paste a YouTube, Spotify or SoundCloud link.'
 
 const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
   id: `moment-${MOMENTS[index]?.key ?? index}`,
@@ -453,6 +453,26 @@ export const QUESTIONS: Question[] = [
   ...APPEARANCE_QUESTIONS,
   ...TIMELINE_QUESTIONS,
 ]
+
+/**
+ * Nice-to-haves. They are still asked in order, but they do not count
+ * toward a couple's progress and Continue does not stop on them.
+ */
+export const OPTIONAL_QUESTIONS = new Set([
+  'plannerEmail',
+  'uplightColours',
+  'requests',
+  'dedications',
+  'preCeremony',
+  'cocktail',
+  'dinner',
+  'dance',
+  'specialPlaylists',
+])
+
+export function isOptional(question: Pick<Question, 'id'>): boolean {
+  return OPTIONAL_QUESTIONS.has(question.id)
+}
 
 export const SECTION_ORDER: SectionId[] = [
   'details',

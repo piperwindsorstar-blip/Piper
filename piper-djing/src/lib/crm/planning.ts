@@ -205,6 +205,8 @@ export type Planning = {
   planLocked: boolean
   dueDate: string
   djName: string
+  /** Questions the couple chose to skip for now, so Continue moves past them. */
+  skipped: string[]
 }
 
 const SHORT = 200
@@ -280,6 +282,7 @@ export function blankPlanning(seed: PlanningSeed): Planning {
     planLocked: false,
     dueDate: '',
     djName: '',
+    skipped: [],
   }
 }
 
@@ -432,6 +435,7 @@ export function planningFromUnknown(
     planLocked: raw.planLocked === true,
     dueDate: isoDate(raw.dueDate),
     djName: clip(raw.djName, SHORT),
+    skipped: stringList(raw.skipped, 80).filter((id) => /^[\w-]{1,80}$/.test(id)),
   }
 }
 

@@ -43,7 +43,6 @@ export function OverviewScreen() {
       railTitle="Your plan"
       railSubtitle={`${progress.answered} of ${progress.total} answered`}
       rail={<PlanRail current={next?.section ?? null} />}
-      preview={<PlanRail current={next?.section ?? null} compact />}
     >
       <MobileQuestionBar
         section="Overview"

@@ -13,6 +13,7 @@ import {
 import {
   SECTION_LABEL,
   SECTION_ORDER,
+  isOptional,
   isVisible,
   sectionPath,
   sectionQuestions,
@@ -30,13 +31,15 @@ export function ReviewScreen() {
   const [note, setNote] = useState('')
   const [asked, setAsked] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [justSent, setJustSent] = useState(false)
+  const blank = progress.total - progress.answered
 
   return (
     <PortalColumns
       railTitle="Review"
       railSubtitle={`${progress.answered} of ${progress.total} answered`}
       rail={<ReviewRail />}
-      preview={<ReviewRail compact />}
     >
       <MobileQuestionBar
         section="Review"
@@ -57,11 +60,13 @@ export function ReviewScreen() {
       <div className="mt-8 grid gap-6">
         {SECTION_ORDER.map((section) => {
           const counts = sectionProgress(planning, section, page.master)
-          const open = sectionQuestions(planning, section, page.master).filter(
+          const blanks = sectionQuestions(planning, section, page.master).filter(
             (question) =>
               isVisible(planning, question) &&
               !questionAnswered(planning, question),
           )
+          const open = blanks.filter((question) => !isOptional(question))
+          const extras = blanks.filter(isOptional)
           return (
             <section key={section}>
               <h2 className="text-lg font-bold">
@@ -81,14 +86,36 @@ export function ReviewScreen() {
                       <Link
                         to={sectionPath(section)}
                         search={{ q: question.id }}
-                        className="inline-flex min-h-11 items-center text-[var(--pink-soft)] underline"
+                        className="inline-flex min-h-11 items-center gap-2 text-[var(--pink-soft)] underline"
                       >
                         {question.rail}
+                        {(planning.skipped ?? []).includes(question.id) ? (
+                          <span className="text-xs text-[var(--text-muted)] no-underline">
+                            skipped
+                          </span>
+                        ) : null}
                       </Link>
                     </li>
                   ))}
                 </ul>
               )}
+              {extras.length > 0 ? (
+                <p className="mt-2 text-sm text-[var(--text-muted)]">
+                  Extras, if you like:{' '}
+                  {extras.map((question, index) => (
+                    <span key={question.id}>
+                      {index > 0 ? ', ' : ''}
+                      <Link
+                        to={sectionPath(section)}
+                        search={{ q: question.id }}
+                        className="underline"
+                      >
+                        {question.rail}
+                      </Link>
+                    </span>
+                  ))}
+                </p>
+              ) : null}
             </section>
           )
         })}
@@ -123,6 +150,11 @@ export function ReviewScreen() {
             })
           }}
         >
+          {justSent ? (
+            <p role="status" className="portal-display text-2xl">
+              Sent. Piper has your plan.
+            </p>
+          ) : null}
           <p className="text-sm text-[var(--text-muted)]">
             This plan is locked. Ask Piper if something should change.
           </p>
@@ -148,23 +180,66 @@ export function ReviewScreen() {
             </p>
           ) : null}
         </form>
+      ) : confirming ? (
+        <div
+          role="alertdialog"
+          aria-labelledby="send-title"
+          aria-describedby="send-detail"
+          className="mt-8 grid max-w-xl gap-4 rounded-[24px] border-[1.5px] border-[var(--pink)] bg-[var(--pink-tint)] p-5"
+        >
+          <h2 id="send-title" className="portal-display text-2xl">
+            Send it now?
+          </h2>
+          <div id="send-detail" className="grid gap-2 text-[var(--text-muted)]">
+            <p>
+              Sending locks your plan so Piper can build your night from it.
+              After that you can still read every answer, and you can ask
+              Piper for a change from this page.
+            </p>
+            {blank > 0 ? (
+              <p>
+                {blank === 1 ? '1 question is' : `${blank} questions are`} still
+                blank. That's fine: blank answers stay blank.
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-3 min-[1024px]:flex-row">
+            <button
+              type="button"
+              disabled={busy}
+              className="inline-flex min-h-[54px] w-full items-center justify-center rounded-[18px] bg-[var(--pink)] px-6 text-base font-bold text-[#0d0d0d] disabled:opacity-60 min-[1024px]:w-auto"
+              onClick={() => {
+                setBusy(true)
+                setError('')
+                void send().then((result) => {
+                  setBusy(false)
+                  if (!result.ok) {
+                    setError(result.error)
+                    return
+                  }
+                  setConfirming(false)
+                  setJustSent(true)
+                  markLocked(result.planning)
+                })
+              }}
+            >
+              {busy ? 'Sending…' : 'Yes, send my plan'}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              className="inline-flex min-h-[54px] items-center justify-center rounded-[18px] border border-[var(--border-strong)] px-6 text-base font-semibold"
+              onClick={() => setConfirming(false)}
+            >
+              Not yet
+            </button>
+          </div>
+        </div>
       ) : (
         <button
           type="button"
-          disabled={busy}
           className="mt-8 inline-flex min-h-[54px] w-full items-center justify-center rounded-[18px] bg-[var(--pink)] px-6 text-base font-bold text-[#0d0d0d] min-[1024px]:min-h-[60px] min-[1024px]:w-auto"
-          onClick={() => {
-            setBusy(true)
-            setError('')
-            void send().then((result) => {
-              setBusy(false)
-              if (!result.ok) {
-                setError(result.error)
-                return
-              }
-              markLocked(result.planning)
-            })
-          }}
+          onClick={() => setConfirming(true)}
         >
           Send my plan to Piper P
         </button>

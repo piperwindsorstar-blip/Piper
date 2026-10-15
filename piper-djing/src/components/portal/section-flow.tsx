@@ -1,7 +1,7 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import type { KeyboardEvent } from 'react'
-import { djLine, stepFrom } from '../../lib/portal/progress.ts'
+import { djLine, questionAnswered, stepFrom } from '../../lib/portal/progress.ts'
 import {
   SECTION_LABEL,
   isVisible,
@@ -18,10 +18,10 @@ import {
 } from './portal-chrome.tsx'
 import { usePortal } from './portal-state.tsx'
 import { QuestionControl } from './question-controls.tsx'
-import { QuestionRail, neighbourIds } from './rail.tsx'
+import { QuestionRail } from './rail.tsx'
 
 export function SectionFlow({ section }: { section: SectionId }) {
-  const { page, planning, locked } = usePortal()
+  const { page, planning, locked, skip } = usePortal()
   const master = page.master
   const navigate = useNavigate()
   const q = useRouterState({
@@ -53,6 +53,10 @@ export function SectionFlow({ section }: { section: SectionId }) {
   const nextLabel = upcoming ? upcoming.rail : 'review'
 
   function go(direction: 1 | -1) {
+    // Moving on without an answer counts as a skip, so Continue passes it.
+    if (direction === 1 && !locked && !questionAnswered(planning, question)) {
+      skip(question.id)
+    }
     const next = stepFrom(planning, question, direction, master)
     if (!next) {
       void navigate({ to: direction === 1 ? '/portal/review' : '/portal' })
@@ -77,16 +81,11 @@ export function SectionFlow({ section }: { section: SectionId }) {
   }
 
   const line = djLine(planning, question)
-  const ids = neighbourIds(planning, section, question.id, master)
-
   return (
     <PortalColumns
       railTitle={SECTION_LABEL[section]}
       railSubtitle={`${counts.answered} of ${counts.total} answered`}
       rail={<QuestionRail section={section} currentId={current.id} />}
-      preview={
-        <QuestionRail section={section} currentId={current.id} ids={ids} />
-      }
     >
       <div onKeyDown={onKeyDown}>
         <MobileQuestionBar
@@ -97,7 +96,11 @@ export function SectionFlow({ section }: { section: SectionId }) {
           current={section}
         />
         <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
-          {SECTION_LABEL[section]} · {current.subsection} ·{' '}
+          {SECTION_LABEL[section]}
+          {current.subsection !== SECTION_LABEL[section]
+            ? ` · ${current.subsection}`
+            : ''}{' '}
+          ·{' '}
           {place < 0 ? 'Hidden' : `${place + 1} of ${visible.length}`}
         </p>
         <h1 className="portal-display mt-3 max-w-[18ch] text-[32px] leading-[1.02] break-words min-[1024px]:text-[64px]">

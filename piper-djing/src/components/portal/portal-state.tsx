@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { savePortal } from '../../lib/portal/portal.functions.ts'
+import { withSkipped } from '../../lib/portal/progress.ts'
 import type { MasterMap } from '../../lib/portal/questions.ts'
 import {
   addCustomMoment,
@@ -54,6 +55,8 @@ type PortalState = {
   editSongs: (id: 'mustPlay' | 'doNotPlay', items: SongItem[]) => void
   editSameReception: (same: boolean) => void
   markLocked: (planning: Planning) => void
+  /** Marks a question as skipped for now. */
+  skip: (id: string) => void
 }
 
 const PortalContext = createContext<PortalState | null>(null)
@@ -77,6 +80,18 @@ export function PortalProvider({
   const [saveError, setSaveError] = useState('')
   const dirty = useRef(false)
   const echo = useRef(false)
+  /** True from an edit until the server has it, so leaving can warn. */
+  const pending = useRef(false)
+
+  useEffect(() => {
+    function warn(event: BeforeUnloadEvent) {
+      if (!pending.current) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [])
   const latest = useRef(planning)
   latest.current = planning
 
@@ -98,7 +113,10 @@ export function PortalProvider({
         if (!result.ok) {
           setSaveState('error')
           setSaveError(result.error)
-          if (/locked/i.test(result.error)) return
+          if (/locked/i.test(result.error)) {
+            pending.current = false
+            return
+          }
           await new Promise((resolve) => window.setTimeout(resolve, 2000))
           if (latest.current !== snapshot) return
           const again = persist
@@ -121,6 +139,7 @@ export function PortalProvider({
   }, [planning, locked, save])
 
   function keep(next: Planning) {
+    pending.current = false
     echo.current = true
     setPlanning(next)
     setSaveState('saved')
@@ -131,6 +150,7 @@ export function PortalProvider({
   function touch(next: Planning) {
     if (locked) return
     dirty.current = true
+    pending.current = true
     setPlanning(next)
   }
 
@@ -250,6 +270,10 @@ export function PortalProvider({
           (field) => field !== 'receptionAddress',
         ),
       }),
+    skip: (id) => {
+      const next = withSkipped(planning, id)
+      if (next !== planning) touch(next)
+    },
     markLocked: (next) => {
       echo.current = true
       dirty.current = false

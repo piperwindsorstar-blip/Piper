@@ -6,6 +6,8 @@ export type SongHit = {
 
 const TOKEN_URL = 'https://accounts.spotify.com/api/token'
 const SEARCH_URL = 'https://api.spotify.com/v1/search'
+/** Apple's public music search. No keys, so it works when Spotify is not set up. */
+const ITUNES_URL = 'https://itunes.apple.com/search'
 const TOKEN_REFRESH_MS = 60_000
 
 type SpotifyEnv = {
@@ -56,9 +58,61 @@ export function songHits(payload: unknown): SongHit[] {
   return hits
 }
 
+/** Reads an Apple (iTunes) search payload (`results`). */
+export function itunesHits(payload: unknown): SongHit[] {
+  if (!payload || typeof payload !== 'object') return []
+  const results = Reflect.get(payload, 'results')
+  if (!Array.isArray(results)) return []
+  const hits: SongHit[] = []
+  const seen = new Set<string>()
+  for (const item of results) {
+    if (!item || typeof item !== 'object') continue
+    const title = textField(item, 'trackName')
+    const artist = textField(item, 'artistName')
+    if (!title || !artist) continue
+    const key = `${title.toLowerCase()}|${artist.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const link = textField(item, 'trackViewUrl')
+    hits.push({
+      title: title.slice(0, 120),
+      artist: artist.slice(0, 120),
+      link: /^https:\/\//.test(link) ? link.slice(0, 300) : '',
+    })
+    if (hits.length === 6) break
+  }
+  return hits
+}
+
+async function searchItunes(term: string): Promise<SongHit[]> {
+  try {
+    const url = new URL(ITUNES_URL)
+    url.searchParams.set('term', term)
+    url.searchParams.set('media', 'music')
+    url.searchParams.set('entity', 'song')
+    url.searchParams.set('limit', '10')
+    url.searchParams.set('country', 'CA')
+    const response = await fetch(url, { headers: { Accept: 'application/json' } })
+    if (!response.ok) return []
+    return itunesHits(await response.json())
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Song search for the portal: Spotify when its keys are set, and Apple's
+ * public search when they are not or Spotify finds nothing.
+ */
 export async function lookupSongs(query: string): Promise<SongHit[]> {
   const term = query.trim().slice(0, 80)
   if (term.length < 2 || isSongLink(term)) return []
+  const spotify = await searchSpotify(term)
+  if (spotify.length > 0) return spotify
+  return searchItunes(term)
+}
+
+async function searchSpotify(term: string): Promise<SongHit[]> {
   const creds = spotifyCredentials()
   if (!creds) return []
   try {

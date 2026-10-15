@@ -171,19 +171,17 @@ export function PortalColumns({
   railTitle,
   railSubtitle,
   rail,
-  preview,
 }: {
   children: ReactNode
   railTitle: string
   railSubtitle: string
   rail: ReactNode
-  preview: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   return (
     <SheetClose.Provider value={() => setOpen(false)}>
       <div className="grid gap-14 px-5 py-8 min-[1024px]:grid-cols-[minmax(0,1fr)_380px] min-[1024px]:px-14 min-[1024px]:py-11">
-        <div className="min-w-0 max-w-[760px] pb-56 min-[1024px]:pb-0">
+        <div className="min-w-0 max-w-[760px] pb-28 min-[1024px]:pb-0">
           {children}
         </div>
         <aside className="sticky top-6 hidden max-h-[calc(100vh-3rem)] overflow-y-auto rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-[26px] min-[1024px]:block">
@@ -199,7 +197,6 @@ export function PortalColumns({
         subtitle={railSubtitle}
         open={open}
         setOpen={setOpen}
-        preview={preview}
       >
         {rail}
       </MobileSheet>
@@ -212,14 +209,12 @@ function MobileSheet({
   subtitle,
   open,
   setOpen,
-  preview,
   children,
 }: {
   title: string
   subtitle: string
   open: boolean
   setOpen: (value: boolean | ((value: boolean) => boolean)) => void
-  preview: ReactNode
   children: ReactNode
 }) {
   const startY = useRef<number | null>(null)
@@ -234,11 +229,11 @@ function MobileSheet({
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 min-[1024px]:hidden">
       <div
-        className={`rounded-t-[24px] border border-[var(--border)] bg-[var(--surface)] px-4 pb-4 ${open ? 'h-[85vh]' : ''}`}
+        className={`rounded-t-[24px] border border-[var(--border)] bg-[var(--surface)] px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${open ? 'h-[85vh]' : ''}`}
       >
         <button
           type="button"
-          className="flex min-h-11 w-full touch-none items-center justify-center"
+          className="flex min-h-14 w-full touch-none items-center justify-between gap-3 text-left"
           aria-expanded={open}
           onPointerDown={(event) => {
             startY.current = event.clientY
@@ -260,22 +255,35 @@ function MobileSheet({
             setOpen((value) => !value)
           }}
         >
-          <span className="h-1.5 w-12 rounded-full bg-[var(--border-strong)]" />
-          <span className="sr-only">
-            {open ? 'Close the run of show' : 'Open the run of show'}
+          <span className="min-w-0">
+            <span className="block truncate text-[15px] font-bold">{title}</span>
+            <span className="block truncate text-[13px] text-[var(--text-muted)]">
+              {subtitle}
+            </span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--border-strong)] px-3 py-1.5 text-[13px] font-semibold">
+            {open ? 'Close' : 'All questions'}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className={open ? 'rotate-180' : ''}
+            >
+              <path d="M6 15l6-6 6 6" />
+            </svg>
           </span>
         </button>
         {open ? (
-          <div className="h-[calc(85vh-3rem)] overflow-y-auto">
-            <h2 className="portal-display text-xl">{title}</h2>
-            <p className="mt-1 text-[13px] text-[var(--text-muted)]">
-              {subtitle}
-            </p>
-            <div className="mt-4">{children}</div>
+          <div className="h-[calc(85vh-4rem)] overflow-y-auto">
+            <div>{children}</div>
           </div>
-        ) : (
-          <div>{preview}</div>
-        )}
+        ) : null}
       </div>
     </div>
   )
@@ -302,17 +310,23 @@ export function MobileQuestionBar({
   total: number
   current: StepId
 }) {
-  const { page, planning } = usePortal()
+  const { page, planning, saveState, savedLabel } = usePortal()
   const progress = overallProgress(planning, page.master)
   return (
     <div className="mb-6 min-[1024px]:hidden">
       <div className="flex items-center justify-between gap-3 text-sm">
-        <p>
+        <p className="min-w-0 truncate">
           {section}
-          {subsection ? ` · ${subsection}` : ''}
+          {subsection && subsection !== section ? ` · ${subsection}` : ''}
         </p>
-        <p className="text-[var(--text-muted)]">
-          {index} of {total}
+        <p className="shrink-0 text-[var(--text-muted)]" aria-live="polite">
+          {saveState === 'saving'
+            ? 'Saving…'
+            : saveState === 'error'
+              ? "Couldn't save, retrying"
+              : saveState === 'saved' && savedLabel
+                ? `Saved ${savedLabel}`
+                : `${index} of ${total}`}
         </p>
       </div>
       <div

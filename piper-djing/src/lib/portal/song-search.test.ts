@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { blankPlanning } from '../crm/planning.ts'
-import { isSongLink, lookupSongs, songHits } from './song-search.ts'
+import { isSongLink, itunesHits, lookupSongs, songHits } from './song-search.ts'
 import { timelineQuestions } from './questions.ts'
 
 describe('song search', { concurrency: false }, () => {
@@ -73,7 +73,7 @@ describe('song search', { concurrency: false }, () => {
     assert.equal(hits[5]?.title, 'Song 5')
   })
 
-  it('asks the couple to search Spotify', () => {
+  it('asks the couple to search for the song', () => {
     const planning = blankPlanning({
       coupleNames: '',
       email: '',
@@ -84,7 +84,7 @@ describe('song search', { concurrency: false }, () => {
     const helper = timelineQuestions(planning)[0]?.helper ?? ''
     assert.equal(
       helper,
-      'Search Spotify, or paste a YouTube, Spotify or SoundCloud link.',
+      'Search for the song, or paste a YouTube, Spotify or SoundCloud link.',
     )
   })
 
@@ -105,8 +105,10 @@ describe('song search', { concurrency: false }, () => {
         [],
       )
       assert.deepEqual(await lookupSongs('P'), [])
-      assert.deepEqual(await lookupSongs('Perfect'), [])
       assert.equal(calls, 0)
+      // No Spotify keys: Apple's search is tried, and a failure is just no hits.
+      assert.deepEqual(await lookupSongs('Perfect'), [])
+      assert.equal(calls, 1)
     } finally {
       globalThis.fetch = previousFetch
       restoreEnv('SPOTIFY_CLIENT_ID', previousId)
@@ -164,6 +166,51 @@ describe('song search', { concurrency: false }, () => {
         },
       ])
       assert.deepEqual(second, first)
+    } finally {
+      globalThis.fetch = previousFetch
+      restoreEnv('SPOTIFY_CLIENT_ID', previousId)
+      restoreEnv('SPOTIFY_CLIENT_SECRET', previousSecret)
+    }
+  })
+})
+
+describe('apple song search', { concurrency: false }, () => {
+  it('reads Apple results, drops repeats and keeps only https links', () => {
+    const hits = itunesHits({
+      results: [
+        { trackName: 'At Last', artistName: 'Etta James', trackViewUrl: 'https://music.apple.com/ca/album/at-last/1' },
+        { trackName: 'At Last', artistName: 'Etta James', trackViewUrl: 'https://music.apple.com/ca/album/at-last/2' },
+        { trackName: 'At Last', artistName: 'Beyoncé', trackViewUrl: 'javascript:alert(1)' },
+        { artistName: 'Nobody' },
+      ],
+    })
+    assert.deepEqual(hits, [
+      { title: 'At Last', artist: 'Etta James', link: 'https://music.apple.com/ca/album/at-last/1' },
+      { title: 'At Last', artist: 'Beyoncé', link: '' },
+    ])
+  })
+
+  it('falls back to Apple when Spotify is not set up', async () => {
+    const previousFetch = globalThis.fetch
+    const previousId = process.env.SPOTIFY_CLIENT_ID
+    const previousSecret = process.env.SPOTIFY_CLIENT_SECRET
+    delete process.env.SPOTIFY_CLIENT_ID
+    delete process.env.SPOTIFY_CLIENT_SECRET
+    const urls: string[] = []
+    globalThis.fetch = async (input: RequestInfo | URL) => {
+      urls.push(String(input))
+      return Response.json({
+        results: [{ trackName: 'At Last', artistName: 'Etta James', trackViewUrl: 'https://music.apple.com/x' }],
+      })
+    }
+    try {
+      const hits = await lookupSongs('at last etta')
+      assert.equal(urls.length, 1)
+      const url = new URL(urls[0] ?? '')
+      assert.equal(url.hostname, 'itunes.apple.com')
+      assert.equal(url.searchParams.get('term'), 'at last etta')
+      assert.equal(url.searchParams.get('entity'), 'song')
+      assert.deepEqual(hits, [{ title: 'At Last', artist: 'Etta James', link: 'https://music.apple.com/x' }])
     } finally {
       globalThis.fetch = previousFetch
       restoreEnv('SPOTIFY_CLIENT_ID', previousId)

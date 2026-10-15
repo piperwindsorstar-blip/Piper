@@ -3,7 +3,10 @@ import { describe, it } from 'node:test'
 import { blankPlanning } from '../crm/planning.ts'
 import {
   daysUntil,
+  extrasProgress,
   firstUnanswered,
+  overallProgress,
+  withSkipped,
   questionAnswered,
   sectionProgress,
   shiftIso,
@@ -102,5 +105,30 @@ describe('portal progress', () => {
     assert.equal(daysUntil('2026-10-11', '2026-10-16'), 5)
     assert.equal(daysUntil('2026-10-11', '2026-10-01'), 0)
     assert.equal(shiftIso('2027-06-14', -5), '2027-06-09')
+  })
+
+  it('passes over skipped and optional questions on Continue, and leaves extras out of the count', () => {
+    const planning = blankPlanning({
+      partnerOne: 'Roxana',
+      partnerTwo: 'Ibu',
+      eventDate: '2026-10-29',
+      email: '',
+      phone: '',
+      venueName: '',
+      venueStreet: '',
+      venueTwoStreet: '',
+    } as Parameters<typeof blankPlanning>[0])
+    const first = firstUnanswered(planning)
+    assert.ok(first)
+    const skipped = withSkipped(planning, first.id)
+    assert.notEqual(firstUnanswered(skipped)?.id, first.id)
+    assert.equal(firstUnanswered(skipped, {}, { includeSkipped: true })?.id, first.id)
+    assert.equal(withSkipped(skipped, first.id), skipped)
+    const all = overallProgress(planning)
+    const extras = extrasProgress(planning)
+    assert.equal(extras.total, 9)
+    assert.ok(all.total > 0)
+    const details = sectionProgress(planning, 'details')
+    assert.equal(details.total, 21 - 3)
   })
 })
