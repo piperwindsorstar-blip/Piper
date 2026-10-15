@@ -267,15 +267,24 @@ export function findParty(
   return { ok: true, party: hits[0] }
 }
 
+/**
+ * A name for matching: the letters exactly, ignoring capitals, accents,
+ * punctuation and the spaces punctuation leaves behind. "O'Brien" and
+ * "OBrien" match, as do "Smith-Jones" and "Smith Jones". A wrong or missing
+ * letter never matches.
+ */
+export function nameKey(value: string): string {
+  return foldName(value).replace(/ /g, '')
+}
+
 function guestMatches(guest: RsvpGuest, first: string, last: string): boolean {
-  const full = `${first} ${last}`
-  if (guest.altNames.some((alt) => foldName(alt) === full)) return true
-  const firstNames = [
-    foldName(guest.firstName),
-    ...guest.altNames.map(foldName),
-  ]
-  const lastNames = [foldName(guest.lastName), ...guest.altNames.map(foldName)]
-  return firstNames.includes(first) && lastNames.includes(last)
+  const typedFirst = nameKey(first)
+  const typedLast = nameKey(last)
+  const full = typedFirst + typedLast
+  if (guest.altNames.some((alt) => nameKey(alt) === full)) return true
+  const firstNames = [nameKey(guest.firstName), ...guest.altNames.map(nameKey)]
+  const lastNames = [nameKey(guest.lastName), ...guest.altNames.map(nameKey)]
+  return firstNames.includes(typedFirst) && lastNames.includes(typedLast)
 }
 
 export function partyByToken(

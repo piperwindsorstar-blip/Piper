@@ -158,6 +158,20 @@ describe('rsvp lookup', () => {
     assert.equal(findParty(copy, 'Ada', 'Okafor').ok, false)
   })
 
+  it('ignores punctuation but never a wrong or missing letter', () => {
+    const wedding = sampleWedding()
+    const party = wedding.parties[0]
+    assert.ok(party)
+    party.guests[0].firstName = 'Mary-Kate'
+    party.guests[0].lastName = "O'Brien-Smith"
+    assert.equal(findParty(wedding, 'Mary Kate', 'OBrien Smith').ok, true)
+    assert.equal(findParty(wedding, 'marykate', "o'brien-smith").ok, true)
+    assert.equal(findParty(wedding, 'Mary.Kate', 'O Brien-Smith').ok, true)
+    assert.equal(findParty(wedding, 'Mary Kate', 'OBrian Smith').ok, false)
+    assert.equal(findParty(wedding, 'Mary', "O'Brien-Smith").ok, false)
+    assert.equal(findParty(wedding, 'Bill', 'Thomson').ok, false)
+  })
+
   it('limits lookups and ignores accents in the folded name', () => {
     assert.equal(foldName('José'), 'jose')
     let stamps: number[] = []
