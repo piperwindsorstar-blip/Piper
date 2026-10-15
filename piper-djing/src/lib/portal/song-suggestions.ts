@@ -16,6 +16,7 @@ export type ChosenSong = {
   artist: string
   link: string
   hidden: boolean
+  entries?: readonly { song: string; artist: string; link: string }[]
 }
 
 export type PlanSongs = {
@@ -39,14 +40,17 @@ export function songsFromPlans(
   for (const plan of plans) {
     if (plan.sample || plan.slug === slug) continue
     for (const row of plan.timeline) {
-      if (row.hidden || !row.presetKey || !row.song.trim()) continue
-      chosen.push({
-        presetKey: row.presetKey,
-        song: row.song.trim(),
-        artist: row.artist.trim(),
-        link: row.link.trim(),
-        hidden: false,
-      })
+      if (row.hidden || !row.presetKey) continue
+      for (const pick of [row, ...(row.entries ?? [])]) {
+        if (!pick.song.trim()) continue
+        chosen.push({
+          presetKey: row.presetKey,
+          song: pick.song.trim(),
+          artist: pick.artist.trim(),
+          link: pick.link.trim(),
+          hidden: false,
+        })
+      }
     }
   }
   return chosen

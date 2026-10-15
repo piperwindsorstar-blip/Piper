@@ -1,7 +1,7 @@
 import { MOMENTS, TIMELINE } from '../crm/planning.ts'
 import type { Planning, SongItem } from '../crm/planning.ts'
 
-export type SectionId = 'details' | 'music' | 'appearance' | 'timeline'
+export type SectionId = 'details' | 'music' | 'timeline'
 
 export type QuestionType =
   | 'text'
@@ -68,8 +68,10 @@ export function isYesNo(options: ChoiceOption[] | undefined): boolean {
 export function yesNoAnswer(value: string): 'Yes' | 'No' | '' {
   const clean = value.trim().toLowerCase()
   if (!clean) return ''
-  if (clean === 'yes' || clean.startsWith('yes,') || clean.startsWith('yes ')) return 'Yes'
-  if (clean === 'no' || clean.startsWith('not ') || clean.startsWith('no,')) return 'No'
+  if (clean === 'yes' || clean.startsWith('yes,') || clean.startsWith('yes '))
+    return 'Yes'
+  if (clean === 'no' || clean.startsWith('not ') || clean.startsWith('no,'))
+    return 'No'
   return ''
 }
 
@@ -419,19 +421,6 @@ const MUSIC_QUESTIONS: Question[] = [
   },
 ]
 
-const APPEARANCE_QUESTIONS: Question[] = [
-  {
-    id: 'appearances',
-    section: 'appearance',
-    subsection: 'Order of appearance',
-    group: 'Order of appearance',
-    type: 'list',
-    label: 'Who walks, speaks, or dances?',
-    helper: 'Spell names the way they should be said out loud.',
-    rail: 'Order of appearance',
-  },
-]
-
 export const SONG_HELPER =
   'Search for the song, or paste a YouTube, Spotify or SoundCloud link.'
 
@@ -450,7 +439,6 @@ const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
 export const QUESTIONS: Question[] = [
   ...DETAIL_QUESTIONS,
   ...MUSIC_QUESTIONS,
-  ...APPEARANCE_QUESTIONS,
   ...TIMELINE_QUESTIONS,
 ]
 
@@ -474,30 +462,19 @@ export function isOptional(question: Pick<Question, 'id'>): boolean {
   return OPTIONAL_QUESTIONS.has(question.id)
 }
 
-export const SECTION_ORDER: SectionId[] = [
-  'details',
-  'music',
-  'appearance',
-  'timeline',
-]
+export const SECTION_ORDER: SectionId[] = ['details', 'music', 'timeline']
 
 export const SECTION_LABEL: Record<SectionId, string> = {
   details: 'Event details',
   music: 'Music',
-  appearance: 'Order of appearance',
   timeline: 'Timeline',
 }
 
 export function sectionPath(
   section: SectionId,
-):
-  | '/portal/details'
-  | '/portal/music'
-  | '/portal/appearance'
-  | '/portal/timeline' {
+): '/portal/details' | '/portal/music' | '/portal/timeline' {
   if (section === 'details') return '/portal/details'
   if (section === 'music') return '/portal/music'
-  if (section === 'appearance') return '/portal/appearance'
   return '/portal/timeline'
 }
 
@@ -569,7 +546,6 @@ export function allQuestions(
   return [
     ...sectionQuestions(planning, 'details', master),
     ...sectionQuestions(planning, 'music', master),
-    ...sectionQuestions(planning, 'appearance', master),
     ...sectionQuestions(planning, 'timeline', master),
   ]
 }

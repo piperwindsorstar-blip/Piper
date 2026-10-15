@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { entryName, momentKind, PARTY_OPTIONS } from '../../lib/crm/planning.ts'
 import type { Planning, TimelineRow } from '../../lib/crm/planning.ts'
 import { linkPlatform, songsOf } from '../../lib/portal/questions.ts'
 
@@ -152,25 +153,6 @@ export function PlanSheet({
           ) : null}
         </Section>
 
-        <Section title="Order of appearance">
-          <div className="plan-appear grid gap-6 min-[720px]:grid-cols-3">
-            <AppearanceGroup
-              title="Grand entrance"
-              rows={groupRows(planning, 'entrance')}
-              mode={planning.entranceSongMode}
-              shared={planning.entranceSong}
-            />
-            <AppearanceGroup
-              title="Speeches"
-              rows={groupRows(planning, 'speech')}
-            />
-            <AppearanceGroup
-              title="Dances & special moments"
-              rows={groupRows(planning, 'dance')}
-            />
-          </div>
-        </Section>
-
         <Section title="Music">
           <div className="flex flex-wrap gap-2">
             {planning.genreChips.length === 0 ? (
@@ -261,8 +243,71 @@ function Pill({ label, value }: { label: string; value: string }) {
   )
 }
 
-function MomentRow({ row }: { row: TimelineRow }) {
+type SheetLine = { text: string; choice: boolean }
+
+/** What the DJ reads in the song column, whatever kind of moment it is. */
+function momentLines(row: TimelineRow): SheetLine[] {
+  const kind = momentKind(row.presetKey)
+  if (kind === 'time') return []
+  if (kind === 'playlist') {
+    const platform = linkPlatform(row.link)
+    if (platform) return [{ text: `${platform} playlist`, choice: false }]
+    return [
+      row.link.trim()
+        ? { text: 'Playlist link', choice: false }
+        : { text: "DJ's choice", choice: true },
+    ]
+  }
+  if (kind === 'speakers') {
+    const named = row.entries.filter((entry) => entry.name.trim())
+    if (named.length === 0) return [{ text: '—', choice: false }]
+    return named.map((entry) => ({
+      text: entry.time.trim()
+        ? `${entry.name.trim()} · ${entry.time.trim()}`
+        : entry.name.trim(),
+      choice: false,
+    }))
+  }
+  if (kind === 'party' || kind === 'entrance-party') {
+    if (row.entries.length === 0) return [{ text: "DJ's choice", choice: true }]
+    const prefix =
+      kind === 'entrance-party' && row.mode === 'pairs' ? 'Pairs' : ''
+    return row.entries.map((entry, index) => {
+      const fallback =
+        PARTY_OPTIONS.find((option) => option.id === entry.id)?.name ??
+        (entry.id.startsWith('pair-') ? `Pair ${index + 1}` : 'Added')
+      const song = songText(entry.song, entry.artist, entry.link)
+      return {
+        text: `${prefix && index === 0 ? `${prefix}: ` : ''}${entryName(entry, fallback)} — ${song.text}`,
+        choice: song.choice,
+      }
+    })
+  }
   const song = songText(row.song, row.artist, row.link)
+  if (kind === 'entrance-couple' && row.direct) {
+    return [song, { text: 'Straight into the first dance', choice: false }]
+  }
+  return [song]
+}
+
+function MomentLines({ row }: { row: TimelineRow }) {
+  const lines = momentLines(row)
+  if (lines.length === 0) return <>—</>
+  return (
+    <>
+      {lines.map((line, index) => (
+        <span
+          key={index}
+          className={`block ${line.choice ? 'plan-choice' : ''}`}
+        >
+          {line.text}
+        </span>
+      ))}
+    </>
+  )
+}
+
+function MomentRow({ row }: { row: TimelineRow }) {
   return (
     <tr className="plan-row border-t border-[#ececf0]">
       <td className="py-2 font-bold text-[#C2185B]">{timeLabel(row.time)}</td>
@@ -270,8 +315,8 @@ function MomentRow({ row }: { row: TimelineRow }) {
         {row.label.trim() || row.activity}
         {row.presetKey === '' ? <Added /> : null}
       </td>
-      <td className={`py-2 ${song.choice ? 'plan-choice' : ''}`}>
-        {song.text}
+      <td className="py-2">
+        <MomentLines row={row} />
       </td>
       <td className="py-2">{shown(row.notes)}</td>
     </tr>
@@ -279,7 +324,6 @@ function MomentRow({ row }: { row: TimelineRow }) {
 }
 
 function MomentCard({ row }: { row: TimelineRow }) {
-  const song = songText(row.song, row.artist, row.link)
   return (
     <article className="plan-card rounded-xl border border-[#ececf0] p-3 text-sm">
       <p>
@@ -287,71 +331,11 @@ function MomentCard({ row }: { row: TimelineRow }) {
         {row.label.trim() || row.activity}
         {row.presetKey === '' ? <Added /> : null}
       </p>
-      <p className={`mt-1 ${song.choice ? 'plan-choice' : ''}`}>{song.text}</p>
+      <p className="mt-1">
+        <MomentLines row={row} />
+      </p>
       <p className="mt-1 text-[#3a3a40]">{shown(row.notes)}</p>
     </article>
-  )
-}
-
-function AppearanceGroup({
-  title,
-  rows,
-  mode,
-  shared,
-}: {
-  title: string
-  rows: Planning['appearances']
-  mode?: 'one' | 'each'
-  shared?: { song: string; artist: string; link: string }
-}) {
-  const oneSong =
-    mode === 'one' && shared
-      ? songText(shared.song, shared.artist, shared.link)
-      : null
-  return (
-    <div>
-      <h3 className="font-bold">{title}</h3>
-      {oneSong ? (
-        <p className={`mt-2 text-sm ${oneSong.choice ? 'plan-choice' : ''}`}>
-          One song · {oneSong.text}
-        </p>
-      ) : null}
-      {rows.length === 0 ? (
-        <p className="mt-2 text-sm">—</p>
-      ) : (
-        <ol className="mt-2 grid gap-3">
-          {rows.map((row, index) => {
-            const hasSong = Boolean(
-              row.song.trim() || row.artist.trim() || row.link.trim(),
-            )
-            const song =
-              mode === 'one' ||
-              (row.role === 'speech' && !row.walkUp && !hasSong)
-                ? null
-                : songText(row.song, row.artist, row.link)
-            return (
-              <li key={row.id} className="text-sm">
-                <p className="font-bold">
-                  {index + 1}. {shown(row.names)}
-                </p>
-                <p className="text-[#3a3a40]">{roleLabel(row.role)}</p>
-                <p className="text-[#3a3a40]">{shown(row.when)}</p>
-                {song ? (
-                  <p className={song.choice ? 'plan-choice' : ''}>
-                    {song.text}
-                  </p>
-                ) : null}
-                {row.notes.trim() ? (
-                  <p className="text-xs text-[#6b6b73]">{row.notes}</p>
-                ) : (
-                  <p className="text-xs text-[#6b6b73]">—</p>
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      )}
-    </div>
   )
 }
 
@@ -401,26 +385,6 @@ function Added() {
       Added
     </span>
   )
-}
-
-function groupRows(planning: Planning, role: 'entrance' | 'speech' | 'dance') {
-  return planning.appearances.filter(
-    (row) =>
-      row.role === role &&
-      (row.names.trim() ||
-        row.people.trim() ||
-        row.when.trim() ||
-        row.notes.trim() ||
-        row.song.trim()),
-  )
-}
-
-function roleLabel(role: string): string {
-  if (role === 'entrance') return 'Entrance'
-  if (role === 'speech') return 'Speech'
-  if (role === 'dance') return 'Dance'
-  if (role === 'other') return 'Other'
-  return '—'
 }
 
 function toldLabel(value: string): string {

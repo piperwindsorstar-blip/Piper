@@ -7,15 +7,9 @@ import type { MasterMap } from '../../lib/portal/questions.ts'
 import {
   addCustomMoment,
   reorderMoments,
-  syncAppearanceSongs,
   TIMELINE,
 } from '../../lib/crm/planning.ts'
-import type {
-  Planning,
-  AppearanceRow,
-  SongItem,
-  TimelineRow,
-} from '../../lib/crm/planning.ts'
+import type { Planning, SongItem, TimelineRow } from '../../lib/crm/planning.ts'
 
 export type PortalPage = {
   partnerOne: string
@@ -50,8 +44,6 @@ type PortalState = {
   reorderTimeline: (section: string, fromId: string, toId: string) => void
   addMoment: (section: string, name: string) => void
   removeMoment: (id: string) => void
-  setEntranceSong: (mode: 'one' | 'each', song: SongItem) => void
-  editAppearances: (rows: AppearanceRow[]) => void
   editSongs: (id: 'mustPlay' | 'doNotPlay', items: SongItem[]) => void
   editSameReception: (same: boolean) => void
   markLocked: (planning: Planning) => void
@@ -190,20 +182,13 @@ export function PortalProvider({
           hidden: false,
           label: '',
           people: '',
-          songFrom: '',
+          entries: [],
+          mode: '',
+          direct: false,
           ...patch,
         })
       } else {
-        const current = timeline[index]
-        const linked =
-          patch.song !== undefined ||
-          patch.artist !== undefined ||
-          patch.link !== undefined
-        timeline[index] = {
-          ...current,
-          ...patch,
-          songFrom: linked ? '' : current.songFrom,
-        }
+        timeline[index] = { ...timeline[index], ...patch }
       }
       touch({ ...planning, timeline })
     },
@@ -224,21 +209,6 @@ export function PortalProvider({
           (row) => row.id !== id || row.presetKey !== '',
         ),
       }),
-    setEntranceSong: (mode, song) =>
-      touch(
-        syncAppearanceSongs({
-          ...planning,
-          entranceSongMode: mode,
-          entranceSong: song,
-        }),
-      ),
-    editAppearances: (rows) =>
-      touch(
-        syncAppearanceSongs({
-          ...planning,
-          appearances: rows.slice(0, 12),
-        }),
-      ),
     editSongs: (id, items) =>
       touch(
         id === 'mustPlay'

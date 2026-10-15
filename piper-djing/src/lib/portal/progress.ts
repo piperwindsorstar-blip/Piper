@@ -1,4 +1,5 @@
-import type { Planning } from '../crm/planning.ts'
+import { entryHasSong, momentFilled, momentKind } from '../crm/planning.ts'
+import type { Planning, TimelineRow } from '../crm/planning.ts'
 import {
   SECTION_ORDER,
   allQuestions,
@@ -28,7 +29,7 @@ export function questionAnswered(
   if (question.type === 'song' && question.timelineIndex !== undefined) {
     const row = itemAt(planning.timeline, question.timelineIndex)
     if (!row || row.hidden) return false
-    return Boolean(row.song.trim() || row.artist.trim() || row.link.trim())
+    return momentFilled(row)
   }
   if (question.type === 'chips') {
     return planning.genreChips.length > 0 || planning.genres.trim() !== ''
@@ -38,11 +39,6 @@ export function questionAnswered(
   }
   if (question.type === 'list' && question.id === 'doNotPlay') {
     return songsOf(planning.doNotPlayItems, planning.doNotPlay).length > 0
-  }
-  if (question.type === 'list' && question.id === 'appearances') {
-    return planning.appearances.some(
-      (row) => row.names.trim() || row.people.trim(),
-    )
   }
   return textValue(planning, question.id).trim() !== ''
 }
@@ -77,7 +73,8 @@ export function extrasProgress(
 ): { answered: number; total: number } {
   const extras = visibleQuestions(planning, section, master).filter(isOptional)
   return {
-    answered: extras.filter((question) => questionAnswered(planning, question)).length,
+    answered: extras.filter((question) => questionAnswered(planning, question))
+      .length,
     total: extras.length,
   }
 }
@@ -124,7 +121,9 @@ export function answeredLabel(
   section?: SectionId,
 ): string {
   const questions = countedQuestions(planning, section, master)
-  const answered = questions.filter((question) => questionAnswered(planning, question)).length
+  const answered = questions.filter((question) =>
+    questionAnswered(planning, question),
+  ).length
   const extras = extrasProgress(planning, section, master).total
   return `${answered} of ${questions.length} answered${extras ? ` · ${extras} ${extras === 1 ? 'extra' : 'extras'}` : ''}`
 }
@@ -179,20 +178,38 @@ export function stepFrom(
   return visible[index + direction] ?? null
 }
 
-export function railSummary(planning: Planning, question: Question): string {
-  if (!questionAnswered(planning, question)) {
-    if (question.type === 'song') return 'Pick a song'
-    return ''
+/** The line under a moment: what is set, or what is still to do. */
+export function momentSummary(row: TimelineRow): string {
+  const kind = momentKind(row.presetKey)
+  if (!momentFilled(row)) {
+    if (kind === 'time') return 'Set a time'
+    if (kind === 'playlist') return 'Add a playlist'
+    if (kind === 'speakers') return 'Add speakers'
+    if (kind === 'party' || kind === 'entrance-party') return 'Pick songs'
+    return 'Pick a song'
   }
+  if (kind === 'time') return row.time.trim()
+  if (kind === 'playlist') return row.time.trim() || 'Playlist added'
+  if (kind === 'speakers') {
+    const count = row.entries.filter((entry) => entry.name.trim()).length
+    return count === 1 ? '1 speaker' : `${count} speakers`
+  }
+  if (kind === 'party' || kind === 'entrance-party') {
+    const count = row.entries.filter(entryHasSong).length
+    return count === 1 ? '1 song' : `${count} songs`
+  }
+  const title = row.song.trim()
+  const artist = row.artist.trim()
+  if (title && artist) return `${title} · ${artist}`
+  return title || artist || 'Song picked'
+}
+
+export function railSummary(planning: Planning, question: Question): string {
   if (question.type === 'song' && question.timelineIndex !== undefined) {
     const row = itemAt(planning.timeline, question.timelineIndex)
-    if (!row) return ''
-    if (row.songFrom) return 'Song set in Order of appearance'
-    const title = row.song.trim()
-    const artist = row.artist.trim()
-    if (title && artist) return `${title} · ${artist}`
-    return title || artist || 'Pick a song'
+    return row ? momentSummary(row) : ''
   }
+  if (!questionAnswered(planning, question)) return ''
   if (question.type === 'chips') {
     const chips = planning.genreChips
     if (chips.length) return chips.slice(0, 3).join(', ')
@@ -213,10 +230,6 @@ export function railSummary(planning: Planning, question: Question): string {
       .filter(Boolean)
       .slice(0, 2)
       .join(', ')
-  }
-  if (question.id === 'appearances') {
-    const count = planning.appearances.filter((row) => row.names.trim()).length
-    return count === 1 ? '1 name' : `${count} names`
   }
   if (question.timelineIndex !== undefined)
     return momentLabel(planning, question.timelineIndex)

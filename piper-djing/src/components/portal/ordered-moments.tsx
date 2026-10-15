@@ -17,7 +17,9 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { momentFilled } from '../../lib/crm/planning.ts'
 import type { TimelineRow } from '../../lib/crm/planning.ts'
+import { momentSummary } from '../../lib/portal/progress.ts'
 import { useCloseSheet } from './portal-chrome.tsx'
 import { usePortal } from './portal-state.tsx'
 
@@ -195,7 +197,7 @@ function MomentRow({
   const questionId = `moment-${item.row.presetKey || item.row.id}`
   const current = questionId === currentId
   const summary = momentSummary(item.row)
-  const filled = summary !== 'Pick a song'
+  const filled = momentFilled(item.row)
   const title = item.row.time.trim()
     ? `[${item.row.time.trim()}] ${name}`
     : name
@@ -246,25 +248,9 @@ function MomentRow({
           >
             {title}
           </Link>
-          {summary === 'Song set in Order of appearance' ? (
-            <Link
-              to="/portal/appearance"
-              search={{ q: 'appearances' }}
-              hash={
-                item.row.songFrom === 'entrance'
-                  ? 'entrance-song'
-                  : `row-${item.row.songFrom}`
-              }
-              onClick={() => close()}
-              className="mt-0.5 block text-[13px] text-[var(--pink-soft)] underline"
-            >
-              {summary}
-            </Link>
-          ) : (
-            <span className="mt-0.5 block text-[13px] text-[var(--text-muted)]">
-              {summary}
-            </span>
-          )}
+          <span className="mt-0.5 block text-[13px] text-[var(--text-muted)]">
+            {summary}
+          </span>
         </span>
         <span className="flex shrink-0 flex-col">
           <button
@@ -289,16 +275,6 @@ function MomentRow({
       </div>
     </li>
   )
-}
-
-function momentSummary(row: TimelineRow): string {
-  if (row.songFrom) return 'Song set in Order of appearance'
-  const title = row.song.trim()
-  const artist = row.artist.trim()
-  if (title && artist) return `${title} · ${artist}`
-  if (title || artist || row.link.trim())
-    return title || artist || 'Song picked'
-  return 'Pick a song'
 }
 
 function GripIcon() {

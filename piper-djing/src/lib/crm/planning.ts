@@ -90,12 +90,6 @@ export const MOMENTS: ReadonlyArray<{
     sortable: true,
   },
   {
-    key: 'cake',
-    section: 'Reception',
-    activity: 'Cake cutting',
-    sortable: true,
-  },
-  {
     key: 'bouquet',
     section: 'Reception',
     activity: 'Bouquet toss',
@@ -134,23 +128,52 @@ export type TimelineRow = {
   hidden: boolean
   label: string
   people: string
-  songFrom: string
+  /** Who is in this moment, each with a song (or a time, for speeches). */
+  entries: MomentEntry[]
+  /** How the grand entrance of the wedding party is split up. */
+  mode: EntranceMode | ''
+  /** The couple go straight from their entrance into the first dance. */
+  direct: boolean
 }
 
-export type AppearanceRole = '' | 'entrance' | 'speech' | 'dance' | 'other'
-
-export type AppearanceRow = {
+export type MomentEntry = {
   id: string
-  names: string
-  people: string
-  when: string
-  notes: string
-  role: AppearanceRole
+  name: string
+  time: string
   song: string
   artist: string
   link: string
-  walkUp: boolean
 }
+
+export type EntranceMode = 'pairs' | 'split' | 'whole'
+
+export type MomentKind =
+  | 'song'
+  | 'time'
+  | 'playlist'
+  | 'speakers'
+  | 'party'
+  | 'entrance-party'
+  | 'entrance-couple'
+
+export function momentKind(presetKey: string): MomentKind {
+  if (presetKey === 'guest-arrival') return 'time'
+  if (presetKey === 'cocktail-hour') return 'playlist'
+  if (presetKey === 'speeches') return 'speakers'
+  if (presetKey === 'bridal-party') return 'party'
+  if (presetKey === 'entrance-party') return 'entrance-party'
+  if (presetKey === 'entrance-couple') return 'entrance-couple'
+  return 'song'
+}
+
+export const PARTY_OPTIONS: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'groom', name: 'Groom' },
+  { id: 'groomsmen', name: 'Groomsmen' },
+  { id: 'bridesmaids', name: 'Bridesmaids' },
+]
+
+const ENTRY_MAX = 24
+const PAIR_MAX = 12
 
 export type SongItem = {
   song: string
@@ -191,13 +214,10 @@ export type Planning = {
   dinner: string
   dance: string
   specialPlaylists: string
-  appearances: AppearanceRow[]
   timeline: TimelineRow[]
   mcContact: string
   mcToldFindDj: string
   fromInquiry: string[]
-  entranceSongMode: 'one' | 'each'
-  entranceSong: SongItem
   genreChips: string[]
   mustPlayItems: SongItem[]
   doNotPlayItems: SongItem[]
@@ -211,8 +231,6 @@ export type Planning = {
 
 const SHORT = 200
 const LONG = 2000
-const APPEARANCE_ROWS = 4
-const APPEARANCE_MAX = 24
 
 export const INQUIRY_FIELDS = [
   'email',
@@ -266,15 +284,10 @@ export function blankPlanning(seed: PlanningSeed): Planning {
     dinner: '',
     dance: '',
     specialPlaylists: '',
-    appearances: Array.from({ length: APPEARANCE_ROWS }, (_, index) =>
-      blankAppearance(`appearance-${index + 1}`),
-    ),
     timeline: MOMENTS.map(blankMoment),
     mcContact: '',
     mcToldFindDj: '',
     fromInquiry: [...INQUIRY_FIELDS],
-    entranceSongMode: 'each',
-    entranceSong: { song: '', artist: '', link: '' },
     genreChips: [],
     mustPlayItems: [],
     doNotPlayItems: [],
@@ -283,21 +296,6 @@ export function blankPlanning(seed: PlanningSeed): Planning {
     dueDate: '',
     djName: '',
     skipped: [],
-  }
-}
-
-function blankAppearance(id: string): AppearanceRow {
-  return {
-    id,
-    names: '',
-    people: '',
-    when: '',
-    notes: '',
-    role: '',
-    song: '',
-    artist: '',
-    link: '',
-    walkUp: false,
   }
 }
 
@@ -315,7 +313,9 @@ function blankMoment(moment: (typeof MOMENTS)[number]): TimelineRow {
     hidden: false,
     label: '',
     people: '',
-    songFrom: '',
+    entries: [],
+    mode: '',
+    direct: false,
   }
 }
 
@@ -366,7 +366,6 @@ export function planningFromUnknown(
   seed: PlanningSeed,
 ): Planning {
   const raw = asRecord(value)
-  const appearances = Array.isArray(raw.appearances) ? raw.appearances : []
   const timeline = Array.isArray(raw.timeline) ? raw.timeline : []
   const base = blankPlanning(seed)
   return {
@@ -403,31 +402,10 @@ export function planningFromUnknown(
     dinner: clip(raw.dinner, LONG),
     dance: clip(raw.dance, LONG),
     specialPlaylists: clip(raw.specialPlaylists, LONG),
-    appearances: appearances.slice(0, APPEARANCE_MAX).map((row, index) => {
-      const item = asRecord(row)
-      return {
-        id: clip(item.id, 80) || `appearance-${index + 1}`,
-        names: clip(item.names, SHORT),
-        people: clip(item.people, SHORT),
-        when: clip(item.when, SHORT),
-        notes: clip(item.notes, LONG),
-        role: appearanceRole(item.role),
-        song: clip(item.song, SHORT),
-        artist: clip(item.artist, SHORT),
-        link: clip(item.link, LONG),
-        walkUp: item.walkUp === true,
-      }
-    }),
     timeline: normalizeTimeline(timeline.map((row) => asRecord(row))),
     mcContact: clip(raw.mcContact, SHORT),
     mcToldFindDj: mcTold(raw.mcToldFindDj),
     fromInquiry: inquiryList(raw.fromInquiry),
-    entranceSongMode: raw.entranceSongMode === 'one' ? 'one' : 'each',
-    entranceSong: {
-      song: clip(asRecord(raw.entranceSong).song, SHORT),
-      artist: clip(asRecord(raw.entranceSong).artist, SHORT),
-      link: clip(asRecord(raw.entranceSong).link, LONG),
-    },
     genreChips: stringList(raw.genreChips, 24),
     mustPlayItems: songList(raw.mustPlayItems),
     doNotPlayItems: songList(raw.doNotPlayItems),
@@ -435,21 +413,10 @@ export function planningFromUnknown(
     planLocked: raw.planLocked === true,
     dueDate: isoDate(raw.dueDate),
     djName: clip(raw.djName, SHORT),
-    skipped: stringList(raw.skipped, 80).filter((id) => /^[\w-]{1,80}$/.test(id)),
+    skipped: stringList(raw.skipped, 80).filter((id) =>
+      /^[\w-]{1,80}$/.test(id),
+    ),
   }
-}
-
-const ROLES = new Set<AppearanceRole>([
-  '',
-  'entrance',
-  'speech',
-  'dance',
-  'other',
-])
-
-function appearanceRole(value: unknown): AppearanceRole {
-  const next = clip(value, 20)
-  return ROLES.has(next as AppearanceRole) ? (next as AppearanceRole) : ''
 }
 
 function stringList(value: unknown, max: number): string[] {
@@ -532,7 +499,6 @@ const LEGACY_MOMENT: Record<string, string> = {
   speeches: 'speeches',
   'mother/son dance': 'mother-son',
   'father/daughter dance': 'father-daughter',
-  'cake cutting': 'cake',
   'bouquet toss': 'bouquet',
   'open dance floor': 'open-dance',
   'last dance': 'last-dance',
@@ -546,8 +512,62 @@ function momentContent(row: Record<string, unknown>): boolean {
     clip(row.notes, LONG) ||
     clip(row.link, LONG) ||
     clip(row.label, SHORT) ||
-    clip(row.people, SHORT),
+    clip(row.people, SHORT) ||
+    (Array.isArray(row.entries) && row.entries.length > 0),
   )
+}
+
+type MomentFields = Omit<
+  TimelineRow,
+  'id' | 'presetKey' | 'section' | 'activity'
+>
+
+/**
+ * Plans saved before the bridal party and the wedding party entrance held
+ * several songs kept one song on the row. It becomes the first entry, so
+ * nothing the couple already picked is lost.
+ */
+function carryLegacySong(fields: MomentFields, key: string): MomentFields {
+  const kind = momentKind(key)
+  const hasSong = entryHasSong(fields)
+  if (kind === 'party' && fields.entries.length === 0 && hasSong) {
+    return {
+      ...fields,
+      song: '',
+      artist: '',
+      link: '',
+      entries: [
+        {
+          id: 'custom-1',
+          name: 'Bridal party',
+          time: '',
+          song: fields.song,
+          artist: fields.artist,
+          link: fields.link,
+        },
+      ],
+    }
+  }
+  if (kind === 'entrance-party' && fields.entries.length === 0 && hasSong) {
+    return {
+      ...fields,
+      song: '',
+      artist: '',
+      link: '',
+      mode: 'whole',
+      entries: [
+        {
+          id: 'whole',
+          name: 'Whole wedding party',
+          time: '',
+          song: fields.song,
+          artist: fields.artist,
+          link: fields.link,
+        },
+      ],
+    }
+  }
+  return fields
 }
 
 function readMoment(
@@ -557,6 +577,7 @@ function readMoment(
   const activity = clip(row.activity, SHORT)
   const presetKey =
     clip(row.presetKey, 80) || LEGACY_MOMENT[activity.toLowerCase()] || ''
+  if (presetKey === 'cake' || /^cake cutting$/i.test(activity)) return null
   const preset = MOMENTS.find((moment) => moment.key === presetKey)
   const songBits = timelineSong(row)
   const shared = {
@@ -568,11 +589,13 @@ function readMoment(
     hidden: row.hidden === true,
     label: clip(row.label, SHORT),
     people: clip(row.people, SHORT),
-    songFrom: clip(row.songFrom, 80),
+    entries: readEntries(row.entries),
+    mode: entranceMode(row.mode),
+    direct: row.direct === true,
   }
   if (preset) {
     return {
-      ...shared,
+      ...carryLegacySong(shared, preset.key),
       id: preset.key,
       presetKey: preset.key,
       section: preset.section,
@@ -585,7 +608,7 @@ function readMoment(
       : undefined
   if (indexed && momentContent(row)) {
     return {
-      ...shared,
+      ...carryLegacySong(shared, indexed.key),
       id: indexed.key,
       presetKey: indexed.key,
       section: indexed.section,
@@ -710,7 +733,9 @@ export function addCustomMoment(
     hidden: false,
     label,
     people: '',
-    songFrom: '',
+    entries: [],
+    mode: '',
+    direct: false,
   }
   const last = timeline.reduce(
     (found, row, index) => (row.section === section ? index : found),
@@ -721,104 +746,156 @@ export function addCustomMoment(
   return next
 }
 
-function songOf(row: { song: string; artist: string; link: string }): boolean {
-  return Boolean(row.song.trim() || row.artist.trim() || row.link.trim())
+function entryId(value: unknown, index: number): string {
+  const id = clip(value, 40)
+  return /^[\w-]{1,40}$/.test(id) ? id : `custom-${index + 1}`
 }
 
-function writeSong(
-  row: TimelineRow,
-  song: { song: string; artist: string; link: string },
-  source: string,
-): TimelineRow {
-  return {
-    ...row,
-    song: song.song,
-    artist: song.artist,
-    link: song.link,
-    songFrom: source,
+function readEntries(value: unknown): MomentEntry[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  const entries: MomentEntry[] = []
+  for (const [index, raw] of value.slice(0, ENTRY_MAX).entries()) {
+    const item = asRecord(raw)
+    const id = entryId(item.id, index)
+    if (seen.has(id)) continue
+    seen.add(id)
+    entries.push({
+      id,
+      name: clip(item.name, SHORT),
+      time: clip(item.time, 40),
+      song: clip(item.song, SHORT),
+      artist: clip(item.artist, SHORT),
+      link: clip(item.link, LONG),
+    })
   }
+  return entries
 }
 
-export function syncAppearanceSongs(planning: Planning): Planning {
-  let timeline = planning.timeline.map((row) =>
-    row.songFrom
-      ? { ...row, song: '', artist: '', link: '', songFrom: '' }
-      : row,
+function blankEntry(id: string, name = ''): MomentEntry {
+  return { id, name, time: '', song: '', artist: '', link: '' }
+}
+
+function entranceMode(value: unknown): EntranceMode | '' {
+  return value === 'pairs' || value === 'split' || value === 'whole'
+    ? value
+    : ''
+}
+
+export function isCustomEntry(entry: MomentEntry): boolean {
+  return entry.id.startsWith('custom-')
+}
+
+/** The name a person sees for an entry, with a fallback when it is blank. */
+export function entryName(entry: MomentEntry, fallback: string): string {
+  return entry.name.trim() || fallback
+}
+
+export function entryHasSong(entry: {
+  song: string
+  artist: string
+  link: string
+}): boolean {
+  return Boolean(entry.song.trim() || entry.artist.trim() || entry.link.trim())
+}
+
+export function patchEntry(
+  entries: MomentEntry[],
+  id: string,
+  patch: Partial<Omit<MomentEntry, 'id'>>,
+): MomentEntry[] {
+  return entries.map((entry) =>
+    entry.id === id ? { ...entry, ...patch } : entry,
   )
-  const applyPreset = (
-    key: string,
-    song: { song: string; artist: string; link: string },
-    source: string,
-  ) => {
-    timeline = timeline.map((row) =>
-      row.presetKey === key ? writeSong(row, song, source) : row,
-    )
-  }
-  if (planning.entranceSongMode === 'one' && songOf(planning.entranceSong)) {
-    applyPreset('entrance-party', planning.entranceSong, 'entrance')
-    applyPreset('entrance-couple', planning.entranceSong, 'entrance')
-  } else {
-    for (const row of planning.appearances) {
-      if (row.role !== 'entrance' || !songOf(row)) continue
-      const key = entrancePreset(row, planning.coupleNames)
-      if (key) applyPreset(key, row, row.id)
-    }
-  }
-  for (const row of planning.appearances) {
-    if (row.role !== 'dance' || !row.names.trim()) continue
-    const preset = MOMENTS.find(
-      (moment) =>
-        moment.section === 'Reception' &&
-        namesMatch(row.names, moment.activity),
-    )
-    if (preset && songOf(row)) {
-      applyPreset(preset.key, row, row.id)
-      continue
-    }
-    const id = `dance-${row.id}`
-    timeline = timeline.filter((moment) => moment.id !== id || moment.presetKey)
-    if (!songOf(row)) continue
-    timeline = addCustomMoment(timeline, 'Reception', row.names).map(
-      (moment) =>
-        moment.activity === row.names &&
-        moment.presetKey === '' &&
-        !moment.songFrom
-          ? { ...writeSong(moment, row, row.id), id }
-          : moment,
-    )
-  }
-  timeline = timeline.filter(
-    (row) =>
-      row.presetKey !== '' || !row.id.startsWith('dance-') || row.songFrom,
-  )
-  return { ...planning, timeline }
 }
 
-function entrancePreset(
-  row: AppearanceRow,
-  coupleNames: string,
-): string | null {
-  const names = `${row.names} ${row.people}`.toLowerCase()
-  if (/wedding party|bridal party|whole party/.test(names))
-    return 'entrance-party'
-  if (/bride and groom|bride & groom|the couple/.test(names))
-    return 'entrance-couple'
-  const parts = coupleNames
-    .toLowerCase()
-    .split(/\s+and\s+|\s+&\s+/)
-    .map((part) => part.trim())
-    .filter((part) => part.length > 1)
-  if (
-    parts.length > 0 &&
-    parts.every((part) => names.includes(part.split(' ')[0] ?? part))
-  ) {
-    return 'entrance-couple'
-  }
-  return null
+/** Tick or untick Groom, Groomsmen or Bridesmaids in the bridal party. */
+export function togglePartyEntry(
+  entries: MomentEntry[],
+  id: string,
+  on: boolean,
+): MomentEntry[] {
+  const option = PARTY_OPTIONS.find((item) => item.id === id)
+  if (!option) return entries
+  const has = entries.some((entry) => entry.id === id)
+  if (!on) return entries.filter((entry) => entry.id !== id)
+  if (has) return entries
+  return [...entries, blankEntry(id, option.name)].slice(0, ENTRY_MAX)
 }
 
-function namesMatch(left: string, right: string): boolean {
-  return left.trim().toLowerCase() === right.trim().toLowerCase()
+/** A manual entry the couple types in themselves. */
+export function addCustomEntry(
+  entries: MomentEntry[],
+  name = '',
+): MomentEntry[] {
+  if (entries.length >= ENTRY_MAX) return entries
+  const id = `custom-${Date.now().toString(36)}${entries.length}`
+  return [...entries, blankEntry(id, name.trim().slice(0, SHORT))]
+}
+
+export function removeEntry(entries: MomentEntry[], id: string): MomentEntry[] {
+  return entries.filter((entry) => entry.id !== id)
+}
+
+function pairEntries(entries: MomentEntry[], count: number): MomentEntry[] {
+  const total = Math.max(1, Math.min(PAIR_MAX, Math.floor(count) || 1))
+  const pairs: MomentEntry[] = []
+  for (let n = 1; n <= total; n += 1) {
+    const found = entries.find((entry) => entry.id === `pair-${n}`)
+    pairs.push(found ?? blankEntry(`pair-${n}`))
+  }
+  return pairs
+}
+
+/**
+ * Choose how the wedding party comes in: in pairs (with how many), the
+ * bridesmaids and groomsmen separately, or everyone together. Custom entries
+ * the couple added stay; songs on entries that survive the switch stay too.
+ */
+export function setEntranceMode(
+  entries: MomentEntry[],
+  mode: EntranceMode,
+  pairs = 2,
+): MomentEntry[] {
+  const customs = entries.filter(isCustomEntry)
+  let standard: MomentEntry[]
+  if (mode === 'pairs') standard = pairEntries(entries, pairs)
+  else if (mode === 'split')
+    standard = [
+      entries.find((entry) => entry.id === 'bridesmaids') ??
+        blankEntry('bridesmaids', 'Bridesmaids'),
+      entries.find((entry) => entry.id === 'groomsmen') ??
+        blankEntry('groomsmen', 'Groomsmen'),
+    ]
+  else
+    standard = [
+      entries.find((entry) => entry.id === 'whole') ??
+        blankEntry('whole', 'Whole wedding party'),
+    ]
+  return [...standard, ...customs].slice(0, ENTRY_MAX)
+}
+
+export function setPairCount(
+  entries: MomentEntry[],
+  count: number,
+): MomentEntry[] {
+  return setEntranceMode(entries, 'pairs', count)
+}
+
+export function pairCount(entries: MomentEntry[]): number {
+  return entries.filter((entry) => entry.id.startsWith('pair-')).length
+}
+
+/** True when a moment has something filled in, whatever kind it is. */
+export function momentFilled(row: TimelineRow): boolean {
+  const kind = momentKind(row.presetKey)
+  if (kind === 'time') return row.time.trim() !== ''
+  if (kind === 'playlist') return row.link.trim() !== ''
+  if (kind === 'speakers')
+    return row.entries.some((entry) => entry.name.trim() !== '')
+  if (kind === 'party' || kind === 'entrance-party')
+    return row.entries.some(entryHasSong)
+  return entryHasSong(row)
 }
 
 export function applyLiveInquiry(
@@ -886,8 +963,10 @@ export function contactToFill(
 ): { email?: string; phone?: string } {
   const fill: { email?: string; phone?: string } = {}
   const email = planning.email.trim()
-  if (!booking.email.trim() && EMAIL_SHAPE.test(email)) fill.email = email.slice(0, 200)
+  if (!booking.email.trim() && EMAIL_SHAPE.test(email))
+    fill.email = email.slice(0, 200)
   const phone = planning.phone.trim()
-  if (!booking.phone.trim() && phone.replace(/\D/g, '').length >= 7) fill.phone = phone.slice(0, 40)
+  if (!booking.phone.trim() && phone.replace(/\D/g, '').length >= 7)
+    fill.phone = phone.slice(0, 40)
   return fill
 }

@@ -15,7 +15,6 @@ const STEPS = [
   { id: 'overview', label: 'Overview', to: '/portal' },
   { id: 'details', label: 'Event details', to: '/portal/details' },
   { id: 'music', label: 'Music', to: '/portal/music' },
-  { id: 'appearance', label: 'Order of appearance', to: '/portal/appearance' },
   { id: 'timeline', label: 'Timeline', to: '/portal/timeline' },
 ] as const
 
@@ -146,7 +145,6 @@ function stepFor(path: string): StepId {
   if (path.startsWith('/portal/review')) return 'review'
   if (path.startsWith('/portal/details')) return 'details'
   if (path.startsWith('/portal/music')) return 'music'
-  if (path.startsWith('/portal/appearance')) return 'appearance'
   if (path.startsWith('/portal/timeline')) return 'timeline'
   return 'overview'
 }
@@ -256,7 +254,9 @@ function MobileSheet({
           }}
         >
           <span className="min-w-0">
-            <span className="block truncate text-[15px] font-bold">{title}</span>
+            <span className="block truncate text-[15px] font-bold">
+              {title}
+            </span>
             <span className="block truncate text-[13px] text-[var(--text-muted)]">
               {subtitle}
             </span>
@@ -289,13 +289,7 @@ function MobileSheet({
   )
 }
 
-const BAR_SEGMENTS = [
-  'overview',
-  'details',
-  'music',
-  'appearance',
-  'timeline',
-] as const
+const BAR_SEGMENTS = ['overview', 'details', 'music', 'timeline'] as const
 
 export function MobileQuestionBar({
   section,

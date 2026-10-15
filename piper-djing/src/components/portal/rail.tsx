@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import type { Planning } from '../../lib/crm/planning.ts'
-import { railSummary } from '../../lib/portal/progress.ts'
+import { questionAnswered, railSummary } from '../../lib/portal/progress.ts'
 import {
   isVisible,
   itemAt,
@@ -46,18 +46,8 @@ export function QuestionRail({
                 .filter((question) => (ids ? ids.includes(question.id) : true))
                 .map((question) => {
                   const current = question.id === currentId
-                  const row =
-                    question.timelineIndex === undefined
-                      ? undefined
-                      : itemAt(planning.timeline, question.timelineIndex)
                   const summary = railSummary(planning, question)
-                  const filled = summary !== '' && summary !== 'Pick a song'
-                  const songHash =
-                    row?.songFrom === 'entrance'
-                      ? 'entrance-song'
-                      : row?.songFrom
-                        ? `row-${row.songFrom}`
-                        : ''
+                  const filled = questionAnswered(planning, question)
                   return (
                     <li key={question.id}>
                       <div
@@ -91,18 +81,7 @@ export function QuestionRail({
                               question.rail,
                             )}
                           </Link>
-                          {summary === 'Song set in Order of appearance' &&
-                          songHash ? (
-                            <Link
-                              to="/portal/appearance"
-                              search={{ q: 'appearances' }}
-                              hash={songHash}
-                              onClick={() => close()}
-                              className="mt-0.5 block text-[13px] text-[var(--pink-soft)] underline"
-                            >
-                              {summary}
-                            </Link>
-                          ) : summary ? (
+                          {summary ? (
                             <span className="mt-0.5 block text-[13px] text-[var(--text-muted)]">
                               {summary}
                             </span>

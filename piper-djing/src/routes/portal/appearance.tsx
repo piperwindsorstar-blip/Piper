@@ -1,12 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { SectionFlow } from '../../components/portal/section-flow.tsx'
-import { questionSearch } from '../../lib/portal/questions.ts'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+// Order of appearance was folded into the timeline. Old links land there.
 export const Route = createFileRoute('/portal/appearance')({
-  validateSearch: questionSearch,
-  component: AppearancePage,
+  beforeLoad: () => {
+    throw redirect({ to: '/portal/timeline' })
+  },
 })
-
-function AppearancePage() {
-  return <SectionFlow section="appearance" />
-}
