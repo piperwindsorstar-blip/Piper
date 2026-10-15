@@ -140,7 +140,7 @@ describe('song search', { concurrency: false }, () => {
       const parsed = new URL(url)
       assert.equal(parsed.searchParams.get('type'), 'track')
       assert.equal(parsed.searchParams.get('market'), 'CA')
-      assert.equal(parsed.searchParams.get('limit'), '6')
+      assert.equal(parsed.searchParams.get('limit'), '10')
       assert.equal(parsed.searchParams.get('q'), 'Perfect')
       return Response.json({
         tracks: {
@@ -238,3 +238,16 @@ function restoreEnv(
   if (value === undefined) delete process.env[name]
   else process.env[name] = value
 }
+
+describe('spotify results', () => {
+  it('shows the same song once even when Spotify lists several releases', () => {
+    const track = (id: string) => ({
+      name: 'September',
+      artists: [{ name: 'Earth, Wind & Fire' }],
+      external_urls: { spotify: `https://open.spotify.com/track/${id}` },
+    })
+    const hits = songHits({ tracks: { items: [track('a'), track('b'), track('c')] } })
+    assert.equal(hits.length, 1)
+    assert.equal(hits[0]?.link, 'https://open.spotify.com/track/a')
+  })
+})

@@ -46,11 +46,16 @@ export function songHits(payload: unknown): SongHit[] {
   const items = Reflect.get(tracks, 'items')
   if (!Array.isArray(items)) return []
   const hits: SongHit[] = []
+  // The same song on an album, a single and a hits record shows once.
+  const seen = new Set<string>()
   for (const item of items) {
     if (!item || typeof item !== 'object') continue
     const title = textField(item, 'name')
     const artist = artistNames(item)
     if (!title || !artist) continue
+    const key = `${title.toLowerCase()}|${artist.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
     hits.push({
       title: title.slice(0, 120),
       artist: artist.slice(0, 120),
@@ -171,7 +176,7 @@ async function searchSpotify(term: string): Promise<SongHit[]> {
     const url = new URL(SEARCH_URL)
     url.searchParams.set('q', term)
     url.searchParams.set('type', 'track')
-    url.searchParams.set('limit', '6')
+    url.searchParams.set('limit', '10')
     url.searchParams.set('market', 'CA')
     const response = await fetch(url, {
       headers: {
