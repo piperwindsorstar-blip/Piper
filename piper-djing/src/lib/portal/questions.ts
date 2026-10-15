@@ -1,4 +1,4 @@
-import { MOMENTS, TIMELINE } from '../crm/planning.ts'
+import { MOMENTS, TIMELINE, momentKind } from '../crm/planning.ts'
 import type { Planning, SongItem } from '../crm/planning.ts'
 
 export type SectionId = 'details' | 'music' | 'timeline'
@@ -424,6 +424,24 @@ const MUSIC_QUESTIONS: Question[] = [
 export const SONG_HELPER =
   'Search for the song, or paste a YouTube, Spotify or SoundCloud link.'
 
+/** The line under a moment's title, which depends on what it asks for. */
+export function momentHelper(presetKey: string): string {
+  switch (momentKind(presetKey)) {
+    case 'time':
+      return 'Just the time is enough here.'
+    case 'playlist':
+      return 'Share a playlist, and tell me when it should start.'
+    case 'speakers':
+      return 'Who is speaking, and about when.'
+    case 'party':
+      return 'Search for each song, or paste a YouTube, Spotify or SoundCloud link.'
+    case 'entrance-party':
+      return 'Pick how everyone comes in, then a song for each.'
+    default:
+      return SONG_HELPER
+  }
+}
+
 const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
   id: `moment-${MOMENTS[index]?.key ?? index}`,
   section: 'timeline' as const,
@@ -431,7 +449,7 @@ const TIMELINE_QUESTIONS: Question[] = TIMELINE.map((row, index) => ({
   group: row.section,
   type: 'song' as const,
   label: songTitle(row.activity),
-  helper: SONG_HELPER,
+  helper: momentHelper(MOMENTS[index]?.key ?? ''),
   rail: row.activity,
   timelineIndex: index,
 }))
@@ -517,7 +535,7 @@ export function timelineQuestions(
         group: row.section,
         type: 'song' as const,
         label: songTitle(row.label.trim() || row.activity),
-        helper: SONG_HELPER,
+        helper: momentHelper(row.presetKey),
         rail: row.label.trim() || row.activity,
         timelineIndex: index,
       },
@@ -558,7 +576,7 @@ export function songTitle(activity: string): string {
   const lower = activity.toLowerCase()
   if (lower.includes('first dance')) return 'Your first dance song'
   if (lower.includes('dinner')) return 'Dinner music'
-  if (lower.includes('cocktail')) return 'Cocktail hour music'
+  if (lower.includes('cocktail')) return 'Cocktail hour'
   return activity
 }
 

@@ -60,7 +60,9 @@ export function MomentEditor({
         row={row}
         patch={patch}
         disabled={disabled}
-        renamable={kind !== 'time' && kind !== 'playlist'}
+        renamable={
+          kind !== 'time' && kind !== 'playlist' && kind !== 'speakers'
+        }
       />
     </div>
   )

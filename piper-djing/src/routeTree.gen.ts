@@ -25,10 +25,10 @@ import { Route as DeskBotsRouteImport } from './routes/desk/bots'
 import { Route as DeskInvoicesRouteImport } from './routes/desk/invoices'
 import { Route as DeskLeadsRouteImport } from './routes/desk/leads'
 import { Route as DeskMediaRouteImport } from './routes/desk/media'
+import { Route as DeskMoneyRouteImport } from './routes/desk/money'
 import { Route as DeskPackagesRouteImport } from './routes/desk/packages'
 import { Route as DeskPartnersRouteImport } from './routes/desk/partners'
 import { Route as DeskPaymentsRouteImport } from './routes/desk/payments'
-import { Route as DeskMoneyRouteImport } from './routes/desk/money'
 import { Route as DeskQuestionsRouteImport } from './routes/desk/questions'
 import { Route as DeskReviewsRouteImport } from './routes/desk/reviews'
 import { Route as DeskRsvpRouteImport } from './routes/desk/rsvp'
@@ -56,10 +56,10 @@ import { Route as RsvpManageDesignRouteImport } from './routes/rsvp/manage/desig
 import { Route as RsvpManageEventsRouteImport } from './routes/rsvp/manage/events'
 import { Route as RsvpManageExportsRouteImport } from './routes/rsvp/manage/exports'
 import { Route as RsvpManageGuestsRouteImport } from './routes/rsvp/manage/guests'
-import { Route as RsvpManageSettingsRouteImport } from './routes/rsvp/manage/settings'
 import { Route as RsvpManageSeatingRouteImport } from './routes/rsvp/manage/seating'
-import { Route as RsvpManageTimelineRouteImport } from './routes/rsvp/manage/timeline'
+import { Route as RsvpManageSettingsRouteImport } from './routes/rsvp/manage/settings'
 import { Route as RsvpManageSongsRouteImport } from './routes/rsvp/manage/songs'
+import { Route as RsvpManageTimelineRouteImport } from './routes/rsvp/manage/timeline'
 import { Route as RsvpOpenTokenRouteImport } from './routes/rsvp/open/$token'
 import { Route as ApiRsvpSlugPhotoRouteImport } from './routes/api/rsvp/$slug/photo'
 import { Route as DeskPortalsSlugIndexRouteImport } from './routes/desk/portals/$slug/index'
@@ -148,6 +148,11 @@ const DeskMediaRoute = DeskMediaRouteImport.update({
   path: '/media',
   getParentRoute: () => DeskRouteRoute,
 } as any)
+const DeskMoneyRoute = DeskMoneyRouteImport.update({
+  id: '/money',
+  path: '/money',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
 const DeskPackagesRoute = DeskPackagesRouteImport.update({
   id: '/packages',
   path: '/packages',
@@ -161,11 +166,6 @@ const DeskPartnersRoute = DeskPartnersRouteImport.update({
 const DeskPaymentsRoute = DeskPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
-  getParentRoute: () => DeskRouteRoute,
-} as any)
-const DeskMoneyRoute = DeskMoneyRouteImport.update({
-  id: '/money',
-  path: '/money',
   getParentRoute: () => DeskRouteRoute,
 } as any)
 const DeskQuestionsRoute = DeskQuestionsRouteImport.update({
@@ -303,24 +303,24 @@ const RsvpManageGuestsRoute = RsvpManageGuestsRouteImport.update({
   path: '/guests',
   getParentRoute: () => RsvpManageRouteRoute,
 } as any)
-const RsvpManageSettingsRoute = RsvpManageSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => RsvpManageRouteRoute,
-} as any)
 const RsvpManageSeatingRoute = RsvpManageSeatingRouteImport.update({
   id: '/seating',
   path: '/seating',
   getParentRoute: () => RsvpManageRouteRoute,
 } as any)
-const RsvpManageTimelineRoute = RsvpManageTimelineRouteImport.update({
-  id: '/timeline',
-  path: '/timeline',
+const RsvpManageSettingsRoute = RsvpManageSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => RsvpManageRouteRoute,
 } as any)
 const RsvpManageSongsRoute = RsvpManageSongsRouteImport.update({
   id: '/songs',
   path: '/songs',
+  getParentRoute: () => RsvpManageRouteRoute,
+} as any)
+const RsvpManageTimelineRoute = RsvpManageTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
   getParentRoute: () => RsvpManageRouteRoute,
 } as any)
 const RsvpOpenTokenRoute = RsvpOpenTokenRouteImport.update({
@@ -376,10 +376,10 @@ export interface FileRoutesByFullPath {
   '/desk/invoices': typeof DeskInvoicesRoute
   '/desk/leads': typeof DeskLeadsRoute
   '/desk/media': typeof DeskMediaRoute
+  '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/partners': typeof DeskPartnersRoute
   '/desk/payments': typeof DeskPaymentsRoute
-  '/desk/money': typeof DeskMoneyRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
   '/desk/rsvp': typeof DeskRsvpRoute
@@ -404,10 +404,10 @@ export interface FileRoutesByFullPath {
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
-  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
   '/rsvp/manage/seating': typeof RsvpManageSeatingRoute
-  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
+  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
   '/rsvp/manage/songs': typeof RsvpManageSongsRoute
+  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
   '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
   '/rsvp/$slug/': typeof RsvpSlugIndexRoute
@@ -433,10 +433,10 @@ export interface FileRoutesByTo {
   '/desk/invoices': typeof DeskInvoicesRoute
   '/desk/leads': typeof DeskLeadsRoute
   '/desk/media': typeof DeskMediaRoute
+  '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/partners': typeof DeskPartnersRoute
   '/desk/payments': typeof DeskPaymentsRoute
-  '/desk/money': typeof DeskMoneyRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
   '/desk/rsvp': typeof DeskRsvpRoute
@@ -461,10 +461,10 @@ export interface FileRoutesByTo {
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
-  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
   '/rsvp/manage/seating': typeof RsvpManageSeatingRoute
-  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
+  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
   '/rsvp/manage/songs': typeof RsvpManageSongsRoute
+  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
   '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals': typeof DeskPortalsIndexRoute
   '/rsvp/$slug': typeof RsvpSlugIndexRoute
@@ -494,10 +494,10 @@ export interface FileRoutesById {
   '/desk/invoices': typeof DeskInvoicesRoute
   '/desk/leads': typeof DeskLeadsRoute
   '/desk/media': typeof DeskMediaRoute
+  '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/partners': typeof DeskPartnersRoute
   '/desk/payments': typeof DeskPaymentsRoute
-  '/desk/money': typeof DeskMoneyRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
   '/desk/rsvp': typeof DeskRsvpRoute
@@ -522,10 +522,10 @@ export interface FileRoutesById {
   '/rsvp/manage/events': typeof RsvpManageEventsRoute
   '/rsvp/manage/exports': typeof RsvpManageExportsRoute
   '/rsvp/manage/guests': typeof RsvpManageGuestsRoute
-  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
   '/rsvp/manage/seating': typeof RsvpManageSeatingRoute
-  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
+  '/rsvp/manage/settings': typeof RsvpManageSettingsRoute
   '/rsvp/manage/songs': typeof RsvpManageSongsRoute
+  '/rsvp/manage/timeline': typeof RsvpManageTimelineRoute
   '/rsvp/open/$token': typeof RsvpOpenTokenRoute
   '/desk/portals/': typeof DeskPortalsIndexRoute
   '/rsvp/$slug/': typeof RsvpSlugIndexRoute
@@ -556,10 +556,10 @@ export interface FileRouteTypes {
     | '/desk/invoices'
     | '/desk/leads'
     | '/desk/media'
+    | '/desk/money'
     | '/desk/packages'
     | '/desk/partners'
     | '/desk/payments'
-    | '/desk/money'
     | '/desk/questions'
     | '/desk/reviews'
     | '/desk/rsvp'
@@ -584,10 +584,10 @@ export interface FileRouteTypes {
     | '/rsvp/manage/events'
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
-    | '/rsvp/manage/settings'
     | '/rsvp/manage/seating'
-    | '/rsvp/manage/timeline'
+    | '/rsvp/manage/settings'
     | '/rsvp/manage/songs'
+    | '/rsvp/manage/timeline'
     | '/rsvp/open/$token'
     | '/desk/portals/'
     | '/rsvp/$slug/'
@@ -613,10 +613,10 @@ export interface FileRouteTypes {
     | '/desk/invoices'
     | '/desk/leads'
     | '/desk/media'
+    | '/desk/money'
     | '/desk/packages'
     | '/desk/partners'
     | '/desk/payments'
-    | '/desk/money'
     | '/desk/questions'
     | '/desk/reviews'
     | '/desk/rsvp'
@@ -641,10 +641,10 @@ export interface FileRouteTypes {
     | '/rsvp/manage/events'
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
-    | '/rsvp/manage/settings'
     | '/rsvp/manage/seating'
-    | '/rsvp/manage/timeline'
+    | '/rsvp/manage/settings'
     | '/rsvp/manage/songs'
+    | '/rsvp/manage/timeline'
     | '/rsvp/open/$token'
     | '/desk/portals'
     | '/rsvp/$slug'
@@ -673,10 +673,10 @@ export interface FileRouteTypes {
     | '/desk/invoices'
     | '/desk/leads'
     | '/desk/media'
+    | '/desk/money'
     | '/desk/packages'
     | '/desk/partners'
     | '/desk/payments'
-    | '/desk/money'
     | '/desk/questions'
     | '/desk/reviews'
     | '/desk/rsvp'
@@ -701,10 +701,10 @@ export interface FileRouteTypes {
     | '/rsvp/manage/events'
     | '/rsvp/manage/exports'
     | '/rsvp/manage/guests'
-    | '/rsvp/manage/settings'
     | '/rsvp/manage/seating'
-    | '/rsvp/manage/timeline'
+    | '/rsvp/manage/settings'
     | '/rsvp/manage/songs'
+    | '/rsvp/manage/timeline'
     | '/rsvp/open/$token'
     | '/desk/portals/'
     | '/rsvp/$slug/'
@@ -858,6 +858,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeskMediaRouteImport
       parentRoute: typeof DeskRouteRoute
     }
+    '/desk/money': {
+      id: '/desk/money'
+      path: '/money'
+      fullPath: '/desk/money'
+      preLoaderRoute: typeof DeskMoneyRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
     '/desk/packages': {
       id: '/desk/packages'
       path: '/packages'
@@ -877,13 +884,6 @@ declare module '@tanstack/react-router' {
       path: '/payments'
       fullPath: '/desk/payments'
       preLoaderRoute: typeof DeskPaymentsRouteImport
-      parentRoute: typeof DeskRouteRoute
-    }
-    '/desk/money': {
-      id: '/desk/money'
-      path: '/money'
-      fullPath: '/desk/money'
-      preLoaderRoute: typeof DeskMoneyRouteImport
       parentRoute: typeof DeskRouteRoute
     }
     '/desk/questions': {
@@ -1075,13 +1075,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RsvpManageGuestsRouteImport
       parentRoute: typeof RsvpManageRouteRoute
     }
-    '/rsvp/manage/settings': {
-      id: '/rsvp/manage/settings'
-      path: '/settings'
-      fullPath: '/rsvp/manage/settings'
-      preLoaderRoute: typeof RsvpManageSettingsRouteImport
-      parentRoute: typeof RsvpManageRouteRoute
-    }
     '/rsvp/manage/seating': {
       id: '/rsvp/manage/seating'
       path: '/seating'
@@ -1089,11 +1082,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RsvpManageSeatingRouteImport
       parentRoute: typeof RsvpManageRouteRoute
     }
-    '/rsvp/manage/timeline': {
-      id: '/rsvp/manage/timeline'
-      path: '/timeline'
-      fullPath: '/rsvp/manage/timeline'
-      preLoaderRoute: typeof RsvpManageTimelineRouteImport
+    '/rsvp/manage/settings': {
+      id: '/rsvp/manage/settings'
+      path: '/settings'
+      fullPath: '/rsvp/manage/settings'
+      preLoaderRoute: typeof RsvpManageSettingsRouteImport
       parentRoute: typeof RsvpManageRouteRoute
     }
     '/rsvp/manage/songs': {
@@ -1101,6 +1094,13 @@ declare module '@tanstack/react-router' {
       path: '/songs'
       fullPath: '/rsvp/manage/songs'
       preLoaderRoute: typeof RsvpManageSongsRouteImport
+      parentRoute: typeof RsvpManageRouteRoute
+    }
+    '/rsvp/manage/timeline': {
+      id: '/rsvp/manage/timeline'
+      path: '/timeline'
+      fullPath: '/rsvp/manage/timeline'
+      preLoaderRoute: typeof RsvpManageTimelineRouteImport
       parentRoute: typeof RsvpManageRouteRoute
     }
     '/rsvp/open/$token': {
@@ -1161,10 +1161,10 @@ interface DeskRouteRouteChildren {
   DeskInvoicesRoute: typeof DeskInvoicesRoute
   DeskLeadsRoute: typeof DeskLeadsRoute
   DeskMediaRoute: typeof DeskMediaRoute
+  DeskMoneyRoute: typeof DeskMoneyRoute
   DeskPackagesRoute: typeof DeskPackagesRoute
   DeskPartnersRoute: typeof DeskPartnersRoute
   DeskPaymentsRoute: typeof DeskPaymentsRoute
-  DeskMoneyRoute: typeof DeskMoneyRoute
   DeskQuestionsRoute: typeof DeskQuestionsRoute
   DeskReviewsRoute: typeof DeskReviewsRoute
   DeskRsvpRoute: typeof DeskRsvpRoute
@@ -1182,10 +1182,10 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskInvoicesRoute: DeskInvoicesRoute,
   DeskLeadsRoute: DeskLeadsRoute,
   DeskMediaRoute: DeskMediaRoute,
+  DeskMoneyRoute: DeskMoneyRoute,
   DeskPackagesRoute: DeskPackagesRoute,
   DeskPartnersRoute: DeskPartnersRoute,
   DeskPaymentsRoute: DeskPaymentsRoute,
-  DeskMoneyRoute: DeskMoneyRoute,
   DeskQuestionsRoute: DeskQuestionsRoute,
   DeskReviewsRoute: DeskReviewsRoute,
   DeskRsvpRoute: DeskRsvpRoute,
@@ -1230,10 +1230,10 @@ interface RsvpManageRouteRouteChildren {
   RsvpManageEventsRoute: typeof RsvpManageEventsRoute
   RsvpManageExportsRoute: typeof RsvpManageExportsRoute
   RsvpManageGuestsRoute: typeof RsvpManageGuestsRoute
-  RsvpManageSettingsRoute: typeof RsvpManageSettingsRoute
   RsvpManageSeatingRoute: typeof RsvpManageSeatingRoute
-  RsvpManageTimelineRoute: typeof RsvpManageTimelineRoute
+  RsvpManageSettingsRoute: typeof RsvpManageSettingsRoute
   RsvpManageSongsRoute: typeof RsvpManageSongsRoute
+  RsvpManageTimelineRoute: typeof RsvpManageTimelineRoute
   RsvpManageIndexRoute: typeof RsvpManageIndexRoute
 }
 
@@ -1242,10 +1242,10 @@ const RsvpManageRouteRouteChildren: RsvpManageRouteRouteChildren = {
   RsvpManageEventsRoute: RsvpManageEventsRoute,
   RsvpManageExportsRoute: RsvpManageExportsRoute,
   RsvpManageGuestsRoute: RsvpManageGuestsRoute,
-  RsvpManageSettingsRoute: RsvpManageSettingsRoute,
   RsvpManageSeatingRoute: RsvpManageSeatingRoute,
-  RsvpManageTimelineRoute: RsvpManageTimelineRoute,
+  RsvpManageSettingsRoute: RsvpManageSettingsRoute,
   RsvpManageSongsRoute: RsvpManageSongsRoute,
+  RsvpManageTimelineRoute: RsvpManageTimelineRoute,
   RsvpManageIndexRoute: RsvpManageIndexRoute,
 }
 

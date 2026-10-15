@@ -81,7 +81,10 @@ describe('song search', { concurrency: false }, () => {
       weddingDate: '',
       venueName: '',
     })
-    const helper = timelineQuestions(planning)[0]?.helper ?? ''
+    const helper =
+      timelineQuestions(planning).find(
+        (question) => question.id === 'moment-first-dance',
+      )?.helper ?? ''
     assert.equal(
       helper,
       'Search for the song, or paste a YouTube, Spotify or SoundCloud link.',
