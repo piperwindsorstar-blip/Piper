@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   DeskTitle,
   deskCard,
@@ -13,6 +13,8 @@ import {
   saveCardPayments,
   saveSettings,
 } from '../../lib/crm/desk.functions.ts'
+import { downloadBackup, getBackupStatus } from '../../lib/backup.functions.ts'
+import { downloadText } from '../../components/rsvp/shell.tsx'
 import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { ActionButton } from '../../components/action-button.tsx'
@@ -116,7 +118,47 @@ function SettingsPage() {
           </ul>
         )}
       </section>
+      <BackupCard owner={settings.email} />
     </div>
+  )
+}
+
+/** A backup to download any time, and when the Sunday email last went out. */
+function BackupCard({ owner }: { owner: string }) {
+  const download = useServerFn(downloadBackup)
+  const status = useServerFn(getBackupStatus)
+  const [last, setLast] = useState<{ ranAt: string; note: string } | null>(null)
+  useEffect(() => {
+    void status().then(setLast)
+  }, [status])
+  return (
+    <section className={`${deskCard} grid gap-3`}>
+      <h2 className="font-semibold">Backup</h2>
+      <p className="text-sm text-white/65">
+        Every Sunday morning a copy of your bookings, invoices, payments, leads,
+        RSVP sites and settings is emailed to {owner || 'the desk owner'}.
+        Sign-in sessions, bot keys, email logs and photos are left out.
+      </p>
+      <p className="text-sm">
+        {last
+          ? `Last Sunday run: ${last.note}`
+          : 'No weekly backup has gone out yet.'}
+      </p>
+      <ActionButton
+        className={`${deskGhost} w-fit`}
+        busy="Making the backup…"
+        done="Downloaded"
+        surface={deskSurface}
+        onRun={async (): Promise<RunResult> => {
+          const result = await download()
+          if (!result.ok) return { ok: false, message: result.error }
+          downloadText(result.filename, result.json, 'application/json')
+          return { ok: true, message: `Downloaded (${result.summary}).` }
+        }}
+      >
+        Download a backup now
+      </ActionButton>
+    </section>
   )
 }
 
@@ -151,7 +193,10 @@ function CardPaymentsSetting({
           const result = await save({ data: { on: next } })
           if (result.ok) await router.invalidate()
           return result.ok
-            ? { ok: true, message: next ? 'Pay by card is on.' : 'Pay by card is off.' }
+            ? {
+                ok: true,
+                message: next ? 'Pay by card is on.' : 'Pay by card is off.',
+              }
             : { ok: false, message: result.error }
         }}
       >

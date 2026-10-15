@@ -51,16 +51,20 @@ describe('rsvp email log', { skip: liveBook }, () => {
     assert.ok((log[0]?.sentAt ?? '').length > 0)
   })
 
-  it('mails the automatic reminder once even if the job runs twice', async () => {
-    const wedding = dueWedding('reminder-once')
+  it('tries a reminder again on the next run when it could not be delivered', async () => {
+    // No mail password is set here, so nothing is delivered. The party stays
+    // unreminded, and the next daily run tries again (once a send is
+    // delivered, the party is marked reminded and the guard below applies).
+    const wedding = dueWedding('reminder-retry')
     await writeRsvp(wedding)
     await deliverDueReminders(wedding)
     await deliverDueReminders(wedding)
     const reminders = (await listRsvpEmails(wedding.slug)).filter(
       (row) => row.kind === 'reminder',
     )
-    assert.equal(reminders.length, 1)
+    assert.equal(reminders.length, 2)
     assert.equal(reminders[0]?.to, 'william@example.com')
+    assert.equal(wedding.remindedIds.length, 0)
     const saved = await readRsvp(wedding.slug)
     assert.equal(saved?.remindedOn, torontoToday())
   })
