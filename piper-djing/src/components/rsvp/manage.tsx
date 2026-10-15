@@ -1391,21 +1391,14 @@ export function Events({ data }: { data: ReadyManage }) {
       autosave.hold('Give every event a name to save.')
       return
     }
+    // Only this page's fields. The meals and site settings save on their
+    // own, so sending old copies of them here could undo those changes.
     autosave.schedule({
       deadline,
       catererDeadline: caterer,
       lockAfterDeadline: lockAfter,
       autoRemind,
       events,
-      questions: data.wedding.questions,
-      schedule: data.wedding.schedule,
-      notes: data.wedding.notes,
-      accessMode: data.wedding.accessMode,
-      inviteCode: data.wedding.inviteCode,
-      showContact: data.wedding.showContact,
-      contactPhone: data.wedding.contactPhone,
-      venue: data.wedding.venue,
-      address: data.wedding.address,
     })
     // Only the couple's own edits trigger a save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2052,22 +2045,7 @@ export function Settings({ data }: { data: ReadyManage }) {
       autosave.hold('Add an invite code, or pick another way in.')
       return
     }
-    autosave.schedule({
-      accessMode,
-      inviteCode,
-      showContact,
-      contactPhone,
-      deadline: data.wedding.deadline,
-      catererDeadline: data.wedding.catererDeadline,
-      lockAfterDeadline: data.wedding.lockAfterDeadline,
-      autoRemind: data.wedding.autoRemind,
-      events: data.wedding.events,
-      questions: data.wedding.questions,
-      schedule: data.wedding.schedule,
-      notes: data.wedding.notes,
-      venue: data.wedding.venue,
-      address: data.wedding.address,
-    })
+    autosave.schedule({ accessMode, inviteCode, showContact, contactPhone })
     // Only the couple's own edits trigger a save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessMode, inviteCode, showContact, contactPhone])

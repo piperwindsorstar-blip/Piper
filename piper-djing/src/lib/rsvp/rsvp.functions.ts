@@ -1104,10 +1104,14 @@ export const saveRsvpSetup = createServerFn({ method: 'POST' })
         error: 'Open your RSVP from the sign-in link.',
       }
     }
+    // Each page sends only its own fields; anything left out keeps its saved
+    // value, so the events page can never reset the access setting.
     const accessMode: AccessMode =
-      data.accessMode === 'checkin' || data.accessMode === 'public'
-        ? data.accessMode
-        : 'code'
+      data.accessMode === undefined
+        ? wedding.accessMode
+        : data.accessMode === 'checkin' || data.accessMode === 'public'
+          ? data.accessMode
+          : 'code'
     const parsed = parseWedding(
       {
         ...wedding,
