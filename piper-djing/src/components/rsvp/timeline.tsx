@@ -260,7 +260,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
           ) : null}
         </div>
 
-        <ol className="mt-4 grid gap-3">
+        <ol className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
           {timeline.moments.map((moment, index) => {
             const time = cleanTime(moment.time)
             const complete = Boolean(time && moment.title.trim())

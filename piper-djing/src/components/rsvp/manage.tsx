@@ -1662,7 +1662,7 @@ export function Songs({ data }: { data: ReadyManage }) {
           {error}
         </p>
       ) : null}
-      <ol className="mt-4 grid gap-3">
+      <ol className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
         {data.songs.map((song, index) => {
           const key = `${song.title}\u0000${song.artist}`
           const status = picked[key] ?? (song.status as SongStatus)
