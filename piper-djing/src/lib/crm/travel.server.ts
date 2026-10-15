@@ -73,8 +73,7 @@ export async function drivingKm(address: string, now = Date.now()): Promise<Dist
     } else if (response.ok) {
       result = { ok: false, reason: 'not-found', detail: 'Google found no driving route to that address.' }
     } else {
-      const message =
-        (body as { error?: { message?: string } } | null)?.error?.message ?? `HTTP ${response.status}`
+      const message = googleError(body, response.status)
       console.warn('[travel] routes refused:', message)
       // A bad request is usually an address Google cannot place.
       result =
@@ -112,4 +111,18 @@ export async function drivingKm(address: string, now = Date.now()): Promise<Dist
     }
   }
   return result
+}
+
+/**
+ * Google's message plus its reason code (API_KEY_SERVICE_BLOCKED,
+ * SERVICE_DISABLED, API_KEY_HTTP_REFERRER_BLOCKED...), which names the fix.
+ */
+function googleError(body: unknown, status: number): string {
+  const error = (body as { error?: { message?: unknown; details?: unknown } } | null)?.error
+  const message = typeof error?.message === 'string' ? error.message : `HTTP ${status}`
+  const details = Array.isArray(error?.details) ? error.details : []
+  const reason = details
+    .map((item) => (item as { reason?: unknown })?.reason)
+    .find((value): value is string => typeof value === 'string')
+  return reason ? `${message} (${reason})` : message
 }
