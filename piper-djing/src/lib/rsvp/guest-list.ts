@@ -29,6 +29,20 @@ export function splitGuestPaste(raw: string): string[] {
   return tidyGuestNames(raw.split(/[\r\n,]+/))
 }
 
+/**
+ * One party per line. Commas split the people who share that party's RSVP.
+ * Blank lines drop, and a name is only kept once within its own line.
+ */
+export function splitPartyPaste(raw: string): string[][] {
+  const parties: string[][] = []
+  for (const line of raw.split(/\r?\n/)) {
+    const names = tidyGuestNames(line.split(','))
+    if (names.length > 0) parties.push(names)
+    if (parties.length >= 500) break
+  }
+  return parties
+}
+
 /** Keeps each saved row as one guest. Still drops blanks and duplicates. */
 export function tidyGuestNames(names: string[]): string[] {
   const seen = new Set<string>()

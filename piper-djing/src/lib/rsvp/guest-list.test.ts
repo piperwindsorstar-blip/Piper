@@ -7,6 +7,7 @@ import {
   partyLabel,
   setMealOptions,
   splitGuestPaste,
+  splitPartyPaste,
   tidyGuestNames,
   toBotGuests,
 } from './guest-list.ts'
@@ -132,11 +133,40 @@ describe('meal boxes', () => {
     const before = mealOptions(wedding)
     const saved = confirmGuestList(
       wedding,
-      [{ id: '', name: 'New Person', partyId: 'solo-1', plusOneAllowed: false }],
+      [
+        {
+          id: '',
+          name: 'New Person',
+          partyId: 'solo-1',
+          plusOneAllowed: false,
+        },
+      ],
       null,
       () => 'fresh',
     )
     assert.ok(saved.ok)
     if (saved.ok) assert.deepEqual(mealOptions(saved.wedding), before)
+  })
+})
+
+describe('party paste', () => {
+  it('makes one party per line, with commas between people who share it', () => {
+    assert.deepEqual(
+      splitPartyPaste(
+        'Liz Miller, David Miller, Nora Miller\n\nChidi Okafor,  Ada Okafor\r\nWilliam Thompson',
+      ),
+      [
+        ['Liz Miller', 'David Miller', 'Nora Miller'],
+        ['Chidi Okafor', 'Ada Okafor'],
+        ['William Thompson'],
+      ],
+    )
+  })
+
+  it('keeps a name once within its own line and drops empty lines', () => {
+    assert.deepEqual(splitPartyPaste('Ann Lee, ann  lee,, \n , \nBo Ng'), [
+      ['Ann Lee'],
+      ['Bo Ng'],
+    ])
   })
 })
