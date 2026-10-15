@@ -671,7 +671,8 @@ export const requestRsvpSignIn = createServerFn({ method: 'POST' })
       if (!mailed.delivered) {
         return {
           ok: false as const,
-          error: 'The email could not be sent. Try again in a minute.',
+          error:
+            "We couldn't send the sign-in email. Text or email DJ Piper P and he'll send you a link.",
         }
       }
     }
@@ -1502,6 +1503,23 @@ export const openRsvpDesk = createServerFn({ method: 'POST' })
     if (!wedding) return { ok: false as const }
     rememberRsvpSlug(wedding.slug)
     return { ok: true as const }
+  })
+
+/**
+ * A one-day sign-in link for a couple, made on the desk so Piper can text it.
+ * Works when email is down, and replaces any link sent earlier.
+ */
+export const makeRsvpSignInLink = createServerFn({ method: 'POST' })
+  .validator((data: { slug?: string }) => ({ slug: text(data.slug, 80) }))
+  .handler(async ({ data }) => {
+    if (!(await isDesk())) return { ok: false as const, url: '' }
+    const wedding = await readRsvp(data.slug)
+    if (!wedding) return { ok: false as const, url: '' }
+    const token = newToken()
+    wedding.signInToken = token
+    wedding.signInExpires = new Date(Date.now() + 86_400_000).toISOString()
+    await writeRsvp(wedding)
+    return { ok: true as const, url: publicUrl(`/rsvp/open/${token}`) }
   })
 
 export const createSampleRsvp = createServerFn({ method: 'POST' }).handler(

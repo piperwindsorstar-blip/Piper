@@ -563,6 +563,14 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
+                    {event.asksMeal &&
+                    data.meals.length > 0 &&
+                    guest.replies[event.id] === 'attending' &&
+                    !guest.meal ? (
+                      <span className="block text-sm font-semibold text-[var(--pink-soft)]">
+                        No meal chosen yet. Tap Edit to pick one.
+                      </span>
+                    ) : null}
                   </span>
                   <span
                     className={
@@ -587,7 +595,7 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
         className="mt-6 grid gap-4"
         onSubmit={(event) => event.preventDefault()}
       >
-        <Field id="confirm-email" label="Confirmation email">
+        <Field id="confirm-email" label="Email for a confirmation (optional)">
           <input
             id="confirm-email"
             type="email"
@@ -634,18 +642,15 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
               },
             })
             if (!result.ok) {
-              setError(result.error)
+              // The button shows the reason; no second copy above it.
               return { ok: false, message: result.error }
             }
-            if (!result.mailed) {
-              const message = result.detail || 'The email was not sent.'
-              setError(message)
-              return { ok: false, message }
-            }
+            // The reply is saved before any email goes out, so a missing
+            // confirmation email never turns a sent RSVP into a failure.
             await router.navigate({
               to: '/rsvp/$slug/p/$token/done',
               params: { slug: data.slug, token: data.party.token },
-              search: { sent: '1' },
+              search: { sent: result.mailed ? '1' : '' },
             })
             return { ok: true, message: 'Sent.' }
           }}
@@ -734,8 +739,9 @@ export function ReplyDone({
         Change my reply
       </Link>
       <p className="mt-4 text-center text-sm text-[var(--text-faint)]">
-        The email also has a private link to change your reply later — no
-        searching needed.
+        {sent
+          ? 'The email also has a private link to change your reply later — no searching needed.'
+          : 'To change your reply later, find your name on the invitation again, or keep this page.'}
       </p>
       <TheDay moments={data.day} />
     </RsvpFrame>

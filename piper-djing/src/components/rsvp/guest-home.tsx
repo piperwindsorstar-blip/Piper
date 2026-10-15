@@ -207,12 +207,20 @@ function WeddingHome({ data }: { data: ShownHome }) {
   )
 }
 
-export function FindInvitation({ slug }: { slug: string }) {
+export function FindInvitation({
+  slug,
+  contact = { name: '', phone: '' },
+}: {
+  slug: string
+  contact?: { name: string; phone: string }
+}) {
   const find = useServerFn(findInvitation)
   const router = useRouter()
   const [first, setFirst] = useState('')
   const [last, setLast] = useState('')
   const [error, setError] = useState('')
+  /** True when the name was not on the list, not just too short. */
+  const [notListed, setNotListed] = useState(false)
   const [found, setFound] = useState<{
     token: string
     partyName: string
@@ -234,11 +242,13 @@ export function FindInvitation({ slug }: { slug: string }) {
           event.preventDefault()
           setBusy(true)
           setError('')
+          setNotListed(false)
           setFound(null)
           void find({ data: { slug, first, last } }).then((result) => {
             setBusy(false)
             if (!result.ok) {
               setError(result.error)
+              setNotListed('reason' in result && result.reason === 'none')
               return
             }
             setFound(result)
@@ -257,7 +267,7 @@ export function FindInvitation({ slug }: { slug: string }) {
         <Field
           id="last-name"
           label="Last name"
-          error={error && !found ? error : ''}
+          error={error && !found && !notListed ? error : ''}
         >
           <input
             id="last-name"
@@ -294,8 +304,11 @@ export function FindInvitation({ slug }: { slug: string }) {
           </button>
         </section>
       ) : null}
-      {error && !found ? (
-        <section className="mt-4 rounded-3xl border border-[var(--pink)] bg-[var(--surface)] p-4 text-sm">
+      {notListed && !found ? (
+        <section
+          className="mt-4 rounded-3xl border border-[var(--pink)] bg-[var(--surface)] p-4 text-sm"
+          role="alert"
+        >
           <p className="font-semibold">We couldn&apos;t find that name</p>
           <ul className="mt-2 grid gap-1 text-[var(--text-muted)]">
             <li>Try the full name on the envelope.</li>
@@ -307,10 +320,19 @@ export function FindInvitation({ slug }: { slug: string }) {
       <p className="mt-6 text-center text-sm text-[var(--text-faint)]">
         Only your own party is shown — we never list other guests.
       </p>
-      {error && !found ? (
-        <a className={`${rsvpGhost} mt-4`} href="#details">
-          Contact the couple
-        </a>
+      {notListed && !found ? (
+        contact.phone ? (
+          <a
+            className={`${rsvpGhost} mt-4`}
+            href={`sms:${contact.phone.replace(/[^\d+]/g, '')}`}
+          >
+            Text {contact.name || 'the couple'} at {contact.phone}
+          </a>
+        ) : (
+          <Link to="/rsvp/$slug" params={{ slug }} className={`${rsvpGhost} mt-4`}>
+            Back to the invitation
+          </Link>
+        )
       ) : null}
     </RsvpFrame>
   )

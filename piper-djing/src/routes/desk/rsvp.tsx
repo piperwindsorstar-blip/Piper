@@ -18,6 +18,7 @@ import {
   createSampleRsvp,
   getRsvpDesk,
   markRsvpPaid,
+  makeRsvpSignInLink,
   openRsvpDesk,
   removeRsvpDesk,
 } from '../../lib/rsvp/rsvp.functions.ts'
@@ -33,6 +34,8 @@ function RsvpDesk() {
   const rows = Route.useLoaderData()
   const sample = useServerFn(createSampleRsvp)
   const open = useServerFn(openRsvpDesk)
+  const signInLink = useServerFn(makeRsvpSignInLink)
+  const [copiedFor, setCopiedFor] = useState('')
   const pay = useServerFn(markRsvpPaid)
   const remove = useServerFn(removeRsvpDesk)
   const router = useRouter()
@@ -93,6 +96,30 @@ function RsvpDesk() {
               >
                 Open
               </button>
+              {row.sample ? null : (
+                <button
+                  type="button"
+                  className={deskGhost}
+                  title="A link that signs them in for one day. Text it to the couple."
+                  onClick={() => {
+                    void signInLink({ data: { slug: row.slug } }).then(async (result) => {
+                      if (!result.ok) {
+                        setNotice('The sign-in link could not be made.')
+                        return
+                      }
+                      try {
+                        await navigator.clipboard.writeText(result.url)
+                        setCopiedFor(row.slug)
+                        setNotice(`Sign-in link for ${row.couple} copied. It works for one day.`)
+                      } catch {
+                        setNotice(`Sign-in link for ${row.couple}: ${result.url}`)
+                      }
+                    })
+                  }}
+                >
+                  {copiedFor === row.slug ? 'Link copied' : 'Copy sign-in link'}
+                </button>
+              )}
               <button
                 type="button"
                 className={deskGhost}
