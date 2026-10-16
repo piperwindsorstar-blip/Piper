@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
-import { templateFor } from '../../lib/rsvp/templates.ts'
+import { skinFor } from '../../lib/rsvp/templates.ts'
 import type { RsvpTemplateId } from '../../lib/rsvp/templates.ts'
 
 /** The couple's photo, as the guest pages show it: the whole picture. */
@@ -15,28 +15,32 @@ export type GuestPhoto = {
 export type RsvpStyle = {
   theme: 'dark' | 'light'
   template: RsvpTemplateId
+  tint: number
   photo: GuestPhoto | null
 }
 
 const RsvpStyleContext = createContext<RsvpStyle>({
   theme: 'dark',
   template: 'ivory',
+  tint: 0,
   photo: null,
 })
 
 export function RsvpThemeProvider({
   theme,
   template = 'ivory',
+  tint = 0,
   photo = null,
   children,
 }: {
   theme: 'dark' | 'light'
   template?: RsvpTemplateId
+  tint?: number
   photo?: GuestPhoto | null
   children: ReactNode
 }) {
   return (
-    <RsvpStyleContext.Provider value={{ theme, template, photo }}>
+    <RsvpStyleContext.Provider value={{ theme, template, tint, photo }}>
       {children}
     </RsvpStyleContext.Provider>
   )
@@ -82,9 +86,16 @@ export function onAccentInk(accent: string | undefined): string {
   return luminance < 0.18 ? '#FFFFFF' : '#0D0D0D'
 }
 
-export function RsvpFrame({ children }: { children: ReactNode }) {
-  const { theme, template, photo } = useRsvpStyle()
-  const { skin } = templateFor(template)
+export function RsvpFrame({
+  children,
+  hidePhoto = false,
+}: {
+  children: ReactNode
+  /** The page shows the invitation card, which carries the photo itself. */
+  hidePhoto?: boolean
+}) {
+  const { theme, template, tint, photo } = useRsvpStyle()
+  const { skin } = skinFor(template, tint)
   const web = skin.web
   const light = web ? web.light : theme === 'light'
   const backdrop = web
@@ -105,7 +116,7 @@ export function RsvpFrame({ children }: { children: ReactNode }) {
       }
     >
       <div className="mx-auto w-full max-w-[430px]">
-        {photo ? <RsvpPhoto photo={photo} /> : null}
+        {photo && !hidePhoto ? <RsvpPhoto photo={photo} /> : null}
         {children}
       </div>
     </main>
@@ -138,8 +149,8 @@ export function RsvpPhoto({ photo }: { photo: GuestPhoto }) {
  * light pages the ink mark.
  */
 export function RsvpLogo({ className = 'h-9 w-auto' }: { className?: string }) {
-  const { theme, template } = useRsvpStyle()
-  const web = templateFor(template).skin.web
+  const { theme, template, tint } = useRsvpStyle()
+  const web = skinFor(template, tint).skin.web
   const light = web ? web.light : theme === 'light'
   return (
     <img

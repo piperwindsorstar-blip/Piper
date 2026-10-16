@@ -189,8 +189,8 @@ function PlanReminders({
       ) : null}
       <ActionButton
         className={`${on ? deskGhost : deskPrimary} mt-4 w-fit`}
-        busy={on ? 'Turning off…' : 'Turning on…'}
-        done={on ? 'Off' : 'On'}
+        busy="Saving…"
+        done="Saved"
         surface={deskSurface}
         onRun={async (): Promise<RunResult> => {
           const result = await save({ data: { on: !on } })

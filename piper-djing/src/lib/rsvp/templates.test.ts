@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   DEFAULT_TEMPLATE,
+  inkOn,
+  parseTint,
+  skinFor,
   EMAIL_PHOTO_MAX_HEIGHT,
   EMAIL_PHOTO_WIDTH,
   RSVP_TEMPLATES,
@@ -16,14 +19,22 @@ import { sampleWedding } from './demo.ts'
 import { parseWedding } from './model.ts'
 
 describe('invitation templates', () => {
-  it('offers the five templates, each with its own paper and accent', () => {
-    assert.equal(RSVP_TEMPLATES.length, 5)
+  it('offers the eight styles, each with its own paper and three colourways', () => {
+    assert.equal(RSVP_TEMPLATES.length, 8)
     assert.deepEqual(
       RSVP_TEMPLATES.map((template) => template.id),
-      ['ivory', 'minimal', 'blush', 'kraft', 'black-tie'],
+      ['ivory', 'minimal', 'blush', 'kraft', 'black-tie', 'deco', 'garden', 'after-dark'],
     )
     const papers = new Set(RSVP_TEMPLATES.map((t) => t.skin.card))
-    assert.equal(papers.size, 5)
+    assert.equal(papers.size, 8)
+    for (const template of RSVP_TEMPLATES) {
+      assert.equal(template.tints.length, 3, `${template.id} has three colourways`)
+      assert.equal(new Set(template.tints.map((tint) => tint.name)).size, 3)
+      for (const tint of template.tints) {
+        assert.match(tint.accent, /^#[0-9A-F]{6}$/i)
+        assert.match(tint.accentInk, /^#[0-9A-F]{6}$/i)
+      }
+    }
     for (const template of RSVP_TEMPLATES) {
       assert.ok(template.name.length > 3)
       assert.ok(template.blurb.length > 10)
@@ -127,5 +138,40 @@ describe('invitation templates', () => {
       }),
       { version: '7', width: 1080, height: 1920, bytes: 200_000 },
     )
+  })
+})
+
+describe('colourways', () => {
+  it('reads a stored colourway safely', () => {
+    assert.equal(parseTint(1), 1)
+    assert.equal(parseTint('2'), 2)
+    assert.equal(parseTint(3), 0)
+    assert.equal(parseTint('x'), 0)
+    assert.equal(parseTint(undefined), 0)
+  })
+
+  it('carries the colourway into the accent, the button and the guest page', () => {
+    const sage = skinFor('ivory', 1)
+    assert.equal(sage.tint.name, 'Sage')
+    assert.equal(sage.skin.accent, '#7D8C6A')
+    assert.equal(sage.skin.button.bg, '#7D8C6A')
+    // ivory keeps following the couple's own light or dark page
+    assert.equal(sage.skin.web, undefined)
+    const night = skinFor('deco', 1)
+    assert.equal(night.skin.card, '#121A33')
+    assert.equal(night.skin.web?.vars['--surface'], '#121A33')
+    assert.equal(night.skin.web?.vars['--pink'], '#D4AF5A')
+    const neon = skinFor('after-dark', 0)
+    assert.equal(neon.skin.web?.light, false)
+    assert.equal(neon.skin.button.fg, '#111111')
+    // a stray style or colourway falls back instead of breaking
+    assert.equal(skinFor('nope', 9).template.id, 'ivory')
+    assert.equal(skinFor('nope', 9).tint.name, 'Antique gold')
+  })
+
+  it('picks readable ink for a filled button', () => {
+    assert.equal(inkOn('#111111'), '#FFFFFF')
+    assert.equal(inkOn('#B6FF3B'), '#111111')
+    assert.equal(inkOn('#2F4739'), '#FFFFFF')
   })
 })

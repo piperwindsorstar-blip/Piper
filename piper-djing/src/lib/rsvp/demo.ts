@@ -1,3 +1,4 @@
+import { DEFAULT_WORDING } from './invite-words.ts'
 import type { RsvpWedding } from './model.ts'
 
 const SAMPLE: RsvpWedding = {
@@ -22,6 +23,10 @@ const SAMPLE: RsvpWedding = {
   theme: 'dark',
   template: 'ivory',
   photo: null,
+  tint: 0,
+  wording: { ...DEFAULT_WORDING },
+  monogram: true,
+  envelope: true,
   bookingSlug: '',
   replyEmail: 'sarah.m@example.com',
   sample: true,

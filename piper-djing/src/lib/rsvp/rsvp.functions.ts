@@ -60,7 +60,9 @@ import {
 import type { RsvpEmail } from './emails.ts'
 import { listRsvpEmails, sendKey, sendRsvpEmail } from './mailer.server.ts'
 import { parsePhotoUpload } from './photo.ts'
-import { photoPath, parseTemplateId } from './templates.ts'
+import { photoPath, parseTemplateId, parseTint } from './templates.ts'
+import { inviteView } from './invite.ts'
+import { parseWording } from './invite-words.ts'
 import { notifyCouplePaid, notifyPiperSignup } from './notify.server.ts'
 import { catererSheet } from './caterer.ts'
 import {
@@ -356,6 +358,7 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
         entry,
         theme: wedding.theme,
         template: wedding.template,
+      tint: wedding.tint,
         photo: photoView(wedding),
         couple: coupleTitle(wedding),
         cents: wedding.priceCents,
@@ -366,6 +369,7 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
       entry,
       theme: wedding.theme,
       template: wedding.template,
+      tint: wedding.tint,
       photo: photoView(wedding),
       slug: wedding.slug,
       couple: coupleTitle(wedding),
@@ -382,6 +386,7 @@ export const getRsvpHome = createServerFn({ method: 'GET' })
       showContact: wedding.showContact,
       contactPhone: wedding.showContact ? wedding.contactPhone : '',
       contactName: wedding.partnerOne,
+      invite: inviteView(wedding, { photo: photoView(wedding) }),
     }
   })
 
@@ -473,7 +478,9 @@ function householdPayload(
     slug: wedding.slug,
     theme: wedding.theme,
     template: wedding.template,
+    tint: wedding.tint,
     photo: photoView(wedding),
+    invite: inviteView(wedding, { addressee: party.name, photo: photoView(wedding) }),
     couple: coupleTitle(wedding),
     deadline: shortMonthDay(wedding.deadline),
     locked:
@@ -800,6 +807,45 @@ export const saveRsvpTemplate = createServerFn({ method: 'POST' })
     wedding.template = data.template
     await writeRsvp(wedding)
     return { ok: true as const, template: wedding.template }
+  })
+
+/**
+ * The couple's invitation choices from the studio: style, colourway, wording,
+ * monogram and envelope. Each value is checked here; the browser is never
+ * trusted for any of it.
+ */
+export const saveRsvpInvite = createServerFn({ method: 'POST' })
+  .validator(
+    (data: {
+      template?: unknown
+      tint?: unknown
+      wording?: unknown
+      monogram?: unknown
+      envelope?: unknown
+    }) => ({
+      template: parseTemplateId(data.template),
+      tint: parseTint(data.tint),
+      wording: parseWording(data.wording),
+      monogram: data.monogram !== false,
+      envelope: data.envelope !== false,
+    }),
+  )
+  .handler(async ({ data }) => {
+    const wedding = await ownedWedding()
+    const desk = await isDesk()
+    if (!wedding || (!wedding.paid && !desk)) {
+      return {
+        ok: false as const,
+        error: 'Open your RSVP from the sign-in link.',
+      }
+    }
+    wedding.template = data.template
+    wedding.tint = data.tint
+    wedding.wording = data.wording
+    wedding.monogram = data.monogram
+    wedding.envelope = data.envelope
+    await writeRsvp(wedding)
+    return { ok: true as const }
   })
 
 /**

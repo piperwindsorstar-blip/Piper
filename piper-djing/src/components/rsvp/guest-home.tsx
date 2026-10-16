@@ -13,10 +13,12 @@ import {
   RsvpHeader,
   Steps,
   rsvpButton,
+  rsvpButtonFit,
   rsvpField,
   rsvpGhost,
 } from './shell.tsx'
 import { TheDay } from './timeline.tsx'
+import { EnvelopeInvitation, InviteActions } from './invitation.tsx'
 
 export type HomeData = Awaited<ReturnType<typeof getRsvpHome>>
 type ShownHome = Exclude<HomeData, { entry: 'missing' } | { entry: 'unpaid' }>
@@ -126,83 +128,94 @@ function WeddingHome({ data }: { data: ShownHome }) {
     data.daysLeft === null
       ? ''
       : data.daysLeft >= 0
-        ? `${data.daysLeft} days left · takes about 2 minutes`
+        ? `${data.daysLeft} ${data.daysLeft === 1 ? 'day' : 'days'} left · takes about 2 minutes`
         : 'The reply window has closed'
   return (
-    <RsvpFrame>
+    <RsvpFrame hidePhoto>
       <RsvpHeader />
-      <p className="text-xs tracking-[0.18em] text-[var(--text-muted)]">
-        THE WEDDING OF
-      </p>
-      <h1 className="portal-display mt-2 text-5xl">{data.couple}</h1>
-      <section className="mt-6 rounded-3xl border border-[var(--pink)] bg-[var(--surface)] p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-semibold">Please RSVP by {data.deadline}</p>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">{days}</p>
+      <h1 className="sr-only">{data.couple} wedding invitation</h1>
+      <EnvelopeInvitation view={data.invite} rememberAs={data.slug}>
+        <InviteActions
+          view={data.invite}
+          primary={
+            <Link
+              to="/rsvp/$slug/find"
+              params={{ slug: data.slug }}
+              className={`${rsvpButtonFit} px-6`}
+            >
+              RSVP now
+            </Link>
+          }
+        />
+        <section className="mt-8 rounded-3xl border border-[var(--pink)] bg-[var(--surface)] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold">Please RSVP by {data.deadline}</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">{days}</p>
+            </div>
+            <span className="rounded-full bg-[var(--pink-tint)] px-3 py-1 text-xs text-[var(--pink-soft)]">
+              {data.daysLeft !== null && data.daysLeft < 0 ? 'Closed' : 'Open'}
+            </span>
           </div>
-          <span className="rounded-full bg-[var(--pink-tint)] px-3 py-1 text-xs text-[var(--pink-soft)]">
-            Open
-          </span>
-        </div>
-        <Link
-          to="/rsvp/$slug/find"
-          params={{ slug: data.slug }}
-          className={`${rsvpButton} mt-4`}
-        >
-          RSVP now
-        </Link>
-      </section>
-      {data.day.length > 0 ? (
-        <TheDay moments={data.day} />
-      ) : data.schedule.length === 0 ? null : (
-        <>
-          <h2 className="mt-8 text-xs tracking-[0.18em] text-[var(--text-muted)]">
-            SCHEDULE
-          </h2>
-          <ul className="mt-3 grid gap-3">
-            {data.schedule.map((item) => (
-              <li
-                key={`${item.name}-${item.time}`}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
-              >
-                <span>
-                  <span className="block font-semibold">{item.name}</span>
-                  <span className="text-sm text-[var(--text-muted)]">
-                    {item.time}
-                    {item.place ? ` · ${item.place}` : ''}
-                  </span>
-                </span>
-                {item.note ? (
-                  <span className="text-sm text-[var(--text-faint)]">
-                    {item.note}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {data.notes.length > 0 ? (
-        <>
-          <h2
-            id="details"
-            className="mt-8 text-xs tracking-[0.18em] text-[var(--text-muted)]"
+          <Link
+            to="/rsvp/$slug/find"
+            params={{ slug: data.slug }}
+            className={`${rsvpButton} mt-4`}
           >
-            GOOD TO KNOW
-          </h2>
-          <ul className="mt-3 grid gap-2 text-sm text-[var(--text-muted)]">
-            {data.notes.map((note) => (
-              <li key={note}>{note}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {data.caterer ? (
-        <p className="mt-6 text-sm text-[var(--text-faint)]">
-          The caterer needs counts by {data.caterer}.
-        </p>
-      ) : null}
+            Find my invitation
+          </Link>
+        </section>
+        {data.day.length > 0 ? (
+          <TheDay moments={data.day} />
+        ) : data.schedule.length === 0 ? null : (
+          <>
+            <h2 className="mt-8 text-xs tracking-[0.18em] text-[var(--text-muted)]">
+              SCHEDULE
+            </h2>
+            <ul className="mt-3 grid gap-3">
+              {data.schedule.map((item) => (
+                <li
+                  key={`${item.name}-${item.time}`}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+                >
+                  <span>
+                    <span className="block font-semibold">{item.name}</span>
+                    <span className="text-sm text-[var(--text-muted)]">
+                      {item.time}
+                      {item.place ? ` · ${item.place}` : ''}
+                    </span>
+                  </span>
+                  {item.note ? (
+                    <span className="text-sm text-[var(--text-faint)]">
+                      {item.note}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {data.notes.length > 0 ? (
+          <>
+            <h2
+              id="details"
+              className="mt-8 text-xs tracking-[0.18em] text-[var(--text-muted)]"
+            >
+              GOOD TO KNOW
+            </h2>
+            <ul className="mt-3 grid gap-2 text-sm text-[var(--text-muted)]">
+              {data.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {data.caterer ? (
+          <p className="mt-6 text-sm text-[var(--text-faint)]">
+            The caterer needs counts by {data.caterer}.
+          </p>
+        ) : null}
+      </EnvelopeInvitation>
     </RsvpFrame>
   )
 }

@@ -1,6 +1,8 @@
 /** Pure RSVP rules. Guest links are /rsvp/:slug. Paid Piper couples are $20; everyone else is $30. */
 
-import { DEFAULT_TEMPLATE, parsePhoto, parseTemplateId } from './templates.ts'
+import { DEFAULT_TEMPLATE, parsePhoto, parseTemplateId, parseTint } from './templates.ts'
+import { DEFAULT_WORDING, parseWording } from './invite-words.ts'
+import type { InviteWording } from './invite-words.ts'
 import type { RsvpPhoto, RsvpTemplateId } from './templates.ts'
 
 export const PIPER_RSVP_CENTS = 2000
@@ -104,6 +106,14 @@ export type RsvpWedding = {
   template: RsvpTemplateId
   /** The couple's photo, or null when the template runs without one. */
   photo: RsvpPhoto | null
+  /** Which of the style's three colourways: 0, 1 or 2. */
+  tint: number
+  /** The words on the invitation card. */
+  wording: InviteWording
+  /** Show the couple's initials as a monogram on the card and the seal. */
+  monogram: boolean
+  /** Guests open the invitation from an envelope the first time. */
+  envelope: boolean
   bookingSlug: string
   /** Where a confirmed guest reply is emailed. The sign-in address stays on `email`. */
   replyEmail: string
@@ -1226,6 +1236,10 @@ export function blankWedding(input: {
     theme: 'dark',
     template: DEFAULT_TEMPLATE,
     photo: null,
+    tint: 0,
+    wording: { ...DEFAULT_WORDING },
+    monogram: true,
+    envelope: true,
     bookingSlug: '',
     replyEmail: '',
     sample: false,
@@ -1347,6 +1361,10 @@ export function parseWedding(raw: unknown, slug: string): RsvpWedding | null {
   base.theme = record.theme === 'light' ? 'light' : 'dark'
   base.template = parseTemplateId(record.template)
   base.photo = parsePhoto(record.photo)
+  base.tint = parseTint(record.tint)
+  base.wording = parseWording(record.wording)
+  base.monogram = record.monogram === false ? false : true
+  base.envelope = record.envelope === false ? false : true
   base.bookingSlug = asText(record.bookingSlug, 80)
   base.replyEmail = asText(record.replyEmail, 120)
   base.sample = asFlag(record.sample)

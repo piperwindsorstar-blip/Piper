@@ -15,7 +15,10 @@ import type {
   RsvpParty,
   RsvpWedding,
 } from './model.ts'
-import { emailPhotoBox, photoPath, templateFor } from './templates.ts'
+import { emailPhotoBox, photoPath, skinFor, templateFor } from './templates.ts'
+import type { RsvpTemplateId } from './templates.ts'
+import { inviteDate, monogramLetters, timeWords } from './invite-words.ts'
+import { startTime } from './invite.ts'
 import type { RsvpSkin } from './templates.ts'
 
 export type RsvpEmailKind =
@@ -61,9 +64,35 @@ export function guestSender(wedding: {
 export const SITE_HOST = 'piperpweddingdj.services'
 const LOGO_URL = `https://${SITE_HOST}/brand/dj-piper-p.png`
 
-/** The couple's template drives every colour, rule and face in the letter. */
+/** The couple's style and colourway drive every colour, rule and face in the letter. */
 function skinOf(wedding: RsvpWedding): RsvpSkin {
-  return templateFor(wedding.template).skin
+  return skinFor(wedding.template, wedding.tint).skin
+}
+
+/** Each style's ornament, drawn once per colourway and served as a picture (email apps do not draw SVG). */
+const ART_SIZE: Record<RsvpTemplateId, [number, number]> = {
+  'after-dark': [163, 33],
+  'black-tie': [154, 16],
+  blush: [166, 45],
+  deco: [121, 58],
+  garden: [108, 96],
+  ivory: [151, 17],
+  kraft: [133, 18],
+  minimal: [124, 8],
+}
+
+export function ornamentBlock(wedding: RsvpWedding): Block[] {
+  const size = ART_SIZE[wedding.template]
+  if (!size) return []
+  const tint = wedding.tint === 1 || wedding.tint === 2 ? wedding.tint : 0
+  return [
+    {
+      t: 'art',
+      url: `https://${SITE_HOST}/invite-art/${wedding.template}-${tint}.png`,
+      width: size[0],
+      height: size[1],
+    },
+  ]
 }
 
 function esc(value: string): string {
@@ -215,6 +244,8 @@ type Block =
   | { t: 'row'; label: string; value: string }
   | { t: 'space' }
   | { t: 'heading'; text: string }
+  | { t: 'art'; url: string; width: number; height: number }
+  | { t: 'monogram'; text: string }
   | {
       t: 'photo'
       url: string
@@ -282,6 +313,10 @@ function renderBlock(block: Block, skin: RsvpSkin): string {
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0;text-align:left;"><tr><td style="padding:13px 0;border-top:1px solid ${skin.hairline};"><p style="margin:0;font-family:${skin.displayFont};font-size:16px;color:${skin.ink};">${esc(block.name)}</p><p style="margin:4px 0 0;font-family:${skin.bodyFont};font-size:14px;line-height:1.6;color:${skin.quiet};">${esc(block.detail)}</p></td></tr></table>`
     case 'row':
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align:left;"><tr><td style="padding:9px 0;border-top:1px solid ${skin.hairline};font-family:${skin.bodyFont};font-size:15px;color:${skin.body};">${esc(block.label)}</td><td style="padding:9px 0;border-top:1px solid ${skin.hairline};font-family:${skin.bodyFont};font-size:15px;color:${skin.ink};text-align:right;">${esc(block.value)}</td></tr></table>`
+    case 'art':
+      return `<img src="${esc(block.url)}" alt="" width="${block.width}" height="${block.height}" style="display:block;margin:0 auto 22px;width:${block.width}px;max-width:100%;height:auto;border:0;">`
+    case 'monogram':
+      return `<p style="margin:0 0 14px;font-family:${skin.displayFont};font-style:${skin.scriptNames ? 'italic' : 'normal'};font-size:26px;letter-spacing:0.06em;color:${skin.accent};">${esc(block.text)}</p>`
     case 'space':
       return `<div style="height:14px;line-height:14px;">&nbsp;</div>`
     case 'photo':
@@ -352,26 +387,35 @@ export function invitationEmail(
   const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
   const date = formalDate(wedding.eventDate)
-  const time = ceremonyTime(wedding)
+  const words = inviteDate(wedding.eventDate)
+  const time = startTime(wedding)
   const { name, town } = venueParts(wedding)
   const deadline = shortMonthDay(wedding.deadline)
   const forLine = partyNames(party)
-  const blocks: Block[] = [
-    ...photoBlock(wedding),
-    { t: 'eyebrow', text: 'Together with their families' },
-    { t: 'names', text: title },
-    { t: 'line', text: 'request the pleasure of your company' },
-  ]
-  if (date) blocks.push({ t: 'line', text: esc(date) })
-  if (time) blocks.push({ t: 'line', text: esc(time) })
+  const wording = wedding.wording
+  const [a, b] = monogramLetters(wedding.partnerOne, wedding.partnerTwo)
+  const blocks: Block[] = [...photoBlock(wedding)]
+  if (wedding.monogram && a && b) blocks.push({ t: 'monogram', text: `${a} & ${b}` })
+  blocks.push(...ornamentBlock(wedding))
+  if (wording.host) blocks.push({ t: 'eyebrow', text: wording.host })
+  blocks.push({ t: 'names', text: title }, { t: 'line', text: esc(wording.request) })
+  if (words) {
+    blocks.push({ t: 'line', text: esc(`${words.weekday}, ${words.dayWords}`) })
+    blocks.push({ t: 'line', text: esc(words.yearWords) })
+  } else if (date) {
+    blocks.push({ t: 'line', text: esc(date) })
+  }
+  if (time) blocks.push({ t: 'line', text: esc(`at ${timeWords(time)}`) })
   if (name || town)
     blocks.push({
       t: 'line',
       text: esc([name, town].filter(Boolean).join(', ')),
     })
+  if (wording.after) blocks.push({ t: 'note', text: wording.after })
   blocks.push({ t: 'divider' })
+  if (wording.note) blocks.push({ t: 'note', text: wording.note })
   if (deadline) blocks.push({ t: 'note', text: `Kindly reply by ${deadline}` })
-  blocks.push({ t: 'button', label: 'RSVP', href: url })
+  blocks.push({ t: 'button', label: 'Open your invitation', href: url })
   if (wedding.accessMode === 'code' && wedding.inviteCode)
     blocks.push({ t: 'code', text: `Invitation code ${wedding.inviteCode}` })
   blocks.push({ t: 'code', text: `For: ${forLine}` })
@@ -400,14 +444,16 @@ function invitationText(
   const time = ceremonyTime(wedding)
   const { name, town } = venueParts(wedding)
   return [
-    'Together with their families',
+    wedding.wording.host,
     coupleTitle(wedding),
-    'request the pleasure of your company',
+    wedding.wording.request,
     '',
     date,
     time,
     [name, town].filter(Boolean).join(', '),
+    wedding.wording.after,
     '',
+    wedding.wording.note,
     deadline ? `Kindly reply by ${deadline}.` : '',
     `RSVP: ${url}`,
     wedding.accessMode === 'code' && wedding.inviteCode

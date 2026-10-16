@@ -438,8 +438,8 @@ function BalanceReminders({ on }: { on: boolean }) {
       </div>
       <ActionButton
         className={on ? deskGhost : deskDark}
-        busy={on ? 'Turning off…' : 'Turning on…'}
-        done={on ? 'Off' : 'On'}
+        busy="Saving…"
+        done="Saved"
         surface={deskSurface}
         onRun={async (): Promise<RunResult> => {
           const result = await save({ data: { on: !on } })

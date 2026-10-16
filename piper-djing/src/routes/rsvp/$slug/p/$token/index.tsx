@@ -23,6 +23,7 @@ export const Route = createFileRoute('/rsvp/$slug/p/$token/')({
       <RsvpThemeProvider
         theme={data.theme}
         template={data.template}
+        tint={data.tint}
         photo={data.photo}
       >
         <HouseholdForm data={data} />

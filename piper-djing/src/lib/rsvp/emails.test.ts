@@ -67,7 +67,7 @@ describe('invitation style', () => {
       email.subject,
       "You're invited · Sarah & Michael · June 12, 2027",
     )
-    assert.match(email.html, /#FBF7F0/)
+    assert.match(email.html, /#FBF6EC/)
     assert.match(email.html, /border:1px solid/)
     assert.match(email.html, /Georgia/)
     assert.match(email.html, /letter-spacing/)
@@ -87,8 +87,9 @@ describe('invitation style', () => {
     const party = wedding.parties[0]
     assert.ok(party)
     const ivory = invitationEmail(wedding, party, url)
-    assert.match(ivory.html, /#B08D57/)
-    assert.match(ivory.html, /background:#FBF7F0/)
+    assert.match(ivory.html, /#A8844A/)
+    assert.match(ivory.html, /background:#FBF6EC/)
+    assert.match(ivory.html, /invite-art\/ivory-0\.png/)
     wedding.template = 'minimal'
     const minimal = invitationEmail(wedding, party, url)
     assert.match(minimal.html, /background:#FFFFFF/)
@@ -96,24 +97,60 @@ describe('invitation style', () => {
     assert.match(minimal.html, /Helvetica/)
     wedding.template = 'blush'
     const blush = invitationEmail(wedding, party, url)
-    assert.match(blush.html, /background:#FFF7F5/)
+    assert.match(blush.html, /background:#FFF6F3/)
     assert.match(blush.html, /Snell Roundhand/)
     assert.match(blush.html, /&#10047;/)
     wedding.template = 'kraft'
     const kraft = invitationEmail(wedding, party, url)
-    assert.match(kraft.html, /background:#EADFC6/)
+    assert.match(kraft.html, /background:#E6D7BA/)
     assert.match(kraft.html, /border:2px dashed #BFAE8A/)
     assert.match(kraft.html, /border:1px solid #D3C4A2/)
     wedding.template = 'black-tie'
     const black = invitationEmail(wedding, party, url)
-    assert.match(black.html, /background:#111111/)
+    assert.match(black.html, /background:#0F0F10/)
     assert.match(black.html, /#C9A227/)
     assert.match(black.html, /&#9670;/)
     for (const letter of [ivory, minimal, blush, kraft, black]) {
       assert.doesNotMatch(letter.html, /fonts\.googleapis/)
       assert.match(letter.html, /max-width:600px/)
-      assert.match(letter.html, /RSVP<\/a>/)
+      assert.match(letter.html, /Open your invitation<\/a>/)
     }
+  })
+
+  it('wears the new styles, the colourway and the couple wording', () => {
+    const wedding = sampleWedding()
+    const party = wedding.parties[0]
+    assert.ok(party)
+    for (const template of ['deco', 'garden', 'after-dark'] as const) {
+      wedding.template = template
+      const letter = invitationEmail(wedding, party, url)
+      assert.match(letter.html, new RegExp(`invite-art/${template}-0\\.png`))
+      assert.match(letter.html, /max-width:600px/)
+    }
+    wedding.template = 'ivory'
+    wedding.tint = 1
+    const sage = invitationEmail(wedding, party, url)
+    assert.match(sage.html, /#7D8C6A/)
+    assert.match(sage.html, /invite-art\/ivory-1\.png/)
+    wedding.wording = {
+      host: 'With joyful hearts',
+      request: 'invite you to celebrate their wedding',
+      after: '',
+      note: 'Bring your dancing shoes!',
+    }
+    const words = invitationEmail(wedding, party, url)
+    assert.match(words.html, /With joyful hearts/)
+    assert.match(words.html, /invite you to celebrate their wedding/)
+    assert.match(words.html, /Bring your dancing shoes!/)
+    assert.doesNotMatch(words.html, /Dinner and dancing to follow/)
+    assert.match(words.html, /the twelfth of June/)
+    assert.match(words.html, /two thousand twenty-seven/)
+    assert.match(words.html, /four o&#39;clock in the afternoon|four o'clock in the afternoon/)
+    assert.match(words.html, />S &amp; M</)
+    assert.match(words.text, /With joyful hearts/)
+    assert.match(words.text, /Bring your dancing shoes!/)
+    wedding.monogram = false
+    assert.doesNotMatch(invitationEmail(wedding, party, url).html, />S &amp; M</)
   })
 
   it('puts the couple photo at the top of the invitation once they add one', () => {
@@ -138,7 +175,7 @@ describe('invitation style', () => {
     // the template still reads complete without one
     const plain = sampleWedding()
     plain.photo = null
-    assert.match(invitationEmail(plain, party, url).html, /background:#FBF7F0/)
+    assert.match(invitationEmail(plain, party, url).html, /background:#FBF6EC/)
   })
 
   it('shows the whole photo, never cropped, on every letter', () => {

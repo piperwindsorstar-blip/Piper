@@ -1,5 +1,6 @@
 import { publicUrl } from '../crm/safe-origin.ts'
 import { WEDDING_OG_IMAGE } from '../seo.ts'
+import { INVITE_FONTS_URL } from './templates.ts'
 
 export const RSVP_FONTS =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Display:wght@800;900&display=swap'
@@ -28,6 +29,8 @@ export function rsvpHead(title: string, index = false, path = '/rsvp') {
     ],
     links: [
       { rel: 'stylesheet', href: RSVP_FONTS },
+      // The invitation typefaces: one small stylesheet; each font file loads only when a card uses it.
+      { rel: 'stylesheet', href: INVITE_FONTS_URL },
       ...(index ? [{ rel: 'canonical', href: publicUrl(path) }] : []),
     ],
   }

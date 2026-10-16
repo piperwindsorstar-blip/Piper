@@ -21,6 +21,7 @@ export const Route = createFileRoute('/rsvp/$slug/p/$token/done')({
       <RsvpThemeProvider
         theme={data.theme}
         template={data.template}
+        tint={data.tint}
         photo={data.photo}
       >
         <ReplyDone data={data} sent={sent === '1'} />

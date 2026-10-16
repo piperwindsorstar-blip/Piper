@@ -20,6 +20,7 @@ import {
   rsvpGhost,
 } from './shell.tsx'
 import { TheDay } from './timeline.tsx'
+import { EnvelopeInvitation, InviteActions } from './invitation.tsx'
 
 export type HouseholdData = NonNullable<
   Awaited<ReturnType<typeof getHousehold>>
@@ -112,13 +113,20 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
   }
 
   return (
-    <RsvpFrame>
+    <RsvpFrame hidePhoto>
       <RsvpHeader step="Step 2 of 3" />
+      <h1 className="sr-only">Invitation for {data.party.name}</h1>
+      <EnvelopeInvitation
+        view={data.invite}
+        rememberAs={`${data.slug}:${data.party.token}`}
+      >
+      <InviteActions view={data.invite} />
+      <div id="reply" className="mt-10 scroll-mt-6">
       <Steps step={2} />
       <p className="text-xs tracking-[0.16em] text-[var(--text-muted)]">
         REPLYING FOR
       </p>
-      <h1 className="portal-display text-4xl">{data.party.name}</h1>
+      <h2 className="portal-display text-4xl">{data.party.name}</h2>
       <div className="mt-6 grid gap-4">
         {hosts.map((guest) => {
           const coming = data.events.some(
@@ -384,6 +392,8 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
         Review my RSVP →
       </ActionButton>
       <TheDay moments={data.day} />
+      </div>
+      </EnvelopeInvitation>
     </RsvpFrame>
   )
 }

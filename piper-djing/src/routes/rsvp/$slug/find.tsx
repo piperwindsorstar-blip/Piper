@@ -1,19 +1,29 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { FindInvitation } from '../../../components/rsvp/guest-home.tsx'
+import { RsvpThemeProvider } from '../../../components/rsvp/shell.tsx'
 import { rsvpHead } from '../../../lib/rsvp/head.ts'
 import { getRsvpHome } from '../../../lib/rsvp/rsvp.functions.ts'
 
 export const Route = createFileRoute('/rsvp/$slug/find')({
   head: () => rsvpHead('Find your invitation · DJ Piper P'),
   loader: async ({ params }) => {
-    // Only the couple's shared text number, for "can't find your name".
+    // The couple's style, and only their shared text number for "can't find your name".
     const home = await getRsvpHome({ data: { slug: params.slug } })
-    if (!('contactPhone' in home)) return { name: '', phone: '' }
-    return { name: home.contactName ?? '', phone: home.contactPhone ?? '' }
+    const style = {
+      theme: 'theme' in home && home.theme ? home.theme : ('dark' as const),
+      template: 'template' in home ? home.template : ('ivory' as const),
+      tint: 'tint' in home ? home.tint : 0,
+    }
+    if (!('contactPhone' in home)) return { ...style, name: '', phone: '' }
+    return { ...style, name: home.contactName ?? '', phone: home.contactPhone ?? '' }
   },
   component: function Page() {
     const { slug } = Route.useParams()
-    const contact = Route.useLoaderData()
-    return <FindInvitation slug={slug} contact={contact} />
+    const data = Route.useLoaderData()
+    return (
+      <RsvpThemeProvider theme={data.theme} template={data.template} tint={data.tint}>
+        <FindInvitation slug={slug} contact={{ name: data.name, phone: data.phone }} />
+      </RsvpThemeProvider>
+    )
   },
 })

@@ -15,6 +15,7 @@ export const Route = createFileRoute('/rsvp/$slug/p/$token/review')({
       <RsvpThemeProvider
         theme={data.theme}
         template={data.template}
+        tint={data.tint}
         photo={data.photo}
       >
         <ReviewReply data={data} />

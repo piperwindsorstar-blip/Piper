@@ -14,6 +14,7 @@ export const Route = createFileRoute('/rsvp/$slug/')({
       <RsvpThemeProvider
         theme={theme}
         template={'template' in data ? data.template : 'ivory'}
+        tint={'tint' in data ? data.tint : 0}
         photo={'photo' in data ? data.photo : null}
       >
         <GuestHome data={data} />
