@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  BOX_MAX,
+  BOX_TEXT_MAX,
   DEFAULT_WORDING,
+  boxesAt,
   NOTE_MAX,
   inviteDate,
   monogramLetters,
@@ -16,16 +19,16 @@ import { sampleWedding } from './demo.ts'
 import { parseWedding } from './model.ts'
 
 describe('invitation words', () => {
-  it('writes dates the way a printed invitation does', () => {
+  it('writes the date with the day and year as numbers', () => {
     const date = inviteDate('2027-06-12')
     assert.ok(date)
     assert.equal(date.weekday, 'Saturday')
-    assert.equal(date.dayWords, 'the twelfth of June')
-    assert.equal(date.yearWords, 'two thousand twenty-seven')
     assert.equal(date.plain, 'June 12, 2027')
+    assert.equal(date.full, 'Saturday, June 12, 2027')
     assert.deepEqual(date.parts, { month: 'JUN', day: '12', year: '2027', weekdayShort: 'SAT' })
-    assert.equal(inviteDate('2026-10-31')?.dayWords, 'the thirty-first of October')
-    assert.equal(inviteDate('2027-03-22')?.dayWords, 'the twenty-second of March')
+    // days and years are always numbers
+    assert.equal(inviteDate('2026-10-31')?.full, 'Saturday, October 31, 2026')
+    assert.equal(inviteDate('2027-03-22')?.full, 'Monday, March 22, 2027')
     assert.equal(inviteDate('2027-02-30'), null)
     assert.equal(inviteDate('soon'), null)
     assert.equal(ordinalWords(20), 'twentieth')
@@ -62,6 +65,32 @@ describe('invitation words', () => {
     assert.equal(parseWording({ request: '' }).request, DEFAULT_WORDING.request)
     assert.equal(parseWording({ note: 'x'.repeat(500) }).note.length, NOTE_MAX)
     assert.equal(parseWording({ host: 42 }).host, DEFAULT_WORDING.host)
+  })
+
+  it('keeps up to four of the couple text boxes, each checked', () => {
+    const wording = parseWording({
+      boxes: [
+        { id: 'a', text: '  Cocktail attire  ', size: 'large', place: 'top' },
+        { id: 'a', text: 'Adults only', size: 'huge', place: 'sky' },
+        { id: 'c<script>', text: 'x'.repeat(400), size: 'small', place: 'bottom' },
+        { id: 'd', text: '', size: 'normal', place: 'details' },
+        { id: 'e', text: 'one too many', size: 'normal', place: 'details' },
+        'junk',
+      ],
+    })
+    assert.equal(wording.boxes.length, BOX_MAX)
+    assert.deepEqual(wording.boxes[0], { id: 'a', text: 'Cocktail attire', size: 'large', place: 'top' })
+    // a repeated id gets a fresh one; an unknown size or place falls back
+    assert.notEqual(wording.boxes[1].id, 'a')
+    assert.equal(wording.boxes[1].size, 'normal')
+    assert.equal(wording.boxes[1].place, 'details')
+    assert.equal(wording.boxes[2].id, 'cscript')
+    assert.equal(wording.boxes[2].text.length, BOX_TEXT_MAX)
+    // an empty box is kept while the couple writes it, but never printed
+    assert.equal(wording.boxes[3].text, '')
+    assert.deepEqual(boxesAt(wording, 'details').map((box) => box.text), ['Adults only'])
+    assert.deepEqual(boxesAt(wording, 'top').map((box) => box.text), ['Cocktail attire'])
+    assert.deepEqual(parseWording({ boxes: 'no' }).boxes, [])
   })
 })
 

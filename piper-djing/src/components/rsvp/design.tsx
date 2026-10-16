@@ -4,12 +4,16 @@ import { useMemo, useState } from 'react'
 import { inviteView } from '../../lib/rsvp/invite.ts'
 import {
   AFTER_CHOICES,
+  BOX_MAX,
+  BOX_PLACES,
+  BOX_SIZES,
+  BOX_TEXT_MAX,
   HOST_CHOICES,
   LINE_MAX,
   NOTE_MAX,
   REQUEST_CHOICES,
 } from '../../lib/rsvp/invite-words.ts'
-import type { InviteWording } from '../../lib/rsvp/invite-words.ts'
+import type { InviteWording, TextBox } from '../../lib/rsvp/invite-words.ts'
 import {
   PHOTO_WIDTH_MAX,
   compressSteps,
@@ -91,6 +95,21 @@ export function Design({ data }: { data: ReadyManage }) {
   }
   function word(patch: Partial<InviteWording>) {
     change({ wording: { ...invite.wording, ...patch } })
+  }
+  function setBox(id: string, patch: Partial<TextBox>) {
+    word({ boxes: invite.wording.boxes.map((box) => (box.id === id ? { ...box, ...patch } : box)) })
+  }
+  function moveBox(index: number, step: -1 | 1) {
+    const boxes = [...invite.wording.boxes]
+    const target = index + step
+    if (target < 0 || target >= boxes.length) return
+    ;[boxes[index], boxes[target]] = [boxes[target], boxes[index]]
+    word({ boxes })
+  }
+  function addBox() {
+    if (invite.wording.boxes.length >= BOX_MAX) return
+    const id = `box-${Date.now().toString(36)}`
+    word({ boxes: [...invite.wording.boxes, { id, text: '', size: 'normal', place: 'details' }] })
   }
 
   const photoUrl = draft ? draft.url : (data.photo?.url ?? '')
@@ -243,8 +262,13 @@ export function Design({ data }: { data: ReadyManage }) {
           </fieldset>
 
           <fieldset className={section}>
-            <legend className={`${legend} float-left w-full`}>Colour</legend>
-            <div className="clear-both flex flex-wrap gap-3 pt-3">
+            <legend className={`${legend} float-left w-full`}>Accent colour</legend>
+            <p className="clear-both pt-1 text-sm text-[var(--text-muted)]">
+              {chosen.tints.some((tint) => tint.paper)
+                ? 'Sets the paper, the gold or silver details, the wax seal and the buttons on your guest pages.'
+                : 'Sets the colour of the ornaments, your initials, the wax seal and the buttons on your guest pages. The paper stays the same.'}
+            </p>
+            <div className="flex flex-wrap gap-3 pt-3">
               {chosen.tints.map((tint, index) => {
                 const on = index === invite.tint
                 return (
@@ -314,6 +338,95 @@ export function Design({ data }: { data: ReadyManage }) {
               <p className="text-sm text-[var(--text-muted)]">
                 Your names, date, time and place come from your RSVP details, so they always match.
               </p>
+            </div>
+          </fieldset>
+
+          <fieldset className={section}>
+            <legend className={`${legend} float-left w-full`}>Your own text</legend>
+            <p className="clear-both pt-1 text-sm text-[var(--text-muted)]">
+              Add up to {BOX_MAX} lines of your own, like a dress code, "Adults only",
+              parking or a hashtag. Pick where each one sits and how big it is.
+            </p>
+            <div className="grid gap-3 pt-3">
+              {invite.wording.boxes.map((box, index) => (
+                <div key={box.id} className="grid gap-3 rounded-2xl border border-[var(--border)] p-3">
+                  <label htmlFor={`box-${box.id}`} className="sr-only">
+                    Text box {index + 1}
+                  </label>
+                  <textarea
+                    id={`box-${box.id}`}
+                    className={`${rsvpField} min-h-20 py-3`}
+                    maxLength={BOX_TEXT_MAX}
+                    value={box.text}
+                    placeholder="Cocktail attire · Adults only, please"
+                    onChange={(event) => setBox(box.id, { text: event.target.value })}
+                  />
+                  <div className="flex flex-wrap items-end gap-3">
+                    <label className="grid min-w-0 flex-1 gap-1 text-sm text-[var(--text-muted)]">
+                      Where
+                      <select
+                        className={rsvpField}
+                        value={box.place}
+                        onChange={(event) => setBox(box.id, { place: event.target.value as TextBox['place'] })}
+                      >
+                        {BOX_PLACES.map((place) => (
+                          <option key={place.value} value={place.value}>
+                            {place.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid min-w-0 flex-1 gap-1 text-sm text-[var(--text-muted)]">
+                      Size
+                      <select
+                        className={rsvpField}
+                        value={box.size}
+                        onChange={(event) => setBox(box.id, { size: event.target.value as TextBox['size'] })}
+                      >
+                        {BOX_SIZES.map((size) => (
+                          <option key={size.value} value={size.value}>
+                            {size.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className={`${rsvpGhostFit} px-3`}
+                        disabled={index === 0}
+                        aria-label={`Move text box ${index + 1} up`}
+                        onClick={() => moveBox(index, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={`${rsvpGhostFit} px-3`}
+                        disabled={index === invite.wording.boxes.length - 1}
+                        aria-label={`Move text box ${index + 1} down`}
+                        onClick={() => moveBox(index, 1)}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className={`${rsvpGhostFit} px-4`}
+                        onClick={() => word({ boxes: invite.wording.boxes.filter((item) => item.id !== box.id) })}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {invite.wording.boxes.length < BOX_MAX ? (
+                <button type="button" className={`${rsvpGhostFit} justify-self-start px-4`} onClick={addBox}>
+                  + Add a text box
+                </button>
+              ) : (
+                <p className="text-sm text-[var(--text-faint)]">That's the most text boxes a card can hold.</p>
+              )}
             </div>
           </fieldset>
 

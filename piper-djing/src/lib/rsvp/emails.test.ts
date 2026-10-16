@@ -26,11 +26,8 @@ const url = 'https://piperpweddingdj.services/rsvp/sarah-and-michael/p/miller'
 const dashboard = 'https://piperpweddingdj.services/rsvp/manage'
 
 describe('invitation style', () => {
-  it('writes the date out like a printed invitation', () => {
-    assert.equal(
-      formalDate('2027-01-13'),
-      'Wednesday, the thirteenth of January, 2027',
-    )
+  it('writes the date with the day and year as numbers', () => {
+    assert.equal(formalDate('2027-01-13'), 'Wednesday, January 13, 2027')
     assert.equal(shortDate('2027-01-13'), 'January 13, 2027')
     assert.equal(formalDate('nope'), '')
     assert.equal(shortDate('nope'), '')
@@ -75,7 +72,7 @@ describe('invitation style', () => {
     assert.match(email.html, /brand\/dj-piper-p\.png/)
     assert.match(email.html, new RegExp(url))
     assert.match(email.text, /request the pleasure of your company/)
-    assert.match(email.text, /Saturday, the twelfth of June, 2027/)
+    assert.match(email.text, /Saturday, June 12, 2027/)
     assert.match(email.text, /Invitation code SM2027/)
     assert.match(email.text, /For: Elizabeth Miller/)
     // no web font is required
@@ -143,12 +140,28 @@ describe('invitation style', () => {
     assert.match(words.html, /invite you to celebrate their wedding/)
     assert.match(words.html, /Bring your dancing shoes!/)
     assert.doesNotMatch(words.html, /Dinner and dancing to follow/)
-    assert.match(words.html, /the twelfth of June/)
-    assert.match(words.html, /two thousand twenty-seven/)
+    assert.match(words.html, /Saturday, June 12, 2027/)
+    assert.doesNotMatch(words.html, /twelfth|two thousand/)
     assert.match(words.html, /four o&#39;clock in the afternoon|four o'clock in the afternoon/)
     assert.match(words.html, />S &amp; M</)
     assert.match(words.text, /With joyful hearts/)
     assert.match(words.text, /Bring your dancing shoes!/)
+    wedding.wording = {
+      ...wedding.wording,
+      boxes: [
+        { id: 'a', text: 'Cocktail attire', size: 'large', place: 'top' },
+        { id: 'b', text: 'Adults only, please', size: 'normal', place: 'details' },
+        { id: 'c', text: '#SarahAndMichael', size: 'small', place: 'bottom' },
+        { id: 'd', text: '', size: 'normal', place: 'details' },
+      ],
+    }
+    const boxed = invitationEmail(wedding, party, url)
+    assert.match(boxed.html, /Cocktail attire/)
+    assert.match(boxed.html, /Adults only, please/)
+    assert.match(boxed.html, /#SarahAndMichael/)
+    assert.ok(boxed.html.indexOf('Cocktail attire') < boxed.html.indexOf('Sarah &amp; Michael</p>'))
+    assert.match(boxed.text, /Cocktail attire\nSarah & Michael/)
+    assert.match(boxed.text, /Adults only, please/)
     wedding.monogram = false
     assert.doesNotMatch(invitationEmail(wedding, party, url).html, />S &amp; M</)
   })

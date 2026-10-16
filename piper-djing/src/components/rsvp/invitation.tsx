@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { boxesAt } from '../../lib/rsvp/invite-words.ts'
+import type { TextBox } from '../../lib/rsvp/invite-words.ts'
 import { mapLink } from '../../lib/rsvp/invite.ts'
 import type { InviteView } from '../../lib/rsvp/invite.ts'
 import { rsvpButtonFit, rsvpGhostFit } from './shell.tsx'
@@ -180,6 +182,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
             {gap(16)}
           </>
         ) : null}
+        <Boxes boxes={boxesAt(w, 'top')} look={look} after />
         <h2 className="inv-names" style={nameStyle}>
           <span className={nameClass}>{view.partnerOne || 'Partner one'}</span>
           <span
@@ -209,10 +212,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
           ) : (
             <>
               <p className="inv-text inv-ink" style={text(look.text.size + 1.5)}>
-                {date.weekday}, {date.dayWords}
-              </p>
-              <p className="inv-text" style={text(look.text.size)}>
-                {date.yearWords}
+                {date.full}
               </p>
               {view.timeWords ? (
                 <p className="inv-text" style={text(look.text.size)}>
@@ -241,6 +241,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
             <p className="inv-text" style={text(look.text.size - 0.5, { fontStyle: 'italic' })}>{w.after}</p>
           </>
         ) : null}
+        <Boxes boxes={boxesAt(w, 'details')} look={look} />
         {gap(20)}
         <Divider id={template.id} look={look} />
         {w.note ? (
@@ -251,6 +252,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
             </p>
           </>
         ) : null}
+        <Boxes boxes={boxesAt(w, 'bottom')} look={look} />
         {view.replyBy ? (
           <>
             {gap(16)}
@@ -261,6 +263,32 @@ export function InvitationCard({ view }: { view: InviteView }) {
         ) : null}
       </div>
     </article>
+  )
+}
+
+/** The couple's own text boxes, set in the style's type at the size they chose. */
+function Boxes({ boxes, look, after = false }: { boxes: TextBox[]; look: RsvpLook; after?: boolean }) {
+  if (boxes.length === 0) return null
+  return (
+    <>
+      {boxes.map((box) => {
+        const style: CSSProperties =
+          box.size === 'large'
+            ? { fontFamily: look.names.font, fontWeight: look.names.weight, fontStyle: look.names.style, fontSize: cq(Math.min(26, look.names.size * 0.58)), lineHeight: 1.2, color: 'var(--inv-ink)' }
+            : box.size === 'small'
+              ? { fontFamily: look.text.font, fontWeight: look.text.weight, fontSize: cq(look.text.size - 3), lineHeight: 1.45, color: 'var(--inv-quiet)' }
+              : { fontFamily: look.text.font, fontWeight: look.text.weight, fontSize: cq(look.text.size), lineHeight: 1.45 }
+        return (
+          <div key={box.id} style={{ display: 'contents' }}>
+            {after ? null : <span aria-hidden="true" style={{ display: 'block', height: cq(14) }} />}
+            <p className="inv-text" style={{ ...style, whiteSpace: 'pre-line', maxWidth: '88%', overflowWrap: 'anywhere' }}>
+              {box.text}
+            </p>
+            {after ? <span aria-hidden="true" style={{ display: 'block', height: cq(16) }} /> : null}
+          </div>
+        )
+      })}
+    </>
   )
 }
 

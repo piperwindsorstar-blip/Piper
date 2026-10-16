@@ -13,6 +13,58 @@ export type InviteWording = {
   after: string
   /** A short personal message from the couple. Empty leaves it off. */
   note: string
+  /** The couple's own extra lines: dress code, adults only, parking… */
+  boxes: TextBox[]
+}
+
+/** One custom text box on the card: its words, how big, and where it sits. */
+export type TextBox = {
+  id: string
+  text: string
+  size: 'large' | 'normal' | 'small'
+  place: 'top' | 'details' | 'bottom'
+}
+
+export const BOX_MAX = 4
+export const BOX_TEXT_MAX = 200
+
+export const BOX_PLACES: { value: TextBox['place']; label: string }[] = [
+  { value: 'top', label: 'Above your names' },
+  { value: 'details', label: 'Under the details' },
+  { value: 'bottom', label: 'At the bottom' },
+]
+
+export const BOX_SIZES: { value: TextBox['size']; label: string }[] = [
+  { value: 'large', label: 'Large' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'small', label: 'Small print' },
+]
+
+function parseBoxes(raw: unknown): TextBox[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const boxes: TextBox[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const record = item as Record<string, unknown>
+    const text =
+      typeof record.text === 'string'
+        ? record.text.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, BOX_TEXT_MAX)
+        : ''
+    let id = typeof record.id === 'string' ? record.id.replace(/[^a-z0-9-]/gi, '').slice(0, 24) : ''
+    if (!id || seen.has(id)) id = `box-${boxes.length + 1}-${seen.size}`
+    seen.add(id)
+    const size = record.size === 'large' || record.size === 'small' ? record.size : 'normal'
+    const place = record.place === 'top' || record.place === 'bottom' ? record.place : 'details'
+    boxes.push({ id, text, size, place })
+    if (boxes.length >= BOX_MAX) break
+  }
+  return boxes
+}
+
+/** The boxes with words in them, for one spot on the card. */
+export function boxesAt(wording: Pick<InviteWording, 'boxes'>, place: TextBox['place']): TextBox[] {
+  return (wording.boxes ?? []).filter((box) => box.place === place && box.text.trim() !== '')
 }
 
 export const HOST_CHOICES = [
@@ -41,6 +93,7 @@ export const DEFAULT_WORDING: InviteWording = {
   request: REQUEST_CHOICES[0],
   after: AFTER_CHOICES[0],
   note: '',
+  boxes: [],
 }
 
 export const NOTE_MAX = 240
@@ -58,7 +111,7 @@ function line(value: unknown, fallback: string, max = LINE_MAX): string {
  */
 export function parseWording(raw: unknown): InviteWording {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { ...DEFAULT_WORDING }
+    return { ...DEFAULT_WORDING, boxes: [] }
   }
   const record = raw as Record<string, unknown>
   const request = line(record.request, DEFAULT_WORDING.request)
@@ -70,6 +123,7 @@ export function parseWording(raw: unknown): InviteWording {
       typeof record.note === 'string'
         ? record.note.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, NOTE_MAX)
         : '',
+    boxes: parseBoxes(record.boxes),
   }
 }
 
@@ -128,12 +182,10 @@ export function ordinalWords(day: number): string {
 export type InviteDate = {
   /** "Saturday" */
   weekday: string
-  /** "the twelfth of June" */
-  dayWords: string
-  /** "two thousand twenty-seven" */
-  yearWords: string
   /** "June 12, 2027" */
   plain: string
+  /** "Saturday, June 12, 2027" */
+  full: string
   /** "06 · 12 · 2027" */
   numeric: string
   /** "JUN", "12", "2027" for the modern block date */
@@ -152,9 +204,8 @@ export function inviteDate(iso: string): InviteDate | null {
   const monthName = MONTHS[month - 1]
   return {
     weekday,
-    dayWords: `the ${ordinalWords(day)} of ${monthName}`,
-    yearWords: numberWords(year),
     plain: `${monthName} ${day}, ${year}`,
+    full: `${weekday}, ${monthName} ${day}, ${year}`,
     numeric: `${match[2]} · ${match[3]} · ${match[1]}`,
     parts: {
       month: monthName.slice(0, 3).toUpperCase(),

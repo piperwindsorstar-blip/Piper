@@ -17,7 +17,8 @@ import type {
 } from './model.ts'
 import { emailPhotoBox, photoPath, skinFor, templateFor } from './templates.ts'
 import type { RsvpTemplateId } from './templates.ts'
-import { inviteDate, monogramLetters, timeWords } from './invite-words.ts'
+import { boxesAt, inviteDate, monogramLetters, timeWords } from './invite-words.ts'
+import type { InviteWording, TextBox } from './invite-words.ts'
 import { startTime } from './invite.ts'
 import type { RsvpSkin } from './templates.ts'
 
@@ -108,57 +109,9 @@ function clean(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
 
-const ORDINALS = [
-  'zeroth',
-  'first',
-  'second',
-  'third',
-  'fourth',
-  'fifth',
-  'sixth',
-  'seventh',
-  'eighth',
-  'ninth',
-  'tenth',
-  'eleventh',
-  'twelfth',
-  'thirteenth',
-  'fourteenth',
-  'fifteenth',
-  'sixteenth',
-  'seventeenth',
-  'eighteenth',
-  'nineteenth',
-  'twentieth',
-  'twenty-first',
-  'twenty-second',
-  'twenty-third',
-  'twenty-fourth',
-  'twenty-fifth',
-  'twenty-sixth',
-  'twenty-seventh',
-  'twenty-eighth',
-  'twenty-ninth',
-  'thirtieth',
-  'thirty-first',
-]
-
-/** Wednesday, the thirteenth of January, 2027 */
+/** Wednesday, January 13, 2027: days and years as numbers. */
 export function formalDate(iso: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''
-  const [year, month, day] = iso.split('-').map((part) => Number(part))
-  if (!year || !month || !day) return ''
-  const date = new Date(Date.UTC(year, month - 1, day))
-  const weekday = date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    timeZone: 'UTC',
-  })
-  const monthName = date.toLocaleDateString('en-US', {
-    month: 'long',
-    timeZone: 'UTC',
-  })
-  const ordinal = ORDINALS[day] ?? String(day)
-  return `${weekday}, the ${ordinal} of ${monthName}, ${year}`
+  return inviteDate(iso)?.full ?? ''
 }
 
 /** January 13, 2027 */
@@ -379,6 +332,17 @@ function addressLines(wedding: RsvpWedding): string[] {
 
 // --- the invitation card --------------------------------------------------
 
+/** The couple's own text boxes as letter lines: large as a heading, small print as a note. */
+function boxBlocks(wording: InviteWording, place: TextBox['place']): Block[] {
+  return boxesAt(wording, place).map((box): Block =>
+    box.size === 'large'
+      ? { t: 'heading', text: box.text }
+      : box.size === 'small'
+        ? { t: 'note', text: box.text }
+        : { t: 'line', text: esc(box.text).replace(/\n/g, '<br>') },
+  )
+}
+
 export function invitationEmail(
   wedding: RsvpWedding,
   party: RsvpParty,
@@ -398,13 +362,9 @@ export function invitationEmail(
   if (wedding.monogram && a && b) blocks.push({ t: 'monogram', text: `${a} & ${b}` })
   blocks.push(...ornamentBlock(wedding))
   if (wording.host) blocks.push({ t: 'eyebrow', text: wording.host })
+  blocks.push(...boxBlocks(wording, 'top'))
   blocks.push({ t: 'names', text: title }, { t: 'line', text: esc(wording.request) })
-  if (words) {
-    blocks.push({ t: 'line', text: esc(`${words.weekday}, ${words.dayWords}`) })
-    blocks.push({ t: 'line', text: esc(words.yearWords) })
-  } else if (date) {
-    blocks.push({ t: 'line', text: esc(date) })
-  }
+  if (words) blocks.push({ t: 'line', text: esc(words.full) })
   if (time) blocks.push({ t: 'line', text: esc(`at ${timeWords(time)}`) })
   if (name || town)
     blocks.push({
@@ -412,8 +372,10 @@ export function invitationEmail(
       text: esc([name, town].filter(Boolean).join(', ')),
     })
   if (wording.after) blocks.push({ t: 'note', text: wording.after })
+  blocks.push(...boxBlocks(wording, 'details'))
   blocks.push({ t: 'divider' })
   if (wording.note) blocks.push({ t: 'note', text: wording.note })
+  blocks.push(...boxBlocks(wording, 'bottom'))
   if (deadline) blocks.push({ t: 'note', text: `Kindly reply by ${deadline}` })
   blocks.push({ t: 'button', label: 'Open your invitation', href: url })
   if (wedding.accessMode === 'code' && wedding.inviteCode)
@@ -445,6 +407,7 @@ function invitationText(
   const { name, town } = venueParts(wedding)
   return [
     wedding.wording.host,
+    ...boxesAt(wedding.wording, 'top').map((box) => box.text),
     coupleTitle(wedding),
     wedding.wording.request,
     '',
@@ -452,8 +415,10 @@ function invitationText(
     time,
     [name, town].filter(Boolean).join(', '),
     wedding.wording.after,
+    ...boxesAt(wedding.wording, 'details').map((box) => box.text),
     '',
     wedding.wording.note,
+    ...boxesAt(wedding.wording, 'bottom').map((box) => box.text),
     deadline ? `Kindly reply by ${deadline}.` : '',
     `RSVP: ${url}`,
     wedding.accessMode === 'code' && wedding.inviteCode
