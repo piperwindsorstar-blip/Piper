@@ -17,7 +17,7 @@ import type {
 } from './model.ts'
 import { emailPhotoBox, photoPath, skinFor, templateFor } from './templates.ts'
 import type { RsvpTemplateId } from './templates.ts'
-import { boxesAt, inviteDate, monogramLetters, timeWords } from './invite-words.ts'
+import { inviteDate, monogramLetters, placedLines, timeWords } from './invite-words.ts'
 import type { InviteWording, TextBox } from './invite-words.ts'
 import { startTime } from './invite.ts'
 import type { RsvpSkin } from './templates.ts'
@@ -199,6 +199,7 @@ type Block =
   | { t: 'heading'; text: string }
   | { t: 'art'; url: string; width: number; height: number }
   | { t: 'monogram'; text: string }
+  | { t: 'small'; text: string }
   | {
       t: 'photo'
       url: string
@@ -268,6 +269,8 @@ function renderBlock(block: Block, skin: RsvpSkin): string {
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align:left;"><tr><td style="padding:9px 0;border-top:1px solid ${skin.hairline};font-family:${skin.bodyFont};font-size:15px;color:${skin.body};">${esc(block.label)}</td><td style="padding:9px 0;border-top:1px solid ${skin.hairline};font-family:${skin.bodyFont};font-size:15px;color:${skin.ink};text-align:right;">${esc(block.value)}</td></tr></table>`
     case 'art':
       return `<img src="${esc(block.url)}" alt="" width="${block.width}" height="${block.height}" style="display:block;margin:0 auto 22px;width:${block.width}px;max-width:100%;height:auto;border:0;">`
+    case 'small':
+      return `<p style="margin:14px 0 0;font-family:${skin.bodyFont};font-size:13px;line-height:1.6;color:${skin.quiet};">${esc(block.text).replace(/\n/g, '<br>')}</p>`
     case 'monogram':
       return `<p style="margin:0 0 14px;font-family:${skin.displayFont};font-style:${skin.scriptNames ? 'italic' : 'normal'};font-size:26px;letter-spacing:0.06em;color:${skin.accent};">${esc(block.text)}</p>`
     case 'space':
@@ -334,13 +337,13 @@ function addressLines(wedding: RsvpWedding): string[] {
 
 /** The couple's own text boxes as letter lines: large as a heading, small print as a note. */
 function boxBlocks(wording: InviteWording, place: TextBox['place']): Block[] {
-  return boxesAt(wording, place).map((box): Block =>
-    box.size === 'large'
-      ? { t: 'heading', text: box.text }
-      : box.size === 'small'
-        ? { t: 'note', text: box.text }
-        : { t: 'line', text: esc(box.text).replace(/\n/g, '<br>') },
-  )
+  return placedLines(wording, place).map((box): Block => {
+    if (box.size === 'label') return { t: 'eyebrow', text: box.text }
+    if (box.size === 'large') return { t: 'heading', text: box.text }
+    if (box.size === 'italic') return { t: 'note', text: box.text }
+    if (box.size === 'small') return { t: 'small', text: box.text }
+    return { t: 'line', text: esc(box.text).replace(/\n/g, '<br>') }
+  })
 }
 
 export function invitationEmail(
@@ -361,9 +364,9 @@ export function invitationEmail(
   const blocks: Block[] = [...photoBlock(wedding)]
   if (wedding.monogram && a && b) blocks.push({ t: 'monogram', text: `${a} & ${b}` })
   blocks.push(...ornamentBlock(wedding))
-  if (wording.host) blocks.push({ t: 'eyebrow', text: wording.host })
   blocks.push(...boxBlocks(wording, 'top'))
-  blocks.push({ t: 'names', text: title }, { t: 'line', text: esc(wording.request) })
+  blocks.push({ t: 'names', text: title })
+  blocks.push(...boxBlocks(wording, 'names'))
   if (words) blocks.push({ t: 'line', text: esc(words.full) })
   if (time) blocks.push({ t: 'line', text: esc(`at ${timeWords(time)}`) })
   if (name || town)
@@ -371,10 +374,8 @@ export function invitationEmail(
       t: 'line',
       text: esc([name, town].filter(Boolean).join(', ')),
     })
-  if (wording.after) blocks.push({ t: 'note', text: wording.after })
   blocks.push(...boxBlocks(wording, 'details'))
   blocks.push({ t: 'divider' })
-  if (wording.note) blocks.push({ t: 'note', text: wording.note })
   blocks.push(...boxBlocks(wording, 'bottom'))
   if (deadline) blocks.push({ t: 'note', text: `Kindly reply by ${deadline}` })
   blocks.push({ t: 'button', label: 'Open your invitation', href: url })
@@ -406,19 +407,16 @@ function invitationText(
   const time = ceremonyTime(wedding)
   const { name, town } = venueParts(wedding)
   return [
-    wedding.wording.host,
-    ...boxesAt(wedding.wording, 'top').map((box) => box.text),
+    ...placedLines(wedding.wording, 'top').map((box) => box.text),
     coupleTitle(wedding),
-    wedding.wording.request,
+    ...placedLines(wedding.wording, 'names').map((box) => box.text),
     '',
     date,
     time,
     [name, town].filter(Boolean).join(', '),
-    wedding.wording.after,
-    ...boxesAt(wedding.wording, 'details').map((box) => box.text),
+    ...placedLines(wedding.wording, 'details').map((box) => box.text),
     '',
-    wedding.wording.note,
-    ...boxesAt(wedding.wording, 'bottom').map((box) => box.text),
+    ...placedLines(wedding.wording, 'bottom').map((box) => box.text),
     deadline ? `Kindly reply by ${deadline}.` : '',
     `RSVP: ${url}`,
     wedding.accessMode === 'code' && wedding.inviteCode

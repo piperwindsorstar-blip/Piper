@@ -13,32 +13,75 @@ export type InviteWording = {
   after: string
   /** A short personal message from the couple. Empty leaves it off. */
   note: string
+  /** Where each of those four lines sits and how it is set. */
+  lines: Record<LineKey, LineLook>
   /** The couple's own extra lines: dress code, adults only, parking… */
   boxes: TextBox[]
 }
 
-/** One custom text box on the card: its words, how big, and where it sits. */
+export type TextSize = 'label' | 'large' | 'normal' | 'italic' | 'small'
+export type TextPlace = 'top' | 'names' | 'details' | 'bottom'
+export type LineLook = { size: TextSize; place: TextPlace }
+export type LineKey = 'host' | 'request' | 'after' | 'note'
+export const LINE_KEYS: LineKey[] = ['host', 'request', 'after', 'note']
+
+/** One line on the card: its words, how it is set, and where it sits. */
 export type TextBox = {
   id: string
   text: string
-  size: 'large' | 'normal' | 'small'
-  place: 'top' | 'details' | 'bottom'
+  size: TextSize
+  place: TextPlace
+}
+
+/** How the four prefilled lines sit when the couple has not moved them. */
+export const LINE_DEFAULTS: Record<LineKey, LineLook> = {
+  host: { size: 'label', place: 'top' },
+  request: { size: 'italic', place: 'names' },
+  after: { size: 'italic', place: 'details' },
+  note: { size: 'italic', place: 'bottom' },
 }
 
 export const BOX_MAX = 4
 export const BOX_TEXT_MAX = 200
 
-export const BOX_PLACES: { value: TextBox['place']; label: string }[] = [
+export const BOX_PLACES: { value: TextPlace; label: string }[] = [
   { value: 'top', label: 'Above your names' },
+  { value: 'names', label: 'Under your names' },
   { value: 'details', label: 'Under the details' },
   { value: 'bottom', label: 'At the bottom' },
 ]
 
-export const BOX_SIZES: { value: TextBox['size']; label: string }[] = [
+export const BOX_SIZES: { value: TextSize; label: string }[] = [
+  { value: 'label', label: 'Small capitals' },
   { value: 'large', label: 'Large' },
   { value: 'normal', label: 'Normal' },
+  { value: 'italic', label: 'Italic' },
   { value: 'small', label: 'Small print' },
 ]
+
+const SIZES = new Set<string>(BOX_SIZES.map((size) => size.value))
+const PLACES = new Set<string>(BOX_PLACES.map((place) => place.value))
+
+function parseSize(value: unknown, fallback: TextSize): TextSize {
+  return typeof value === 'string' && SIZES.has(value) ? (value as TextSize) : fallback
+}
+
+function parsePlace(value: unknown, fallback: TextPlace): TextPlace {
+  return typeof value === 'string' && PLACES.has(value) ? (value as TextPlace) : fallback
+}
+
+function parseLines(raw: unknown): Record<LineKey, LineLook> {
+  const record = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const out = {} as Record<LineKey, LineLook>
+  for (const key of LINE_KEYS) {
+    const item = record[key] && typeof record[key] === 'object' ? (record[key] as Record<string, unknown>) : {}
+    out[key] = {
+      size: parseSize(item.size, LINE_DEFAULTS[key].size),
+      place: parsePlace(item.place, LINE_DEFAULTS[key].place),
+    }
+  }
+  return out
+}
 
 function parseBoxes(raw: unknown): TextBox[] {
   if (!Array.isArray(raw)) return []
@@ -52,19 +95,31 @@ function parseBoxes(raw: unknown): TextBox[] {
         ? record.text.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, BOX_TEXT_MAX)
         : ''
     let id = typeof record.id === 'string' ? record.id.replace(/[^a-z0-9-]/gi, '').slice(0, 24) : ''
-    if (!id || seen.has(id)) id = `box-${boxes.length + 1}-${seen.size}`
+    if (!id || seen.has(id) || (LINE_KEYS as string[]).includes(id)) id = `box-${boxes.length + 1}-${seen.size}`
     seen.add(id)
-    const size = record.size === 'large' || record.size === 'small' ? record.size : 'normal'
-    const place = record.place === 'top' || record.place === 'bottom' ? record.place : 'details'
-    boxes.push({ id, text, size, place })
+    boxes.push({ id, text, size: parseSize(record.size, 'normal'), place: parsePlace(record.place, 'details') })
     if (boxes.length >= BOX_MAX) break
   }
   return boxes
 }
 
-/** The boxes with words in them, for one spot on the card. */
-export function boxesAt(wording: Pick<InviteWording, 'boxes'>, place: TextBox['place']): TextBox[] {
+/** The couple's own boxes with words in them, for one spot on the card. */
+export function boxesAt(wording: Pick<InviteWording, 'boxes'>, place: TextPlace): TextBox[] {
   return (wording.boxes ?? []).filter((box) => box.place === place && box.text.trim() !== '')
+}
+
+/**
+ * Every line for one spot on the card, in order: the prefilled lines first
+ * (host, request, after, note), then the couple's own boxes.
+ */
+export function placedLines(wording: InviteWording, place: TextPlace): TextBox[] {
+  const lines = wording.lines ?? LINE_DEFAULTS
+  const prefilled = LINE_KEYS.flatMap((key): TextBox[] => {
+    const text = (wording[key] ?? '').trim()
+    const look = lines[key] ?? LINE_DEFAULTS[key]
+    return text && look.place === place ? [{ id: key, text, size: look.size, place }] : []
+  })
+  return [...prefilled, ...boxesAt(wording, place)]
 }
 
 export const HOST_CHOICES = [
@@ -93,6 +148,7 @@ export const DEFAULT_WORDING: InviteWording = {
   request: REQUEST_CHOICES[0],
   after: AFTER_CHOICES[0],
   note: '',
+  lines: LINE_DEFAULTS,
   boxes: [],
 }
 
@@ -111,7 +167,7 @@ function line(value: unknown, fallback: string, max = LINE_MAX): string {
  */
 export function parseWording(raw: unknown): InviteWording {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { ...DEFAULT_WORDING, boxes: [] }
+    return { ...DEFAULT_WORDING, lines: parseLines(undefined), boxes: [] }
   }
   const record = raw as Record<string, unknown>
   const request = line(record.request, DEFAULT_WORDING.request)
@@ -123,6 +179,7 @@ export function parseWording(raw: unknown): InviteWording {
       typeof record.note === 'string'
         ? record.note.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, NOTE_MAX)
         : '',
+    lines: parseLines(record.lines),
     boxes: parseBoxes(record.boxes),
   }
 }

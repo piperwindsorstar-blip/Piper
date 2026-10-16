@@ -5,6 +5,8 @@ import {
   BOX_TEXT_MAX,
   DEFAULT_WORDING,
   boxesAt,
+  LINE_DEFAULTS,
+  placedLines,
   NOTE_MAX,
   inviteDate,
   monogramLetters,
@@ -91,6 +93,24 @@ describe('invitation words', () => {
     assert.deepEqual(boxesAt(wording, 'details').map((box) => box.text), ['Adults only'])
     assert.deepEqual(boxesAt(wording, 'top').map((box) => box.text), ['Cocktail attire'])
     assert.deepEqual(parseWording({ boxes: 'no' }).boxes, [])
+  })
+
+  it('lets the filled-in lines move and change style too', () => {
+    assert.deepEqual(parseWording({}).lines, LINE_DEFAULTS)
+    const wording = parseWording({
+      host: 'Together with their families',
+      note: 'See you there',
+      lines: { host: { size: 'large', place: 'bottom' }, note: { size: 'shout', place: 'nowhere' } },
+      boxes: [{ id: 'host', text: 'Parking out back', size: 'small', place: 'bottom' }],
+    })
+    assert.deepEqual(wording.lines.host, { size: 'large', place: 'bottom' })
+    assert.deepEqual(wording.lines.note, LINE_DEFAULTS.note)
+    assert.deepEqual(wording.lines.request, LINE_DEFAULTS.request)
+    const bottom = placedLines(wording, 'bottom')
+    assert.deepEqual(bottom.map((line) => line.text), ['Together with their families', 'See you there', 'Parking out back'])
+    assert.notEqual(bottom[2].id, 'host')
+    assert.equal(placedLines(wording, 'top').length, 0)
+    assert.equal(placedLines({ ...wording, after: '' }, 'details').length, 0)
   })
 })
 

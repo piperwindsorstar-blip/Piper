@@ -9,11 +9,12 @@ import {
   BOX_SIZES,
   BOX_TEXT_MAX,
   HOST_CHOICES,
+  LINE_DEFAULTS,
   LINE_MAX,
   NOTE_MAX,
   REQUEST_CHOICES,
 } from '../../lib/rsvp/invite-words.ts'
-import type { InviteWording, TextBox } from '../../lib/rsvp/invite-words.ts'
+import type { InviteWording, LineKey, LineLook, TextBox } from '../../lib/rsvp/invite-words.ts'
 import {
   PHOTO_WIDTH_MAX,
   compressSteps,
@@ -95,6 +96,13 @@ export function Design({ data }: { data: ReadyManage }) {
   }
   function word(patch: Partial<InviteWording>) {
     change({ wording: { ...invite.wording, ...patch } })
+  }
+  function lineLook(key: LineKey): LineLook {
+    return invite.wording.lines?.[key] ?? LINE_DEFAULTS[key]
+  }
+  function setLine(key: LineKey, patch: Partial<LineLook>) {
+    const lines = { ...LINE_DEFAULTS, ...invite.wording.lines }
+    word({ lines: { ...lines, [key]: { ...lines[key], ...patch } } })
   }
   function setBox(id: string, patch: Partial<TextBox>) {
     word({ boxes: invite.wording.boxes.map((box) => (box.id === id ? { ...box, ...patch } : box)) })
@@ -296,44 +304,59 @@ export function Design({ data }: { data: ReadyManage }) {
           <fieldset className={section}>
             <legend className={`${legend} float-left w-full`}>Wording</legend>
             <div className="clear-both grid gap-4 pt-3">
-              <LineChoice
-                id="invite-host"
-                label="Above your names"
-                value={invite.wording.host}
-                choices={HOST_CHOICES}
-                allowNone
-                onChange={(host) => word({ host })}
-              />
-              <LineChoice
-                id="invite-request"
-                label="Under your names"
-                value={invite.wording.request}
-                choices={REQUEST_CHOICES}
-                onChange={(request) => word({ request })}
-              />
-              <LineChoice
-                id="invite-after"
-                label="After the place"
-                value={invite.wording.after}
-                choices={AFTER_CHOICES}
-                allowNone
-                onChange={(after) => word({ after })}
-              />
-              <div className="grid gap-2">
-                <label htmlFor="invite-note" className="text-sm text-[var(--text-muted)]">
-                  A note from you two <span className="text-[var(--text-faint)]">(optional)</span>
-                </label>
-                <textarea
-                  id="invite-note"
-                  className={`${rsvpField} min-h-24 py-3`}
-                  maxLength={NOTE_MAX}
-                  value={invite.wording.note}
-                  placeholder="We can't wait to celebrate with you. Bring your dancing shoes!"
-                  onChange={(event) => word({ note: event.target.value })}
+              <p className="text-sm text-[var(--text-muted)]">
+                Each line comes filled in. Change the words, or move it and pick its style.
+              </p>
+              <div className="grid gap-3 rounded-2xl border border-[var(--border)] p-3">
+                <LineChoice
+                  id="invite-host"
+                  label="Who is hosting"
+                  value={invite.wording.host}
+                  choices={HOST_CHOICES}
+                  allowNone
+                  onChange={(host) => word({ host })}
                 />
-                <p className="text-right text-xs text-[var(--text-faint)]">
-                  {invite.wording.note.length} / {NOTE_MAX}
-                </p>
+                <LookPicker id="invite-host" look={lineLook('host')} onChange={(patch) => setLine('host', patch)} />
+              </div>
+              <div className="grid gap-3 rounded-2xl border border-[var(--border)] p-3">
+                <LineChoice
+                  id="invite-request"
+                  label="The invitation"
+                  value={invite.wording.request}
+                  choices={REQUEST_CHOICES}
+                  onChange={(request) => word({ request })}
+                />
+                <LookPicker id="invite-request" look={lineLook('request')} onChange={(patch) => setLine('request', patch)} />
+              </div>
+              <div className="grid gap-3 rounded-2xl border border-[var(--border)] p-3">
+                <LineChoice
+                  id="invite-after"
+                  label="The party"
+                  value={invite.wording.after}
+                  choices={AFTER_CHOICES}
+                  allowNone
+                  onChange={(after) => word({ after })}
+                />
+                <LookPicker id="invite-after" look={lineLook('after')} onChange={(patch) => setLine('after', patch)} />
+              </div>
+              <div className="grid gap-3 rounded-2xl border border-[var(--border)] p-3">
+                <div className="grid gap-2">
+                  <label htmlFor="invite-note" className="text-sm text-[var(--text-muted)]">
+                    A note from you two <span className="text-[var(--text-faint)]">(optional)</span>
+                  </label>
+                  <textarea
+                    id="invite-note"
+                    className={`${rsvpField} min-h-24 py-3`}
+                    maxLength={NOTE_MAX}
+                    value={invite.wording.note}
+                    placeholder="We can't wait to celebrate with you. Bring your dancing shoes!"
+                    onChange={(event) => word({ note: event.target.value })}
+                  />
+                  <p className="text-right text-xs text-[var(--text-faint)]">
+                    {invite.wording.note.length} / {NOTE_MAX}
+                  </p>
+                </div>
+                <LookPicker id="invite-note" look={lineLook('note')} onChange={(patch) => setLine('note', patch)} />
               </div>
               <p className="text-sm text-[var(--text-muted)]">
                 Your names, date, time and place come from your RSVP details, so they always match.
@@ -345,7 +368,7 @@ export function Design({ data }: { data: ReadyManage }) {
             <legend className={`${legend} float-left w-full`}>Your own text</legend>
             <p className="clear-both pt-1 text-sm text-[var(--text-muted)]">
               Add up to {BOX_MAX} lines of your own, like a dress code, "Adults only",
-              parking or a hashtag. Pick where each one sits and how big it is.
+              parking or a hashtag. They have the same Where and Style choices.
             </p>
             <div className="grid gap-3 pt-3">
               {invite.wording.boxes.map((box, index) => (
@@ -362,34 +385,7 @@ export function Design({ data }: { data: ReadyManage }) {
                     onChange={(event) => setBox(box.id, { text: event.target.value })}
                   />
                   <div className="flex flex-wrap items-end gap-3">
-                    <label className="grid min-w-0 flex-1 gap-1 text-sm text-[var(--text-muted)]">
-                      Where
-                      <select
-                        className={rsvpField}
-                        value={box.place}
-                        onChange={(event) => setBox(box.id, { place: event.target.value as TextBox['place'] })}
-                      >
-                        {BOX_PLACES.map((place) => (
-                          <option key={place.value} value={place.value}>
-                            {place.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="grid min-w-0 flex-1 gap-1 text-sm text-[var(--text-muted)]">
-                      Size
-                      <select
-                        className={rsvpField}
-                        value={box.size}
-                        onChange={(event) => setBox(box.id, { size: event.target.value as TextBox['size'] })}
-                      >
-                        {BOX_SIZES.map((size) => (
-                          <option key={size.value} value={size.value}>
-                            {size.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <LookPicker id={`box-${box.id}`} look={box} onChange={(patch) => setBox(box.id, patch)} />
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -657,6 +653,52 @@ function LineChoice({
           onChange={(event) => onChange(event.target.value)}
         />
       ) : null}
+    </div>
+  )
+}
+
+/** Where a line sits on the card, and how it is set. */
+function LookPicker({
+  id,
+  look,
+  onChange,
+}: {
+  id: string
+  look: LineLook
+  onChange: (patch: Partial<LineLook>) => void
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-wrap items-end gap-3">
+      <label htmlFor={`${id}-where`} className="grid min-w-[10rem] flex-1 gap-1 text-sm text-[var(--text-muted)]">
+        Where
+        <select
+          id={`${id}-where`}
+          className={rsvpField}
+          value={look.place}
+          onChange={(event) => onChange({ place: event.target.value as LineLook['place'] })}
+        >
+          {BOX_PLACES.map((place) => (
+            <option key={place.value} value={place.value}>
+              {place.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label htmlFor={`${id}-style`} className="grid min-w-[10rem] flex-1 gap-1 text-sm text-[var(--text-muted)]">
+        Style
+        <select
+          id={`${id}-style`}
+          className={rsvpField}
+          value={look.size}
+          onChange={(event) => onChange({ size: event.target.value as LineLook['size'] })}
+        >
+          {BOX_SIZES.map((size) => (
+            <option key={size.value} value={size.value}>
+              {size.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   )
 }

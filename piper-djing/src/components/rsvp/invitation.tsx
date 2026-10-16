@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { boxesAt } from '../../lib/rsvp/invite-words.ts'
+import { placedLines } from '../../lib/rsvp/invite-words.ts'
 import type { TextBox } from '../../lib/rsvp/invite-words.ts'
 import { mapLink } from '../../lib/rsvp/invite.ts'
 import type { InviteView } from '../../lib/rsvp/invite.ts'
@@ -176,13 +176,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
         ) : null}
         <TopMark view={view} look={look} />
         {gap(18)}
-        {w.host ? (
-          <>
-            <p className="inv-label" style={label}>{w.host}</p>
-            {gap(16)}
-          </>
-        ) : null}
-        <Boxes boxes={boxesAt(w, 'top')} look={look} after />
+        <Boxes boxes={placedLines(w, 'top')} look={look} label={label} after />
         <h2 className="inv-names" style={nameStyle}>
           <span className={nameClass}>{view.partnerOne || 'Partner one'}</span>
           <span
@@ -201,10 +195,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
           </span>
           <span className={nameClass}>{view.partnerTwo || 'Partner two'}</span>
         </h2>
-        {gap(16)}
-        <p className="inv-text" style={text(look.text.size, { fontStyle: 'italic', maxWidth: '88%' })}>
-          {w.request}
-        </p>
+        <Boxes boxes={placedLines(w, 'names')} look={look} label={label} />
         {gap(20)}
         {date ? (
           look.dateStyle === 'block' ? (
@@ -235,24 +226,10 @@ export function InvitationCard({ view }: { view: InviteView }) {
             ) : null}
           </>
         ) : null}
-        {w.after ? (
-          <>
-            {gap(14)}
-            <p className="inv-text" style={text(look.text.size - 0.5, { fontStyle: 'italic' })}>{w.after}</p>
-          </>
-        ) : null}
-        <Boxes boxes={boxesAt(w, 'details')} look={look} />
+        <Boxes boxes={placedLines(w, 'details')} look={look} label={label} />
         {gap(20)}
         <Divider id={template.id} look={look} />
-        {w.note ? (
-          <>
-            {gap(16)}
-            <p className="inv-text inv-quiet" style={text(look.text.size - 1, { fontStyle: 'italic', whiteSpace: 'pre-line', maxWidth: '86%' })}>
-              {w.note}
-            </p>
-          </>
-        ) : null}
-        <Boxes boxes={boxesAt(w, 'bottom')} look={look} />
+        <Boxes boxes={placedLines(w, 'bottom')} look={look} label={label} />
         {view.replyBy ? (
           <>
             {gap(16)}
@@ -266,18 +243,23 @@ export function InvitationCard({ view }: { view: InviteView }) {
   )
 }
 
-/** The couple's own text boxes, set in the style's type at the size they chose. */
-function Boxes({ boxes, look, after = false }: { boxes: TextBox[]; look: RsvpLook; after?: boolean }) {
+/** The card's lines, prefilled or the couple's own, set in the style's type the way they chose. */
+function Boxes({ boxes, look, label, after = false }: { boxes: TextBox[]; look: RsvpLook; label: CSSProperties; after?: boolean }) {
   if (boxes.length === 0) return null
   return (
     <>
       {boxes.map((box) => {
+        const body: CSSProperties = { fontFamily: look.text.font, fontWeight: look.text.weight, fontSize: cq(look.text.size), lineHeight: 1.45 }
         const style: CSSProperties =
-          box.size === 'large'
-            ? { fontFamily: look.names.font, fontWeight: look.names.weight, fontStyle: look.names.style, fontSize: cq(Math.min(26, look.names.size * 0.58)), lineHeight: 1.2, color: 'var(--inv-ink)' }
-            : box.size === 'small'
-              ? { fontFamily: look.text.font, fontWeight: look.text.weight, fontSize: cq(look.text.size - 3), lineHeight: 1.45, color: 'var(--inv-quiet)' }
-              : { fontFamily: look.text.font, fontWeight: look.text.weight, fontSize: cq(look.text.size), lineHeight: 1.45 }
+          box.size === 'label'
+            ? { ...label, color: 'var(--inv-accent-ink)', lineHeight: 1.6 }
+            : box.size === 'large'
+              ? { fontFamily: look.names.font, fontWeight: look.names.weight, fontStyle: look.names.style, fontSize: cq(Math.min(26, look.names.size * 0.58)), lineHeight: 1.2, color: 'var(--inv-ink)' }
+              : box.size === 'small'
+                ? { ...body, fontSize: cq(look.text.size - 3), color: 'var(--inv-quiet)' }
+                : box.size === 'italic'
+                  ? { ...body, fontStyle: 'italic' }
+                  : body
         return (
           <div key={box.id} style={{ display: 'contents' }}>
             {after ? null : <span aria-hidden="true" style={{ display: 'block', height: cq(14) }} />}
