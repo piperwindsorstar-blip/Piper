@@ -1,0 +1,645 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --color-paper: #f4f1ec;
+  --color-paper-deep: #e7e1d8;
+  --color-ivory: #fffcf8;
+  --color-ink: #1a1816;
+  --color-ink-soft: #2e2926;
+  --color-muted: #6f6a64;
+  --color-line: #e3ddd4;
+  --color-danger: #8d3b34;
+  --color-stage: #000000;
+  --color-night: #0b0f17;
+  --color-mark: #f034ea;
+  --color-mist: #f7f4fd;
+  --color-soft: #5e5775;
+  --color-neon: #ff007f;
+  --color-hot: #ff1493;
+  --color-rosy: #ec4899;
+  --color-rose2: #f43f5e;
+  --color-ink-950: #0d0d0d;
+  --color-ink-900: #121212;
+  --color-ink-800: #1a1a1a;
+  --color-ink-700: #262626;
+  --color-blush: #ffe6f2;
+  --color-violet: #7c3aed;
+  --color-lilac: #eee8ff;
+  --color-sky: #8fd3f4;
+  --color-ice: #e3f4fd;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --radius-card: 2rem;
+  --animate-brand-float: brand-float 4.5s ease-in-out infinite;
+  --animate-brand-glow: brand-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes brand-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes brand-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(240 52 234 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 32px 2px rgb(240 52 234 / 0.55);
+  }
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+dialog {
+  width: min(28rem, calc(100% - 2rem));
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-ivory);
+  padding: 1.75rem;
+  color: var(--color-ink);
+}
+
+dialog::backdrop {
+  background: rgb(26 24 22 / 0.45);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  background: var(--color-ivory);
+  padding: 0.75rem 1rem;
+  color: var(--color-ink);
+}
+
+/* Wedding page tokens stay on this route. The home page scopes its own dark type. */
+.weddings {
+  --color-paper: #ffffff;
+  --color-ink: #1c1533;
+  --color-line: #e3dcf2;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+}
+
+.weddings :focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+.home {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+.home :focus-visible {
+  outline: 2px solid #ff1493;
+  outline-offset: 2px;
+}
+
+.text-glow {
+  text-shadow: 0 0 30px rgba(255, 0, 127, 0.55);
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(#e3dcf2 1px, transparent 1px),
+    linear-gradient(90deg, #e3dcf2 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.grid-fade {
+  -webkit-mask-image: radial-gradient(70% 70% at 50% 40%, #000, transparent);
+  mask-image: radial-gradient(70% 70% at 50% 40%, #000, transparent);
+}
+
+@keyframes wed-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.weddings .marquee {
+  animation: wed-marquee 36s linear infinite;
+  width: max-content;
+}
+
+@keyframes home-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.home .marquee {
+  animation: home-marquee 34s linear infinite;
+  width: max-content;
+}
+
+@keyframes home-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-slow {
+  animation: home-spin 22s linear infinite;
+}
+
+@keyframes home-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-glow {
+  animation: home-pulse 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+html:has(.desk) {
+  scroll-padding-bottom: 13rem;
+}
+
+.desk :is(a, button, input, select, textarea, summary) {
+  scroll-margin-bottom: 6rem;
+}
+
+/* The desk wears the same paper-and-ink theme as /weddings: light pages, the
+   site's ink console bar, the same fonts and the same pink. */
+.desk {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --color-paper: #ffffff;
+  --color-paper-deep: #f7f2fb;
+  --color-ivory: #fffcf8;
+  --color-ink: #1c1533;
+  --color-line: #e3dcf2;
+  --color-muted: #5b5370;
+  /* A faint lilac page on a fine grid, like the site's sheets, so white
+     cards stand out. */
+  background-color: #f7f4fd;
+  background-image:
+    radial-gradient(900px 420px at 30% -8%, rgb(255 0 127 / 0.08), transparent 70%),
+    linear-gradient(#ebe4f6 1px, transparent 1px),
+    linear-gradient(90deg, #ebe4f6 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+/* The console bar keeps the site's ink header so the white and pink logo reads. */
+.desk-header {
+  background-color: #1c1533;
+  color: #fff;
+}
+
+.desk :focus-visible {
+  outline: 2px solid #ff1493;
+  outline-offset: 2px;
+}
+
+.desk .field {
+  color: var(--color-muted);
+}
+
+/* The sign-in card is an ink panel on the paper desk. The paper theme's muted
+   label colour disappears on it, so its labels and error read light. */
+.desk .login-card .field {
+  color: #ffffff;
+}
+
+.desk .login-card .text-danger {
+  color: #ffb3ab;
+}
+
+.desk input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.desk select,
+.desk textarea {
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  background: var(--color-ivory);
+  color: var(--color-ink);
+  padding: 0.75rem 1rem;
+}
+
+.desk input:not([type='checkbox']):not([type='radio']):not([type='file']):focus,
+.desk select:focus,
+.desk textarea:focus {
+  border-color: #ff007f;
+}
+
+.desk input[type='date'],
+.desk input[type='datetime-local'] {
+  color-scheme: light;
+}
+
+.desk input[type='checkbox'],
+.desk input[type='radio'] {
+  accent-color: #ff007f;
+}
+
+.desk input[type='file'] {
+  color: var(--color-muted);
+}
+
+.desk .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.desk .no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* Desk pages: the dark utilities the desk was written with, mapped onto the
+   paper theme. The console bar and the section nav sit outside main, so they
+   stay ink. */
+.desk main .bg-ink-950 {
+  background: var(--color-ivory);
+}
+
+.desk main .bg-ink-900,
+.desk main .bg-ink-900\/95 {
+  background: var(--color-paper-deep);
+}
+
+.desk main .bg-white\/5,
+.desk main .bg-white\/20,
+.desk main .bg-white\/\[0\.04\] {
+  background: var(--color-paper-deep);
+}
+
+.desk main .text-white {
+  color: var(--color-ink);
+}
+
+.desk main .text-white\/85,
+.desk main .text-white\/80 {
+  color: var(--color-ink);
+}
+
+.desk main .text-white\/70,
+.desk main .text-white\/65,
+.desk main .text-white\/60,
+.desk main .text-white\/55,
+.desk main .text-white\/40 {
+  color: var(--color-muted);
+}
+
+.desk main .text-hot {
+  color: #d1006b;
+}
+
+.desk main .border-white\/10,
+.desk main .border-white\/15,
+.desk main .border-white\/20 {
+  border-color: var(--color-line);
+}
+
+.desk main .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--color-line);
+}
+
+/* Warning, error and success text was written for the old dark desk. On
+   the white desk it reads in the deeper shade of the same colour. */
+.desk main .text-rose-200,
+.desk main .text-rose-300,
+.desk main .text-rose-400,
+.desk main .text-red-300,
+.desk main .text-red-400 {
+  color: #be123c;
+}
+
+.desk main .text-amber-100,
+.desk main .text-amber-200,
+.desk main .text-amber-300,
+.desk main .text-yellow-300 {
+  color: #b45309;
+}
+
+.desk main .text-emerald-200,
+.desk main .text-emerald-300,
+.desk main .text-emerald-400,
+.desk main .text-green-300 {
+  color: #047857;
+}
+
+/* Pink buttons keep white type, as they do on /weddings. */
+.desk main .bg-neon.text-white,
+.desk main .bg-hot.text-white,
+.desk main .bg-neon .text-white,
+.desk main .bg-hot .text-white {
+  color: #fff;
+}
+
+.portal {
+  --bg: #0d0d0d;
+  --surface: #141416;
+  --field: #16161a;
+  --field-2: #1c1c21;
+  --border: #222228;
+  --border-strong: #34343a;
+  --line: #2a2a30;
+  --text: #ffffff;
+  --text-muted: #a9a9b2;
+  --text-faint: #8a8a94;
+  --pink: #ff4f9a;
+  --pink-soft: #ff8dbe;
+  --pink-tint: #2a1220;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Couples choose a light or dark RSVP. Guests see the couple's choice. */
+.portal.light {
+  --bg: #faf7fc;
+  --surface: #ffffff;
+  --field: #ffffff;
+  --field-2: #f2ecf7;
+  --border: #e6def0;
+  --border-strong: #cabfda;
+  --line: #e6def0;
+  --text: #1c1533;
+  --text-muted: #5b5370;
+  --text-faint: #7c7488;
+  --pink: #d1006b;
+  --pink-soft: #a3005a;
+  --pink-tint: #ffe3f1;
+  color-scheme: light;
+}
+
+.portal.light .text-white,
+.portal.light .text-white\/85,
+.portal.light .text-white\/80,
+.portal.light .text-white\/70 {
+  color: var(--text);
+}
+
+.portal.light .bg-ink-950,
+.portal.light .bg-\[\#0D0D0D\] {
+  background: var(--bg);
+}
+
+.portal .portal-display {
+  font-family:
+    var(--display-font, 'Inter Display'), Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.portal :focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
+}
+
+.portal .portal-input {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--field);
+  color: var(--text);
+  padding: 0.9rem 1rem;
+  font: inherit;
+}
+
+.portal .portal-input:disabled {
+  opacity: 0.7;
+}
+
+.plan-page {
+  min-height: 100vh;
+  background: #ececee;
+  color: #161616;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.plan-display {
+  font-family: 'Inter Display', Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.plan-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.plan-pill-yes {
+  background: #ddf3e4;
+  color: #1b6b3a;
+}
+
+.plan-pill-unsure {
+  background: #fdebd3;
+  color: #8a4a06;
+}
+
+.plan-pill-no {
+  background: #eeeef1;
+  color: #5c5c66;
+}
+
+.plan-choice {
+  color: #8a8a94;
+  font-style: italic;
+}
+
+.plan-cards {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .plan-table {
+    display: none;
+  }
+
+  .plan-cards {
+    display: grid;
+  }
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 0.6in;
+  }
+
+  .plan-page {
+    background: white;
+  }
+
+  .no-print,
+  .portal > header,
+  .portal > nav,
+  .plan-screen-footer,
+  .plan-cards {
+    display: none !important;
+  }
+
+  .plan-table {
+    display: table !important;
+  }
+
+  .plan-sheet {
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
+    padding-bottom: 28px;
+  }
+
+  .plan-row,
+  .plan-card,
+  .plan-keep {
+    break-inside: avoid;
+  }
+
+  .plan-phase h3 {
+    break-after: avoid;
+  }
+
+  .plan-print-footer {
+    display: block;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    color: #444;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home .marquee,
+  .weddings .marquee,
+  .spin-slow,
+  .pulse-glow,
+  .desk .desk-motion,
+  .portal .portal-motion {
+    animation: none;
+    transition: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Every button on the site answers the pointer and the keyboard the same way:
+   a lift on hover, a press that sinks in, and a ring when tabbed to. Touch
+   devices get no sticky hover, and a disabled button never looks alive. */
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    filter 140ms ease,
+    transform 90ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+button:disabled,
+button[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+}
+
+button:not(:disabled):active {
+  filter: brightness(0.93);
+  transform: translateY(1px);
+}
+
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+
+  button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* Native checkboxes and radios take the accent, not the browser's blue. */
+.portal input[type='checkbox'],
+.portal input[type='radio'] {
+  accent-color: var(--pink);
+}
