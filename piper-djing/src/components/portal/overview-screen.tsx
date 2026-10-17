@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { longDate } from '../../lib/crm/dates.ts'
 import {
   answeredLabel,
-  daysUntil,
+  daysToWedding,
   firstUnanswered,
   overallProgress,
   questionAnswered,
@@ -33,7 +33,7 @@ export function OverviewScreen() {
   const progress = overallProgress(planning, page.master)
   const next = firstUnanswered(planning, page.master)
   const finish = planning.dueDate || shiftIso(page.eventDate, -5)
-  const days = daysUntil(page.today, page.eventDate)
+  const days = daysToWedding(page.today, page.eventDate) ?? 0
   const venue = planning.venueName.trim() || page.venueName.trim() || 'Venue'
   const note = locked
     ? 'This plan is locked. You can still read every answer, and you can ask me to change it.'
