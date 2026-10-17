@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import { blankPlanning } from '../crm/planning.ts'
 import {
   answeredLabel,
+  daysToWedding,
   daysUntil,
   extrasProgress,
   firstUnanswered,
@@ -105,6 +106,11 @@ describe('portal progress', () => {
     assert.equal(sectionProgress(hidden, 'timeline').answered, 0)
     assert.equal(daysUntil('2026-10-11', '2026-10-16'), 5)
     assert.equal(daysUntil('2026-10-11', '2026-10-01'), 0)
+    // The portal's countdown box: past weddings count back instead of reading "Today".
+    assert.equal(daysToWedding('2026-10-17', '2025-06-14'), -490)
+    assert.equal(daysToWedding('2026-10-17', '2026-10-17'), 0)
+    assert.equal(daysToWedding('2026-10-17', '2026-10-29'), 12)
+    assert.equal(daysToWedding('2026-10-17', ''), null)
     assert.equal(shiftIso('2027-06-14', -5), '2027-06-09')
   })
 

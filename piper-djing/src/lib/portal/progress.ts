@@ -255,6 +255,14 @@ export function shiftIso(iso: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
+/** Days from today to the wedding: negative once it has passed, null for a bad date. */
+export function daysToWedding(today: string, eventDate: string): number | null {
+  const start = Date.parse(`${today}T00:00:00Z`)
+  const end = Date.parse(`${eventDate}T00:00:00Z`)
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null
+  return Math.round((end - start) / 86400000)
+}
+
 export function daysUntil(today: string, eventDate: string): number {
   const start = Date.parse(`${today}T00:00:00Z`)
   const end = Date.parse(`${eventDate}T00:00:00Z`)
