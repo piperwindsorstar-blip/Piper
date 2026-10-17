@@ -30,12 +30,23 @@ function LeadsPage() {
   const leads = Route.useLoaderData()
   const { packages, bookings, externalDates } = deskRoute.useLoaderData()
   const [copied, setCopied] = useState(false)
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+  /** The booking this inquiry already became (the website makes one when the date is free). */
+  const bookingFor = (lead: (typeof leads)[number]) =>
+    bookings.find(
+      (booking) =>
+        (booking.status === 'open' || booking.status === 'hold' || booking.status === 'booked') &&
+        booking.eventDate === lead.eventDate &&
+        same(booking.partnerOne, lead.partnerOne) &&
+        same(booking.partnerTwo, lead.partnerTwo),
+    ) ?? null
   /** Who already has a date: your held or booked couples, and Pynx dates. */
-  const taken = (date: string | null): string | null => {
+  const taken = (date: string | null, ownId: number | null): string | null => {
     if (!date) return null
     const own = bookings.find(
       (booking) =>
         !booking.sample &&
+        booking.id !== ownId &&
         (booking.status === 'hold' || booking.status === 'booked') &&
         booking.eventDate === date,
     )
@@ -79,9 +90,18 @@ function LeadsPage() {
         </section>
       ) : null}
       <div className="grid gap-3">
-        {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} packages={packages} clash={taken(lead.eventDate)} />
-        ))}
+        {leads.map((lead) => {
+          const booking = bookingFor(lead)
+          return (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              packages={packages}
+              bookingId={booking?.id ?? null}
+              clash={taken(lead.eventDate, booking?.id ?? null)}
+            />
+          )
+        })}
       </div>
     </div>
   )
@@ -91,7 +111,10 @@ function LeadCard({
   lead,
   packages,
   clash,
+  bookingId,
 }: {
+  /** The booking this inquiry already became, if any. */
+  bookingId: number | null
   /** Who already has this date, or null when it is free. */
   clash: string | null
   lead: {
@@ -160,9 +183,15 @@ function LeadCard({
             Call
           </a>
         ) : null}
-        <Link to="/desk/bookings" search={{ lead: lead.id }} className={deskDark}>
-          Make it a booking
-        </Link>
+        {bookingId != null ? (
+          <Link to="/desk/bookings" search={{ couple: bookingId }} className={deskDark}>
+            Open the booking
+          </Link>
+        ) : (
+          <Link to="/desk/bookings" search={{ lead: lead.id }} className={deskDark}>
+            Make it a booking
+          </Link>
+        )}
       </div>
       {lead.message.trim() ? (
         <p className="rounded-xl bg-[#faf8fe] px-4 py-3 text-sm whitespace-pre-line text-[#3b3352]">

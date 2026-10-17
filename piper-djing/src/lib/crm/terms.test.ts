@@ -66,7 +66,19 @@ ${AGREEMENT}
 
 ${BOOKED}`
 
+/** The current document as it was saved while the agreement clause still read "4.5". */
+const PREVIOUS_NUMBERED = TERMS_BODY.replace(
+  AGREEMENT.slice('4.5 '.length),
+  AGREEMENT,
+)
+
 describe('terms', () => {
+  it('drops the stray "4.5" from the agreement clause', () => {
+    assert.doesNotMatch(TERMS_BODY, /4\.5/)
+    assert.match(TERMS_BODY, /^Sending the deposit, or paying Ceremony only in full/m)
+    assert.equal(reviseTerms(PREVIOUS_NUMBERED), TERMS_BODY)
+  })
+
   it('replaces the oldest deposit and travel sentences', () => {
     assert.equal(reviseTerms(PREVIOUS), TERMS_BODY)
     assert.match(TERMS_BODY, /flat \$350 deposit/)
@@ -106,11 +118,10 @@ describe('terms', () => {
       'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card adds 13% HST, which is charged on the balance, not the deposit.'
     const NEW =
       'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments toward the balance carry 13% HST on the amount paid by card. Deposits, e-transfer and cash carry no HST.'
-    const AGREEMENT = TERMS_BODY.slice(TERMS_BODY.indexOf('4.5 '), TERMS_BODY.indexOf('\n\n', TERMS_BODY.indexOf('4.5 ')))
     const beforeChange = TERMS_BODY.replace(NEW, OLD)
     assert.equal(reviseTerms(beforeChange), TERMS_BODY)
     // What the live book held after one start: the old paragraph, then both again.
-    const doubled = TERMS_BODY.replace(NEW, `${OLD}\n\n${AGREEMENT}\n\n${NEW}`)
+    const doubled = PREVIOUS_NUMBERED.replace(NEW, `${OLD}\n\n${AGREEMENT}\n\n${NEW}`)
     assert.equal(doubled.split('4.5 ').length - 1, 2)
     assert.equal(reviseTerms(doubled), TERMS_BODY)
     assert.equal(reviseTerms(TERMS_BODY), TERMS_BODY)

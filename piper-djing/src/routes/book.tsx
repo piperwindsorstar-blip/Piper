@@ -16,6 +16,8 @@ import {
 } from '../lib/crm/public.functions.ts'
 import { cad } from '../lib/crm/money.ts'
 import { PACKAGE_CENTS } from '../lib/piper/rules.ts'
+import { todayInToronto } from '../lib/crm/date-request.ts'
+import { stagAllowed } from '../lib/crm/inquiry-checks.ts'
 import { WEDDING_OG_IMAGE, publicHead } from '../lib/seo.ts'
 import type { PackageId } from '../lib/crm/defaults.ts'
 
@@ -81,8 +83,6 @@ const PACKAGE_FOR_EVENT: Record<string, string> = {
   'Ceremony only': 'ceremony',
 }
 
-const STAG_ELIGIBLE = new Set(['full', 'reception', 'custom'])
-
 const WEDDING_INQUIRY = new Set([
   '',
   'Wedding',
@@ -109,6 +109,8 @@ function BookPage() {
   const send = useServerFn(sendInquiry)
   const sendEvent = useServerFn(sendEventInquiry)
   const general = !WEDDING_INQUIRY.has(requestedEvent)
+  const today = todayInToronto()
+  const dateIsAhead = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= today
   const [packageId, setPackageId] = useState(
     () => PACKAGE_FOR_EVENT[requestedEvent] ?? 'full',
   )
@@ -200,13 +202,16 @@ function BookPage() {
             {general ? 'Events' : 'Weddings'}
           </p>
           <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-balance md:text-5xl">
-            Book your Brantford wedding DJ
+            {general
+              ? 'Book your Brantford event DJ'
+              : 'Book your Brantford wedding DJ'}
           </h1>
           <p className="mt-4 text-lg text-soft">
-            Welcome to your first step of finding a DJ that truly cares about
-            every aspect of your wedding.
+            {general
+              ? 'Welcome to your first step of finding a DJ that truly cares about every part of your night.'
+              : 'Welcome to your first step of finding a DJ that truly cares about every aspect of your wedding.'}
           </p>
-          {requestedDate && !done ? (
+          {dateIsAhead && !done ? (
             <p className="mt-6 rounded-xl border border-neon/40 bg-neon/10 px-4 py-3 text-lg font-semibold">
               {openDateLabel(requestedDate)} is open. Tell Piper a little more
               and the reply comes by email.
@@ -267,7 +272,8 @@ function BookPage() {
                   name="eventDate"
                   type="date"
                   required
-                  defaultValue={requestedDate}
+                  min={today}
+                  defaultValue={dateIsAhead ? requestedDate : ''}
                   className={field}
                 />
               </label>
@@ -368,13 +374,14 @@ function BookPage() {
                 />
               </label>
               <label className="text-sm font-medium">
-                Wedding date
+                {packageId === 'stag' ? 'Stag and doe date' : 'Wedding date'}
                 <input
                   key={requestedDate}
                   name="eventDate"
                   type="date"
                   required
-                  defaultValue={requestedDate}
+                  min={today}
+                  defaultValue={dateIsAhead ? requestedDate : ''}
                   className={field}
                 />
               </label>
@@ -438,7 +445,7 @@ function BookPage() {
                   onChange={(event) => {
                     const next = event.target.value
                     setPackageId(next)
-                    if (!STAG_ELIGIBLE.has(next)) setWithStag(false)
+                    if (!stagAllowed(next)) setWithStag(false)
                   }}
                 >
                   {packageChoices.map((item) => (
@@ -448,7 +455,7 @@ function BookPage() {
                   ))}
                 </select>
               </label>
-              {STAG_ELIGIBLE.has(packageId) ? (
+              {stagAllowed(packageId) ? (
                 <div className="grid gap-2">
                   <label className="flex items-center gap-3 text-sm">
                     <input
@@ -473,6 +480,7 @@ function BookPage() {
                     name="stagDate"
                     type="date"
                     required
+                    min={today}
                     className={field}
                   />
                 </label>

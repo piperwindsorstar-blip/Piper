@@ -41,12 +41,15 @@ function keepFirst(body: string, paragraph: string): string {
 }
 
 const AGREEMENT_PARAGRAPH =
-  '4.5 Sending the deposit, or paying Ceremony only in full, is agreement to these terms. A signature is extra proof of that agreement. A signature by itself does not hold and does not book a date.'
+  'Sending the deposit, or paying Ceremony only in full, is agreement to these terms. A signature is extra proof of that agreement. A signature by itself does not hold and does not book a date.'
 
 const BOOKED_PARAGRAPH =
   'Once a date is booked, later payments, refunds, and edits do not release it. Only a cancellation or a release changes that status.'
 
 /* --- Older wording, brought forward on the next boot. --- */
+
+/** The agreement clause once carried a stray "4.5" from an old contract's numbering. */
+const NUMBERED_AGREEMENT_PARAGRAPH = `4.5 ${AGREEMENT_PARAGRAPH}`
 
 const PREVIOUS_DEPOSIT =
   'The deposit is 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. Ceremony only is paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500.'
@@ -92,6 +95,7 @@ ${BOOKED_PARAGRAPH}`
 
 export function reviseTerms(body: string): string {
   let next = body
+  next = next.split(NUMBERED_AGREEMENT_PARAGRAPH).join(AGREEMENT_PARAGRAPH)
   // Older payment wording becomes the current one; a document that got both
   // (one start inserted the new paragraph beside the old) keeps one copy.
   next = next.split(PREVIOUS_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)

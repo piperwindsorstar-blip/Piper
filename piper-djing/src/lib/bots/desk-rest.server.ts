@@ -87,7 +87,7 @@ import { loadMoneySummary } from '../crm/money-summary.server.ts'
 import { torontoToday } from '../piper/rules.ts'
 import type { DeskBotTarget, RsvpBotAction } from './desk-rest.ts'
 
-const DENIED = 'Send Authorization: Bearer and the token from join.'
+const DENIED = 'Send Authorization: Bearer and the token from the desk Bots page.'
 
 type Verdict = 'yes' | 'no' | 'unknown' | BotRole
 

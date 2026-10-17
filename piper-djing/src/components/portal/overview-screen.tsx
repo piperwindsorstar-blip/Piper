@@ -63,7 +63,13 @@ export function OverviewScreen() {
         come back whenever.
       </p>
       <div className="mt-6 grid grid-cols-3 gap-2 min-[1024px]:mt-8 min-[1024px]:gap-3">
-        <Stat value={days < 0 ? '0' : String(days)} label={days === 1 ? 'day to go' : 'days to go'} />
+        {days < 0 ? (
+          <Stat value={String(-days)} label={days === -1 ? 'day ago' : 'days ago'} />
+        ) : days === 0 ? (
+          <Stat value="Today" label="is the day" />
+        ) : (
+          <Stat value={String(days)} label={days === 1 ? 'day to go' : 'days to go'} />
+        )}
         <Stat value={`${progress.percent}%`} label="planned" pink />
         <Stat
           value={finish ? shortDate(finish) : '—'}

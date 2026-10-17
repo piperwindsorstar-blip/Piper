@@ -327,7 +327,7 @@ export function attention(
   for (const lead of leads) {
     items.push({
       id: `lead-${lead.id}`,
-      title: `Answer ${lead.partnerOne} and ${lead.partnerTwo}`,
+      title: `Answer ${[lead.partnerOne, lead.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')}`,
       detail: lead.email,
       to: '/desk/leads',
       action: 'Open leads',

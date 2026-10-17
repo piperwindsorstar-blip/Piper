@@ -127,7 +127,7 @@ describe('desk lead response', { skip: liveBook }, () => {
     )
     assert.equal(response.status, 401)
     const body = (await response.json()) as { error: string; leads?: unknown }
-    assert.match(body.error, /token from join/)
+    assert.match(body.error, /token from the desk Bots page/)
     assert.equal(body.leads, undefined)
   })
 

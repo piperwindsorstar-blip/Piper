@@ -4,6 +4,11 @@ import { travelFromKm } from './travel.ts'
 import { drivingKm } from './travel.server.ts'
 import { isPackageId, packageName } from './defaults.ts'
 import { parseDateRequest, todayInToronto } from './date-request.ts'
+import {
+  phoneProblem,
+  publicDateProblem,
+  stagAllowed,
+} from './inquiry-checks.ts'
 import { emailOwner } from './mail.server.ts'
 import { readPublicSite } from './public-site.server.ts'
 import { readGoogleReviews } from './google-reviews.server.ts'
@@ -86,6 +91,10 @@ export const sendEventInquiry = createServerFn({ method: 'POST' })
     }) => data,
   )
   .handler(async ({ data }) => {
+    const problem =
+      publicDateProblem(data.eventDate, todayInToronto()) ??
+      phoneProblem(data.phone, false)
+    if (problem) return { ok: false as const, error: problem }
     const result = await createEventInquiry(data)
     if (!result.ok) return result
     try {
@@ -126,6 +135,17 @@ export const sendInquiry = createServerFn({ method: 'POST' })
     }) => data,
   )
   .handler(async ({ data }) => {
+    const today = todayInToronto()
+    const problem =
+      publicDateProblem(data.eventDate, today, 'The wedding date') ??
+      (data.withStag && !stagAllowed(data.packageId)
+        ? 'A stag and doe on its own date goes with The Main Event.'
+        : null) ??
+      (data.withStag && data.stagDate
+        ? publicDateProblem(data.stagDate, today, 'The stag and doe date')
+        : null) ??
+      phoneProblem(data.phone, true)
+    if (problem) return { ok: false as const, error: problem }
     const result = await createInquiry({
       ...data,
       stagDate: data.stagDate || null,

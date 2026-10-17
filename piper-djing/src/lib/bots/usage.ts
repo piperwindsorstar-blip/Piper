@@ -40,20 +40,14 @@ export function usageDocument(packages: UsagePackage[]) {
     book: 'piperpweddingdj.services',
     about:
       'This desk holds the book, the packages, the questions, the media, the reviews, the partners, the leads, the money (payments and invoices, shown together on the Money page), the external dates, the saved venues, and the one terms document. A writer or the CEO can change package names, details, and prices. These four packages stay. The terms document stays. Delete a booking to remove it, its invoice, its payments, and its emails. Delete an inquiry to remove the inquiry. Delete an external date to remove that row. Emails are a record of what was sent until that booking is deleted.',
-    auth: 'Authorization: Bearer <token from join>',
+    auth: 'Authorization: Bearer <token from the desk Bots page>',
     roles:
       'Every bot can read. A writer can change leads, bookings, invoices, payments, packages, questions, media, partners, reviews, external dates, venues, and the terms text. The CEO can do those writes and can also change invites and settings. A reader can only read.',
     money: `Integer Canadian cents. ${PACKAGE_CENTS.full} is the default full wedding day. Send cents, priceCents, amountCents, or amountDollars. Wired uplights are ${UPLIGHT_CENTS} cents each. A separate ceremony venue is $75. ${DESK_TRAVEL_COPY}`,
     dates: 'YYYY-MM-DD',
-    join: {
-      method: 'POST',
-      path: '/api/bots/v1/join',
-      body: {
-        invite: 'XXXX-XXXX',
-        name: 'your own name',
-        purpose: 'what you file',
-      },
-      note: 'Join still uses the existing invite. One code, one bot. A bot invited on this desk gets its token from the desk Bots page, shown once.',
+    token: {
+      how: 'Piper invites a bot on the desk Bots page (or the Ceo bot sends action invite_bot). The token is shown once there. Send it as Authorization: Bearer <token>. There is no join call.',
+      oneBot: 'One token, one bot. Lost tokens are not shown again: remove the bot and invite it again.',
     },
     reads: {
       usage: 'GET /api/bots/v1',
