@@ -5,6 +5,9 @@ import { rsvpHead } from '../../../../../lib/rsvp/head.ts'
 import { getHousehold } from '../../../../../lib/rsvp/rsvp.functions.ts'
 
 export const Route = createFileRoute('/rsvp/$slug/p/$token/review')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => rsvpHead('Check your RSVP · DJ Piper P'),
   loader: ({ params }) =>
     getHousehold({ data: { slug: params.slug, token: params.token } }),

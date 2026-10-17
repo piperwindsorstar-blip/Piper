@@ -1,6 +1,6 @@
 import { publicUrl } from '../crm/safe-origin.ts'
 import { WEDDING_OG_IMAGE } from '../seo.ts'
-import { INVITE_FONTS_URL } from './templates.ts'
+import { INVITE_FONTS_URL } from './invite-fonts.ts'
 
 export const RSVP_FONTS =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Display:wght@800;900&display=swap'

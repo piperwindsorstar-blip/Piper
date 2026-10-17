@@ -102,6 +102,9 @@ type BookingsSearch = {
 }
 
 export const Route = createFileRoute('/desk/bookings')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => deskHead('Bookings · DJ Piper P'),
   validateSearch: (search: Record<string, unknown>): BookingsSearch => {
     const out: BookingsSearch = {}

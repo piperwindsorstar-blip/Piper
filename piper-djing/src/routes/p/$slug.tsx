@@ -21,6 +21,9 @@ import { PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
 import { privateHead } from '../../lib/seo.ts'
 
 export const Route = createFileRoute('/p/$slug')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => privateHead('Invoice · DJ Piper P'),
   validateSearch: (search: Record<string, unknown>): { paid?: 1 } =>
     search.paid === 1 || search.paid === '1' ? { paid: 1 } : {},
