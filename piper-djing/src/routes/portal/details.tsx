@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { SectionFlow } from '../../components/portal/section-flow.tsx'
-import { questionSearch } from '../../lib/portal/questions.ts'
+import { questionSearch } from '../../lib/portal/question-search.ts'
 
 export const Route = createFileRoute('/portal/details')({
   validateSearch: questionSearch,

@@ -496,14 +496,7 @@ export function sectionPath(
   return '/portal/timeline'
 }
 
-export function questionSearch(search: Record<string, unknown>): {
-  q?: string
-} {
-  if (typeof search.q !== 'string') return {}
-  const q = search.q.trim()
-  if (!q || q.length > 80) return {}
-  return { q }
-}
+export { questionSearch } from './question-search.ts'
 
 export function applyMaster(question: Question, master: MasterMap): Question {
   if (!Object.hasOwn(master, question.id)) return question

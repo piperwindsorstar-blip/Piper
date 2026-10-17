@@ -9,6 +9,9 @@ import {
 const parent = getRouteApi('/rsvp/manage')
 
 export const Route = createFileRoute('/rsvp/manage/exports')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   loader: async () => {
     const [seating, timeline, caterer] = await Promise.all([
       getRsvpSeating(),

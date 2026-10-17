@@ -20,6 +20,9 @@ import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
 
 export const Route = createFileRoute('/desk/partners')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => deskHead('Partners · DJ Piper P'),
   loader: () => getPartners(),
   component: PartnersPage,

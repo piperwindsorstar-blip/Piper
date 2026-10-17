@@ -7,6 +7,9 @@ import { getHousehold } from '../../../../../lib/rsvp/rsvp.functions.ts'
 type DoneSearch = { sent: string }
 
 export const Route = createFileRoute('/rsvp/$slug/p/$token/done')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => rsvpHead("You're on the list · DJ Piper P"),
   validateSearch: (search: Record<string, unknown>): DoneSearch => ({
     sent: search.sent === '1' ? '1' : '',

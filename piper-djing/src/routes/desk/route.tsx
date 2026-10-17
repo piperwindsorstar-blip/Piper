@@ -6,6 +6,9 @@ import { getDesk } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component'], ['errorComponent']],
   head: () => deskHead('Desk · DJ Piper P'),
   beforeLoad: () => requireDeskPage(),
   loader: () => getDesk(),

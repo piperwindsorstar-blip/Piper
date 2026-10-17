@@ -26,6 +26,9 @@ import {
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/rsvp')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => deskHead('RSVP · DJ Piper P'),
   loader: async () => {
     const [rows, daily] = await Promise.all([getRsvpDesk(), getRsvpDailyStatus()])

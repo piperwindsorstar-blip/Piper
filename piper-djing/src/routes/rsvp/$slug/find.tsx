@@ -5,6 +5,9 @@ import { rsvpHead } from '../../../lib/rsvp/head.ts'
 import { getRsvpHome } from '../../../lib/rsvp/rsvp.functions.ts'
 
 export const Route = createFileRoute('/rsvp/$slug/find')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => rsvpHead('Find your invitation · DJ Piper P'),
   loader: async ({ params }) => {
     // The couple's style, and only their shared text number for "can't find your name".

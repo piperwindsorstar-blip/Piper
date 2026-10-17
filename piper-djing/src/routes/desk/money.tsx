@@ -40,6 +40,9 @@ import type { RunResult } from '../../components/action-button.tsx'
 type MoneyTab = 'owes' | 'paid' | 'invoices' | 'rsvp'
 
 export const Route = createFileRoute('/desk/money')({
+  // Private page: its data loading rides in the same lazy chunk as its
+  // screen, so the server calls it imports stay off the public pages.
+  codeSplitGroupings: [['loader', 'component']],
   head: () => deskHead('Money · DJ Piper P'),
   validateSearch: (search: Record<string, unknown>): { tab?: MoneyTab } => {
     const tab = search.tab
