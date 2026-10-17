@@ -15,6 +15,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
 describe('book calls', { skip: liveBook, concurrency: 1 }, () => {
   it('reads a public page once, then serves the copy', async () => {
+    // A fresh server first sets up the reviews table, once. Warm that up so
+    // this counts what every later cold read costs: one Book call.
+    await readPublicSite()
     await forgetPublicSite()
     takeBookCalls()
     const first = await readPublicSite()

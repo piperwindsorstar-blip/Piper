@@ -20,13 +20,13 @@ export const MOMENTS: ReadonlyArray<{
   {
     key: 'bridal-party',
     section: 'Ceremony',
-    activity: 'Bridal party processional',
+    activity: 'Wedding party processional',
     sortable: true,
   },
   {
     key: 'bride-processional',
     section: 'Ceremony',
-    activity: "Bride's processional",
+    activity: "Couple's processional",
     sortable: true,
   },
   {
@@ -74,13 +74,13 @@ export const MOMENTS: ReadonlyArray<{
   {
     key: 'mother-son',
     section: 'Reception',
-    activity: 'Mother/son dance',
+    activity: 'Parent dance',
     sortable: true,
   },
   {
     key: 'father-daughter',
     section: 'Reception',
-    activity: 'Father/daughter dance',
+    activity: 'Second parent dance',
     sortable: true,
   },
   {
@@ -161,6 +161,8 @@ export function momentKind(presetKey: string): MomentKind {
 }
 
 export const PARTY_OPTIONS: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'partner', name: 'Partner' },
+  { id: 'attendants', name: 'Attendants' },
   { id: 'groom', name: 'Groom' },
   { id: 'groomsmen', name: 'Groomsmen' },
   { id: 'bridesmaids', name: 'Bridesmaids' },
@@ -496,6 +498,11 @@ const LEGACY_MOMENT: Record<string, string> = {
   'bouquet toss': 'bouquet',
   'open dance floor': 'open-dance',
   'last dance': 'last-dance',
+  // The neutral names (Oct 2026). Couples can still rename any moment.
+  'wedding party processional': 'bridal-party',
+  "couple's processional": 'bride-processional',
+  'parent dance': 'mother-son',
+  'second parent dance': 'father-daughter',
 }
 
 function momentContent(row: Record<string, unknown>): boolean {
@@ -820,7 +827,7 @@ export function patchEntry(
   )
 }
 
-/** Tick or untick Groom, Groomsmen or Bridesmaids in the bridal party. */
+/** Tick or untick one of the processional choices. The couple can rename it after. */
 export function togglePartyEntry(
   entries: MomentEntry[],
   id: string,
@@ -873,10 +880,11 @@ export function setEntranceMode(
   if (mode === 'pairs') standard = pairEntries(entries, pairs)
   else if (mode === 'split')
     standard = [
+      // The ids stay for saved plans. New groups start neutral; couples name them.
       entries.find((entry) => entry.id === 'bridesmaids') ??
-        blankEntry('bridesmaids', 'Bridesmaids'),
+        blankEntry('bridesmaids', 'First group'),
       entries.find((entry) => entry.id === 'groomsmen') ??
-        blankEntry('groomsmen', 'Groomsmen'),
+        blankEntry('groomsmen', 'Second group'),
     ]
   else
     standard = [

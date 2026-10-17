@@ -65,6 +65,25 @@ import {
   torontoToday,
 } from '../piper/rules.ts'
 
+/**
+ * Table and column set-up only adds what is missing, so each step runs once per
+ * server instance instead of on every request. On the live Worker every query is
+ * a round trip to the Book, and repeating these on each desk load made the desk
+ * take about ten seconds to open. A step that fails runs again next time.
+ */
+function once(step: () => Promise<void>): () => Promise<void> {
+  let ran: Promise<void> | null = null
+  return () => {
+    if (!ran) {
+      ran = step().catch((error: unknown) => {
+        ran = null
+        throw error
+      })
+    }
+    return ran
+  }
+}
+
 export type { ReviewView }
 
 export type BotRole = 'reader' | 'writer' | 'ceo'
@@ -399,7 +418,8 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
   }
 }
 
-async function ensurePlanningColumn(): Promise<void> {
+const ensurePlanningColumn = once(ensurePlanningColumnStep)
+async function ensurePlanningColumnStep(): Promise<void> {
   try {
     await query('SELECT planning FROM bookings LIMIT 0')
   } catch {
@@ -409,7 +429,8 @@ async function ensurePlanningColumn(): Promise<void> {
   }
 }
 
-async function ensureDiscountColumn(): Promise<void> {
+const ensureDiscountColumn = once(ensureDiscountColumnStep)
+async function ensureDiscountColumnStep(): Promise<void> {
   try {
     await query('SELECT discount_cents FROM bookings LIMIT 0')
   } catch {
@@ -424,7 +445,8 @@ async function ensureDiscountColumn(): Promise<void> {
   }
 }
 
-async function ensureCustomColumns(): Promise<void> {
+const ensureCustomColumns = once(ensureCustomColumnsStep)
+async function ensureCustomColumnsStep(): Promise<void> {
   for (const [name, definition] of [
     ['custom_total_cents', 'integer NOT NULL DEFAULT 0'],
     ['locked_total', 'boolean NOT NULL DEFAULT false'],
@@ -442,7 +464,8 @@ async function ensureCustomColumns(): Promise<void> {
   }
 }
 
-async function ensurePaymentColumns(): Promise<void> {
+const ensurePaymentColumns = once(ensurePaymentColumnsStep)
+async function ensurePaymentColumnsStep(): Promise<void> {
   for (const [name, definition] of [
     ['paid_on', "text NOT NULL DEFAULT ''"],
     ['method', "text NOT NULL DEFAULT ''"],
@@ -854,7 +877,8 @@ export async function listBookings(): Promise<BookingView[]> {
   )
 }
 
-async function ensureVenues(): Promise<void> {
+const ensureVenues = once(ensureVenuesStep)
+async function ensureVenuesStep(): Promise<void> {
   const definition = usesEdgeBook()
     ? `id integer PRIMARY KEY AUTOINCREMENT,
       name text NOT NULL,
@@ -1468,7 +1492,8 @@ function savedWeddingFor(
   return SAVED_WEDDINGS.find((wedding) => wedding.date === eventDate) ?? null
 }
 
-async function ensureDismissedWeddings(): Promise<void> {
+const ensureDismissedWeddings = once(ensureDismissedWeddingsStep)
+async function ensureDismissedWeddingsStep(): Promise<void> {
   await query(
     `CREATE TABLE IF NOT EXISTS dismissed_weddings (
       event_date text NOT NULL,
@@ -1545,7 +1570,8 @@ async function addExternalColumn(name: string): Promise<void> {
   }
 }
 
-async function ensureExternalDates(): Promise<void> {
+const ensureExternalDates = once(ensureExternalDatesStep)
+async function ensureExternalDatesStep(): Promise<void> {
   const definition = usesEdgeBook()
     ? `id integer PRIMARY KEY AUTOINCREMENT,
       event_date text NOT NULL,
@@ -2008,7 +2034,8 @@ export async function addPayment(
   }
 }
 
-async function ensureLeadColumns(): Promise<void> {
+const ensureLeadColumns = once(ensureLeadColumnsStep)
+async function ensureLeadColumnsStep(): Promise<void> {
   await addLeadColumn('with_stag', 'integer NOT NULL DEFAULT 0')
   await addLeadColumn('stag_date', 'text')
   await addLeadColumn('venue_name', "text NOT NULL DEFAULT ''")
@@ -2267,7 +2294,8 @@ export async function removePayment(id: number): Promise<void> {
   await syncPaymentLedger(current.bookingId)
 }
 
-async function ensureSite(): Promise<void> {
+const ensureSite = once(ensureSiteStep)
+async function ensureSiteStep(): Promise<void> {
   await query(
     `CREATE TABLE IF NOT EXISTS site (
       id integer PRIMARY KEY CHECK (id = 1),
@@ -2294,7 +2322,8 @@ export async function setKindWords(on: boolean): Promise<boolean> {
   return kindWordsOn()
 }
 
-async function ensureProfileColumns(): Promise<void> {
+const ensureProfileColumns = once(ensureProfileColumnsStep)
+async function ensureProfileColumnsStep(): Promise<void> {
   await ensureSite()
   await addSiteColumn('owner_email', 'text')
   await addSiteColumn('home_base', 'text')
@@ -2357,7 +2386,8 @@ async function addReviewColumn(
   }
 }
 
-async function ensureReviews(): Promise<void> {
+const ensureReviews = once(ensureReviewsStep)
+async function ensureReviewsStep(): Promise<void> {
   await query(
     `CREATE TABLE IF NOT EXISTS reviews (
       id integer PRIMARY KEY,
@@ -2740,7 +2770,8 @@ function offersFromRows(rows: OfferRow[]): PackageOffer[] {
   })
 }
 
-async function ensurePackageOffers(): Promise<void> {
+const ensurePackageOffers = once(ensurePackageOffersStep)
+async function ensurePackageOffersStep(): Promise<void> {
   await query(PACKAGE_OFFER_TABLE)
   for (const item of PACKAGE_BUTTON_COPY) {
     await query(
@@ -2845,7 +2876,8 @@ function positiveId(id: number, missing: string): number {
 
 const PARTNER_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 
-async function ensurePartners(): Promise<void> {
+const ensurePartners = once(ensurePartnersStep)
+async function ensurePartnersStep(): Promise<void> {
   await query(
     `CREATE TABLE IF NOT EXISTS partners (
       id integer PRIMARY KEY,
@@ -3300,7 +3332,8 @@ export async function savePortalDeskFields(
 
 const PASSCODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
-async function ensurePortalColumns(): Promise<void> {
+const ensurePortalColumns = once(ensurePortalColumnsStep)
+async function ensurePortalColumnsStep(): Promise<void> {
   await ensureSite()
   await addSiteColumn('portal_master', 'text')
   await addBookingColumn('portal_passcode', `text NOT NULL DEFAULT ''`)

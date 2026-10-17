@@ -1,6 +1,6 @@
 import { PACKAGE_CENTS } from '../piper/rules.ts'
 import { publicPackagePrice } from './packages.ts'
-import { TRAVEL_COPY } from './travel-copy.ts'
+import { STREET_TRAVEL_COPY, TRAVEL_COPY } from './travel-copy.ts'
 
 /**
  * The one terms document. Change this text. Do not add a second document.
@@ -17,6 +17,9 @@ const PACKAGE_PARAGRAPH = `The Main Event, a full wedding day, is ${publicPackag
 const PACKAGE_LEAD = 'The Main Event, a full wedding day, is '
 
 const TRAVEL_PARAGRAPH = `Wired uplights are $15 each. ${TRAVEL_COPY}`
+
+/** The travel paragraph while it named the home street. */
+const STREET_TRAVEL_PARAGRAPH = `Wired uplights are $15 each. ${STREET_TRAVEL_COPY}`
 
 const SECOND_VENUE_PARAGRAPH =
   'If the ceremony is at a separate venue from the reception, a flat $75 second-venue fee applies. Two venues is the maximum; a third venue is not offered.'
@@ -41,12 +44,15 @@ function keepFirst(body: string, paragraph: string): string {
 }
 
 const AGREEMENT_PARAGRAPH =
-  '4.5 Sending the deposit, or paying Ceremony only in full, is agreement to these terms. A signature is extra proof of that agreement. A signature by itself does not hold and does not book a date.'
+  'Sending the deposit, or paying Ceremony only in full, is agreement to these terms. A signature is extra proof of that agreement. A signature by itself does not hold and does not book a date.'
 
 const BOOKED_PARAGRAPH =
   'Once a date is booked, later payments, refunds, and edits do not release it. Only a cancellation or a release changes that status.'
 
 /* --- Older wording, brought forward on the next boot. --- */
+
+/** The agreement clause once carried a stray "4.5" from an old contract's numbering. */
+const NUMBERED_AGREEMENT_PARAGRAPH = `4.5 ${AGREEMENT_PARAGRAPH}`
 
 const PREVIOUS_DEPOSIT =
   'The deposit is 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. Ceremony only is paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500.'
@@ -92,6 +98,9 @@ ${BOOKED_PARAGRAPH}`
 
 export function reviseTerms(body: string): string {
   let next = body
+  next = next.split(NUMBERED_AGREEMENT_PARAGRAPH).join(AGREEMENT_PARAGRAPH)
+  // The terms are public, so they name the town, not the home street.
+  next = next.split(STREET_TRAVEL_PARAGRAPH).join(TRAVEL_PARAGRAPH)
   // Older payment wording becomes the current one; a document that got both
   // (one start inserted the new paragraph beside the old) keeps one copy.
   next = next.split(PREVIOUS_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)

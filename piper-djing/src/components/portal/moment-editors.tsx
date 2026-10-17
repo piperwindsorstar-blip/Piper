@@ -263,7 +263,8 @@ function BridalParty({
   return (
     <div>
       <p className="text-sm text-[var(--text-muted)]">
-        Who is walking in? Pick every group, then choose a song for each.
+        Who is walking in? Pick everyone who applies, rename any of them, then
+        choose a song for each.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {PARTY_OPTIONS.map((option) => {
@@ -291,6 +292,7 @@ function BridalParty({
           PARTY_OPTIONS.find((option) => option.id === entry.id)?.name ??
           'Someone else'
         }
+        renameStandard
         addLabel="+ Add someone else"
       />
       <TimeAndNotes row={row} patch={patch} disabled={disabled} />
@@ -302,8 +304,8 @@ const MODES: Array<{ value: EntranceMode; label: string; hint: string }> = [
   { value: 'pairs', label: 'In pairs', hint: 'A song for each pair' },
   {
     value: 'split',
-    label: 'Bridesmaids and groomsmen',
-    hint: 'A song for each group',
+    label: 'In two groups',
+    hint: 'A song for each group, named your way',
   },
   { value: 'whole', label: 'Everyone together', hint: 'One song for all' },
 ]
@@ -380,12 +382,13 @@ function WholePartyEntrance({
           onChange={(next) => patch({ entries: next })}
           fallback={(entry) => {
             if (entry.id.startsWith('pair-')) return `Pair ${entry.id.slice(5)}`
-            if (entry.id === 'bridesmaids') return 'Bridesmaids'
-            if (entry.id === 'groomsmen') return 'Groomsmen'
+            if (entry.id === 'bridesmaids') return 'First group'
+            if (entry.id === 'groomsmen') return 'Second group'
             if (entry.id === 'whole') return 'Wedding party'
             return 'Added'
           }}
           renamePairs
+          renameStandard
           addLabel="+ Add your own"
         />
       ) : null}
@@ -458,6 +461,7 @@ function EntryList({
   fallback,
   addLabel,
   renamePairs = false,
+  renameStandard = false,
 }: {
   entries: MomentEntry[]
   order: string[]
@@ -466,6 +470,8 @@ function EntryList({
   fallback: (entry: MomentEntry) => string
   addLabel: string
   renamePairs?: boolean
+  /** Let the couple rename the preset groups (Groom, Bridesmaids, ...) too. */
+  renameStandard?: boolean
 }) {
   const standard = order
     .map((id) => entries.find((entry) => entry.id === id))
@@ -483,6 +489,16 @@ function EntryList({
               <Field
                 label={fallback(entry)}
                 placeholder={`${fallback(entry)}: who is walking together`}
+                value={entry.name}
+                disabled={disabled}
+                onChange={(name) =>
+                  onChange(patchEntry(entries, entry.id, { name }))
+                }
+              />
+            ) : renameStandard ? (
+              <Field
+                label="Who is this"
+                placeholder={fallback(entry)}
                 value={entry.name}
                 disabled={disabled}
                 onChange={(name) =>

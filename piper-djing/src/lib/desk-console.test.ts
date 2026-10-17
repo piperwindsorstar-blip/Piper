@@ -166,6 +166,15 @@ describe('desk console meters', () => {
     assert.equal(items[1]?.detail.includes('21 days left'), true)
   })
 
+  it('names a one-person event inquiry without a dangling "and"', () => {
+    const items = attention(
+      [],
+      [{ id: 2, partnerOne: 'Jamie Lee', partnerTwo: '', email: 'jamie@example.com', eventDate: '2027-03-09' }],
+      today,
+    )
+    assert.equal(items[0]?.title, 'Answer Jamie Lee')
+  })
+
   it('adds a balance due, a plan behind, and couples with no email', () => {
     const items = attention(
       [
