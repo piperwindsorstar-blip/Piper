@@ -53,6 +53,9 @@ jobs:
           fi
           exit $status
 
+      # Build even when a test fails, so one known test failure does not hide
+      # whether the site still builds.
       - name: Build for Cloudflare (no deploy)
+        if: ${{ !cancelled() }}
         working-directory: piper-djing
         run: npm run build:cloudflare
