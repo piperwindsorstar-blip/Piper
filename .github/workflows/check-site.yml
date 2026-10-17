@@ -1,0 +1,58 @@
+name: Check the site
+
+# Builds and tests piper-djing/ without deploying it. Runs on pull requests into
+# the site's branch and on pushes to fix branches, so a change is known to build
+# before it is merged (merging is what deploys, through deploy-site.yml).
+
+on:
+  pull_request:
+    branches: [cursor/tanstack-wedding-site-dd32]
+    paths:
+      - 'piper-djing/**'
+      - '.github/workflows/check-site.yml'
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'piper-djing/**'
+      - '.github/workflows/check-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: piper-djing/.nvmrc
+          cache: npm
+          cache-dependency-path: piper-djing/package-lock.json
+
+      - name: Install
+        working-directory: piper-djing
+        run: npm ci
+
+      # Failing test names are posted as one annotation so they show on the
+      # run's summary page without opening the log.
+      - name: Unit tests
+        working-directory: piper-djing
+        run: |
+          status=0
+          node --test --test-reporter=tap $(find src -name '*.test.ts' | sort) > "$RUNNER_TEMP/tests.tap" 2>&1 || status=$?
+          counts=$(grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/tests.tap" | tr '\n' ' ')
+          echo "::notice title=Tests::$counts"
+          if [ "$status" != 0 ]; then
+            failed=$(grep -E '^\s*not ok' "$RUNNER_TEMP/tests.tap" | sed -E 's/^\s*not ok [0-9]+ - //' | head -40 | tr '\n' '|')
+            echo "::error title=Failing tests::$failed"
+            reasons=$(grep -E "^\s+error: |^\s+(code|message): " "$RUNNER_TEMP/tests.tap" | sed -E 's/^\s+//' | head -30 | tr '\n' '|')
+            echo "::error title=Why::$reasons"
+          fi
+          exit $status
+
+      - name: Build for Cloudflare (no deploy)
+        working-directory: piper-djing
+        run: npm run build:cloudflare
