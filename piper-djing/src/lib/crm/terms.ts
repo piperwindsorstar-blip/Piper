@@ -1,6 +1,6 @@
 import { PACKAGE_CENTS } from '../piper/rules.ts'
 import { publicPackagePrice } from './packages.ts'
-import { TRAVEL_COPY } from './travel-copy.ts'
+import { STREET_TRAVEL_COPY, TRAVEL_COPY } from './travel-copy.ts'
 
 /**
  * The one terms document. Change this text. Do not add a second document.
@@ -17,6 +17,9 @@ const PACKAGE_PARAGRAPH = `The Main Event, a full wedding day, is ${publicPackag
 const PACKAGE_LEAD = 'The Main Event, a full wedding day, is '
 
 const TRAVEL_PARAGRAPH = `Wired uplights are $15 each. ${TRAVEL_COPY}`
+
+/** The travel paragraph while it named the home street. */
+const STREET_TRAVEL_PARAGRAPH = `Wired uplights are $15 each. ${STREET_TRAVEL_COPY}`
 
 const SECOND_VENUE_PARAGRAPH =
   'If the ceremony is at a separate venue from the reception, a flat $75 second-venue fee applies. Two venues is the maximum; a third venue is not offered.'
@@ -96,6 +99,8 @@ ${BOOKED_PARAGRAPH}`
 export function reviseTerms(body: string): string {
   let next = body
   next = next.split(NUMBERED_AGREEMENT_PARAGRAPH).join(AGREEMENT_PARAGRAPH)
+  // The terms are public, so they name the town, not the home street.
+  next = next.split(STREET_TRAVEL_PARAGRAPH).join(TRAVEL_PARAGRAPH)
   // Older payment wording becomes the current one; a document that got both
   // (one start inserted the new paragraph beside the old) keeps one copy.
   next = next.split(PREVIOUS_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)

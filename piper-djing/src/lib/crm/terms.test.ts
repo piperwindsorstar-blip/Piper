@@ -82,7 +82,8 @@ describe('terms', () => {
   it('replaces the oldest deposit and travel sentences', () => {
     assert.equal(reviseTerms(PREVIOUS), TERMS_BODY)
     assert.match(TERMS_BODY, /flat \$350 deposit/)
-    assert.match(TERMS_BODY, /39 Butcher Crescent, Brantford/)
+    assert.match(TERMS_BODY, /One-way driving distance from Brantford\./)
+    assert.doesNotMatch(TERMS_BODY, /Butcher/)
     assert.match(TERMS_BODY, /\$250 plus a hotel/)
     assert.doesNotMatch(TERMS_BODY, /first 20/)
   })
