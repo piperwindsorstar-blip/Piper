@@ -36,9 +36,22 @@ jobs:
         working-directory: piper-djing
         run: npm ci
 
+      # Failing test names are posted as one annotation so they show on the
+      # run's summary page without opening the log.
       - name: Unit tests
         working-directory: piper-djing
-        run: node --test $(find src -name '*.test.ts' | sort)
+        run: |
+          status=0
+          node --test --test-reporter=tap $(find src -name '*.test.ts' | sort) > "$RUNNER_TEMP/tests.tap" 2>&1 || status=$?
+          counts=$(grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/tests.tap" | tr '\n' ' ')
+          echo "::notice title=Tests::$counts"
+          if [ "$status" != 0 ]; then
+            failed=$(grep -E '^\s*not ok' "$RUNNER_TEMP/tests.tap" | sed -E 's/^\s*not ok [0-9]+ - //' | head -40 | tr '\n' '|')
+            echo "::error title=Failing tests::$failed"
+            reasons=$(grep -E "^\s+error: |^\s+(code|message): " "$RUNNER_TEMP/tests.tap" | sed -E 's/^\s+//' | head -30 | tr '\n' '|')
+            echo "::error title=Why::$reasons"
+          fi
+          exit $status
 
       - name: Build for Cloudflare (no deploy)
         working-directory: piper-djing
