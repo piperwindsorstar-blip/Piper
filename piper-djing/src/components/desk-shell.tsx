@@ -28,6 +28,7 @@ type MainPath = '/desk' | '/desk/leads' | '/desk/bookings' | '/desk/money'
 
 type SmallPath =
   | '/desk/portals'
+  | '/desk/songs'
   | '/desk/rsvp'
   | '/desk/packages'
   | '/desk/terms'
@@ -53,6 +54,7 @@ const SMALL: { name: string; links: { name: string; to: SmallPath }[] }[] = [
     name: 'Couples',
     links: [
       { name: 'Portals', to: '/desk/portals' },
+      { name: 'Songs', to: '/desk/songs' },
       { name: 'RSVP', to: '/desk/rsvp' },
     ],
   },
