@@ -18,6 +18,7 @@ import {
   startCheckout,
 } from './stripe.server.ts'
 import { masterFromDrafts } from '../portal/master.ts'
+import { songInsights } from '../portal/song-insights.ts'
 import type { ChoiceOption } from '../portal/questions.ts'
 import { usesEdgeBook } from '../db.server.ts'
 import {
@@ -95,6 +96,7 @@ import {
   readReviewDisplay,
   setReviewDisplay,
   listPlanProgress,
+  listSongPlans,
   setBookingNotes,
 } from './store.server.ts'
 import { planNudgeOverview, setPlanReminders } from '../portal/nudges.server.ts'
@@ -1170,3 +1172,11 @@ export const checkDistance = createServerFn({ method: 'POST' })
       hotel: figure.hotel,
     }
   })
+
+/** The desk Songs page: every song and music choice couples made in their portals. */
+export const getSongInsights = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireDesk()
+    return songInsights(await listSongPlans())
+  },
+)

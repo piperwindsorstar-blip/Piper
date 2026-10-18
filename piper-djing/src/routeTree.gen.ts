@@ -32,6 +32,7 @@ import { Route as DeskPaymentsRouteImport } from './routes/desk/payments'
 import { Route as DeskQuestionsRouteImport } from './routes/desk/questions'
 import { Route as DeskReviewsRouteImport } from './routes/desk/reviews'
 import { Route as DeskRsvpRouteImport } from './routes/desk/rsvp'
+import { Route as DeskSongsRouteImport } from './routes/desk/songs'
 import { Route as DeskSettingsRouteImport } from './routes/desk/settings'
 import { Route as DeskTermsRouteImport } from './routes/desk/terms'
 import { Route as PSlugRouteImport } from './routes/p/$slug'
@@ -181,6 +182,11 @@ const DeskReviewsRoute = DeskReviewsRouteImport.update({
 const DeskRsvpRoute = DeskRsvpRouteImport.update({
   id: '/rsvp',
   path: '/rsvp',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
+const DeskSongsRoute = DeskSongsRouteImport.update({
+  id: '/songs',
+  path: '/songs',
   getParentRoute: () => DeskRouteRoute,
 } as any)
 const DeskSettingsRoute = DeskSettingsRouteImport.update({
@@ -383,6 +389,7 @@ export interface FileRoutesByFullPath {
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
   '/desk/rsvp': typeof DeskRsvpRoute
+  '/desk/songs': typeof DeskSongsRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -440,6 +447,7 @@ export interface FileRoutesByTo {
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
   '/desk/rsvp': typeof DeskRsvpRoute
+  '/desk/songs': typeof DeskSongsRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -501,6 +509,7 @@ export interface FileRoutesById {
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
   '/desk/rsvp': typeof DeskRsvpRoute
+  '/desk/songs': typeof DeskSongsRoute
   '/desk/settings': typeof DeskSettingsRoute
   '/desk/terms': typeof DeskTermsRoute
   '/p/$slug': typeof PSlugRoute
@@ -563,6 +572,7 @@ export interface FileRouteTypes {
     | '/desk/questions'
     | '/desk/reviews'
     | '/desk/rsvp'
+    | '/desk/songs'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -620,6 +630,7 @@ export interface FileRouteTypes {
     | '/desk/questions'
     | '/desk/reviews'
     | '/desk/rsvp'
+    | '/desk/songs'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -680,6 +691,7 @@ export interface FileRouteTypes {
     | '/desk/questions'
     | '/desk/reviews'
     | '/desk/rsvp'
+    | '/desk/songs'
     | '/desk/settings'
     | '/desk/terms'
     | '/p/$slug'
@@ -905,6 +917,13 @@ declare module '@tanstack/react-router' {
       path: '/rsvp'
       fullPath: '/desk/rsvp'
       preLoaderRoute: typeof DeskRsvpRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
+    '/desk/songs': {
+      id: '/desk/songs'
+      path: '/songs'
+      fullPath: '/desk/songs'
+      preLoaderRoute: typeof DeskSongsRouteImport
       parentRoute: typeof DeskRouteRoute
     }
     '/desk/settings': {
@@ -1168,6 +1187,7 @@ interface DeskRouteRouteChildren {
   DeskQuestionsRoute: typeof DeskQuestionsRoute
   DeskReviewsRoute: typeof DeskReviewsRoute
   DeskRsvpRoute: typeof DeskRsvpRoute
+  DeskSongsRoute: typeof DeskSongsRoute
   DeskSettingsRoute: typeof DeskSettingsRoute
   DeskTermsRoute: typeof DeskTermsRoute
   DeskIndexRoute: typeof DeskIndexRoute
@@ -1189,6 +1209,7 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskQuestionsRoute: DeskQuestionsRoute,
   DeskReviewsRoute: DeskReviewsRoute,
   DeskRsvpRoute: DeskRsvpRoute,
+  DeskSongsRoute: DeskSongsRoute,
   DeskSettingsRoute: DeskSettingsRoute,
   DeskTermsRoute: DeskTermsRoute,
   DeskIndexRoute: DeskIndexRoute,

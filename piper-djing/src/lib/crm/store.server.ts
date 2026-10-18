@@ -56,6 +56,7 @@ import { masterDrafts, parseMaster } from '../portal/master.ts'
 import { rankSuggestions, songsFromPlans } from '../portal/song-suggestions.ts'
 import type { SongHit } from '../portal/song-search.ts'
 import type { MasterMap } from '../portal/questions.ts'
+import type { SongPlan } from '../portal/song-insights.ts'
 import { firstUnanswered, overallProgress } from '../portal/progress.ts'
 import { forgetPublicSite } from './public-memory.ts'
 import {
@@ -3443,6 +3444,33 @@ export type PlanProgress = {
 }
 
 /** How far each couple is with their plan, for the desk. Read only. */
+/**
+ * The desk Songs page: every real couple's plan, soonest wedding first. Test
+ * samples, cancelled and released dates are left out.
+ */
+export async function listSongPlans(): Promise<SongPlan[]> {
+  await ensurePlanningColumn()
+  const rows = await query<BookingRow & { planning?: string }>(
+    'SELECT * FROM bookings ORDER BY event_date, id',
+  )
+  return rows
+    .filter(
+      (row) =>
+        !flag(row.sample) &&
+        row.status !== 'cancelled' &&
+        row.status !== 'released',
+    )
+    .map((row) => ({
+      bookingId: whole(row.id, 'Booking'),
+      couple: [row.partner_one, row.partner_two]
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .join(' & '),
+      eventDate: row.event_date,
+      planning: parsePlanning(row.planning, planningSeed(row)).planning,
+    }))
+}
+
 export async function listPlanProgress(): Promise<PlanProgress[]> {
   await ensurePlanningColumn()
   const master = await readPortalMaster()
