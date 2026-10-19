@@ -1,0 +1,33 @@
+# Weekly update pull requests for the wedding site (piper-djing/).
+# Dependabot reads this file from the default branch, so it lives here and
+# points every pull request at the site's branch. Each one runs the
+# "Check the site" workflow (tests + Cloudflare build) before it is merged;
+# merging deploys.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /piper-djing
+    target-branch: cursor/tanstack-wedding-site-dd32
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: America/Toronto
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+    groups:
+      # One pull request for all the small, safe bumps each week.
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # The server layer is a pre-release (beta); move it on purpose, not weekly.
+      - dependency-name: nitro
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: cursor/tanstack-wedding-site-dd32
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
