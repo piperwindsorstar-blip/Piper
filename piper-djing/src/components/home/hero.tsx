@@ -44,6 +44,18 @@ export function Hero() {
             <p className="mt-3 max-w-xl text-base text-white/60">
               Serving Brantford, Hamilton, Cambridge, Paris and Brant County.
             </p>
+            <p className="mt-1 max-w-xl text-base text-white/60">
+              Proud member of the{' '}
+              <a
+                href="https://cpdja.ca"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2 hover:text-white"
+              >
+                Canadian Professional Disc Jockey Association (CPDJA)
+              </a>
+              .
+            </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#check-a-date"
