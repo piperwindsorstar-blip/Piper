@@ -41,6 +41,9 @@ export function Hero() {
               the first call to the last song, you get a DJ who listens, adapts
               and genuinely cares how your night feels.
             </p>
+            <p className="mt-3 max-w-xl text-base text-white/60">
+              Serving Brantford, Hamilton, Cambridge, Paris and Brant County.
+            </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#check-a-date"
