@@ -17,6 +17,9 @@ import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as HamiltonWeddingDjRouteImport } from './routes/hamilton-wedding-dj'
+import { Route as CambridgeWeddingDjRouteImport } from './routes/cambridge-wedding-dj'
+import { Route as ParisWeddingDjRouteImport } from './routes/paris-wedding-dj'
 import { Route as WeddingsRouteImport } from './routes/weddings'
 import { Route as CSlugRouteImport } from './routes/c/$slug'
 import { Route as DeskIndexRouteImport } from './routes/desk/index'
@@ -102,6 +105,21 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HamiltonWeddingDjRoute = HamiltonWeddingDjRouteImport.update({
+  id: '/hamilton-wedding-dj',
+  path: '/hamilton-wedding-dj',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CambridgeWeddingDjRoute = CambridgeWeddingDjRouteImport.update({
+  id: '/cambridge-wedding-dj',
+  path: '/cambridge-wedding-dj',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParisWeddingDjRoute = ParisWeddingDjRouteImport.update({
+  id: '/paris-wedding-dj',
+  path: '/paris-wedding-dj',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -374,6 +392,9 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
+  '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
+  '/paris-wedding-dj': typeof ParisWeddingDjRoute
   '/weddings': typeof WeddingsRoute
   '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
@@ -433,6 +454,9 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
+  '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
+  '/paris-wedding-dj': typeof ParisWeddingDjRoute
   '/weddings': typeof WeddingsRoute
   '/c/$slug': typeof CSlugRoute
   '/desk/bookings': typeof DeskBookingsRoute
@@ -494,6 +518,9 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
+  '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
+  '/paris-wedding-dj': typeof ParisWeddingDjRoute
   '/weddings': typeof WeddingsRoute
   '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
@@ -557,6 +584,9 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/hamilton-wedding-dj'
+    | '/cambridge-wedding-dj'
+    | '/paris-wedding-dj'
     | '/weddings'
     | '/rsvp/manage'
     | '/c/$slug'
@@ -616,6 +646,9 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/hamilton-wedding-dj'
+    | '/cambridge-wedding-dj'
+    | '/paris-wedding-dj'
     | '/weddings'
     | '/c/$slug'
     | '/desk/bookings'
@@ -676,6 +709,9 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/hamilton-wedding-dj'
+    | '/cambridge-wedding-dj'
+    | '/paris-wedding-dj'
     | '/weddings'
     | '/rsvp/manage'
     | '/c/$slug'
@@ -738,6 +774,9 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  HamiltonWeddingDjRoute: typeof HamiltonWeddingDjRoute
+  CambridgeWeddingDjRoute: typeof CambridgeWeddingDjRoute
+  ParisWeddingDjRoute: typeof ParisWeddingDjRoute
   WeddingsRoute: typeof WeddingsRoute
   RsvpManageRouteRoute: typeof RsvpManageRouteRouteWithChildren
   CSlugRoute: typeof CSlugRoute
@@ -805,6 +844,27 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hamilton-wedding-dj': {
+      id: '/hamilton-wedding-dj'
+      path: '/hamilton-wedding-dj'
+      fullPath: '/hamilton-wedding-dj'
+      preLoaderRoute: typeof HamiltonWeddingDjRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cambridge-wedding-dj': {
+      id: '/cambridge-wedding-dj'
+      path: '/cambridge-wedding-dj'
+      fullPath: '/cambridge-wedding-dj'
+      preLoaderRoute: typeof CambridgeWeddingDjRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/paris-wedding-dj': {
+      id: '/paris-wedding-dj'
+      path: '/paris-wedding-dj'
+      fullPath: '/paris-wedding-dj'
+      preLoaderRoute: typeof ParisWeddingDjRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -1283,6 +1343,9 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  HamiltonWeddingDjRoute: HamiltonWeddingDjRoute,
+  CambridgeWeddingDjRoute: CambridgeWeddingDjRoute,
+  ParisWeddingDjRoute: ParisWeddingDjRoute,
   WeddingsRoute: WeddingsRoute,
   RsvpManageRouteRoute: RsvpManageRouteRouteWithChildren,
   CSlugRoute: CSlugRoute,

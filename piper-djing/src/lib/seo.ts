@@ -22,7 +22,15 @@ export const WEDDING_DESCRIPTION =
 export const WEDDING_OG_IMAGE = `${site.url}/photos/brand/brand-beam.jpg`
 
 export function publicHead(opts: {
-  path: '/' | '/book' | '/weddings' | '/terms' | '/rsvp'
+  path:
+    | '/'
+    | '/book'
+    | '/weddings'
+    | '/terms'
+    | '/rsvp'
+    | '/hamilton-wedding-dj'
+    | '/cambridge-wedding-dj'
+    | '/paris-wedding-dj'
   title: string
   description?: string
 }) {
@@ -131,6 +139,37 @@ export function weddingLocalBusinessJsonLd(): string {
       '@type': 'AdministrativeArea',
       name: 'Brant County',
     }),
+    sameAs: [INSTAGRAM_URL],
+    memberOf: CPDJA,
+  })
+}
+
+/** A town page: the same business, described for one town it serves. */
+export function townLocalBusinessJsonLd(town: {
+  path: string
+  name: string
+  description: string
+}): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: 'DJ Piper P',
+    url: lockedUrl(town.path),
+    image: WEDDING_OG_IMAGE,
+    description: town.description,
+    email: PUBLIC_EMAIL,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Brantford',
+      addressRegion: 'ON',
+      addressCountry: 'CA',
+    },
+    areaServed: {
+      '@type': 'City',
+      name: town.name,
+      containedInPlace: { '@type': 'AdministrativeArea', name: 'Ontario' },
+    },
+    serviceType: 'Wedding DJ',
     sameAs: [INSTAGRAM_URL],
     memberOf: CPDJA,
   })
