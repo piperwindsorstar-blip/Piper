@@ -7,14 +7,14 @@ export function CpdjaBadge() {
       href={CPDJA_URL}
       target="_blank"
       rel="noreferrer"
-      title="Member of the Canadian Professional DJ Association"
+      title="Member of the Canadian Professional Disc Jockey Association (CPDJA)"
       className="inline-flex shrink-0 rounded-lg bg-white px-2.5 py-1.5 shadow-sm transition hover:opacity-90"
     >
       <picture>
         <source srcSet="/brand/cpdja.webp" type="image/webp" />
         <img
           src="/brand/cpdja.png"
-          alt="Member of the Canadian Professional DJ Association (CPDJA)"
+          alt="Member of the Canadian Professional Disc Jockey Association (CPDJA)"
           width={480}
           height={197}
           loading="lazy"
