@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { LINKS } from './content.ts'
 import { Icon } from './icon.tsx'
 import { CpdjaBadge } from '../cpdja-badge.tsx'
+import { TOWN_LIST } from './towns.ts'
 
 export function SiteFooter() {
   return (
@@ -12,6 +13,17 @@ export function SiteFooter() {
           <p className="mt-1 flex items-center gap-1.5">
             <Icon n="pin" className="h-4 w-4 text-neon" />
             Wedding & event DJ · Brantford, Ontario
+          </p>
+          <p className="mt-1">
+            Wedding DJ in{' '}
+            {TOWN_LIST.map((town, index) => (
+              <span key={town.path}>
+                {index > 0 ? ' · ' : ''}
+                <a href={town.path} className="underline underline-offset-2 hover:text-ink">
+                  {town.name}
+                </a>
+              </span>
+            ))}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">

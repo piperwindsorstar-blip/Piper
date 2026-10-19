@@ -3,7 +3,12 @@ import { FAQ } from './content.ts'
 import { Icon } from './icon.tsx'
 import { Eyebrow } from './ui.tsx'
 
-export function Faq() {
+export function Faq({
+  items = FAQ,
+}: {
+  /** The questions to show; the weddings page uses the general list. */
+  items?: readonly (readonly [string, string])[]
+} = {}) {
   const [open, setOpen] = useState(0)
   return (
     <section id="faq" className="mx-auto max-w-3xl scroll-mt-24 px-5 pb-24">
@@ -12,7 +17,7 @@ export function Faq() {
         Questions couples ask.
       </h2>
       <div className="divide-y divide-line border-y border-line">
-        {FAQ.map(([question, answer], index) => (
+        {items.map(([question, answer], index) => (
           <div key={question}>
             <button
               type="button"
