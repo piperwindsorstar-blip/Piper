@@ -811,7 +811,13 @@ async function ensureSavedInvoice(
 }
 
 /** Copies the four booked weddings onto this book once. A deleted one stays deleted. */
-export async function ensureSavedWeddings(): Promise<void> {
+/**
+ * The four saved weddings are checked once per server instance, not on every
+ * desk load: each check was several round trips to the Book per wedding.
+ * Deleting one marks it dismissed, so it never needs putting back mid-run.
+ */
+export const ensureSavedWeddings = once(ensureSavedWeddingsStep)
+async function ensureSavedWeddingsStep(): Promise<void> {
   for (const wedding of SAVED_WEDDINGS) {
     if (await isSavedWeddingDismissed(wedding)) continue
     let id = await savedWeddingId(wedding)
