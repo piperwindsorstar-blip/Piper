@@ -55,7 +55,7 @@ export function privateHead(title: string) {
 /** Piper is a member of the Canadian Professional DJ Association. */
 const CPDJA = {
   '@type': 'Organization',
-  name: 'Canadian Professional DJ Association',
+  name: 'Canadian Professional Disc Jockey Association',
   alternateName: 'CPDJA',
   url: 'https://cpdja.ca',
 }
