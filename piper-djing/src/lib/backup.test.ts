@@ -18,6 +18,7 @@ describe('backups', () => {
       'rsvp_weddings',
       'rsvp_timeline',
       'sessions',
+      'login_misses',
       'bots',
       'emails',
       'rsvp_photo_parts',

@@ -5,6 +5,7 @@
  */
 const LEFT_OUT = new Set([
   'sessions',
+  'login_misses',
   'bots',
   'bot_idempotency',
   'emails',
