@@ -9,6 +9,8 @@ export const Route = createFileRoute('/terms')({
     publicHead({
       path: '/terms',
       title: 'Terms | DJ Piper P',
+      description:
+        "Booking terms for DJ Piper P, a Brantford wedding DJ. Deposits, packages, travel and what's included.",
     }),
   loader: () => getPublicTerms(),
   component: TermsPage,
