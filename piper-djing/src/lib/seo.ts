@@ -52,6 +52,14 @@ export function privateHead(title: string) {
   }
 }
 
+/** Piper is a member of the Canadian Professional DJ Association. */
+const CPDJA = {
+  '@type': 'Organization',
+  name: 'Canadian Professional DJ Association',
+  alternateName: 'CPDJA',
+  url: 'https://cpdja.ca',
+}
+
 export function professionalServiceJsonLd(
   offers?: { name: string; cents: number }[],
 ): string {
@@ -92,6 +100,7 @@ export function professionalServiceJsonLd(
     ],
     serviceType: 'Wedding DJ',
     sameAs: [INSTAGRAM_URL],
+    memberOf: CPDJA,
     offers: priced.map((item) => ({
       '@type': 'Offer',
       name: item.name,
@@ -123,6 +132,7 @@ export function weddingLocalBusinessJsonLd(): string {
       name: 'Brant County',
     }),
     sameAs: [INSTAGRAM_URL],
+    memberOf: CPDJA,
   })
 }
 
@@ -145,6 +155,7 @@ export function homeLocalBusinessJsonLd(): string {
       .map((name) => ({ '@type': 'City', name }))
       .concat({ '@type': 'AdministrativeArea', name: 'Brant County' }),
     sameAs: [INSTAGRAM_URL],
+    memberOf: CPDJA,
   })
 }
 
@@ -169,5 +180,6 @@ export function personJsonLd(): string {
       addressCountry: 'CA',
     },
     sameAs: [INSTAGRAM_URL],
+    memberOf: CPDJA,
   })
 }

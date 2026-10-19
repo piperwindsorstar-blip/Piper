@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { LINKS } from './content.ts'
 import { Icon } from './icon.tsx'
+import { CpdjaBadge } from '../cpdja-badge.tsx'
 
 export function SiteFooter() {
   return (
@@ -39,6 +40,7 @@ export function SiteFooter() {
             <Icon n="star" className="h-4 w-4 text-neon" />
             Leave a Google review
           </a>
+          <CpdjaBadge />
         </div>
       </div>
     </footer>
