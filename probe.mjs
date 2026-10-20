@@ -1,0 +1,17 @@
+import { chromium } from 'playwright'
+const base = 'https://piperpweddingdj.services'
+const show = (k, v) => console.log(`::notice title=${k}::${String(v).replace(/\s+/g, ' ').slice(0, 1500)}`)
+const raw = await (await fetch(base + '/hamilton-wedding-dj?x=' + Date.now())).text()
+const i = raw.indexOf('Hamilton<')
+show('raw hamilton', JSON.stringify(raw.slice(raw.indexOf('weddings</p>') - 120, raw.indexOf('weddings</p>') + 12)))
+const rawBook = await (await fetch(base + '/book?date=2026-11-16&x=' + Date.now())).text()
+const j = rawBook.indexOf('is open')
+show('raw book', JSON.stringify(rawBook.slice(j - 120, j + 20)))
+const b = await chromium.launch(); const p = await b.newPage()
+await p.goto(base + '/hamilton-wedding-dj?y=' + Date.now(), { waitUntil: 'networkidle' })
+show('innerText hamilton', (await p.evaluate(() => document.body.innerText)).match(/.{0,30}WEDDINGS.{0,20}/i)?.[0])
+const node = await p.evaluate(() => { const el = [...document.querySelectorAll('p')].find((e) => /weddings$/i.test(e.textContent.trim())); return el ? JSON.stringify([...el.childNodes].map((n) => n.nodeType + ':' + n.textContent)) : 'none' })
+show('nodes hamilton', node)
+await p.goto(base + '/book?date=2026-11-16&y=' + Date.now(), { waitUntil: 'networkidle' })
+show('innerText book', (await p.evaluate(() => document.body.innerText)).match(/.{0,30}is open.{0,10}/)?.[0])
+await b.close()
