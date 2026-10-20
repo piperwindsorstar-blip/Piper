@@ -4,8 +4,8 @@ import type { PriceKind } from './model.ts'
 
 /**
  * Buying an RSVP page by card. Pure rules, so the page, the checkout and the
- * webhook agree: $20 for a couple whose Piper booking has its deposit in,
- * $30 for anyone else, plus 13% HST on the card payment. The price is only
+ * webhook agree: free for a couple whose Piper booking has its deposit in,
+ * $40 for anyone else, plus 13% HST on the card payment. The price is only
  * ever worked out on the server.
  */
 
@@ -113,7 +113,7 @@ export function rsvpQuote(matched: boolean): RsvpQuote {
   return {
     kind: matched ? 'piper' : 'standalone',
     label: matched
-      ? 'Wedding RSVP page · Piper DJing couple'
+      ? 'Wedding RSVP page · included with your Piper booking'
       : 'Wedding RSVP page',
     baseCents: base,
     hstCents: hst,
@@ -125,8 +125,9 @@ export function rsvpHstLabel(baseCents: number): string {
   return `HST ${HST_RATE_PERCENT}% on this card payment of ${dollars(baseCents)}`
 }
 
-/** "$20.00 + $2.60 HST = $22.60" for receipts. */
+/** "$40.00 + $5.20 HST = $45.20" for receipts. */
 export function paidLabel(quote: { baseCents: number; hstCents: number }): string {
+  if (quote.baseCents + quote.hstCents === 0) return 'Free with your Piper booking'
   return `${dollars(quote.baseCents)} + ${dollars(quote.hstCents)} HST = ${dollars(quote.baseCents + quote.hstCents)}`
 }
 

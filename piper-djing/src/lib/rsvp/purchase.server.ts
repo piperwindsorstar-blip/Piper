@@ -114,6 +114,7 @@ export async function fulfilRsvpPurchase(input: {
       : null
   const bySlug = place.outcome === 'needs-check' ? await readRsvp(slug) : null
 
+  const free = input.baseCents + input.hstCents === 0
   let result: RsvpOutcome
   if (byEmail) {
     const wasPaid = byEmail.paid
@@ -121,7 +122,7 @@ export async function fulfilRsvpPurchase(input: {
     const link = signIn(byEmail)
     await writeRsvp(byEmail)
     await welcome(byEmail, input.sessionId, amount, link)
-    await emailOwner({
+    if (!free) await emailOwner({
       subject: 'RSVP purchase · please check',
       text: `${couple} (${purchase.email}) paid ${amount} for an RSVP page, and that email already has one: /rsvp/${byEmail.slug} (${wasPaid ? 'already paid before' : 'now marked paid'}). No new site was made. Check whether a refund is owed.`,
     }).catch(() => undefined)
@@ -133,9 +134,11 @@ export async function fulfilRsvpPurchase(input: {
       to: purchase.email,
       guard: `rsvp-welcome-${input.sessionId}`,
       email: {
-        subject: `Payment received · ${couple}`,
+        subject: free ? `RSVP page · ${couple}` : `Payment received · ${couple}`,
         text: [
-          `Thank you, ${couple}. Your payment of ${amount} for an RSVP page is in.`,
+          free
+            ? `Thank you, ${couple}. Your RSVP page comes free with your Piper booking.`
+            : `Thank you, ${couple}. Your payment of ${amount} for an RSVP page is in.`,
           '',
           'Piper is setting up your page by hand and will email you the sign-in link shortly.',
           '',
@@ -145,7 +148,7 @@ export async function fulfilRsvpPurchase(input: {
     })
     await emailOwner({
       subject: 'RSVP purchase · please check',
-      text: `${couple} (${purchase.email}) paid ${amount} for an RSVP page, but /rsvp/${bySlug.slug} already belongs to ${bySlug.email || 'another email'}. No site was opened for them. If it is the same couple, change that site's email and send them a sign-in link; if not, make them a site by hand from the desk.`,
+      text: `${couple} (${purchase.email}) ${free ? 'asked for their free' : `paid ${amount} for an`} RSVP page, but /rsvp/${bySlug.slug} already belongs to ${bySlug.email || 'another email'}. No site was opened for them. If it is the same couple, change that site's email and send them a sign-in link; if not, make them a site by hand from the desk.`,
     }).catch(() => undefined)
     result = { slug: bySlug.slug, outcome: 'needs-check' }
   } else {
@@ -170,7 +173,7 @@ export async function fulfilRsvpPurchase(input: {
       slug: wedding.slug,
       kind: 'piper-payment',
       to: PUBLIC_EMAIL,
-      email: piperPaymentEmail(wedding, `${amount} (card, Stripe)`),
+      email: piperPaymentEmail(wedding, free ? amount : `${amount} (card, Stripe)`),
     }).catch(() => undefined)
     result = { slug, outcome: 'created' }
   }

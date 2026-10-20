@@ -7,7 +7,7 @@ export const RSVP_FONTS =
 
 export function rsvpHead(title: string, index = false, path = '/rsvp') {
   const description =
-    'A private wedding RSVP from DJ Piper P. $20 with a paid Piper date, $30 on its own. Your guests get their own link to reply.'
+    'A private wedding RSVP from DJ Piper P. Free with a paid Piper date, $40 on its own. Your guests get their own link to reply.'
   return {
     meta: [
       { title },

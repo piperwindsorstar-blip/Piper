@@ -271,8 +271,8 @@ export function PayWall({
       <p className="mt-4 text-3xl font-semibold">{priceLabel(data.cents)}</p>
       <p className="mt-3 text-[var(--text-muted)]">
         {piper
-          ? 'This is the $20 price because this email is on a paid Piper date.'
-          : 'This is the $30 standalone price. A couple who has already paid Piper pays $20.'}
+          ? 'This is free because this email is on a paid Piper date.'
+          : 'This is the $40 standalone price. It is free for a couple who has already paid Piper.'}
       </p>
       <p className="mt-3 text-[var(--text-muted)]">
         The guest link {data.path} turns on when Piper records the payment.

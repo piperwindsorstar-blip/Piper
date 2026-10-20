@@ -5,7 +5,7 @@ import { Header } from '../../components/home/header.tsx'
 import { SiteFooter } from '../../components/home/site-footer.tsx'
 import { PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
 import { cad } from '../../lib/crm/money.ts'
-import { priceLabel } from '../../lib/rsvp/model.ts'
+import { PIPER_RSVP_CENTS, STANDALONE_RSVP_CENTS, priceLabel } from '../../lib/rsvp/model.ts'
 import { rsvpHead } from '../../lib/rsvp/head.ts'
 import { rsvpHstLabel } from '../../lib/rsvp/purchase.ts'
 import type { RsvpQuote } from '../../lib/rsvp/purchase.ts'
@@ -68,13 +68,13 @@ function RsvpProduct() {
             </p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <article className="rounded-3xl border border-[var(--pink)] p-4">
-                <p className="text-3xl font-semibold">{priceLabel(2000)}</p>
+                <p className="text-3xl font-semibold">{priceLabel(PIPER_RSVP_CENTS)}</p>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
                   With a Piper DJing booking (deposit paid)
                 </p>
               </article>
               <article className="rounded-3xl border border-[var(--border)] p-4">
-                <p className="text-3xl font-semibold">{priceLabel(3000)}</p>
+                <p className="text-3xl font-semibold">{priceLabel(STANDALONE_RSVP_CENTS)}</p>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
                   On its own
                 </p>
@@ -192,7 +192,20 @@ function BuyForm() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [off, setOff] = useState(false)
+  const [sent, setSent] = useState(false)
   if (off) return <ContactUs />
+  if (sent) {
+    return (
+      <div className="grid w-full max-w-md gap-4" aria-live="polite">
+        <h2 className="portal-display text-3xl">Check your email</h2>
+        <p className="text-[var(--text-muted)]">
+          Your RSVP page comes free with your Piper booking. We sent the
+          sign-in link to {form.email}.
+        </p>
+      </div>
+    )
+  }
+  const free = price !== null && price.chargeCents === 0
   const update = (key: keyof typeof form) => (event: { target: { value: string } }) => {
     setForm((current) => ({ ...current, [key]: event.target.value }))
     // Any change asks for a fresh price.
@@ -221,6 +234,11 @@ function BuyForm() {
           if (!result.ok) {
             setBusy(false)
             setError(result.error)
+            return
+          }
+          if ('free' in result) {
+            setBusy(false)
+            setSent(true)
             return
           }
           window.location.assign(result.url)
@@ -261,7 +279,11 @@ function BuyForm() {
           onChange={update('bookingRef')}
         />
       </Field>
-      {price ? (
+      {price && free ? (
+        <p className="rounded-2xl border border-[var(--pink)] p-4 text-sm" aria-live="polite">
+          Free with your Piper booking. No payment needed.
+        </p>
+      ) : price ? (
         <dl className="grid gap-1 rounded-2xl border border-[var(--border)] p-4 text-sm" aria-live="polite">
           <div className="flex justify-between gap-3">
             <dt className="text-[var(--text-muted)]">{price.label}</dt>
@@ -285,13 +307,17 @@ function BuyForm() {
       <button className={rsvpButton} type="submit" disabled={busy}>
         {busy
           ? price
-            ? 'Opening secure checkout…'
+            ? free
+              ? 'Making your page…'
+              : 'Opening secure checkout…'
             : 'Working out your price…'
           : price
-            ? `Pay ${cad(price.chargeCents)} by card`
+            ? free
+              ? 'Get my free page'
+              : `Pay ${cad(price.chargeCents)} by card`
             : 'See my price'}
       </button>
-      {price ? (
+      {price && !free ? (
         <p className="text-xs text-[var(--text-faint)]">
           You pay on Stripe's secure page, in Canadian dollars.
         </p>

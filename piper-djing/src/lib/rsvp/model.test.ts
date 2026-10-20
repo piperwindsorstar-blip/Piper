@@ -39,7 +39,7 @@ function missed(result: LookupResult): string {
 }
 
 describe('rsvp price and link', () => {
-  it('charges a paid Piper couple $20 and everyone else $30', () => {
+  it('is free for a paid Piper couple and $40 for everyone else', () => {
     const bookings = [
       {
         email: 'Cobi@example.com',

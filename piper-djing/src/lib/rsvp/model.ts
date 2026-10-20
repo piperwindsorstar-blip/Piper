@@ -1,12 +1,12 @@
-/** Pure RSVP rules. Guest links are /rsvp/:slug. Paid Piper couples are $20; everyone else is $30. */
+/** Pure RSVP rules. Guest links are /rsvp/:slug. Free for paid Piper couples; everyone else is $40. */
 
 import { DEFAULT_TEMPLATE, parsePhoto, parseTemplateId, parseTint } from './templates.ts'
 import { DEFAULT_WORDING, parseWording } from './invite-words.ts'
 import type { InviteWording } from './invite-words.ts'
 import type { RsvpPhoto, RsvpTemplateId } from './templates.ts'
 
-export const PIPER_RSVP_CENTS = 2000
-export const STANDALONE_RSVP_CENTS = 3000
+export const PIPER_RSVP_CENTS = 0
+export const STANDALONE_RSVP_CENTS = 4000
 export const LOOKUP_LIMIT = 8
 export const LOOKUP_WINDOW_MS = 10 * 60 * 1000
 
@@ -200,6 +200,7 @@ export function quoteRsvp(email: string, bookings: PaidCouple[]): PriceQuote {
 }
 
 export function priceLabel(cents: number): string {
+  if (cents === 0) return 'Free'
   if (cents % 100 === 0) return `$${cents / 100}`
   return `$${(cents / 100).toFixed(2)}`
 }
@@ -1339,9 +1340,13 @@ export function parseWedding(raw: unknown, slug: string): RsvpWedding | null {
     email: asText(record.email, 120),
     eventDate: asText(record.eventDate, 10),
     venue: asText(record.venue, 120),
+    // A site keeps the price it was made at.
     priceCents:
-      record.priceCents === PIPER_RSVP_CENTS
-        ? PIPER_RSVP_CENTS
+      typeof record.priceCents === 'number' &&
+      Number.isInteger(record.priceCents) &&
+      record.priceCents >= 0 &&
+      record.priceCents <= 100_000
+        ? record.priceCents
         : STANDALONE_RSVP_CENTS,
     priceKind: record.priceKind === 'piper' ? 'piper' : 'standalone',
     inviteCode: asText(record.inviteCode, 12) || 'RSVP',
