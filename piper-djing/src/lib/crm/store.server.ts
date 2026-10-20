@@ -937,10 +937,11 @@ async function seedVenue(name: string, street: string): Promise<void> {
   const cleanStreet = optional(street, 160)
   const existing = await venueRow(cleanName)
   if (!existing) {
-    await query('INSERT INTO venues (name, street) VALUES ($1, $2)', [
-      cleanName,
-      cleanStreet,
-    ])
+    // Two requests can seed the same venue at once; the second one is a no-op.
+    await query(
+      'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [cleanName, cleanStreet],
+    )
     return
   }
   if (!existing.street && cleanStreet) {
@@ -958,10 +959,11 @@ async function rememberVenue(name: string, street: string): Promise<void> {
   await showVenue(cleanName)
   const existing = await venueRow(cleanName)
   if (!existing) {
-    await query('INSERT INTO venues (name, street) VALUES ($1, $2)', [
-      cleanName,
-      cleanStreet,
-    ])
+    // Two requests can seed the same venue at once; the second one is a no-op.
+    await query(
+      'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [cleanName, cleanStreet],
+    )
     return
   }
   if (!cleanStreet || existing.street === cleanStreet) return

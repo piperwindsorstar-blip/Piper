@@ -43,7 +43,8 @@ function gluedWords(text) {
 }
 
 async function spacing(page, path) {
-  await page.goto(BASE + path, { waitUntil: 'networkidle' })
+  await page.goto(BASE + path, { waitUntil: 'load' })
+  await page.waitForTimeout(1500)
   const text = await page.evaluate(() => document.body.innerText)
   const glued = gluedWords(text)
   expect(glued.length === 0, `${path}: ${glued.slice(0, 15).join(' | ')}`)
@@ -62,7 +63,7 @@ const DATE = '2026-11-21'
 // --- Desk ------------------------------------------------------------------
 
 await step('Desk login: wrong password shows the generic message', async () => {
-  await page.goto(BASE + '/login', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/login', { waitUntil: 'load' })
   await page.fill('input[type="password"]', 'not-the-password')
   await page.click('button[type="submit"]')
   await page.getByText('That password did not match.').waitFor({ timeout: 8000 })
@@ -75,7 +76,7 @@ await step('Desk login: right password opens the Desk', async () => {
 })
 
 await step('Desk: new booking with a draft invoice', async () => {
-  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'load' })
   await page.getByRole('button', { name: /New booking/ }).first().click()
   const form = page.locator('form', { has: page.getByRole('button', { name: 'Save as open' }) })
   await form.locator('input[name="partnerOne"]').fill(COUPLE.one)
@@ -89,14 +90,14 @@ await step('Desk: new booking with a draft invoice', async () => {
 })
 
 await step('Desk: Needs you asks to send the invoice', async () => {
-  await page.goto(BASE + '/desk', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk', { waitUntil: 'load' })
   await page.getByText(`Send the invoice to ${COUPLE.one} and ${COUPLE.two}`).waitFor({ timeout: 8000 })
 })
 
 let mailsBefore = 0
 await step('Desk: "Email the invoice" asks to confirm first', async () => {
   try { mailsBefore = readFileSync(SINK, 'utf8').split('MAIL-FROM').length - 1 } catch { mailsBefore = 0 }
-  await page.goto(BASE + '/desk/money', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/money', { waitUntil: 'load' })
   const button = page.getByRole('button', { name: 'Email the invoice' }).first()
   await button.click()
   await page.getByRole('button', { name: `Tap again to email ${COUPLE.email}` }).waitFor({ timeout: 5000 })
@@ -114,7 +115,7 @@ await step('Desk: second tap sends and marks the invoice sent', async () => {
 })
 
 await step('Desk: Needs you reminder cleared', async () => {
-  await page.goto(BASE + '/desk', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk', { waitUntil: 'load' })
   const left = await page.getByText(`Send the invoice to ${COUPLE.one} and ${COUPLE.two}`).count()
   expect(left === 0, 'The reminder is still there')
 })
@@ -128,7 +129,7 @@ await step('Desk: page text spacing', async () => {
 })
 
 await step('Desk Packages: negative price refused', async () => {
-  await page.goto(BASE + '/desk/packages', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/packages', { waitUntil: 'load' })
   const form = page.locator('form', { has: page.getByRole('button', { name: 'Save the package' }) }).first()
   await form.locator('input[name="price"]').fill('-5')
   const valid = await form.evaluate((f) => f.checkValidity())
@@ -142,25 +143,25 @@ await step('Desk Packages: negative price refused', async () => {
 })
 
 await step('Desk Terms: empty save refused', async () => {
-  await page.goto(BASE + '/desk/terms', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/terms', { waitUntil: 'load' })
   await page.locator('textarea').first().fill('')
   await page.getByRole('button', { name: 'Save the terms' }).click()
   await page.waitForTimeout(800)
   const valid = await page.locator('textarea').first().evaluate((t) => t.form?.checkValidity() ?? true)
   const said = await page.getByText('The terms cannot be empty.').count()
   expect(!valid || said > 0, 'Empty terms were accepted')
-  await page.goto(BASE + '/terms', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/terms', { waitUntil: 'load' })
   const body = await page.evaluate(() => document.body.innerText)
   expect(body.includes('Deposit') || body.length > 600, 'The public terms went empty')
 })
 
 await step('Desk Money: void hides "Email the invoice"', async () => {
-  await page.goto(BASE + '/desk/money', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/money', { waitUntil: 'load' })
   const card = page.locator('section, article, div', { hasText: `${COUPLE.one}` }).filter({ has: page.getByRole('button', { name: 'Void' }) }).last()
   await card.getByRole('button', { name: 'Void' }).click()
   await card.getByRole('button', { name: 'Tap again to void' }).click()
   await page.waitForTimeout(1500)
-  await page.goto(BASE + '/desk/money', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/money', { waitUntil: 'load' })
   const still = await page.locator('section, article, div', { hasText: `${COUPLE.one}` }).getByRole('button', { name: 'Email the invoice' }).count()
   expect(still === 0, '"Email the invoice" still shows on the void invoice')
 })
@@ -172,7 +173,7 @@ pub.setDefaultTimeout(45000)
 pub.on('pageerror', (e) => errors.push(e.message))
 
 await step('Home date checker: open date goes to /book with date and Wedding', async () => {
-  await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
+  await pub.goto(BASE + '/', { waitUntil: 'load' })
   await pub.click('button[aria-label="Next month"]')
   await pub.click('button[aria-label="16 November 2026"]')
   await pub.getByText('Yes, your date is available.').waitFor({ timeout: 8000 })
@@ -180,7 +181,7 @@ await step('Home date checker: open date goes to /book with date and Wedding', a
 })
 
 await step('/book estimate with travel prompt', async () => {
-  await pub.waitForLoadState('networkidle')
+  await pub.waitForLoadState('load')
   const pkg = pub.locator('select[name="packageId"]')
   if (await pkg.count()) await pkg.selectOption({ index: 1 })
   await pub.waitForTimeout(600)
@@ -191,12 +192,12 @@ await step('/book estimate with travel prompt', async () => {
 })
 
 await step('/book past date note', async () => {
-  await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'networkidle' })
+  await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'load' })
   await pub.getByText('That date has passed, please pick another.').waitFor({ timeout: 8000 })
 })
 
 await step('/rsvp prices', async () => {
-  await pub.goto(BASE + '/rsvp', { waitUntil: 'networkidle' })
+  await pub.goto(BASE + '/rsvp', { waitUntil: 'load' })
   const text = (await pub.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ')
   expect(/Free With a DJ Piper P booking/i.test(text), 'Free price missing')
   expect(/\$40 On its own/i.test(text), '$40 price missing')
@@ -204,12 +205,12 @@ await step('/rsvp prices', async () => {
 })
 
 await step('/rsvp/sign-in form', async () => {
-  await pub.goto(BASE + '/rsvp/sign-in', { waitUntil: 'networkidle' })
+  await pub.goto(BASE + '/rsvp/sign-in', { waitUntil: 'load' })
   await pub.getByRole('button', { name: 'Email me a sign-in link' }).waitFor({ timeout: 5000 })
 })
 
 await step('Portal link asks for the passcode', async () => {
-  await pub.goto(BASE + '/c/avery-and-jordan', { waitUntil: 'networkidle' })
+  await pub.goto(BASE + '/c/avery-and-jordan', { waitUntil: 'load' })
   const text = await pub.evaluate(() => document.body.innerText)
   expect(/passcode/i.test(text), `No passcode ask: ${text.slice(0, 200)}`)
   expect(!/Your plan|Start planning/i.test(text) || /passcode/i.test(text), 'The plan opened without a passcode')
@@ -227,7 +228,7 @@ await step('Desk login lockout after repeated wrong passwords', async () => {
   const other = await browser.newPage()
   let locked = false
   for (let i = 0; i < 7 && !locked; i += 1) {
-    await other.goto(BASE + '/login', { waitUntil: 'networkidle' })
+    await other.goto(BASE + '/login', { waitUntil: 'load' })
     await other.fill('input[type="password"]', `wrong-${i}`)
     await other.click('button[type="submit"]')
     await other.waitForTimeout(1600)
