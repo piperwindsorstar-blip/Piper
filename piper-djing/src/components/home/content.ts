@@ -16,6 +16,12 @@ export const PORTRAIT_ALT = 'DJ Piper P at the booth.'
 /** Sample review and Instagram notes stay hidden until real content replaces them. */
 export const SHOW_PLACEHOLDER_NOTES = false as boolean
 
+/**
+ * Google reviewer names to leave out of the homepage reviews, e.g.
+ * ['Jane Doe']. Reviews always show exactly as Google returns them.
+ */
+export const HIDDEN_HOME_REVIEWS: readonly string[] = []
+
 export const LINKS = {
   weddings: '/weddings',
   book: '/book',

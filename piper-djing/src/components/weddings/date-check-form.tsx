@@ -60,18 +60,17 @@ export function DateCheckForm() {
           <option key={item}>{item}</option>
         ))}
       </select>
-      <label htmlFor="w-company" className="sr-only">
-        Company
-      </label>
-      <input
-        id="w-company"
-        name="company"
-        value={company}
-        onChange={(event) => setCompany(event.target.value)}
-        tabIndex={-1}
-        autoComplete="off"
-        className="absolute -left-[9999px] h-px w-px overflow-hidden"
-      />
+      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label htmlFor="w-company">Company</label>
+        <input
+          id="w-company"
+          name="company"
+          value={company}
+          onChange={(event) => setCompany(event.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
       <button
         type="submit"
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-neon py-4 font-bold text-white shadow-[0_8px_24px_-8px_rgba(255,0,127,0.6)] transition hover:bg-hot"
