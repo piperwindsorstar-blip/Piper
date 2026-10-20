@@ -13,8 +13,10 @@ async function step(name, fn) {
     const detail = await fn()
     results.push({ name, ok: true, detail: detail ?? '' })
   } catch (error) {
-    results.push({ name, ok: false, detail: String(error?.message ?? error).slice(0, 600) })
+    results.push({ name, ok: false, detail: String(error?.message ?? error).split('Call log')[0].slice(0, 400) })
   }
+  const last = results.at(-1)
+  console.log(`${last.ok ? 'PASS' : 'FAIL'} ${last.name} ${last.detail}`)
 }
 
 function expect(cond, message) {
@@ -53,7 +55,8 @@ async function spacing(page, path) {
 
 const browser = await chromium.launch()
 const page = await browser.newPage()
-page.setDefaultTimeout(45000)
+page.setDefaultTimeout(15000)
+page.setDefaultNavigationTimeout(25000)
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
 
@@ -169,7 +172,8 @@ await step('Desk Money: void hides "Email the invoice"', async () => {
 // --- Public ----------------------------------------------------------------
 
 const pub = await browser.newPage()
-pub.setDefaultTimeout(45000)
+pub.setDefaultTimeout(15000)
+pub.setDefaultNavigationTimeout(25000)
 pub.on('pageerror', (e) => errors.push(e.message))
 
 await step('Home date checker: open date goes to /book with date and Wedding', async () => {
@@ -243,7 +247,6 @@ await step('No page errors', async () => {
 
 await browser.close()
 const lines = results.map((r) => `${r.ok ? 'PASS' : 'FAIL'} ${r.name}${r.detail ? ` — ${r.detail}` : ''}`)
-console.log(lines.join('\n'))
 const joined = lines.join(' ## ').replace(/\n/g, ' ')
 for (let i = 0; i < joined.length; i += 3500) {
   console.log(`::notice title=browse part ${i / 3500 + 1}::${joined.slice(i, i + 3500)}`)

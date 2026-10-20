@@ -62,9 +62,12 @@ jobs:
         run: |
           python3 e2e/mail-sink.py "$SINK_LOG" &
           node .output/server/index.mjs > "$RUNNER_TEMP/server.log" 2>&1 &
-          for i in $(seq 1 60); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          for i in $(seq 1 60); do curl -sf -m 10 http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          code=$(curl -s -m 20 -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/desk/money)
+          echo "::notice title=Server up::home $(curl -s -m 20 -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/) desk/money $code"
+          head -c 2500 "$RUNNER_TEMP/server.log" | tr '\n' ' ' | sed 's/^/::notice title=Server start::/' ; echo
           cp e2e/browse-check.mjs "$RUNNER_TEMP/pw/browse-check.mjs"
           status=0
-          node "$RUNNER_TEMP/pw/browse-check.mjs" || status=$?
+          timeout 900 node "$RUNNER_TEMP/pw/browse-check.mjs" || status=$?
           tail -c 3000 "$RUNNER_TEMP/server.log" | tr '\n' ' ' | sed 's/^/::notice title=Server log::/' ; echo
           exit $status
