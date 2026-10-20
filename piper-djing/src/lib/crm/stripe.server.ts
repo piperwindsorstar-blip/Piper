@@ -189,7 +189,7 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
 
 /**
  * The RSVP page price for what the couple typed, worked out here only:
- * $20 with a Piper booking whose deposit is in, else $30, plus card HST.
+ * free with a Piper booking whose deposit is in, else $40, plus card HST.
  * Null when card payments are off (the page shows "Contact us").
  */
 export async function quoteRsvpPurchase(
@@ -210,7 +210,9 @@ export async function quoteRsvpPurchase(
 
 export async function startRsvpCheckout(
   input: Record<string, unknown>,
-): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; url: string } | { ok: true; free: true } | { ok: false; error: string }
+> {
   const keys = secrets()
   const status = await cardStatus()
   if (!keys || !status.enabled) {
@@ -219,6 +221,20 @@ export async function startRsvpCheckout(
   const parsed = parsePurchase(input)
   if (!parsed.ok) return parsed
   const matched = matchesPaidBooking(parsed.purchase, await priceBookings())
+  if (matched) {
+    // Free with a Piper booking: no checkout. The sign-in link goes by email,
+    // so typing a booked couple's details never opens a page for anyone else.
+    await fulfilRsvpPurchase({
+      sessionId: `free-${parsed.purchase.email}`,
+      paymentId: '',
+      live: true,
+      purchase: parsed.purchase,
+      priceKind: 'piper',
+      baseCents: 0,
+      hstCents: 0,
+    })
+    return { ok: true, free: true }
+  }
   const form = rsvpCheckoutForm({
     quote: rsvpQuote(matched),
     purchase: parsed.purchase,

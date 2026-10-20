@@ -45,7 +45,7 @@ export function GuestHome({ data }: { data: HomeData }) {
         <h1 className="portal-display mt-3 text-4xl">{data.couple}</h1>
         <p className="mt-4 text-[var(--text-muted)]">
           This guest link turns on when the {priceLabel(data.cents)} payment is
-          recorded. A paid Piper date is $20. A standalone RSVP is $30.
+          recorded. It's free with a paid Piper date. A standalone RSVP is $40.
         </p>
       </RsvpFrame>
     )

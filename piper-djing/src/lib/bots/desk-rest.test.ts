@@ -188,7 +188,7 @@ describe('desk bot edits', { skip: liveBook }, () => {
       assert.equal(body.rsvp.email, 'bot-rsvp@example.com')
       assert.equal(body.rsvp.eventDate, '2027-06-12')
       assert.match(body.rsvp.venue, /Glenhyrst/)
-      assert.equal(body.rsvp.price, 20)
+      assert.equal(body.rsvp.price, 0)
       assert.equal(body.rsvp.paid, 'no')
       assert.equal(body.rsvp.guestLink, 'off')
       assert.ok(body.rsvp.guests > 0)

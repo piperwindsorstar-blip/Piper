@@ -31,23 +31,24 @@ const booked: PriceBooking = {
 }
 
 describe('RSVP page price', () => {
-  it('matched booking: $20 + $2.60 HST = $22.60', () => {
+  it('matched booking: free, no HST', () => {
     assert.equal(matchesPaidBooking(purchase, [booked]), true)
     const quote = rsvpQuote(true)
     assert.deepEqual(
       { base: quote.baseCents, hst: quote.hstCents, total: quote.chargeCents, kind: quote.kind },
-      { base: 2000, hst: 260, total: 2260, kind: 'piper' },
+      { base: 0, hst: 0, total: 0, kind: 'piper' },
     )
-    assert.equal(paidLabel(quote), '$20.00 + $2.60 HST = $22.60')
+    assert.equal(paidLabel(quote), 'Free with your Piper booking')
   })
 
-  it('unmatched: $30 + $3.90 HST = $33.90', () => {
+  it('unmatched: $40 + $5.20 HST = $45.20', () => {
     assert.equal(matchesPaidBooking({ ...purchase, email: 'someone@else.ca' }, [booked]), false)
     const quote = rsvpQuote(false)
     assert.deepEqual(
       { base: quote.baseCents, hst: quote.hstCents, total: quote.chargeCents, kind: quote.kind },
-      { base: 3000, hst: 390, total: 3390, kind: 'standalone' },
+      { base: 4000, hst: 520, total: 4520, kind: 'standalone' },
     )
+    assert.equal(paidLabel(quote), '$40.00 + $5.20 HST = $45.20')
   })
 
   it('matches by booking email or invoice code typed in the optional box', () => {
@@ -61,7 +62,7 @@ describe('RSVP page price', () => {
     assert.equal(matchesPaidBooking({ ...other, bookingRef: 'wrong-code' }, [booked]), false)
   })
 
-  it('needs the deposit in: no deposit, a sample, or a cancelled date is $30', () => {
+  it('needs the deposit in: no deposit, a sample, or a cancelled date is $40', () => {
     const noDeposit = { ...booked, status: 'hold', receivedCents: 20000 }
     assert.equal(matchesPaidBooking(purchase, [noDeposit]), false)
     assert.equal(matchesPaidBooking(purchase, [{ ...noDeposit, receivedCents: 50000 }]), true)
@@ -79,12 +80,12 @@ describe('RSVP page price', () => {
   })
 
   it('checkout is CAD only with adaptive pricing off', () => {
-    const form = rsvpCheckoutForm({ quote: rsvpQuote(true), purchase, successUrl: 's', cancelUrl: 'c' })
+    const form = rsvpCheckoutForm({ quote: rsvpQuote(false), purchase, successUrl: 's', cancelUrl: 'c' })
     assert.equal(form.get('currency'), 'cad')
     assert.equal(form.get('adaptive_pricing[enabled]'), 'false')
-    assert.equal(form.get('line_items[0][price_data][unit_amount]'), '2000')
-    assert.equal(form.get('line_items[1][price_data][unit_amount]'), '260')
-    assert.equal(form.get('line_items[1][price_data][product_data][name]'), 'HST 13% on this card payment of $20.00')
+    assert.equal(form.get('line_items[0][price_data][unit_amount]'), '4000')
+    assert.equal(form.get('line_items[1][price_data][unit_amount]'), '520')
+    assert.equal(form.get('line_items[1][price_data][product_data][name]'), 'HST 13% on this card payment of $40.00')
     const currencies = [...form].filter(([key]) => key.endsWith('[currency]')).map(([, v]) => v)
     assert.deepEqual([...new Set(currencies)], ['cad'])
     assert.equal(form.get('metadata[purpose]'), 'rsvp')

@@ -337,6 +337,8 @@ export async function createRsvpWedding(input: {
   })
   wedding.slug = slug
   wedding.replyEmail = input.email.trim().slice(0, 120)
+  // Free with a Piper booking, so nothing to wait for.
+  if (quote.cents === 0) wedding.paid = true
   await writeRsvp(wedding)
   return wedding
 }

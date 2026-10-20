@@ -40,7 +40,7 @@ const bookingInput = {
 }
 
 describe('rsvp store', { skip: liveBook }, () => {
-  it('prices a paid booking at $20 and leaves the counted book unchanged', async () => {
+  it('makes a paid booking free and leaves the counted book unchanged', async () => {
     const before = await countedTotal()
     const alone = await quoteRsvpPrice('nobody-rsvp@example.com')
     assert.equal(alone.cents, STANDALONE_RSVP_CENTS)
@@ -62,7 +62,7 @@ describe('rsvp store', { skip: liveBook }, () => {
       venue: 'The Hall',
     })
     assert.equal(created.priceCents, PIPER_RSVP_CENTS)
-    assert.equal(created.paid, false)
+    assert.equal(created.paid, true)
     assert.equal(created.replyEmail, 'paid-rsvp@example.com')
     assert.equal((await readRsvp(created.slug))?.email, 'paid-rsvp@example.com')
     await deleteRsvp(created.slug)

@@ -8,7 +8,7 @@
  */
 
 import type { LetterAttachment } from '../crm/mail-copy.ts'
-import { coupleTitle, invitedEvents, replyFor, shortMonthDay } from './model.ts'
+import { coupleTitle, invitedEvents, priceLabel, replyFor, shortMonthDay } from './model.ts'
 import type {
   OverviewStats,
   RsvpGuest,
@@ -832,7 +832,7 @@ export function piperQuestionEmail(question: {
 export function piperSignupEmail(wedding: RsvpWedding): RsvpEmail {
   const skin = skinOf(wedding)
   const title = coupleTitle(wedding)
-  const price = wedding.priceKind === 'piper' ? '$20' : '$30'
+  const price = priceLabel(wedding.priceCents)
   return {
     kind: 'piper-signup',
     subject: `New RSVP signup · ${title}`,

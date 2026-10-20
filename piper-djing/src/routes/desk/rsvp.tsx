@@ -50,8 +50,8 @@ function RsvpDesk() {
   return (
     <div className="grid gap-6">
       <DeskTitle kicker="RSVP" title="Wedding RSVPs">
-        A Piper couple (deposit in) is $20 and anyone else $30, plus 13% HST
-        when bought by card on /rsvp. Sites you make here are free. The guest
+        Free for a Piper couple (deposit in) and $40 for anyone else, plus 13%
+        HST when bought by card on /rsvp. Sites you make here are free. The guest
         link starts with /rsvp.
       </DeskTitle>
       <div className="flex flex-wrap gap-2">

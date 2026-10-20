@@ -17,7 +17,7 @@ const SAMPLE: RsvpWedding = {
   contactPhone: '519-555-0142',
   lockAfterDeadline: true,
   autoRemind: true,
-  priceCents: 2000,
+  priceCents: 0,
   priceKind: 'piper',
   paid: true,
   theme: 'dark',
