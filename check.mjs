@@ -1,6 +1,6 @@
 import { chromium } from 'playwright'
 const out = []
-const note = (k, v) => { out.push(`${k}: ${v}`); console.log(`::notice title=${k}::${String(v).replace(/\n/g, ' | ').slice(0, 900)}`) }
+const note = (k, v) => { out.push(`${k}: ${String(v).replace(/\n/g, ' | ').slice(0, 400)}`) }
 const browser = await chromium.launch()
 const page = await browser.newPage()
 const errors = []
@@ -50,3 +50,5 @@ try {
 }
 note('console errors', errors.length ? errors.join(' || ') : 'none')
 await browser.close()
+const all = out.filter((l) => !/answer|home headings/.test(l)).join(' ## ')
+for (let i = 0; i < all.length; i += 3500) console.log(`::notice title=part${i}::${all.slice(i, i + 3500)}`)
