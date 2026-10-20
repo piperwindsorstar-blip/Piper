@@ -31,8 +31,7 @@ export function SiteFooter() {
             href={`mailto:${LINKS.email}`}
             className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-ink underline underline-offset-4 hover:text-ink"
           >
-            <Icon n="mail" className="h-4 w-4 text-neon" />
-            Email Piper: {LINKS.email}
+            <Icon n="mail" className="h-4 w-4 text-neon" />{`Email Piper: ${LINKS.email ?? ''}`}
           </a>
           <a
             href={LINKS.insta}

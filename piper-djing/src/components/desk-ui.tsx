@@ -68,6 +68,8 @@ export function Chip({
       className={`inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[11px] font-bold tracking-[0.08em] uppercase ${TONE[tone]}`}
     >
       {children}
+      {/* A separator for innerText: flex items join with no space between. */}
+      <span className="sr-only">{'\u00a0'}</span>
     </span>
   )
 }
@@ -215,9 +217,8 @@ export function CoupleName({
 }) {
   return (
     <>
-      {one}{' '}
-      <em className={`font-serif font-normal italic ${amp}`}>&amp;</em>{' '}
-      {two}
+      {`${one ?? ''} `}
+      <em className={`font-serif font-normal italic ${amp}`}>&amp;</em>{` ${two ?? ''}`}
     </>
   )
 }

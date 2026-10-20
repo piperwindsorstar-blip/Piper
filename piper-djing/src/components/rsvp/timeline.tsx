@@ -383,7 +383,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
                       />
                     </label>
                     <label className="text-sm sm:col-span-2">
-                      Location{' '}
+                      {"Location "}
                       <span className="text-[var(--text-faint)]">
                         (blank means {data.venue || 'the venue'})
                       </span>
@@ -398,7 +398,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
                       />
                     </label>
                     <label className="text-sm sm:col-span-2">
-                      Note{' '}
+                      {"Note "}
                       <span className="text-[var(--text-faint)]">(optional)</span>
                       <input
                         maxLength={NOTE_MAX}
@@ -418,7 +418,7 @@ export function TimelineEditor({ data }: { data: TimelineData }) {
                           patch(moment.id, { guests: event.target.checked })
                         }
                       />
-                      Show to guests
+                      {'Show to guests '}
                       {!moment.guests ? (
                         <span className="rounded-full border border-[var(--border-strong)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
                           Private · you and the DJ only

@@ -50,10 +50,10 @@ function InvoicePage() {
           className="h-20 w-auto"
         />
         <p className="mt-6 text-sm tracking-wide text-muted uppercase">
-          {invoice.sample ? 'TEST invoice' : 'Invoice'} · {invoice.status}
+          {`${invoice.sample ? 'TEST invoice' : 'Invoice'} · ${invoice.status ?? ''}`}
         </p>
         <h1 className="mt-3 font-display text-4xl tracking-tight">
-          {invoice.partnerOne} and {invoice.partnerTwo}
+          {`${invoice.partnerOne ?? ''} and ${invoice.partnerTwo ?? ''}`}
         </h1>
         <p className="mt-4 text-ink-soft">{longDate(invoice.eventDate)}</p>
         {voided ? (
@@ -120,7 +120,7 @@ function InvoicePage() {
             How to pay
           </h2>
           <p className="mt-3 text-sm leading-relaxed">
-            You can pay by e-transfer to{' '}
+            {"You can pay by e-transfer to "}
             <a
               href={`mailto:${PUBLIC_EMAIL}`}
               className="text-ink underline underline-offset-4"
@@ -147,7 +147,7 @@ function InvoicePage() {
           <p className="mt-3 text-sm leading-relaxed text-ink-soft">
             Sending the deposit, or paying a Ceremony only invoice in full, is
             agreement to the terms. A signature is extra proof and does not hold
-            the date by itself. Read the{' '}
+            {" the date by itself. Read the "}
             <Link to="/terms" className="text-ink underline underline-offset-4">
               full terms
             </Link>
@@ -200,10 +200,7 @@ function PayByCard({ slug, quote }: { slug: string; quote: CardQuote }) {
               className="min-h-11 w-40 rounded-lg border border-line bg-transparent px-3 tabular-nums"
             />
           </span>
-          <span id="amount-range" className="text-xs text-muted">
-            From {cad(quote.minCents)} up to the {cad(quote.maxCents)}{' '}
-            remaining. Pay the rest later by card, e-transfer or cash.
-          </span>
+          <span id="amount-range" className="text-xs text-muted">{`From ${cad(quote.minCents) ?? ''} up to the ${cad(quote.maxCents) ?? ''} remaining. Pay the rest later by card, e-transfer or cash.`}</span>
           {!chosen.ok ? (
             <span role="alert" className="text-xs text-red-700">
               {chosen.error}

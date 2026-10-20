@@ -103,7 +103,7 @@ export function TownPage({
           </section>
           <TrustBar />
           <section className="mx-auto max-w-3xl px-5 py-16">
-            <Eyebrow>{town.name} weddings</Eyebrow>
+            <Eyebrow>{`${town.name ?? ''} weddings`}</Eyebrow>
             <h2 className="mt-3 font-display text-4xl font-bold text-balance">
               Planned with you, run on time.
             </h2>

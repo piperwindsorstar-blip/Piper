@@ -44,8 +44,7 @@ export function ReviewLink({
       target="_blank"
       rel="noreferrer"
       className={`mt-1 flex min-h-11 w-fit items-center hover:underline ${className}`}
-    >
-      Read on {site}
+    >{`Read on ${site ?? ''}`}
     </a>
   )
 }

@@ -151,7 +151,7 @@ export function ActionButton({
         {busy}
       </>
     ) : phase === 'done' ? (
-      <>✓ {done}</>
+      <>{`✓ ${done ?? ''}`}</>
     ) : (
       children
     )

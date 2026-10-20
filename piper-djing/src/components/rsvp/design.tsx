@@ -353,7 +353,7 @@ export function Design({ data }: { data: ReadyManage }) {
                     onChange={(event) => word({ note: event.target.value })}
                   />
                   <p className="text-right text-xs text-[var(--text-faint)]">
-                    {invite.wording.note.length} / {NOTE_MAX}
+                    {`${invite.wording.note.length ?? ''} / ${NOTE_MAX ?? ''}`}
                   </p>
                 </div>
                 <LookPicker id="invite-note" look={lineLook('note')} onChange={(patch) => setLine('note', patch)} />
@@ -366,15 +366,11 @@ export function Design({ data }: { data: ReadyManage }) {
 
           <fieldset className={section}>
             <legend className={`${legend} float-left w-full`}>Your own text</legend>
-            <p className="clear-both pt-1 text-sm text-[var(--text-muted)]">
-              Add up to {BOX_MAX} lines of your own, like a dress code, "Adults only",
-              parking or a hashtag. They have the same Where and Style choices.
-            </p>
+            <p className="clear-both pt-1 text-sm text-[var(--text-muted)]">{`Add up to ${BOX_MAX ?? ''} lines of your own, like a dress code, "Adults only", parking or a hashtag. They have the same Where and Style choices.`}</p>
             <div className="grid gap-3 pt-3">
               {invite.wording.boxes.map((box, index) => (
                 <div key={box.id} className="grid gap-3 rounded-2xl border border-[var(--border)] p-3">
-                  <label htmlFor={`box-${box.id}`} className="sr-only">
-                    Text box {index + 1}
+                  <label htmlFor={`box-${box.id}`} className="sr-only">{`Text box ${index + 1}`}
                   </label>
                   <textarea
                     id={`box-${box.id}`}
@@ -459,8 +455,7 @@ export function Design({ data }: { data: ReadyManage }) {
                   This is a preview on your card. Press Save photo to keep it.
                 </p>
               ) : data.photo ? (
-                <p className="text-xs text-[var(--text-faint)]">
-                  Saved photo · {photoSizeLabel(data.photo.bytes)}
+                <p className="text-xs text-[var(--text-faint)]">{`Saved photo · ${photoSizeLabel(data.photo.bytes) ?? ''}`}
                   {data.photo.width > 0 && data.photo.height > 0
                     ? ` · ${data.photo.width}×${data.photo.height}`
                     : ''}
@@ -588,7 +583,7 @@ export function Design({ data }: { data: ReadyManage }) {
             )}
           </div>
           <p className="text-xs text-[var(--text-faint)]">
-            The envelope here is addressed to {firstParty}. Each guest sees their own party's name.
+            {`The envelope here is addressed to ${firstParty}. Each guest sees their own party's name.`}
           </p>
         </aside>
       </div>

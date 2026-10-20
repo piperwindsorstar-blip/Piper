@@ -137,8 +137,7 @@ export function SiteFooter({ brand = false }: { brand?: boolean }) {
         <a
           href={`mailto:${PUBLIC_EMAIL}`}
           className={`inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4 ${brand ? `text-ivory ${focusLight}` : `text-ink ${focus}`}`}
-        >
-          Email Piper: {PUBLIC_EMAIL}
+        >{`Email Piper: ${PUBLIC_EMAIL ?? ''}`}
         </a>
         <Link
           to="/contact"

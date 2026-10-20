@@ -66,9 +66,7 @@ export function DeskGoogleReviews() {
           <div className="text-sm">
             {status?.ok ? (
               <p className="text-emerald-400">
-                Live: {status.rating.toFixed(1)} ★ from {status.count} Google
-                reviews; {status.shown} shown on the site. Last checked{' '}
-                {when(status.fetchedAt)}.{' '}
+                {`Live: ${status.rating.toFixed(1)} ★ from ${status.count} Google reviews; ${status.shown} shown on the site. Last checked ${when(status.fetchedAt)}. `}
                 {status.mapsUri ? (
                   <a
                     href={status.mapsUri}
@@ -81,8 +79,7 @@ export function DeskGoogleReviews() {
                 ) : null}
               </p>
             ) : (
-              <p className="text-amber-300">
-                Not showing on the site: {status?.error || 'no reviews yet.'}
+              <p className="text-amber-300">{`Not showing on the site: ${status?.error || 'no reviews yet.'}`}
               </p>
             )}
             <p className="mt-1 text-white/50">
@@ -186,8 +183,7 @@ export function DeskGoogleReviews() {
                     <p className="text-white/60">{place.address}</p>
                     <p className="text-white/60">
                       {place.rating ? `${place.rating} ★ · ` : ''}
-                      {place.count} reviews
-                    </p>
+                      {`${place.count ?? ''} reviews`}</p>
                     <code className="mt-1 block break-all text-xs text-white/80">
                       {place.id}
                     </code>

@@ -274,9 +274,7 @@ export function PayWall({
           ? 'This is free because this email is on a paid Piper date.'
           : 'This is the $40 standalone price. It is free for a couple who has already paid Piper.'}
       </p>
-      <p className="mt-3 text-[var(--text-muted)]">
-        The guest link {data.path} turns on when Piper records the payment.
-      </p>
+      <p className="mt-3 text-[var(--text-muted)]">{`The guest link ${data.path ?? ''} turns on when Piper records the payment.`}</p>
     </main>
   )
 }
@@ -348,9 +346,7 @@ export function Overview({ data }: { data: ReadyManage }) {
                 <p className="mt-1 text-4xl font-semibold">
                   {replied}
                   <span className="text-xl font-normal text-[var(--text-muted)]">
-                    {' '}
-                    of {stats.guests} guests
-                  </span>
+                    {` of ${stats.guests ?? ''} guests`}</span>
                 </p>
               </div>
               <div className="text-right text-sm">
@@ -359,8 +355,7 @@ export function Overview({ data }: { data: ReadyManage }) {
                   {data.deadlineLabel || '—'}
                 </p>
                 {data.catererLabel ? (
-                  <p className="text-[var(--text-faint)]">
-                    Caterer {data.catererLabel}
+                  <p className="text-[var(--text-faint)]">{`Caterer ${data.catererLabel ?? ''}`}
                   </p>
                 ) : null}
               </div>
@@ -445,8 +440,7 @@ export function Overview({ data }: { data: ReadyManage }) {
                   <li key={event.id} className="flex justify-between gap-3">
                     <span>{event.name}</span>
                     <span className="shrink-0">
-                      {event.attending} attending
-                    </span>
+                      {`${event.attending ?? ''} attending`}</span>
                   </li>
                 ))}
               </ul>
@@ -651,9 +645,7 @@ export function Guests({ data }: { data: ReadyManage }) {
             GUESTS & PARTIES
           </p>
           <h1 className="portal-display text-4xl">
-            {data.stats.guests} {data.stats.guests === 1 ? 'guest' : 'guests'} in{' '}
-            {data.stats.parties}{' '}
-            {data.stats.parties === 1 ? 'party' : 'parties'}
+            {`${data.stats.guests ?? ''} ${data.stats.guests === 1 ? 'guest' : 'guests'} in ${data.stats.parties ?? ''} ${data.stats.parties === 1 ? 'party' : 'parties'}`}
           </h1>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -748,8 +740,7 @@ export function Guests({ data }: { data: ReadyManage }) {
                     : 'Waiting'}
                 </span>
                 {data.invited[party.id] ? (
-                  <span className="text-xs text-emerald-500">
-                    ✓ Sent {shortWhen(data.invited[party.id] ?? '')}
+                  <span className="text-xs text-emerald-500">{`✓ Sent ${shortWhen(data.invited[party.id] ?? '') ?? ''}`}
                   </span>
                 ) : null}
               </span>
@@ -1290,8 +1281,7 @@ function EmailPartyButton({
         Email invitation
       </ActionButton>
       {last ? (
-        <span className="text-sm text-emerald-500" role="status">
-          ✓ Sent {shortWhen(last)}
+        <span className="text-sm text-emerald-500" role="status">{`✓ Sent ${shortWhen(last) ?? ''}`}
         </span>
       ) : null}
     </div>
@@ -1712,19 +1702,18 @@ export function Songs({ data }: { data: ReadyManage }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-semibold">
-                    {index + 1}. {song.title}
+                    {`${index + 1}. `}{song.title}
                   </p>
                   <p className="text-sm text-[var(--text-muted)]">
                     {song.artist || 'Artist not given'}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm text-[var(--text-muted)]">
-                  {song.count} {song.count === 1 ? 'request' : 'requests'}
+                  {`${song.count ?? ''} ${song.count === 1 ? 'request' : 'requests'}`}
                 </p>
               </div>
               {song.who ? (
-                <p className="mt-1 text-sm text-[var(--text-faint)]">
-                  Asked by {song.who}
+                <p className="mt-1 text-sm text-[var(--text-faint)]">{`Asked by ${song.who ?? ''}`}
                 </p>
               ) : null}
               <div
@@ -1916,11 +1905,7 @@ export function Exports({
           >
             Email parties still waiting
           </ActionButton>
-          <p className="max-w-xs text-sm text-[var(--text-muted)]">
-            Still waiting on {data.stats.waitingParties}{' '}
-            {data.stats.waitingParties === 1 ? 'party' : 'parties'}. The
-            automatic note goes out 7 days before the deadline.
-          </p>
+          <p className="max-w-xs text-sm text-[var(--text-muted)]">{`Still waiting on ${data.stats.waitingParties ?? ''} ${data.stats.waitingParties === 1 ? 'party' : 'parties'}. The automatic note goes out 7 days before the deadline.`}</p>
         </div>
         <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
           <h2 className="font-semibold">Send me a test</h2>
@@ -2006,8 +1991,8 @@ export function Exports({
                   className="flex flex-wrap items-center justify-between gap-2"
                 >
                   <span>
-                    <span className="font-semibold">{emailLabel(row)}</span>{' '}
-                    <span className="text-[var(--text-muted)]">→ {row.to}</span>
+                    <span className="font-semibold">{emailLabel(row)}</span>
+                    <span className="text-[var(--text-muted)]">{` → ${row.to ?? ''}`}</span>
                   </span>
                   <span
                     className={
@@ -2016,8 +2001,7 @@ export function Exports({
                         : 'text-[var(--text-faint)]'
                     }
                   >
-                    {row.delivered ? 'Sent' : 'Not sent'} ·{' '}
-                    {emailWhen(row.sentAt)}
+                    {`${row.delivered ? 'Sent' : 'Not sent'} · ${emailWhen(row.sentAt) ?? ''}`}
                   </span>
                 </li>
               ))}

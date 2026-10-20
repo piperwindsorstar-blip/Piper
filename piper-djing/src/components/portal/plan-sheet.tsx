@@ -44,18 +44,16 @@ export function PlanSheet({
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <h1 className="plan-display text-[32px] leading-[1.05] min-[720px]:text-[40px]">
-              {partnerOne} & {partnerTwo}
+              {`${partnerOne ?? ''} & ${partnerTwo ?? ''}`}
             </h1>
             <p className="mt-2 text-sm text-[#3a3a40]">
-              {planDate(eventDate)} · {venue || '—'} ·{' '}
+              {`${planDate(eventDate) ?? ''} · `}{`${venue || '—'} · `}
               {guests ? `${guests} guests` : '— guests'}
             </p>
           </div>
-          <p className="text-right text-sm text-[#3a3a40]">
-            Prepared {preparedOn(prepared)}
+          <p className="text-right text-sm text-[#3a3a40]">{`Prepared ${preparedOn(prepared) ?? ''}`}
             <span className="mt-1 block font-bold text-[#C2185B]">
-              {percent}% complete
-            </span>
+              {`${percent ?? ''}% complete`}</span>
           </p>
         </div>
 
@@ -71,7 +69,7 @@ export function PlanSheet({
             />
           </div>
           <p className="mt-4 text-sm">
-            Playlists:{' '}
+            {"Playlists: "}
             <Playlist label="Pre-ceremony" href={planning.preCeremony} />
             {' · '}
             <Playlist label="Cocktail" href={planning.cocktail} />
@@ -126,8 +124,7 @@ export function PlanSheet({
             <Pill label="Power" value={planning.power} />
             <Pill label="Outdoors" value={planning.outside} />
           </div>
-          <p className="mt-3 text-sm">
-            Uplights · {shown(planning.uplightColours)}
+          <p className="mt-3 text-sm">{`Uplights · ${shown(planning.uplightColours) ?? ''}`}
           </p>
         </Section>
 
@@ -173,8 +170,7 @@ export function PlanSheet({
             )
           })}
           {hidden.length > 0 ? (
-            <p className="mt-3 text-sm text-[#6b6b73]">
-              Not part of our day: {hidden.join(', ')}
+            <p className="mt-3 text-sm text-[#6b6b73]">{`Not part of our day: ${hidden.join(', ') ?? ''}`}
             </p>
           ) : null}
         </Section>
@@ -194,9 +190,8 @@ export function PlanSheet({
               ))
             )}
           </div>
-          <p className="mt-3 text-sm">Vibe: {shown(planning.genres)}</p>
-          <p className="mt-1 text-sm text-[#C2185B]">
-            Requests: {shown(planning.guestRequests)}
+          <p className="mt-3 text-sm">{`Vibe: ${shown(planning.genres) ?? ''}`}</p>
+          <p className="mt-1 text-sm text-[#C2185B]">{`Requests: ${shown(planning.guestRequests) ?? ''}`}
           </p>
         </Section>
 
@@ -241,7 +236,7 @@ function Pill({ label, value }: { label: string; value: string }) {
   const text = value.trim() || '—'
   return (
     <span className={`plan-pill plan-pill-${tone}`}>
-      {label} · {text}
+      {label}{` · ${text ?? ''}`}
     </span>
   )
 }
@@ -321,8 +316,7 @@ function MomentCard({ row }: { row: TimelineRow }) {
   return (
     <article className="plan-card rounded-xl border border-[#ececf0] p-3 text-sm">
       <p>
-        <span className="font-bold text-[#C2185B]">{timeLabel(row.time)}</span>{' '}
-        {row.label.trim() || row.activity}
+        <span className="font-bold text-[#C2185B]">{timeLabel(row.time)}</span>{` ${row.label.trim() || row.activity}`}
         {row.presetKey === '' ? <Added /> : null}
       </p>
       <p className="mt-1">
@@ -350,7 +344,7 @@ function SongColumn({
         <ol className="mt-2 grid gap-1 text-sm">
           {filled.map((item, index) => (
             <li key={`${item.song}-${index}`}>
-              {index + 1}. {songText(item.song, item.artist, item.link).text}
+              {`${index + 1}. ${songText(item.song, item.artist, item.link).text ?? ''}`}
             </li>
           ))}
         </ol>

@@ -206,8 +206,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
                 {date.full}
               </p>
               {view.timeWords ? (
-                <p className="inv-text" style={text(look.text.size)}>
-                  at {view.timeWords}
+                <p className="inv-text" style={text(look.text.size)}>{`at ${view.timeWords ?? ''}`}
                 </p>
               ) : null}
             </>
@@ -233,8 +232,7 @@ export function InvitationCard({ view }: { view: InviteView }) {
         {view.replyBy ? (
           <>
             {gap(16)}
-            <p className="inv-label" style={{ ...label, fontSize: cq(look.label.size - 0.5) }}>
-              Kindly reply by {view.replyBy}
+            <p className="inv-label" style={{ ...label, fontSize: cq(look.label.size - 0.5) }}>{`Kindly reply by ${view.replyBy ?? ''}`}
             </p>
           </>
         ) : null}
@@ -296,7 +294,7 @@ function BlockDate({ view, look, label }: { view: InviteView; look: RsvpLook; la
       {view.timeShort ? (
         <>
           <span aria-hidden="true" style={{ display: 'block', height: cq(10) }} />
-          <p className="inv-label" style={label}>at {view.timeShort}</p>
+          <p className="inv-label" style={label}>{`at ${view.timeShort ?? ''}`}</p>
         </>
       ) : null}
     </>
@@ -363,7 +361,7 @@ function TopMark({ view, look }: { view: InviteView; look: RsvpLook }) {
         <div style={{ display: 'grid', justifyItems: 'center', gap: cq(6) }}>
           <Fan style={width(130)} />
           {letters ? (
-            <span className="inv-foil" style={{ ...font, fontSize: cq(24), letterSpacing: '0.24em', textTransform: 'uppercase', paddingLeft: '0.24em' }}>{a}◆{b}</span>
+            <span className="inv-foil" style={{ ...font, fontSize: cq(24), letterSpacing: '0.24em', textTransform: 'uppercase', paddingLeft: '0.24em' }}>{`${a ?? ''}◆${b ?? ''}`}</span>
           ) : null}
         </div>
       )
@@ -378,7 +376,7 @@ function TopMark({ view, look }: { view: InviteView; look: RsvpLook }) {
         <div style={{ position: 'relative', width: cq(64), height: cq(64), display: 'grid', placeItems: 'center' }}>
           <span aria-hidden="true" style={{ position: 'absolute', inset: cq(9), border: '1px solid var(--inv-accent)', transform: 'rotate(45deg)' }} />
           <span aria-hidden="true" style={{ position: 'absolute', inset: cq(14), border: '1px solid color-mix(in srgb, var(--inv-accent) 45%, transparent)', transform: 'rotate(45deg)' }} />
-          <span className="inv-foil" style={{ ...font, fontFamily: look.amp.font, fontStyle: 'italic', fontSize: cq(19), letterSpacing: '0.04em', position: 'relative' }}>{a}{b}</span>
+          <span className="inv-foil" style={{ ...font, fontFamily: look.amp.font, fontStyle: 'italic', fontSize: cq(19), letterSpacing: '0.04em', position: 'relative' }}>{`${a ?? ''}${b ?? ''}`}</span>
         </div>
       ) : (
         <Diamond style={width(150)} />

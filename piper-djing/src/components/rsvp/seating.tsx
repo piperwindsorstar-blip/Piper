@@ -239,8 +239,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
               SEATING CHART
             </p>
             <h1 className="portal-display text-4xl">
-              {seatedCount} of {guests.length} seated
-            </h1>
+              {`${seatedCount ?? ''} of ${guests.length ?? ''} seated`}</h1>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
               Only guests who said they&apos;re attending can be seated.
             </p>
@@ -424,9 +423,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             className={`${rsvpGhostFit}`}
             aria-expanded={roomOpen}
             onClick={() => setRoomOpen((open) => !open)}
-          >
-            Room {formatLength(plan.room.width, unit, 'room')} ×{' '}
-            {formatLength(plan.room.length, unit, 'room')}
+          >{`Room ${formatLength(plan.room.width, unit, 'room') ?? ''} × ${formatLength(plan.room.length, unit, 'room') ?? ''}`}
           </button>
           <label className={`${rsvpGhostFit} cursor-pointer`}>
             {image ? 'Replace floor plan' : 'Upload floor plan'}
@@ -461,13 +458,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--pink)] bg-[var(--pink-tint)] px-4 py-3 text-sm text-[var(--text)]"
             role="alert"
           >
-            <span>
-              Every table is arranged, but {enlarge} table
-              {enlarge === 1 ? '' : 's'} could not get clear floor in a{' '}
-              {formatLength(plan.room.width, unit, 'room')} ×{' '}
-              {formatLength(plan.room.length, unit, 'room')} room, so{' '}
-              {enlarge === 1 ? 'it sits' : 'they sit'} in the nearest spot.
-            </span>
+            <span>{`Every table is arranged, but ${enlarge ?? ''} table${enlarge === 1 ? '' : 's'} could not get clear floor in a ${formatLength(plan.room.width, unit, 'room') ?? ''} × ${formatLength(plan.room.length, unit, 'room') ?? ''} room, so ${enlarge === 1 ? 'it sits' : 'they sit'} in the nearest spot.`}</span>
             <button
               type="button"
               className={`${rsvpButtonFit}`}
@@ -515,7 +506,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             role="status"
           >
             {tight.map((warning) => (
-              <li key={warning}>⚠ {warning}</li>
+              <li key={warning}>{`⚠ ${warning ?? ''}`}</li>
             ))}
           </ul>
         ) : null}
@@ -579,9 +570,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
                   <div>
                     <p className="font-semibold">{selectedGuest.name}</p>
                     <p className="text-sm text-[var(--text-muted)]">
-                      {tableLabel(selectedTable.name)} · seat{' '}
-                      {(selectedSpot?.seat ?? 0) + 1} ·{' '}
-                      {selectedGuest.partyName}
+                      {`${tableLabel(selectedTable.name) ?? ''} · seat ${(selectedSpot?.seat ?? 0) + 1} · ${selectedGuest.partyName ?? ''}`}
                     </p>
                   </div>
                   <MealTag
@@ -663,7 +652,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
 
             <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
               <h2 className="font-semibold">
-                Unassigned guests{' '}
+                {"Unassigned guests "}
                 <span className="text-[var(--text-muted)]">
                   ({unassigned.length})
                 </span>
@@ -795,8 +784,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
                         {tableLabel(table.name)}
                       </button>
                       <span className="text-[var(--text-muted)]">
-                        {sitting.length} / {table.seats} seated
-                      </span>
+                        {`${sitting.length ?? ''} / ${table.seats ?? ''} seated`}</span>
                     </h3>
                     <ul className="mt-2 grid gap-2">
                       {sitting.map((guestId) => {
@@ -830,7 +818,7 @@ export function SeatingChart({ data }: { data: SeatingData }) {
             role="status"
           >
             <span className="min-w-0 text-sm">
-              Tap an empty seat for{' '}
+              {"Tap an empty seat for "}
               <span className="font-semibold">{byId.get(placing)?.name}</span>
             </span>
             <button
@@ -999,10 +987,8 @@ function TablePanel({
     <section className="rounded-3xl border border-[var(--pink)] bg-[var(--surface)] p-4">
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-semibold">
-          {tableLabel(table.name)}{' '}
-          <span className="font-normal text-[var(--text-muted)]">
-            · {sitting.length} / {table.seats} seated
-          </span>
+          {`${tableLabel(table.name) ?? ''} `}
+          <span className="font-normal text-[var(--text-muted)]">{`· ${sitting.length ?? ''} / ${table.seats ?? ''} seated`}</span>
         </h2>
         <button
           type="button"
@@ -1101,8 +1087,7 @@ function TablePanel({
         />
       </div>
       {warning ? (
-        <p className="mt-3 text-sm text-amber-500" role="status">
-          ⚠ {warning}
+        <p className="mt-3 text-sm text-amber-500" role="status">{`⚠ ${warning ?? ''}`}
         </p>
       ) : null}
       <h3 className="mt-4 text-sm font-semibold">Guests and meals</h3>
@@ -1117,9 +1102,7 @@ function TablePanel({
             >
               <span>
                 <span className="text-[var(--text-faint)]">
-                  {(plan.seats[guestId]?.seat ?? 0) + 1}.
-                </span>{' '}
-                {guest.name}
+                  {`${(plan.seats[guestId]?.seat ?? 0) + 1}.`}</span>{` ${guest.name ?? ''}`}
               </span>
               <span className="flex items-center gap-2">
                 <MealTag meal={guest.meal} child={guest.isChild} />

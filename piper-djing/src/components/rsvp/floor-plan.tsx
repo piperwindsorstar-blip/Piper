@@ -1075,7 +1075,7 @@ function TableShape({
           fill={colours.muted}
           pointerEvents="none"
         >
-          {sitting.length} / {table.seats}
+          {`${sitting.length ?? ''} / ${table.seats ?? ''}`}
         </text>
       ) : null}
       {spots.map((spot, seat) => {

@@ -115,7 +115,7 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
   return (
     <RsvpFrame hidePhoto>
       <RsvpHeader step="Step 2 of 3" />
-      <h1 className="sr-only">Invitation for {data.party.name}</h1>
+      <h1 className="sr-only">{`Invitation for ${data.party.name ?? ''}`}</h1>
       <EnvelopeInvitation
         view={data.invite}
         rememberAs={`${data.slug}:${data.party.token}`}
@@ -162,7 +162,7 @@ export function HouseholdForm({ data }: { data: HouseholdData }) {
                   />
                 ) : (
                   <h2 className="text-xl font-semibold">
-                    {guest.firstName} {guest.lastName}
+                    {`${guest.firstName ?? ''} ${guest.lastName ?? ''}`}
                   </h2>
                 )}
                 {guest.isChild ? (
@@ -538,9 +538,7 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
       <RsvpHeader step="Step 3 of 3" />
       <Steps step={3} />
       <h1 className="portal-display text-4xl">Check your answers</h1>
-      <p className="mt-2 text-[var(--text-muted)]">
-        You can change these until {data.deadline || 'the deadline'}.
-      </p>
+      <p className="mt-2 text-[var(--text-muted)]">{`You can change these until ${data.deadline || 'the deadline'}.`}</p>
       <div className="mt-6 grid gap-4">
         {data.events.map((event) => (
           <section
@@ -567,8 +565,7 @@ export function ReviewReply({ data }: { data: HouseholdData }) {
                 >
                   <span>
                     <span className="block font-semibold">
-                      {guest.firstName} {guest.lastName}
-                      {guest.isPlusOne ? ' (plus-one)' : ''}
+                      {`${guest.firstName ?? ''} ${guest.lastName ?? ''}${guest.isPlusOne ? ' (plus-one)' : ''}`}
                     </span>
                     <span className="text-sm text-[var(--text-muted)]">
                       {[guest.meal, ...guest.dietary, guest.song]
@@ -709,15 +706,12 @@ export function ReplyDone({
       <h1 className="portal-display mt-4 text-center text-4xl">
         You&apos;re on the list!
       </h1>
-      <p className="mt-3 text-center text-[var(--text-muted)]">
-        Thanks, {data.party.guests[0]?.firstName || 'there'}. {data.couple} will
-        see your reply right away.
-        {sent && data.party.email
+      <p className="mt-3 text-center text-[var(--text-muted)]">{`Thanks, ${data.party.guests[0]?.firstName || 'there'}. ${data.couple ?? ''} will see your reply right away.`}{sent && data.party.email
           ? ` A copy is on its way to ${data.party.email}.`
           : ''}
       </p>
       <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <p className="text-lg font-semibold">{tally.attending} attending</p>
+        <p className="text-lg font-semibold">{`${tally.attending ?? ''} attending`}</p>
         <p className="text-sm text-[var(--text-muted)]">
           {tally.declined} can&apos;t make it
           {songs > 0

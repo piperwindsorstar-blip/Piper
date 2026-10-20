@@ -96,7 +96,7 @@ function BotsPage() {
         {token ? (
           <div className="rounded-xl border border-neon/40 bg-neon/10 p-4 sm:col-span-2">
             <p className="text-sm">
-              Token, copy it now:{' '}
+              {"Token, copy it now: "}
               <span className="font-mono break-all">{token}</span>
             </p>
             <button

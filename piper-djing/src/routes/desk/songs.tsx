@@ -109,7 +109,7 @@ function SongsPage() {
                 key={row.name}
                 className="rounded-full border border-[#e2dbf5] bg-[#faf8fe] px-3 py-1 text-sm font-semibold"
               >
-                {row.name} · {row.count}
+                {`${row.name ?? ''} · ${row.count ?? ''}`}
               </span>
             ))}
           </div>
@@ -117,7 +117,7 @@ function SongsPage() {
             <ul className="mt-4 grid gap-1 text-sm text-[#4a4262]">
               {data.guestRequests.map((row) => (
                 <li key={row.choice}>
-                  {row.choice} · {row.count}
+                  {`${row.choice ?? ''} · ${row.count ?? ''}`}
                 </li>
               ))}
             </ul>
@@ -144,21 +144,18 @@ function SongsPage() {
                   </p>
                 ) : null}
                 {row.guestRequests ? (
-                  <p className="mt-2 text-sm text-[#4a4262]">
-                    Guest requests: {row.guestRequests}
+                  <p className="mt-2 text-sm text-[#4a4262]">{`Guest requests: ${row.guestRequests ?? ''}`}
                   </p>
                 ) : null}
                 {row.dedications ? (
-                  <p className="mt-2 text-sm whitespace-pre-line text-[#4a4262]">
-                    Dedications: {row.dedications}
+                  <p className="mt-2 text-sm whitespace-pre-line text-[#4a4262]">{`Dedications: ${row.dedications ?? ''}`}
                   </p>
                 ) : null}
                 {row.playlists.length ? (
                   <p className="mt-2 flex flex-wrap gap-x-3 text-sm">
                     {row.playlists.map((list) => (
                       <SafeLink key={list.name} href={list.link}>
-                        {list.name} playlist
-                      </SafeLink>
+                        {`${list.name ?? ''} playlist`}</SafeLink>
                     ))}
                   </p>
                 ) : null}
@@ -209,7 +206,7 @@ function SongTitle({ song, artist, link }: { song: string; artist: string; link:
   const name = (
     <>
       <span className="font-semibold">{song}</span>
-      {artist ? <span className="text-[#6b6385]"> · {artist}</span> : null}
+      {artist ? <span className="text-[#6b6385]">{` · ${artist ?? ''}`}</span> : null}
     </>
   )
   return link ? <SafeLink href={link}>{name}</SafeLink> : name
@@ -224,7 +221,7 @@ function CountRow({ row }: { row: SongCount }) {
       <span className="min-w-0">
         <SongTitle song={row.song} artist={row.artist} link={row.link} />
         <span className="block text-sm text-[#6b6385]">
-          {row.couples.join(', ')} · {row.where.join(', ')}
+          {`${row.couples.join(', ') ?? ''} · ${row.where.join(', ') ?? ''}`}
         </span>
       </span>
     </li>

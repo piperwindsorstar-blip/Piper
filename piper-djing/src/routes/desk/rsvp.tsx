@@ -95,10 +95,8 @@ function RsvpDesk() {
             <div>
               <p className="font-semibold">{row.couple}</p>
               <p className="text-sm text-white/60">
-                {row.path} · {priceLabel(row.cents)} ·{' '}
-                {row.paid ? 'Paid' : 'Due'}
-                {row.sample ? ' · Sample' : ''} · {row.parties} parties
-              </p>
+                {`${row.path ?? ''} · ${priceLabel(row.cents) ?? ''} · ${row.paid ? 'Paid' : 'Due'}`}
+                {row.sample ? ' · Sample' : ''}{` · ${row.parties ?? ''} parties`}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button

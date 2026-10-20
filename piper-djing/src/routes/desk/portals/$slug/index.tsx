@@ -67,8 +67,7 @@ function CouplePortalPage() {
         title={`${page.partnerOne} & ${page.partnerTwo}`}
       >
         <p className="mt-2 text-sm text-white/70">
-          {longDate(page.eventDate)} · Answers save on this wedding only.
-        </p>
+          {`${longDate(page.eventDate) ?? ''} · Answers save on this wedding only.`}</p>
       </DeskTitle>
       {page.locked ? (
         <p className="rounded-2xl border border-neon/40 bg-neon/10 px-4 py-3 text-sm">

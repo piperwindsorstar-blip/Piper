@@ -98,7 +98,7 @@ function OverviewPage() {
         <div className="grid min-w-0 gap-1.5">
           <p className={deskKicker}>{dayLine(today)}</p>
           <h1 className="font-display text-[40px] leading-[1.02] font-extrabold tracking-[-0.02em] md:text-[52px]">
-            {greeting()},{' '}
+            {`${greeting() ?? ''}, `}
             <em className="font-serif font-normal tracking-normal text-[#ff007f] italic">Piper.</em>
           </h1>
           <p className="max-w-2xl text-base text-[#4a4262] md:text-lg">{subline}</p>
@@ -162,7 +162,7 @@ function ComingUp({ rows }: { rows: WeddingChecklist[] }) {
               <span className="grid min-w-0">
                 <span className="font-semibold">{row.couple}</span>
                 <span className="text-sm text-[#5b5370]">
-                  {shortDate(row.eventDate)} · {inDays(row.days)} ·{' '}
+                  {`${shortDate(row.eventDate) ?? ''} · ${inDays(row.days) ?? ''} · `}
                   {row.open === 0 ? 'Ready' : `${row.open} still to sort`}
                 </span>
               </span>
@@ -242,13 +242,12 @@ function NextWedding({
           {day.getUTCDate()}
         </span>
         <span className="text-[13px] font-bold tracking-[0.16em]">
-          {month} {day.getUTCFullYear()}
+          {`${month ?? ''} ${day.getUTCFullYear() ?? ''}`}
         </span>
       </div>
       <div className="grid min-w-0 gap-5 border-[#4b3f72] p-5 sm:border-l-2 sm:border-dashed sm:p-7">
         <div className="grid gap-1">
-          <p className="text-xs font-bold tracking-[0.16em] text-[#ff8cc6] uppercase">
-            Next up · {inDays(days)}
+          <p className="text-xs font-bold tracking-[0.16em] text-[#ff8cc6] uppercase">{`Next up · ${inDays(days) ?? ''}`}
           </p>
           <h2 id="next-up" className="font-display text-[34px] leading-[1.02] font-extrabold tracking-[-0.02em] md:text-[40px]">
             <CoupleName one={booking.partnerOne} two={booking.partnerTwo} amp="text-[#ff8cc6]" />
@@ -260,8 +259,8 @@ function NextWedding({
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Tile label="Paid">
             <span className="font-display text-[22px] leading-none font-extrabold">
-              {dollars(paid)}{' '}
-              <span className="font-sans text-sm font-medium text-[#cfc6e6]">of {dollars(total)}</span>
+              {`${dollars(paid) ?? ''} `}
+              <span className="font-sans text-sm font-medium text-[#cfc6e6]">{`of ${dollars(total) ?? ''}`}</span>
             </span>
             <Bar value={total > 0 ? (paid / total) * 100 : 0} label={`${cad(paid)} of ${cad(total)} paid`} color="bg-[#7ee2b0]" track="bg-[#3a2f5c]" height="h-1.5" />
           </Tile>
@@ -269,9 +268,9 @@ function NextWedding({
             {plan ? (
               <>
                 <span className="font-display text-[22px] leading-none font-extrabold">
-                  {plan.percent}%{' '}
+                  {`${plan.percent ?? ''}% `}
                   <span className="font-sans text-sm font-medium text-[#cfc6e6]">
-                    {plan.answered} of {plan.total}
+                    {`${plan.answered ?? ''} of ${plan.total ?? ''}`}
                   </span>
                 </span>
                 <Bar value={plan.percent} label={`${plan.percent}% planned`} color="bg-[#ff007f]" track="bg-[#3a2f5c]" height="h-1.5" />
@@ -341,7 +340,7 @@ function QuietHero() {
         Nothing on the book yet
       </p>
       <h2 id="quiet-up" className="font-display text-4xl leading-[1.05] font-extrabold tracking-[-0.02em]">
-        Your next wedding shows up{' '}
+        {"Your next wedding shows up "}
         <em className="font-serif font-normal tracking-normal text-[#ff8cc6] italic">right here.</em>
       </h2>
       <p className="max-w-lg text-[#d9d0ea]">
@@ -559,15 +558,12 @@ function MoneyCard({ summary }: { summary: ReturnType<typeof moneySummary> }) {
           <span className="flex justify-between gap-3 font-semibold">
             <span>{due.names.replace(' and ', ' & ')}</span>
             <span>
-              {dollars(due.leftCents)} by {shortDate(due.eventDate)}
+              {`${dollars(due.leftCents) ?? ''} by ${shortDate(due.eventDate) ?? ''}`}
             </span>
           </span>
         </div>
       ) : null}
-      <p className="text-[13px] text-[#4a4262]">
-        Your {totals.weddings} {totals.weddings === 1 ? 'wedding' : 'weddings'}. Pynx pays you for its
-        dates separately.
-      </p>
+      <p className="text-[13px] text-[#4a4262]">{`Your ${totals.weddings ?? ''} ${totals.weddings === 1 ? 'wedding' : 'weddings'}. Pynx pays you for its dates separately.`}</p>
     </section>
   )
 }
@@ -592,8 +588,7 @@ function Season({ desk, today }: { desk: DeskData; today: string }) {
         <div className="grid gap-0.5">
           <p className={deskKicker}>Your season</p>
           <h2 id="season" className={deskH2}>
-            {total} {total === 1 ? 'wedding' : 'weddings'} in the next 12 months
-          </h2>
+            {`${total ?? ''} ${total === 1 ? 'wedding' : 'weddings'} in the next 12 months`}</h2>
         </div>
         <span className="flex gap-4 text-[13px] text-[#4a4262]">
           <span className="inline-flex items-center gap-1.5">

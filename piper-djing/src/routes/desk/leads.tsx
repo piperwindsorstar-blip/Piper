@@ -70,7 +70,7 @@ function LeadsPage() {
         >
           <div className="grid max-w-xl gap-2">
             <h2 id="no-leads" className="font-display text-3xl leading-[1.05] font-extrabold tracking-[-0.02em] sm:text-[40px]">
-              No new inquiries.{' '}
+              {"No new inquiries. "}
               <em className="font-serif font-normal tracking-normal text-[#d1006b] italic">Yet.</em>
             </h2>
             <p className="text-[#4a4262] sm:text-lg">
@@ -162,8 +162,7 @@ function LeadCard({
         {lead.eventDate ? (
           clash ? (
             <span className="inline-flex items-center gap-2 rounded-[10px] bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">
-              <TriangleAlert className="h-4.5 w-4.5" aria-hidden="true" />
-              Taken: {clash}
+              <TriangleAlert className="h-4.5 w-4.5" aria-hidden="true" />{`Taken: ${clash ?? ''}`}
             </span>
           ) : (
             <span className="inline-flex items-center gap-2 rounded-[10px] bg-[#dcf3e7] px-3 py-2 text-sm font-bold text-[#0b5e41]">

@@ -214,9 +214,7 @@ function BookPage() {
           </p>
           {dateIsAhead && !done ? (
             <p className="mt-6 rounded-xl border border-neon/40 bg-neon/10 px-4 py-3 text-lg font-semibold">
-              {openDateLabel(requestedDate)} is open. Tell Piper a little more
-              and the reply comes by email.
-            </p>
+              {`${openDateLabel(requestedDate) ?? ''} is open. Tell Piper a little more and the reply comes by email.`}</p>
           ) : datePassed && !done ? (
             <p role="alert" className="mt-6 rounded-xl border border-ink/30 bg-paper px-4 py-3 text-lg font-semibold">
               That date has passed, please pick another.

@@ -36,8 +36,7 @@ export function FinalCta() {
         href={`mailto:${LINKS.email}`}
         className="mt-7 inline-flex min-h-11 items-center gap-2 px-5 text-lg font-semibold text-white underline underline-offset-4 hover:text-hot"
       >
-        <Icon n="mail" className="h-5 w-5 text-hot" />
-        Email Piper: {LINKS.email}
+        <Icon n="mail" className="h-5 w-5 text-hot" />{`Email Piper: ${LINKS.email ?? ''}`}
       </a>
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 px-5 text-white/75">
         <a

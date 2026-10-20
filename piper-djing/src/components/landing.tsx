@@ -273,9 +273,7 @@ export function Landing({
                     key={word.id}
                     className="flex flex-col justify-between rounded-card border border-ivory/20 bg-ink-soft px-6 py-8"
                   >
-                    <blockquote className="font-display text-xl leading-snug tracking-tight whitespace-pre-wrap">
-                      “{word.quote}”
-                    </blockquote>
+                    <blockquote className="font-display text-xl leading-snug tracking-tight whitespace-pre-wrap">{`“${word.quote ?? ''}”`}</blockquote>
                     <footer className="mt-6 text-sm text-paper-deep">
                       {word.names}
                       {word.when ? (

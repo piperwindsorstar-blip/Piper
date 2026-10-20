@@ -52,7 +52,7 @@ export function CouplePicks({
           >
             <span className="font-bold">{hit.title}</span>
             {hit.artist ? (
-              <span className="text-[var(--pink-soft)]"> · {hit.artist}</span>
+              <span className="text-[var(--pink-soft)]">{` · ${hit.artist ?? ''}`}</span>
             ) : null}
           </button>
         ))}
