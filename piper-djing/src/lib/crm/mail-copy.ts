@@ -111,7 +111,7 @@ export function bookingLetter(
     signOff(),
   ]
   return {
-    subject: subject('Your date with Piper DJing', booking.sample),
+    subject: subject('Your date with DJ Piper P', booking.sample),
     text: compact(lines),
   }
 }
@@ -147,7 +147,7 @@ export function invoiceLetter(
     signOff(),
   ]
   return {
-    subject: subject('Your invoice from Piper DJing', booking.sample),
+    subject: subject('Your invoice from DJ Piper P', booking.sample),
     text: compact(lines),
   }
 }
@@ -223,7 +223,7 @@ export function paymentLetter(
     signOff(),
   ]
   return {
-    subject: subject('Payment received · Piper DJing', booking.sample),
+    subject: subject('Payment received · DJ Piper P', booking.sample),
     text: compact(lines),
   }
 }
@@ -283,7 +283,7 @@ function subject(title: string, sample: boolean): string {
 }
 
 function signOff(): string {
-  return `Piper DJing\n${PUBLIC_EMAIL}`
+  return `DJ Piper P\n${PUBLIC_EMAIL}`
 }
 
 function compact(lines: string[]): string {

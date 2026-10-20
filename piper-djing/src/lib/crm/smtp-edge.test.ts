@@ -46,11 +46,11 @@ function scripted(replies: string[]) {
 describe('edge smtp', () => {
   it('builds a plain letter and pulls the mailbox out of the from line', () => {
     assert.equal(
-      mailbox('Piper DJing <PiperPWeddingDJ@gmail.com>'),
+      mailbox('DJ Piper P <PiperPWeddingDJ@gmail.com>'),
       'PiperPWeddingDJ@gmail.com',
     )
     const data = smtpData({
-      from: 'Piper DJing <PiperPWeddingDJ@gmail.com>',
+      from: 'DJ Piper P <PiperPWeddingDJ@gmail.com>',
       to: 'guest@example.com',
       replyTo: 'PiperPWeddingDJ@gmail.com',
       letter: { subject: 'You are confirmed', text: 'Hello\n.secret' },
@@ -63,7 +63,7 @@ describe('edge smtp', () => {
 
   it('wraps an HTML card and a CSV attachment in one message', () => {
     const data = smtpData({
-      from: 'Piper DJing <PiperPWeddingDJ@gmail.com>',
+      from: 'DJ Piper P <PiperPWeddingDJ@gmail.com>',
       to: 'guest@example.com',
       replyTo: null,
       letter: {
@@ -104,7 +104,7 @@ describe('edge smtp', () => {
     await submitSmtp(session.socket, {
       user: 'PiperPWeddingDJ@gmail.com',
       pass: 'app-password',
-      from: 'Piper DJing <PiperPWeddingDJ@gmail.com>',
+      from: 'DJ Piper P <PiperPWeddingDJ@gmail.com>',
       to: 'guest@example.com',
       data: 'Subject: Hi\r\n\r\nHello\r\n',
     })

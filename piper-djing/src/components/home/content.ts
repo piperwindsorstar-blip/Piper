@@ -1,3 +1,5 @@
+import { FACEBOOK_PAGE_URL } from '../../lib/crm/defaults.ts'
+
 export const PHOTOS = {
   mixer: '/photos/brand/brand-mixer.jpg',
   phones: '/photos/brand/brand-phones.jpg',
@@ -20,6 +22,8 @@ export const LINKS = {
   review: 'https://g.page/r/CZeXBF6gallvEAI/review',
   insta: 'https://www.instagram.com/dj_piperp',
   email: 'PiperPWeddingDJ@gmail.com',
+  facebook: FACEBOOK_PAGE_URL,
+  contact: '/contact',
   bulls: 'https://www.facebook.com/share/1CHxV2PubR/',
 } as const
 

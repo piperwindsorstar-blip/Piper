@@ -78,7 +78,7 @@ const PREVIOUS_TRAVEL_PARAGRAPH = `${TRAVEL_PARAGRAPH} ${PREVIOUS_VENUE_SENTENCE
 /** The venue clause, with that old sentence left stranded after it. */
 const PREVIOUS_SECOND_VENUE_PARAGRAPH = `${SECOND_VENUE_PARAGRAPH} ${PREVIOUS_VENUE_SENTENCE}`
 
-export const TERMS_BODY = `Piper DJing
+export const TERMS_BODY = `DJ Piper P
 
 A date moves from open, to a hold, to booked. It does not move backward. A hold starts when the invoice is sent and the booking has a venue name and a street. The hold date is that day in Toronto. The hold runs 30 days, counting the day it starts.
 
@@ -98,6 +98,8 @@ ${BOOKED_PARAGRAPH}`
 
 export function reviseTerms(body: string): string {
   let next = body
+  // The heading uses the brand name, DJ Piper P.
+  if (next.startsWith('Piper DJing\n')) next = `DJ Piper P${next.slice('Piper DJing'.length)}`
   next = next.split(NUMBERED_AGREEMENT_PARAGRAPH).join(AGREEMENT_PARAGRAPH)
   // The terms are public, so they name the town, not the home street.
   next = next.split(STREET_TRAVEL_PARAGRAPH).join(TRAVEL_PARAGRAPH)

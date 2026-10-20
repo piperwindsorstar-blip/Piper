@@ -142,7 +142,7 @@ export async function fulfilRsvpPurchase(input: {
           '',
           'Piper is setting up your page by hand and will email you the sign-in link shortly.',
           '',
-          'Piper DJing',
+          'DJ Piper P',
         ].join('\n'),
       },
     })

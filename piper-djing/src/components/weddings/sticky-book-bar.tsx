@@ -10,8 +10,8 @@ export function StickyBookBar() {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
         <p className="hidden text-sm text-soft sm:block">
-          <span className="font-semibold text-ink">Dates are booking up.</span>{' '}
-          Reply within one business day.
+          <span className="font-semibold text-ink">Dates are booking up.</span>
+          {' Reply within one business day.'}
         </p>
         <div className="flex w-full gap-2 sm:w-auto">
           <ButtonOutline className="flex-1 !px-5 !py-2.5 text-sm sm:flex-none">

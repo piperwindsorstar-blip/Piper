@@ -79,4 +79,9 @@ export function packageName(id: PackageId): string {
 
 export const PUBLIC_EMAIL = 'PiperPWeddingDJ@gmail.com'
 export const INSTAGRAM_URL = 'https://www.instagram.com/dj_piperp/'
+/**
+ * NEEDS REAL URL: the DJ Piper P Facebook Page (not a personal profile, not
+ * the charity share link). Facebook links show site-wide once this is set.
+ */
+export const FACEBOOK_PAGE_URL = ''
 export const GOOGLE_REVIEW_URL = 'https://g.page/r/CZeXBF6gallvEAI/review'

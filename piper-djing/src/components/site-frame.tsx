@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import {
+  FACEBOOK_PAGE_URL,
   GOOGLE_REVIEW_URL,
   INSTAGRAM_URL,
   PUBLIC_EMAIL,
@@ -31,7 +32,7 @@ export function SiteHeader({
           to="/"
           className={`${brand ? 'font-semibold' : 'font-display'} text-xl tracking-tight ${ring}`}
         >
-          {brand ? 'DJ Piper P' : 'Piper DJing'}
+          DJ Piper P
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -108,12 +109,43 @@ export function SiteFooter({ brand = false }: { brand?: boolean }) {
             <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
           </svg>
         </a>
+        {FACEBOOK_PAGE_URL ? (
+          <a
+            href={FACEBOOK_PAGE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="DJ Piper P on Facebook"
+            className={`inline-flex size-11 items-center justify-center hover:text-ink-soft ${brand ? `text-ivory ${focusLight}` : `text-ink ${focus}`}`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-6"
+              aria-hidden="true"
+            >
+              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+            </svg>
+          </a>
+        ) : null}
         <a
           href={`mailto:${PUBLIC_EMAIL}`}
-          className={`inline-flex min-h-11 items-center text-sm ${brand ? `text-white/70 ${focusLight}` : `text-muted ${focus}`}`}
+          className={`inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4 ${brand ? `text-ivory ${focusLight}` : `text-ink ${focus}`}`}
         >
-          {PUBLIC_EMAIL}
+          Email Piper: {PUBLIC_EMAIL}
         </a>
+        <Link
+          to="/contact"
+          className={`inline-flex min-h-11 items-center text-sm ${brand ? `text-ivory ${focusLight}` : `text-ink ${focus}`}`}
+        >
+          Contact
+        </Link>
         <Link
           to="/rsvp"
           className={`inline-flex min-h-11 items-center text-sm ${brand ? `text-ivory ${focusLight}` : `text-ink ${focus}`}`}

@@ -34,15 +34,15 @@ export function About() {
       <div>
         <Eyebrow>About</Eyebrow>
         <h2 className="mt-4 font-display text-4xl leading-tight font-bold text-balance md:text-6xl">
-          Behind the booth is a{' '}
+          {'Behind the booth is a '}
           <span className="font-serif font-normal text-neon italic">
             person
-          </span>{' '}
-          who truly cares.
+          </span>
+          {' who truly cares.'}
         </h2>
         <div className="mt-8 space-y-5 text-lg leading-relaxed text-white/75">
           <p>
-            I’m Martin Piper, but everyone knows me as{' '}
+            {'I’m Martin Piper, but everyone knows me as '}
             <span className="font-semibold text-white">Piper P</span>. I play
             weddings, private parties, club nights and community events across
             Brantford and the surrounding area.
@@ -78,6 +78,17 @@ export function About() {
             <Icon n="insta" className="h-4 w-4 text-hot" />
             @DJ_PIPERP
           </a>
+          {LINKS.facebook ? (
+            <a
+              href={LINKS.facebook}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 hover:text-white"
+            >
+              <Icon n="facebook" className="h-4 w-4 text-hot" />
+              Facebook
+            </a>
+          ) : null}
         </div>
       </div>
     </section>

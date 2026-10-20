@@ -80,7 +80,7 @@ export function DateCheckForm() {
         <Icon n="arrow" className="h-4 w-4" />
       </button>
       <p className="mt-3 text-center text-xs text-soft">
-        Or email{' '}
+        {'Or email '}
         <span className="font-medium text-ink select-all">{LINKS.email}</span>
       </p>
     </form>

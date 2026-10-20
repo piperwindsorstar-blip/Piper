@@ -91,7 +91,7 @@ describe('couple emails', () => {
       },
       url,
     )
-    assert.equal(letter.subject, 'Your invoice from Piper DJing')
+    assert.equal(letter.subject, 'Your invoice from DJ Piper P')
     assert.match(letter.text, /void/)
     assert.match(letter.text, /\$1,650\.00/)
     assert.match(letter.text, /\$100\.00/)

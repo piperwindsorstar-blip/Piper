@@ -7,14 +7,14 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { name: 'apple-mobile-web-app-title', content: 'Piper DJing' },
+      { name: 'apple-mobile-web-app-title', content: 'DJ Piper P' },
       { name: 'theme-color', content: '#f4f1ec' },
       { name: 'apple-mobile-web-app-status-bar-style', content: 'black' },
       {
         name: 'google-site-verification',
         content: 'rC-19iyENoGxBTVddW7hMLMplqxu6KsJtb64zruLGWY',
       },
-      { title: 'Piper DJing' },
+      { title: 'DJ Piper P' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
@@ -58,7 +58,7 @@ function NotFound() {
         That page is not here.
       </h1>
       <a className="mt-6 inline-flex text-sm text-muted" href="/">
-        Back to Piper DJing
+        Back to DJ Piper P
       </a>
     </main>
   )

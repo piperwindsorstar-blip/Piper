@@ -135,7 +135,7 @@ export function nudgeLetter(input: {
     '',
     `Wedding date: ${longDate(input.eventDate)}`,
     '',
-    `Martin · Piper DJing\n${PUBLIC_EMAIL}`,
+    `Martin · DJ Piper P\n${PUBLIC_EMAIL}`,
   ]
   return {
     subject,
@@ -143,7 +143,7 @@ export function nudgeLetter(input: {
       .join('\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim(),
-    fromName: 'Martin at Piper DJing',
+    fromName: 'Martin at DJ Piper P',
   }
 }
 

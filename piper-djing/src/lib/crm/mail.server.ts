@@ -321,7 +321,7 @@ function fromAddress(): string {
 }
 
 function defaultFrom(): string {
-  return `Piper DJing <${PUBLIC_EMAIL}>`
+  return `DJ Piper P <${PUBLIC_EMAIL}>`
 }
 
 /** The bare address inside "Name <address>"; the address never changes. */

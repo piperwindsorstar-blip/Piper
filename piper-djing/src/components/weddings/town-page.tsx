@@ -73,7 +73,7 @@ export function TownPage({
                   className="mb-8 h-32 w-auto sm:h-40"
                 />
                 <h1 className="font-display text-[clamp(2.5rem,6vw,4.9rem)] leading-[0.98] font-extrabold tracking-tight text-balance">
-                  Your {town.name}{' '}
+                  {`Your ${town.name} `}
                   <span className="font-serif font-normal text-neon italic">
                     wedding DJ.
                   </span>

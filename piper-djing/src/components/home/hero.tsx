@@ -45,7 +45,7 @@ export function Hero() {
               Serving Brantford, Hamilton, Cambridge, Paris and Brant County.
             </p>
             <p className="mt-1 max-w-xl text-base text-white/60">
-              Proud member of the{' '}
+              {'Proud member of the '}
               <a
                 href="https://cpdja.ca"
                 target="_blank"

@@ -1,4 +1,8 @@
-import { GOOGLE_REVIEW_URL, PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
+import {
+  FACEBOOK_PAGE_URL,
+  GOOGLE_REVIEW_URL,
+  PUBLIC_EMAIL,
+} from '../../lib/crm/defaults.ts'
 import { TRAVEL_BANDS } from '../../lib/piper/rules.ts'
 
 export const LINKS = {
@@ -7,6 +11,8 @@ export const LINKS = {
   review: GOOGLE_REVIEW_URL,
   insta: 'https://instagram.com/DJ_PIPERP',
   email: PUBLIC_EMAIL,
+  facebook: FACEBOOK_PAGE_URL,
+  contact: '/contact',
 } as const
 
 // Black lining keeps the white lettering crisp on the dark header.

@@ -2,10 +2,13 @@ import {
   PACKAGE_BUTTON_COPY,
   PUBLIC_EMAIL,
   INSTAGRAM_URL,
+  FACEBOOK_PAGE_URL,
 } from './crm/defaults.ts'
 import { PACKAGE_CENTS } from './piper/rules.ts'
 import { publicUrl } from './crm/safe-origin.ts'
 import site from './og/site.json' with { type: 'json' }
+
+const SAME_AS = [INSTAGRAM_URL, FACEBOOK_PAGE_URL].filter(Boolean)
 
 function lockedUrl(path: string): string {
   const base = site.url.replace(/\/$/, '')
@@ -27,6 +30,7 @@ export function publicHead(opts: {
     | '/book'
     | '/weddings'
     | '/terms'
+    | '/contact'
     | '/rsvp'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
@@ -80,7 +84,8 @@ export function professionalServiceJsonLd(
   return JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'ProfessionalService',
-    name: 'Piper DJing',
+    name: 'DJ Piper P',
+    alternateName: 'Piper DJing',
     url: lockedUrl('/weddings'),
     image: [
       `${site.url}/photos/dj-piper-at-the-booth.jpg`,
@@ -107,7 +112,7 @@ export function professionalServiceJsonLd(
       { '@type': 'AdministrativeArea', name: 'Brant County' },
     ],
     serviceType: 'Wedding DJ',
-    sameAs: [INSTAGRAM_URL],
+    sameAs: SAME_AS,
     memberOf: CPDJA,
     offers: priced.map((item) => ({
       '@type': 'Offer',
@@ -139,7 +144,7 @@ export function weddingLocalBusinessJsonLd(): string {
       '@type': 'AdministrativeArea',
       name: 'Brant County',
     }),
-    sameAs: [INSTAGRAM_URL],
+    sameAs: SAME_AS,
     memberOf: CPDJA,
   })
 }
@@ -170,7 +175,7 @@ export function townLocalBusinessJsonLd(town: {
       containedInPlace: { '@type': 'AdministrativeArea', name: 'Ontario' },
     },
     serviceType: 'Wedding DJ',
-    sameAs: [INSTAGRAM_URL],
+    sameAs: SAME_AS,
     memberOf: CPDJA,
   })
 }
@@ -193,7 +198,7 @@ export function homeLocalBusinessJsonLd(): string {
     areaServed: ['Brantford', 'Hamilton', 'Cambridge', 'Paris']
       .map((name) => ({ '@type': 'City', name }))
       .concat({ '@type': 'AdministrativeArea', name: 'Brant County' }),
-    sameAs: [INSTAGRAM_URL],
+    sameAs: SAME_AS,
     memberOf: CPDJA,
   })
 }
@@ -218,7 +223,7 @@ export function personJsonLd(): string {
       addressRegion: 'ON',
       addressCountry: 'CA',
     },
-    sameAs: [INSTAGRAM_URL],
+    sameAs: SAME_AS,
     memberOf: CPDJA,
   })
 }
