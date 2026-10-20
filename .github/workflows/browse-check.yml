@@ -1,6 +1,6 @@
 name: Browse check
 
-# Builds piper-djing/ for Node, runs it against an empty in-memory book and a
+# Runs piper-djing/ in the dev server against an empty in-memory book and a
 # local mail sink, and clicks through the public pages and the Desk invoice
 # flow. Pass or fail per step is posted as annotations on the run.
 
@@ -32,10 +32,6 @@ jobs:
         working-directory: piper-djing
         run: npm ci
 
-      - name: Build for Node
-        working-directory: piper-djing
-        run: npm run build
-
       - name: Browser and mail sink
         run: |
           pip install --quiet aiosmtpd
@@ -57,8 +53,11 @@ jobs:
           NODE_PATH: ${{ runner.temp }}/pw/node_modules
         run: |
           python3 e2e/mail-sink.py "$SINK_LOG" &
-          node .output/server/index.mjs > "$RUNNER_TEMP/server.log" 2>&1 &
-          for i in $(seq 1 60); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          # The dev server runs the in-memory book from node_modules.
+          npx vite dev --port 3000 --host 127.0.0.1 > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 120); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          # Warm the pages once so the first click is not a cold compile.
+          for path in / /weddings /book /rsvp /login /desk /desk/bookings /desk/money /desk/packages /desk/terms /portal; do curl -s -o /dev/null "http://127.0.0.1:3000$path"; done
           cp e2e/browse-check.mjs "$RUNNER_TEMP/pw/browse-check.mjs"
           status=0
           node "$RUNNER_TEMP/pw/browse-check.mjs" || status=$?

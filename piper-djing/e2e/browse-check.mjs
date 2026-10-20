@@ -52,6 +52,7 @@ async function spacing(page, path) {
 
 const browser = await chromium.launch()
 const page = await browser.newPage()
+page.setDefaultTimeout(45000)
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
 
@@ -70,7 +71,7 @@ await step('Desk login: wrong password shows the generic message', async () => {
 await step('Desk login: right password opens the Desk', async () => {
   await page.fill('input[type="password"]', 'piper-local')
   await page.click('button[type="submit"]')
-  await page.waitForURL(/\/desk/, { timeout: 10000 })
+  await page.waitForURL(/\/desk/, { timeout: 30000 })
 })
 
 await step('Desk: new booking with a draft invoice', async () => {
@@ -167,6 +168,7 @@ await step('Desk Money: void hides "Email the invoice"', async () => {
 // --- Public ----------------------------------------------------------------
 
 const pub = await browser.newPage()
+pub.setDefaultTimeout(45000)
 pub.on('pageerror', (e) => errors.push(e.message))
 
 await step('Home date checker: open date goes to /book with date and Wedding', async () => {
