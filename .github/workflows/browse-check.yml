@@ -1,0 +1,66 @@
+name: Browse check
+
+# Builds piper-djing/ for Node, runs it against an empty in-memory book and a
+# local mail sink, and clicks through the public pages and the Desk invoice
+# flow. Pass or fail per step is posted as annotations on the run.
+
+on:
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'piper-djing/**'
+      - '.github/workflows/browse-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: piper-djing/.nvmrc
+          cache: npm
+          cache-dependency-path: piper-djing/package-lock.json
+
+      - name: Install
+        working-directory: piper-djing
+        run: npm ci
+
+      - name: Build for Node
+        working-directory: piper-djing
+        run: npm run build
+
+      - name: Browser and mail sink
+        run: |
+          pip install --quiet aiosmtpd
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --silent playwright@1.48.2
+          npx playwright install --with-deps chromium
+
+      - name: Run the site and click through it
+        working-directory: piper-djing
+        env:
+          PIPER_SMTP_HOST: 127.0.0.1
+          PIPER_SMTP_PORT: '2525'
+          PIPER_SMTP_SECURE: 'false'
+          PIPER_SMTP_USER: check@example.com
+          PIPER_SMTP_PASS: check
+          PORT: '3000'
+          SINK_LOG: ${{ runner.temp }}/sink.log
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          python3 e2e/mail-sink.py "$SINK_LOG" &
+          node .output/server/index.mjs > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 1; done
+          cp e2e/browse-check.mjs "$RUNNER_TEMP/pw/browse-check.mjs"
+          status=0
+          node "$RUNNER_TEMP/pw/browse-check.mjs" || status=$?
+          tail -c 3000 "$RUNNER_TEMP/server.log" | tr '\n' ' ' | sed 's/^/::notice title=Server log::/' ; echo
+          exit $status
