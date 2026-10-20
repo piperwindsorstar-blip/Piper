@@ -67,14 +67,13 @@ function PortalsPage() {
             <article key={portal.slug} className={`${deskCard} grid gap-3`}>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-lg font-bold">
-                  {portal.partnerOne} & {portal.partnerTwo}
+                  {`${portal.partnerOne ?? ''} & ${portal.partnerTwo ?? ''}`}
                 </h3>
                 {portal.sample ? <Chip tone="amber">TEST</Chip> : null}
                 {portal.locked ? <Chip tone="pink">Locked</Chip> : null}
               </div>
               <p className="text-sm text-white/70">
-                {longDate(portal.eventDate)} · {portal.percent}% planned ·{' '}
-                {portal.answered} of {portal.total}
+                {`${longDate(portal.eventDate) ?? ''} · ${portal.percent ?? ''}% planned · ${portal.answered ?? ''} of ${portal.total ?? ''}`}
               </p>
               <ReminderLine
                 row={data.nudges.rows.find((row) => row.slug === portal.slug)}
@@ -186,8 +185,7 @@ function PlanReminders({
       {lastRun ? (
         <p className="mt-2 text-xs text-white/55">
           Last daily run {new Date(lastRun.ranAt).toLocaleString('en-CA', { timeZone: 'America/Toronto', dateStyle: 'medium', timeStyle: 'short' })}
-          {' · '}
-          {lastRun.note}
+          {` · ${lastRun.note ?? ''}`}
         </p>
       ) : null}
       <ActionButton
@@ -415,8 +413,7 @@ function QuestionDraft({
       {draft.options.length > 0 ? (
         <div className="grid gap-2">
           {draft.options.map((option) => (
-            <label key={option.value} className="field">
-              Hint for {option.value}
+            <label key={option.value} className="field">{`Hint for ${option.value ?? ''}`}
               <input
                 value={option.hint}
                 onChange={(event) =>
@@ -436,8 +433,7 @@ function QuestionDraft({
       {draft.replies.length > 0 ? (
         <div className="grid gap-2">
           {draft.replies.map((reply) => (
-            <label key={reply.value} className="field">
-              Reply when they pick {reply.value}
+            <label key={reply.value} className="field">{`Reply when they pick ${reply.value ?? ''}`}
               <textarea
                 value={reply.text}
                 onChange={(event) =>

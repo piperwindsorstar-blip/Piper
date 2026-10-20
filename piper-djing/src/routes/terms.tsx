@@ -33,7 +33,7 @@ function TermsPage() {
           {body}
         </pre>
         <p className="mt-8 border-t border-line pt-6 text-sm text-soft">
-          Questions about these terms? Email{' '}
+          {"Questions about these terms? Email "}
           <a
             href={`mailto:${PUBLIC_EMAIL}`}
             className="text-ink underline underline-offset-4"

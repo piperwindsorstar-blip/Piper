@@ -83,8 +83,7 @@ function SettingsPage() {
       <CardPaymentsSetting card={settings.card} />
       <section className={deskCard}>
         <p className="text-sm leading-relaxed text-white/85">
-          {DESK_TRAVEL_COPY} There is no flat travel fee to type in.
-        </p>
+          {`${DESK_TRAVEL_COPY ?? ''} There is no flat travel fee to type in.`}</p>
       </section>
       <section className={deskCard}>
         <p className="text-sm leading-relaxed text-white/85">
@@ -111,8 +110,7 @@ function SettingsPage() {
                 className="rounded-xl border border-white/10 bg-ink-950 px-4 py-3"
               >
                 <p>
-                  {email.kind === 'invoice' ? 'Invoice' : 'Booking'} ·{' '}
-                  {email.to}
+                  {`${email.kind === 'invoice' ? 'Invoice' : 'Booking'} · ${email.to ?? ''}`}
                 </p>
                 <p className="text-white/65">{email.subject}</p>
                 <p>{email.delivered ? 'Sent.' : email.detail}</p>
@@ -137,11 +135,7 @@ function BackupCard({ owner }: { owner: string }) {
   return (
     <section className={`${deskCard} grid gap-3`}>
       <h2 className="font-semibold">Backup</h2>
-      <p className="text-sm text-white/65">
-        Every Sunday morning a copy of your bookings, invoices, payments, leads,
-        RSVP sites and settings is emailed to {owner || 'the desk owner'}.
-        Sign-in sessions, bot keys, email logs and photos are left out.
-      </p>
+      <p className="text-sm text-white/65">{`Every Sunday morning a copy of your bookings, invoices, payments, leads, RSVP sites and settings is emailed to ${owner || 'the desk owner'}. Sign-in sessions, bot keys, email logs and photos are left out.`}</p>
       <p className="text-sm">
         {last
           ? `Last Sunday run: ${last.note}`

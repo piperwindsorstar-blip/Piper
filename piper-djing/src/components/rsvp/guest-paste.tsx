@@ -223,7 +223,7 @@ export function GuestPaste({
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{title}</span>
                   <span className="text-xs text-[var(--text-muted)]">
-                    {count} {count === 1 ? 'guest' : 'guests'}
+                    {`${count ?? ''} ${count === 1 ? 'guest' : 'guests'}`}
                   </span>
                 </span>
                 <span

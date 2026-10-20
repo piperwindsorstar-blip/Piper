@@ -31,9 +31,7 @@ export function Reviews({ reviews }: { reviews: PublicReview[] }) {
               className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl transition hover:border-neon/50"
             >
               <ReviewStars stars={review.stars} />
-              <blockquote className="flex-1 leading-relaxed text-white/85">
-                “{review.quote}”
-              </blockquote>
+              <blockquote className="flex-1 leading-relaxed text-white/85">{`“${review.quote ?? ''}”`}</blockquote>
               <figcaption className="mt-5 border-t border-white/10 pt-4 text-sm text-white/50">
                 {reviewCaption(review)}
                 <ReviewLink link={review.link} className="font-semibold text-hot" />

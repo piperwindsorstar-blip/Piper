@@ -53,11 +53,9 @@ export function OverviewScreen() {
         current="overview"
       />
       <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
-        {longDate(page.eventDate)} · {venue}
+        {`${longDate(page.eventDate) ?? ''} · ${venue ?? ''}`}
       </p>
-      <h1 className="portal-display mt-3 text-[32px] leading-[1.02] break-words min-[1024px]:text-[64px]">
-        Hi {page.partnerOne} & {page.partnerTwo}. Let's plan your night.
-      </h1>
+      <h1 className="portal-display mt-3 text-[32px] leading-[1.02] break-words min-[1024px]:text-[64px]">{`Hi ${page.partnerOne ?? ''} & ${page.partnerTwo ?? ''}. Let's plan your night.`}</h1>
       <p className="mt-4 max-w-[600px] text-lg text-[var(--text-muted)]">
         One question at a time. Answer what you know, skip what you don't, and
         come back whenever.
@@ -85,7 +83,7 @@ export function OverviewScreen() {
             search={{ q: next.id }}
             className="inline-flex min-h-[54px] w-full items-center justify-center rounded-[18px] bg-[var(--pink)] px-6 text-base font-bold text-[#0d0d0d] min-[1024px]:min-h-[60px] min-[1024px]:w-auto"
           >
-            {progress.answered === 0 ? 'Start' : 'Continue'}: {next.rail}
+            {`${progress.answered === 0 ? 'Start' : 'Continue'}: ${next.rail ?? ''}`}
           </Link>
         ) : (
           <Link
@@ -280,8 +278,7 @@ function PlanRail({
               <span className="block font-bold">
                 {planning.djName.trim() || 'Martin Piper · DJ Piper P'}
               </span>
-              <span className="text-[var(--text-muted)]">
-                Arrives {planning.arrivalTime.trim() || 'later'}
+              <span className="text-[var(--text-muted)]">{`Arrives ${planning.arrivalTime.trim() || 'later'}`}
               </span>
             </p>
             <p>

@@ -198,10 +198,7 @@ function BuyForm() {
     return (
       <div className="grid w-full max-w-md gap-4" aria-live="polite">
         <h2 className="portal-display text-3xl">Check your email</h2>
-        <p className="text-[var(--text-muted)]">
-          Your RSVP page comes free with your Piper booking. We sent the
-          sign-in link to {form.email}.
-        </p>
+        <p className="text-[var(--text-muted)]">{`Your RSVP page comes free with your Piper booking. We sent the sign-in link to ${form.email ?? ''}.`}</p>
       </div>
     )
   }

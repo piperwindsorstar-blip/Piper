@@ -168,10 +168,7 @@ function MoneyPage() {
             track="bg-[#3a2f5c]"
           />
           <p className="text-sm text-[#d9d0ea]">
-            {dollars(totals.collectedCents)} collected of {dollars(totals.bookedCents)} booked,
-            across {totals.weddings} {totals.weddings === 1 ? 'wedding' : 'weddings'}. Pynx
-            dates are paid by Pynx and are not counted.
-          </p>
+            {`${dollars(totals.collectedCents) ?? ''} collected of ${dollars(totals.bookedCents) ?? ''} booked, across ${totals.weddings ?? ''} ${totals.weddings === 1 ? 'wedding' : 'weddings'}. Pynx dates are paid by Pynx and are not counted.`}</p>
         </section>
         <SmallTotal label="Refunded" value={dollars(totals.refundedCents)} note={totals.refundedCents === 0 ? 'Nothing sent back' : 'Sent back to couples'} />
         <SmallTotal label="Card HST" value={dollars(totals.cardHstCents)} note="On top, never part of a balance" />
@@ -263,7 +260,7 @@ function MoneyPage() {
                     className="overflow-hidden rounded-[20px] border border-[#e6def4] bg-white"
                   >
                     <h2 className="bg-[#faf8fe] px-5 py-3 text-xs font-bold tracking-[0.14em] text-[#6b5fa0] uppercase">
-                      {monthName(month.month)} · {dollars(month.netCents)}
+                      {`${monthName(month.month) ?? ''} · ${dollars(month.netCents) ?? ''}`}
                     </h2>
                     <ul>
                       {month.payments.map((payment) => (
@@ -319,7 +316,7 @@ function MoneyPage() {
               </option>
               {payable.map((booking) => (
                 <option key={booking.id} value={booking.id}>
-                  {booking.partnerOne} & {booking.partnerTwo}
+                  {`${booking.partnerOne ?? ''} & ${booking.partnerTwo ?? ''}`}
                   {booking.invoice && booking.invoice.balanceCents > 0
                     ? ` · ${dollars(booking.invoice.balanceCents)} left`
                     : ' · paid up'}
@@ -430,8 +427,7 @@ function BalanceReminders({ on }: { on: boolean }) {
   return (
     <section className={`${deskCard} flex flex-wrap items-center justify-between gap-3`} aria-labelledby="balance-reminders">
       <div className="min-w-0 flex-[1_1_20rem]">
-        <h2 id="balance-reminders" className="font-semibold text-[#1c1533]">
-          Balance reminders {on ? 'are on' : 'are off'}
+        <h2 id="balance-reminders" className="font-semibold text-[#1c1533]">{`Balance reminders ${on ? 'are on' : 'are off'}`}
         </h2>
         <p className="mt-1 text-sm text-[#5b5370]">
           {on
@@ -498,8 +494,7 @@ function OwingCard({
             {row.names.replace(' and ', ' & ')}
           </Link>
           {sample ? <span className="ml-2 align-middle"><Chip tone="red">Test</Chip></span> : null}
-          <p className="text-sm text-[#5b5370]">
-            Wedding {longDate(row.eventDate)}
+          <p className="text-sm text-[#5b5370]">{`Wedding ${longDate(row.eventDate) ?? ''}`}
             {row.invoiceStatus ? ` · Invoice ${row.invoiceStatus}` : ''}
           </p>
         </div>
@@ -507,7 +502,7 @@ function OwingCard({
           <p className="font-display text-3xl leading-none font-extrabold text-[#d1006b] tabular-nums">
             {dollars(row.leftCents)}
           </p>
-          <p className="mt-1 text-xs text-[#5b5370]">left of {dollars(row.totalCents)}</p>
+          <p className="mt-1 text-xs text-[#5b5370]">{`left of ${dollars(row.totalCents) ?? ''}`}</p>
         </div>
       </div>
       <Bar value={paidPct} label={`${cad(row.paidCents)} of ${cad(row.totalCents)} paid`} />
@@ -586,7 +581,7 @@ function StripeTag({ live, href }: { live: boolean; href: string }) {
       className="rounded-full bg-[#635BFF] px-2 py-0.5 text-[11px] font-semibold !text-white hover:brightness-110"
       title="View in Stripe"
     >
-      Stripe{live ? '' : ' · test'} ↗
+      {`Stripe${live ? '' : ' · test'} ↗`}
     </a>
   )
 }
@@ -623,16 +618,15 @@ function RsvpPurchaseRow({
             {stripe ? <StripeTag live={row.live} href={stripe} /> : null}
           </p>
           <p className="mt-0.5 text-xs text-[#5b5370]">
-            {shortDay(row.paidOn)} · {row.priceKind === 'piper' ? 'Piper couple price' : 'Standalone'} ·{' '}
-            {RSVP_OUTCOME[row.outcome] ?? row.outcome}
+            {`${shortDay(row.paidOn) ?? ''} · ${row.priceKind === 'piper' ? 'Piper couple price' : 'Standalone'} · ${RSVP_OUTCOME[row.outcome] ?? row.outcome ?? ''}`}
           </p>
           <p className="text-xs text-[#5b5370]">
-            {row.email} · /rsvp/{row.slug}
+            {`${row.email ?? ''} · /rsvp/${row.slug ?? ''}`}
           </p>
         </div>
         <div className="shrink-0 text-right">
           <p className="font-semibold tabular-nums">{cad(row.baseCents)}</p>
-          <p className="text-xs text-[#5b5370] tabular-nums">+ {cad(row.hstCents)} HST</p>
+          <p className="text-xs text-[#5b5370] tabular-nums">{`+ ${cad(row.hstCents) ?? ''} HST`}</p>
         </div>
       </div>
     </li>
@@ -694,9 +688,7 @@ function PaymentCard({
               {cad(Math.abs(payment.cents))}
             </span>
             {payment.hstCents > 0 ? (
-              <span className="block text-xs text-[#5b5370] tabular-nums">
-                + {cad(payment.hstCents)} HST
-              </span>
+              <span className="block text-xs text-[#5b5370] tabular-nums">{`+ ${cad(payment.hstCents) ?? ''} HST`}</span>
             ) : null}
           </span>
         </summary>
@@ -705,11 +697,7 @@ function PaymentCard({
           onSubmit={(event) => event.preventDefault()}
         >
           {payment.hstCents > 0 ? (
-            <p className="text-sm text-[#5b5370] sm:col-span-2">
-              Card HST {cad(payment.hstCents)} (13% of this payment) · charged{' '}
-              {cad(Math.abs(payment.cents) + payment.hstCents)} in total. HST
-              is on top and does not count toward the balance.
-            </p>
+            <p className="text-sm text-[#5b5370] sm:col-span-2">{`Card HST ${cad(payment.hstCents) ?? ''} (13% of this payment) · charged ${cad(Math.abs(payment.cents) + payment.hstCents)} in total. HST is on top and does not count toward the balance.`}</p>
           ) : null}
           <label className="field">
             Amount
@@ -835,6 +823,7 @@ function InvoiceCard({
   } | null>(null)
   const [pending, setPending] = useState(false)
   const [confirmVoid, setConfirmVoid] = useState(false)
+  const [confirmMail, setConfirmMail] = useState(false)
   const controls = invoiceControls(booking.invoice?.status ?? null)
   const canMail = hasCoupleAddress(booking.email)
 
@@ -845,6 +834,7 @@ function InvoiceCard({
           newlyBooked?: boolean
           delivered?: boolean
           detail?: string
+          markedSent?: boolean
         }
       | { ok: false; error: string }
     >,
@@ -853,6 +843,7 @@ function InvoiceCard({
       newlyBooked?: boolean
       delivered?: boolean
       detail?: string
+      markedSent?: boolean
     }) => string,
   ) {
     setPending(true)
@@ -879,10 +870,11 @@ function InvoiceCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
-            {booking.partnerOne} and {booking.partnerTwo}
+            {`${booking.partnerOne ?? ''} and ${booking.partnerTwo ?? ''}`}
             {booking.sample ? (
               <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
                 TEST
+                <span className="sr-only">{'\u00a0'}</span>
               </span>
             ) : null}
           </h2>
@@ -954,22 +946,32 @@ function InvoiceCard({
             {confirmVoid ? 'Tap again to void' : 'Void'}
           </button>
         ) : null}
-        {booking.invoice && canMail ? (
+        {booking.invoice && booking.invoice.status !== 'void' && canMail ? (
           <button
             type="button"
             disabled={pending}
             className={deskGhost}
+            onBlur={() => setConfirmMail(false)}
             onClick={() => {
+              if (!confirmMail) {
+                setConfirmMail(true)
+                return
+              }
+              setConfirmMail(false)
               void run(
                 () => mailInvoice({ data: { id: booking.id } }),
                 (result) =>
                   result.delivered
-                    ? `The invoice email is on its way to ${booking.email}.`
+                    ? result.markedSent
+                      ? `The invoice email is on its way to ${booking.email}. The invoice is marked sent.`
+                      : (result.detail ?? '').startsWith('The invoice email went out')
+                        ? result.detail
+                        : `The invoice email is on its way to ${booking.email}.`
                     : (result.detail ?? 'That did not save.'),
               )
             }}
           >
-            Email the invoice
+            {confirmMail ? `Tap again to email ${booking.email}` : 'Email the invoice'}
           </button>
         ) : null}
       </div>

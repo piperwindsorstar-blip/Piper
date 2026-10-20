@@ -937,10 +937,11 @@ async function seedVenue(name: string, street: string): Promise<void> {
   const cleanStreet = optional(street, 160)
   const existing = await venueRow(cleanName)
   if (!existing) {
-    await query('INSERT INTO venues (name, street) VALUES ($1, $2)', [
-      cleanName,
-      cleanStreet,
-    ])
+    // Two requests can seed the same venue at once; the second one is a no-op.
+    await query(
+      'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [cleanName, cleanStreet],
+    )
     return
   }
   if (!existing.street && cleanStreet) {
@@ -958,10 +959,11 @@ async function rememberVenue(name: string, street: string): Promise<void> {
   await showVenue(cleanName)
   const existing = await venueRow(cleanName)
   if (!existing) {
-    await query('INSERT INTO venues (name, street) VALUES ($1, $2)', [
-      cleanName,
-      cleanStreet,
-    ])
+    // Two requests can seed the same venue at once; the second one is a no-op.
+    await query(
+      'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [cleanName, cleanStreet],
+    )
     return
   }
   if (!cleanStreet || existing.street === cleanStreet) return
@@ -2650,6 +2652,9 @@ export async function getTerms(): Promise<string> {
 }
 
 export async function updateTerms(body: string): Promise<string> {
+  if (typeof body !== 'string' || !body.trim()) {
+    throw new Error('The terms cannot be empty.')
+  }
   const next = text(body, 20000, 'The terms')
   const rows = await query<{ body: string }>(
     'UPDATE terms SET body = $1 WHERE id = 1 RETURNING body',
@@ -2843,10 +2848,10 @@ export async function updatePackageOffer(input: {
   const detail = text(input.detail, 2000, 'The package detail')
   if (
     !Number.isInteger(input.cents) ||
-    input.cents < 0 ||
+    input.cents <= 0 ||
     input.cents > 10_000_000
   ) {
-    throw new Error('Enter a price in cents.')
+    throw new Error('Enter a price above $0.')
   }
   await ensurePackageOffers()
   const rows = await query<{ id: string }>(
@@ -3129,9 +3134,43 @@ export async function updatePartner(input: {
   return saved
 }
 
+/**
+ * Bot names are unique, so the desk can tell which one acted. Older
+ * duplicates get a number on the later ones ("Reviews 2").
+ */
+async function uniqueBotNames(): Promise<void> {
+  const rows = await query<{ id: number; name: string }>(
+    'SELECT id, name FROM bots ORDER BY id',
+  )
+  const seen = new Set<string>()
+  for (const row of rows) {
+    const key = row.name.trim().toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      continue
+    }
+    let n = 2
+    while (seen.has(`${key} ${n}`)) n += 1
+    const next = `${row.name.trim()} ${n}`
+    seen.add(next.toLowerCase())
+    await query('UPDATE bots SET name = $1 WHERE id = $2', [next, row.id])
+  }
+}
+
+async function ensureBotNameFree(name: string, exceptId: number | null) {
+  const rows = await query<{ id: number; name: string }>('SELECT id, name FROM bots')
+  const clash = rows.find(
+    (row) =>
+      row.id !== exceptId &&
+      row.name.trim().toLowerCase() === name.trim().toLowerCase(),
+  )
+  if (clash) throw new Error(`Another bot is already named ${clash.name}. Pick a different name.`)
+}
+
 export async function listBots(): Promise<
   { id: number; name: string; role: BotRole }[]
 > {
+  await uniqueBotNames()
   const rows = await query<{ id: number; name: string; role: string }>(
     'SELECT id, name, role FROM bots ORDER BY id',
   )
@@ -3155,6 +3194,7 @@ export async function updateBot(
   const botId = positiveId(id, 'That bot is not on the desk.')
   const nextName = text(name, 80, 'A name')
   const nextRole = asRole(role)
+  await ensureBotNameFree(nextName, botId)
   const rows = await query<{ id: number }>(
     'UPDATE bots SET name = $1, role = $2 WHERE id = $3 RETURNING id',
     [nextName, nextRole, botId],
@@ -3178,6 +3218,7 @@ export async function inviteBot(
 ): Promise<{ token: string }> {
   const nextName = text(name, 80, 'A name')
   const nextRole = asRole(role)
+  await ensureBotNameFree(nextName, null)
   const token = randomBytes(24).toString('hex')
   await query('INSERT INTO bots (name, token, role) VALUES ($1, $2, $3)', [
     nextName,
@@ -3679,6 +3720,29 @@ export async function planByShareToken(token: string) {
     today: torontoToday(),
     master: await readPortalMaster(),
   }
+}
+
+/** The couple's passcode, made now if the booking has none yet. */
+export async function ensureCouplePasscode(slugValue: string): Promise<string> {
+  await ensurePortalColumns()
+  const rows = await query<{ portal_passcode?: string }>(
+    'SELECT portal_passcode FROM bookings WHERE slug = $1',
+    [slugValue],
+  )
+  if (rows.length === 0) return ''
+  const current = (rows.at(0)?.portal_passcode ?? '').trim().toUpperCase()
+  if (current) return current
+  const taken = new Set(
+    (
+      await query<{ portal_passcode?: string }>('SELECT portal_passcode FROM bookings')
+    ).map((row) => (row.portal_passcode ?? '').trim().toUpperCase()),
+  )
+  const passcode = unusedPasscode(taken)
+  await query('UPDATE bookings SET portal_passcode = $1 WHERE slug = $2', [
+    passcode,
+    slugValue,
+  ])
+  return passcode
 }
 
 export async function couplePortalForDesk(slugValue: string) {

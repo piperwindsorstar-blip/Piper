@@ -40,11 +40,7 @@ function PackagesPage() {
           <PackageCard key={item.id} item={item} />
         ))}
       </div>
-      <p className="text-sm text-white/65">
-        A full wedding day plus a stag is one booking with a $500 deposit. The
-        Pre-Party on its own is a flat $350 deposit. A wedding or a reception on
-        its own is 30% of the total, to the nearest $25. Ceremony only is $350
-        paid in full. Wired uplights are {cad(1500)} each. {DESK_TRAVEL_COPY}
+      <p className="text-sm text-white/65">{`A full wedding day plus a stag is one booking with a $500 deposit. The Pre-Party on its own is a flat $350 deposit. A wedding or a reception on its own is 30% of the total, to the nearest $25. Ceremony only is $350 paid in full. Wired uplights are ${cad(1500) ?? ''} each. ${DESK_TRAVEL_COPY ?? ''}`}
       </p>
     </div>
   )
@@ -70,6 +66,7 @@ function PackageCard({ item }: { item: PackageOffer }) {
           name="price"
           inputMode="decimal"
           required
+          pattern="[0-9]+(\.[0-9]{1,2})?"
           defaultValue={(item.cents / 100).toFixed(2)}
         />
       </label>
@@ -86,6 +83,7 @@ function PackageCard({ item }: { item: PackageOffer }) {
         onRun={async (form: FormData): Promise<RunResult | undefined> => {
           try {
             const cents = dollarsToCents(String(form.get('price') ?? ''))
+            if (cents <= 0) throw new Error('Enter a price above $0.')
             const result = await save({
               data: {
                 id: item.id,

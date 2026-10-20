@@ -200,8 +200,7 @@ function Choice({
         })}
       </div>
       {!known && value.trim() ? (
-        <p className="mt-3 text-sm text-[var(--text-muted)]">
-          Saved note: {value}
+        <p className="mt-3 text-sm text-[var(--text-muted)]">{`Saved note: ${value ?? ''}`}
         </p>
       ) : null}
     </fieldset>

@@ -45,11 +45,10 @@ export function PortalChrome({ children }: { children: ReactNode }) {
           <img src="/brand/dj-piper-p.png" alt="" className="h-10 w-auto" />
         </Link>
         <p className="text-sm text-[var(--text-muted)]">
-          {page.partnerOne} & {page.partnerTwo} · {longDate(page.eventDate)} ·{' '}
+          {`${page.partnerOne ?? ''} & ${page.partnerTwo ?? ''} · ${longDate(page.eventDate) ?? ''} · `}
           <span className="font-bold text-[var(--pink)]">
-            {progress.percent}%
-          </span>{' '}
-          planned
+            {`${progress.percent ?? ''}%`}</span>
+          {' planned'}
           <Link to="/portal/plan" className="ml-4 underline">
             Our plan
           </Link>
@@ -121,10 +120,10 @@ function SaveNote({
 }) {
   if (state === 'saving') return <span className="ml-3">Saving…</span>
   if (state === 'error') {
-    return <span className="ml-3">Couldn't save, retrying. {error}</span>
+    return <span className="ml-3">{`Couldn't save, retrying. ${error ?? ''}`}</span>
   }
   if (state === 'saved' && savedLabel) {
-    return <span className="ml-3">Saved · {savedLabel}</span>
+    return <span className="ml-3">{`Saved · ${savedLabel ?? ''}`}</span>
   }
   return null
 }

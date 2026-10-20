@@ -22,8 +22,7 @@ export function Process() {
               className="relative border-b border-line py-7 pl-10 last:border-b-0"
             >
               <span className="absolute top-9 -left-[7px] h-3.5 w-3.5 rounded-full border border-ink bg-sky" />
-              <p className="font-mono text-xs tracking-[0.2em] text-violet uppercase">
-                Step {index + 1}
+              <p className="font-mono text-xs tracking-[0.2em] text-violet uppercase">{`Step ${index + 1}`}
               </p>
               <h3 className="mt-1 font-display text-2xl font-semibold text-balance">
                 {step.t}

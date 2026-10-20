@@ -584,7 +584,7 @@ function EntrySong({
       {entry.link.trim() ? <Platform value={entry.link} /> : null}
       {entryHasSong(entry) ? (
         <p className="mt-3 text-sm text-[var(--pink-soft)]">
-          Selected ·{' '}
+          {"Selected · "}
           {[entry.song.trim(), entry.artist.trim(), platform]
             .filter(Boolean)
             .join(' · ')}
@@ -816,9 +816,7 @@ function AddYourOwn({ disabled }: { disabled: boolean }) {
         </button>
       )}
       {added ? (
-        <p className="mt-2 text-sm text-[var(--pink-soft)]">
-          Added "{added}" after the bouquet toss. Find it in the list.
-        </p>
+        <p className="mt-2 text-sm text-[var(--pink-soft)]">{`Added "${added ?? ''}" after the bouquet toss. Find it in the list.`}</p>
       ) : null}
     </div>
   )

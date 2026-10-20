@@ -141,12 +141,7 @@ export function PrintSeating({
         <div style={{ border: '1px solid #bbb', borderRadius: 8, padding: 6 }}>
           <FloorPlan plan={plan} guests={byId} print />
         </div>
-        <p style={{ fontSize: 10, color: '#555', margin: '6px 0 0' }}>
-          Room {formatLength(plan.room.width, plan.room.unit, 'room')} ×{' '}
-          {formatLength(plan.room.length, plan.room.unit, 'room')} ·{' '}
-          {plan.tables.length} table{plan.tables.length === 1 ? '' : 's'} ·{' '}
-          {guests.length - unassigned.length} of {guests.length} guests seated
-        </p>
+        <p style={{ fontSize: 10, color: '#555', margin: '6px 0 0' }}>{`Room ${formatLength(plan.room.width, plan.room.unit, 'room') ?? ''} × ${formatLength(plan.room.length, plan.room.unit, 'room') ?? ''} · ${plan.tables.length ?? ''} table${plan.tables.length === 1 ? '' : 's'} · ${guests.length - unassigned.length} of ${guests.length ?? ''} guests seated`}</p>
         <p className="screen-footer">Seating by DJ Piper P</p>
       </section>
       <section className="sheet-page" style={pageBreak}>
@@ -170,17 +165,13 @@ export function PrintSeating({
                 {tableLabel(table.name)}
               </h2>
               <p style={{ fontSize: 10, color: '#555', margin: '0 0 6px' }}>
-                {seated.length} / {table.seats} seated
-              </p>
+                {`${seated.length ?? ''} / ${table.seats ?? ''} seated`}</p>
               <ol style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
                 {seated.map(({ seat, guest }) => (
                   <li key={guest.id} style={{ fontSize: 12, lineHeight: 1.55 }}>
-                    <span style={{ color: '#666' }}>{seat + 1}.</span>{' '}
-                    {guest.name}
-                    {guest.isChild ? ' (child)' : ''}
+                    <span style={{ color: '#666' }}>{`${seat + 1}.`}</span>{` ${guest.name ?? ''}${guest.isChild ? ' (child)' : ''}`}
                     <span style={{ color: '#444', fontStyle: 'italic' }}>
-                      {' '}
-                      · {guest.meal || 'meal not chosen'}
+                      {` · ${guest.meal || 'meal not chosen'}`}
                     </span>
                   </li>
                 ))}
@@ -444,11 +435,9 @@ export function CatererPrint({
           </tbody>
         </table>
         <p style={{ fontSize: 20, margin: '0 0 12px' }}>
-          <strong>{sheet.attending} attending</strong>
+          <strong>{`${sheet.attending ?? ''} attending`}</strong>
           <span style={{ fontSize: 14, color: '#333' }}>
-            {' '}
-            · {sheet.adults} adults · {sheet.kids} kids
-          </span>
+            {` · ${sheet.adults ?? ''} adults · ${sheet.kids ?? ''} kids`}</span>
         </p>
         <h2 style={{ fontSize: 15, margin: '0 0 4px' }}>Meals</h2>
         <table
@@ -538,13 +527,11 @@ export function CatererPrint({
               {sheet.dietary.map((guest) => (
                 <tr key={guest.id} style={{ breakInside: 'avoid' }}>
                   <td style={cell}>
-                    {guest.name}
-                    {guest.child ? ' (child)' : ''}
+                    {`${guest.name ?? ''}${guest.child ? ' (child)' : ''}`}
                   </td>
                   <td style={cell}>{guest.table || 'Not seated'}</td>
                   <td style={cell}>
-                    <MealMark code={guest.code} />{' '}
-                    {guest.meal || (guest.child ? "Kids' meal" : 'Not chosen')}
+                    <MealMark code={guest.code} />{` ${guest.meal || (guest.child ? "Kids' meal" : 'Not chosen')}`}
                   </td>
                   <td style={{ ...cell, fontWeight: 700 }}>{guest.dietary}</td>
                 </tr>
@@ -580,10 +567,8 @@ export function CatererPrint({
                   borderBottom: '1px solid #999',
                 }}
               >
-                {group.table}{' '}
-                <span style={{ fontSize: 11, fontWeight: 400, color: '#555' }}>
-                  · {group.guests.length} guests
-                </span>
+                {`${group.table ?? ''} `}
+                <span style={{ fontSize: 11, fontWeight: 400, color: '#555' }}>{`· ${group.guests.length ?? ''} guests`}</span>
               </h2>
               <table
                 style={{
@@ -599,8 +584,7 @@ export function CatererPrint({
                         <MealMark code={guest.code} />
                       </td>
                       <td style={{ padding: '3px 6px 3px 0' }}>
-                        {guest.name}
-                        {guest.child ? ' (child)' : ''}
+                        {`${guest.name ?? ''}${guest.child ? ' (child)' : ''}`}
                       </td>
                       <td style={{ padding: '3px 6px 3px 0', color: '#333' }}>
                         {guest.meal || (guest.child ? "Kids' meal" : '—')}
@@ -658,9 +642,7 @@ export function PrintTimeline({
         {dateLabel ? ` · ${dateLabel}` : ''} · for the couple and DJ Piper P
         {venue ? (
           <>
-            <br />
-            Everything is at {venue} unless a place is given.
-          </>
+            <br />{`Everything is at ${venue ?? ''} unless a place is given.`}</>
         ) : null}
       </p>
       <table

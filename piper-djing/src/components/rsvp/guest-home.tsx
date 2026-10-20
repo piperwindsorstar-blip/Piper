@@ -43,10 +43,7 @@ export function GuestHome({ data }: { data: HomeData }) {
           RSVP
         </p>
         <h1 className="portal-display mt-3 text-4xl">{data.couple}</h1>
-        <p className="mt-4 text-[var(--text-muted)]">
-          This guest link turns on when the {priceLabel(data.cents)} payment is
-          recorded. It's free with a paid Piper date. A standalone RSVP is $40.
-        </p>
+        <p className="mt-4 text-[var(--text-muted)]">{`This guest link turns on when the ${priceLabel(data.cents) ?? ''} payment is recorded. It's free with a paid Piper date. A standalone RSVP is $40.`}</p>
       </RsvpFrame>
     )
   }
@@ -115,8 +112,7 @@ function CodeGate({ slug, home }: { slug: string; home: ShownHome }) {
         </button>
       </form>
       {home.showContact && home.contactPhone ? (
-        <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
-          Trouble getting in? Text {home.contactName} at {home.contactPhone}
+        <p className="mt-6 text-center text-sm text-[var(--text-muted)]">{`Trouble getting in? Text ${home.contactName ?? ''} at ${home.contactPhone ?? ''}`}
         </p>
       ) : null}
     </RsvpFrame>
@@ -133,7 +129,7 @@ function WeddingHome({ data }: { data: ShownHome }) {
   return (
     <RsvpFrame hidePhoto>
       <RsvpHeader />
-      <h1 className="sr-only">{data.couple} wedding invitation</h1>
+      <h1 className="sr-only">{`${data.couple ?? ''} wedding invitation`}</h1>
       <EnvelopeInvitation view={data.invite} rememberAs={data.slug}>
         <InviteActions
           view={data.invite}
@@ -150,7 +146,7 @@ function WeddingHome({ data }: { data: ShownHome }) {
         <section className="mt-8 rounded-3xl border border-[var(--pink)] bg-[var(--surface)] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold">Please RSVP by {data.deadline}</p>
+              <p className="font-semibold">{`Please RSVP by ${data.deadline ?? ''}`}</p>
               <p className="mt-1 text-sm text-[var(--text-muted)]">{days}</p>
             </div>
             <span className="rounded-full bg-[var(--pink-tint)] px-3 py-1 text-xs text-[var(--pink-soft)]">
@@ -211,9 +207,7 @@ function WeddingHome({ data }: { data: ShownHome }) {
           </>
         ) : null}
         {data.caterer ? (
-          <p className="mt-6 text-sm text-[var(--text-faint)]">
-            The caterer needs counts by {data.caterer}.
-          </p>
+          <p className="mt-6 text-sm text-[var(--text-faint)]">{`The caterer needs counts by ${data.caterer ?? ''}.`}</p>
         ) : null}
       </EnvelopeInvitation>
     </RsvpFrame>
@@ -338,8 +332,7 @@ export function FindInvitation({
           <a
             className={`${rsvpGhost} mt-4`}
             href={`sms:${contact.phone.replace(/[^\d+]/g, '')}`}
-          >
-            Text {contact.name || 'the couple'} at {contact.phone}
+          >{`Text ${contact.name || 'the couple'} at ${contact.phone ?? ''}`}
           </a>
         ) : (
           <Link

@@ -234,8 +234,11 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
   const upcoming = shown.filter((row) => row.date >= today)
   const past = shown.filter((row) => row.date < today)
   const live = rows.filter((row) => !gone(row) && row.date >= today)
-  const yours = live.filter((row) => row.mine && (row.status === 'hold' || row.status === 'booked')).length
-  const theirs = live.filter((row) => !row.mine).length
+  // The same rules as the tabs, so the header and the tab counts agree.
+  const yours = live.filter((row) => test('yours', row)).length
+  const theirs = live.filter((row) => test('pynx', row)).length
+  const notBooked = live.filter((row) => test('pending', row)).length
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
   const filters: [Filter, string][] = [
     ['all', 'All'],
@@ -255,8 +258,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
       ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <DeskTitle kicker="Your book" title="Bookings">
-          {yours + theirs} {yours + theirs === 1 ? 'wedding' : 'weddings'} on the book. {yours} {yours === 1 ? 'is' : 'are'} yours,{' '}
-          {theirs} {theirs === 1 ? 'is' : 'are'} for Pynx.
+          {`${plural(live.length, 'wedding', 'weddings')} ahead: ${yours} yours, ${theirs} for Pynx.${notBooked > 0 ? ` ${notBooked} of yours ${notBooked === 1 ? 'is' : 'are'} not booked yet.` : ''}`}
         </DeskTitle>
         <button
           type="button"
@@ -373,7 +375,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
             <details className="group grid gap-3">
               <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-1 font-display text-lg font-extrabold [&::-webkit-details-marker]:hidden">
                 <ChevronDown className="h-5 w-5 transition group-open:rotate-180" aria-hidden="true" />
-                Past weddings
+                {'Past weddings '}
                 <span className="font-sans text-sm font-medium text-[#5b5370]">{past.length}</span>
               </summary>
               <div className="mt-3 grid gap-5">
@@ -418,7 +420,7 @@ function MonthGroup({ label, rows, today }: { label: string; rows: ListRow[]; to
       <h2 className="flex items-baseline gap-2.5 px-1 font-display text-xl font-extrabold tracking-tight">
         {label}
         <span className="font-sans text-sm font-medium text-[#5b5370]">
-          {rows.length} {rows.length === 1 ? 'wedding' : 'weddings'}
+          {`${rows.length ?? ''} ${rows.length === 1 ? 'wedding' : 'weddings'}`}
         </span>
       </h2>
       <ul className="overflow-hidden rounded-[18px] border border-[#e6def4] bg-white">
@@ -444,7 +446,7 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
           {row.sample ? <Chip tone="red">Test</Chip> : null}
         </span>
         <span className="truncate text-sm text-[#5b5370]">
-          {when} · {row.detail}
+          {`${when ?? ''} · ${row.detail ?? ''}`}
           <span className="md:hidden">{row.venue ? ` · ${row.venue}` : ''}</span>
         </span>
         {row.mine && row.totalCents > 0 ? (
@@ -453,7 +455,7 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
               <Bar value={(row.paidCents / row.totalCents) * 100} label={`${cad(row.paidCents)} of ${cad(row.totalCents)} paid`} height="h-1.5" />
             </span>
             <span className="text-xs whitespace-nowrap text-[#5b5370]">
-              {dollars(row.paidCents)} of {dollars(row.totalCents)}
+              {`${dollars(row.paidCents) ?? ''} of ${dollars(row.totalCents) ?? ''}`}
             </span>
           </span>
         ) : null}
@@ -470,8 +472,7 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
             <span className="grid gap-1">
               <Bar value={(row.paidCents / row.totalCents) * 100} label={`${cad(row.paidCents)} of ${cad(row.totalCents)} paid`} height="h-1.5" />
               <span className="text-[13px] text-[#5b5370]">
-                {dollars(row.paidCents)} of {dollars(row.totalCents)} paid
-              </span>
+                {`${dollars(row.paidCents) ?? ''} of ${dollars(row.totalCents) ?? ''} paid`}</span>
             </span>
           ) : (
             <span className="text-[13px] text-[#5b5370]">No price yet</span>
@@ -689,7 +690,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             {day.getUTCDate()}
           </span>
           <span className="text-[13px] font-bold tracking-[0.16em]">
-            {day.toLocaleDateString('en-CA', { month: 'short', timeZone: 'UTC' }).toUpperCase()} {day.getUTCFullYear()}
+            {day.toLocaleDateString('en-CA', { month: 'short', timeZone: 'UTC' }).toUpperCase()}{` ${day.getUTCFullYear() ?? ''}`}
           </span>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-5 border-[#4b3f72] p-5 sm:border-l-2 sm:border-dashed sm:p-7">
@@ -766,10 +767,10 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                   <span className="font-display text-5xl leading-none font-extrabold tracking-[-0.03em] text-[#1c1533] tabular-nums">
                     {dollars(left)}
                   </span>
-                  <span className="text-[#5b5370]">left of {dollars(total)}</span>
+                  <span className="text-[#5b5370]">{`left of ${dollars(total) ?? ''}`}</span>
                 </p>
               </div>
-              {invoice ? <Chip tone={invoiceTone(invoice.status)}>Invoice {invoice.status}</Chip> : <Chip>No invoice</Chip>}
+              {invoice ? <Chip tone={invoiceTone(invoice.status)}>{`Invoice ${invoice.status ?? ''}`}</Chip> : <Chip>No invoice</Chip>}
             </div>
             <Bar value={total > 0 ? (paid / total) * 100 : 0} label={`${cad(paid)} of ${cad(total)} paid`} height="h-2.5" />
             <div className="grid gap-5 sm:grid-cols-2">
@@ -779,7 +780,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                 {booking.discountCents > 0 ? (
                   <>
                     <dt className="text-[#5b5370]">Discount</dt>
-                    <dd className="text-right tabular-nums">−{cad(booking.discountCents)}</dd>
+                    <dd className="text-right tabular-nums">{`−${cad(booking.discountCents) ?? ''}`}</dd>
                   </>
                 ) : null}
                 <dt className="text-[#5b5370]">Travel</dt>
@@ -849,8 +850,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                 <p className="text-sm text-[#5b5370]">Add the venue name and street below. The hold starts when both are in.</p>
               )}
               {booking.venueTwoName ? (
-                <p className="mt-2 text-sm text-[#4a4262]">
-                  Ceremony at {booking.venueTwoName}
+                <p className="mt-2 text-sm text-[#4a4262]">{`Ceremony at ${booking.venueTwoName ?? ''}`}
                   {booking.venueTwoStreet ? `, ${booking.venueTwoStreet}` : ''}
                 </p>
               ) : null}
@@ -860,10 +860,10 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                 <p className="font-semibold">{booking.packageName}</p>
                 {offer?.detail ? <p className="mt-1 text-sm text-[#4a4262]">{offer.detail}</p> : null}
                 {booking.withStag && booking.stagDate ? (
-                  <p className="mt-2 text-sm text-[#4a4262]">Stag and doe on {longDate(booking.stagDate)}.</p>
+                  <p className="mt-2 text-sm text-[#4a4262]">{`Stag and doe on ${longDate(booking.stagDate) ?? ''}.`}</p>
                 ) : null}
                 {booking.uplights > 0 ? (
-                  <p className="mt-1 text-sm text-[#4a4262]">{booking.uplights} uplights.</p>
+                  <p className="mt-1 text-sm text-[#4a4262]">{`${booking.uplights ?? ''} uplights.`}</p>
                 ) : null}
               </div>
               <TravelPanel booking={booking} />
@@ -909,14 +909,13 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               <h2 id="couple-plan" className={deskH2}>
                 Their plan
               </h2>
-              {plan ? <span className="font-display text-2xl font-extrabold text-[#d1006b]">{plan.percent}%</span> : null}
+              {plan ? <span className="font-display text-2xl font-extrabold text-[#d1006b]">{`${plan.percent ?? ''}%`}</span> : null}
             </div>
             {plan ? (
               <>
                 <Bar value={plan.percent} label={`${plan.percent}% planned`} color="bg-[#ff007f]" />
                 <p className="text-sm text-[#4a4262]">
-                  {plan.answered} of {plan.total} answers in.
-                </p>
+                  {`${plan.answered ?? ''} of ${plan.total ?? ''} answers in.`}</p>
               </>
             ) : (
               <p className="text-sm text-[#5b5370]">Their plan has not started.</p>
@@ -1127,8 +1126,7 @@ function NewBooking({
               </p>
               {preview.discountCents > 0 ? (
                 <p className="text-xs text-white/65">
-                  {cad(preview.discountCents)} off
-                </p>
+                  {`${cad(preview.discountCents) ?? ''} off`}</p>
               ) : null}
             </div>
             <div>
@@ -1255,11 +1253,10 @@ function ExternalDates({
               <Plus className="h-4 w-4" aria-hidden="true" />
             )}
           </span>
-          Dates for another company
+          {'Dates for another company '}
           {active.length > 0 ? (
             <span className="text-sm font-normal text-white/65">
-              {active.length} on the book
-            </span>
+              {`${active.length ?? ''} on the book`}</span>
           ) : null}
         </span>
       </button>
@@ -1411,7 +1408,7 @@ function ExternalDates({
                   {externalCouple(row) ? ` · ${externalCouple(row)}` : ''}
                 </p>
                 <p className="text-sm text-white/65">
-                  {longDate(row.eventDate)} · {externalKindLabel(row.kind)}
+                  {`${longDate(row.eventDate) ?? ''} · ${externalKindLabel(row.kind) ?? ''}`}
                   {row.notes ? ` · ${row.notes}` : ''}
                 </p>
                 {externalVenues(row).map((venue) => (
@@ -1620,7 +1617,7 @@ function SavedVenues({ venues }: { venues: SavedVenue[] }) {
     <details className={`${deskCard} group`}>
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-display text-xl font-bold [&::-webkit-details-marker]:hidden">
         <span>
-          Saved venues{' '}
+          {"Saved venues "}
           <span className="text-sm font-normal text-white/65">
             {venues.length}
           </span>
@@ -1861,6 +1858,7 @@ function BookingCard({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmMail, setConfirmMail] = useState(false)
   const [packageId, setPackageId] = useState(booking.packageId)
   const [open, setOpen] = useState(startOpen)
   const [action, setAction] = useState('release')
@@ -1939,21 +1937,19 @@ function BookingCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-xl font-bold">
-              {booking.partnerOne} and {booking.partnerTwo}
+              {`${booking.partnerOne ?? ''} and ${booking.partnerTwo ?? ''}`}
             </h2>
             {booking.sample ? (
-              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">TEST</span>
+              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">TEST<span className="sr-only">{'\u00a0'}</span></span>
             ) : null}
           </div>
           <p className="text-sm text-white/65">
-            {longDate(booking.eventDate)} · {booking.packageName}
+            {`${longDate(booking.eventDate) ?? ''} · ${booking.packageName ?? ''}`}
             {booking.stagDate ? ` · stag ${longDate(booking.stagDate)}` : ''}
             {booking.stagReleased ? ' · stag released' : ''}
           </p>
           {booking.holdStartedOn && booking.holdLastDay ? (
-            <p className="mt-1 text-sm text-white/65">
-              Hold {longDate(booking.holdStartedOn)} through{' '}
-              {longDate(booking.holdLastDay)}
+            <p className="mt-1 text-sm text-white/65">{`Hold ${longDate(booking.holdStartedOn) ?? ''} through ${longDate(booking.holdLastDay) ?? ''}`}
             </p>
           ) : null}
           <MoneyBar
@@ -1967,17 +1963,14 @@ function BookingCard({
           <div className="flex gap-2">
             <Chip tone={statusTone(booking.status)}>{booking.status}</Chip>
             {booking.invoice ? (
-              <Chip tone={invoiceTone(booking.invoice.status)}>
-                invoice {booking.invoice.status}
+              <Chip tone={invoiceTone(booking.invoice.status)}>{`invoice ${booking.invoice.status ?? ''}`}
               </Chip>
             ) : null}
           </div>
           {daysLeft !== null && booking.holdLastDay ? (
             <span
               className={`text-xs ${daysLeft < 10 ? 'font-semibold text-amber-700' : 'text-white/65'}`}
-            >
-              Hold ends {longDate(booking.holdLastDay)} · {daysLeft} days left
-            </span>
+            >{`Hold ends ${longDate(booking.holdLastDay) ?? ''} · ${daysLeft ?? ''} days left`}</span>
           ) : null}
         </div>
         <ChevronDown
@@ -2200,11 +2193,17 @@ function BookingCard({
               Email the booking
             </button>
           ) : null}
-          {booking.invoice && canMail ? (
+          {booking.invoice && booking.invoice.status !== 'void' && canMail ? (
             <button
               type="button"
               className={deskGhost}
+              onBlur={() => setConfirmMail(false)}
               onClick={() => {
+                if (!confirmMail) {
+                  setConfirmMail(true)
+                  return
+                }
+                setConfirmMail(false)
                 void mailInvoice({ data: { id: booking.id } })
                   .then(async (result) => {
                     if (!result.ok) {
@@ -2214,7 +2213,11 @@ function BookingCard({
                     setError(null)
                     setNotice(
                       result.delivered
-                        ? `The invoice email is on its way to ${booking.email}.`
+                        ? result.markedSent
+                          ? `The invoice email is on its way to ${booking.email}. The invoice is marked sent.`
+                          : result.detail.startsWith('The invoice email went out')
+                            ? result.detail
+                            : `The invoice email is on its way to ${booking.email}.`
                         : result.detail,
                     )
                     await router.invalidate()
@@ -2228,7 +2231,7 @@ function BookingCard({
                   })
               }}
             >
-              Email the invoice
+              {confirmMail ? `Tap again to email ${booking.email}` : 'Email the invoice'}
             </button>
           ) : null}
         </div>
@@ -2422,9 +2425,7 @@ function TravelPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-semibold">{label}</p>
-          <p className="text-sm text-white/65">
-            Travel fee: {fee}
-            {travel.source === 'manual' ? ' (manual)' : travel.source === 'auto' ? ' (auto)' : ''}
+          <p className="text-sm text-white/65">{`Travel fee: ${fee ?? ''}${travel.source === 'manual' ? ' (manual)' : travel.source === 'auto' ? ' (auto)' : ''}`}
           </p>
           {travel.hotel ? (
             <p className="mt-1 text-sm font-semibold text-amber-700">
@@ -2443,11 +2444,7 @@ function TravelPanel({
             <p className="mt-1 text-sm text-amber-700">{travel.error}</p>
           ) : null}
           {travel.stale ? (
-            <p className="mt-1 text-sm text-amber-700">
-              The venue address changed
-              {paid ? ' and this invoice has a payment, so travel was kept' : ''}.
-              Press Recalculate to update it.
-            </p>
+            <p className="mt-1 text-sm text-amber-700">{`The venue address changed${paid ? ' and this invoice has a payment, so travel was kept' : ''}. Press Recalculate to update it.`}</p>
           ) : null}
         </div>
         <ActionButton

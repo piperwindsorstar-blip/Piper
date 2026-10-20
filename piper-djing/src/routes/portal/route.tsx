@@ -69,7 +69,7 @@ function PasscodeGate() {
   return (
     <main className="portal px-6 py-24">
       <h1 className="portal-display text-[32px] leading-[1.02] min-[1024px]:text-5xl">
-        This page opens from the link Piper sent you.
+        Enter the passcode Piper sent you.
       </h1>
       <form
         className="mt-8 max-w-md"
@@ -88,7 +88,7 @@ function PasscodeGate() {
         }}
       >
         <label className="grid gap-2 text-sm text-[var(--text-muted)]">
-          Have a passcode from Piper?
+          Your plan is private. The passcode is in your email from Piper.
           <input
             className="portal-input"
             value={code}

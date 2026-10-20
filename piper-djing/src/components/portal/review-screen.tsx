@@ -48,9 +48,7 @@ export function ReviewScreen() {
         count={`${progress.percent}% planned`}
         current="review"
       />
-      <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
-        Review · {progress.percent}% planned
-      </p>
+      <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">{`Review · ${progress.percent ?? ''}% planned`}</p>
       <h1 className="portal-display mt-3 text-[32px] leading-[1.02] min-[1024px]:text-[64px]">
         Send the plan when it feels ready.
       </h1>
@@ -72,7 +70,7 @@ export function ReviewScreen() {
               <h2 className="text-lg font-bold">
                 {SECTION_LABEL[section]}
                 <span className="ml-2 text-sm font-normal text-[var(--text-muted)]">
-                  {counts.answered} of {counts.total}
+                  {`${counts.answered ?? ''} of ${counts.total ?? ''}`}
                 </span>
               </h2>
               {open.length === 0 ? (
@@ -101,7 +99,7 @@ export function ReviewScreen() {
               )}
               {extras.length > 0 ? (
                 <p className="mt-2 text-sm text-[var(--text-muted)]">
-                  Extras, if you like:{' '}
+                  {"Extras, if you like: "}
                   {extras.map((question, index) => (
                     <span key={question.id}>
                       {index > 0 ? ', ' : ''}
@@ -259,7 +257,7 @@ function ReviewRail({ compact = false }: { compact?: boolean }) {
           <li key={section} className="text-sm">
             <span className="block font-bold">{SECTION_LABEL[section]}</span>
             <span className="text-[13px] text-[var(--text-muted)]">
-              {counts.answered} of {counts.total}
+              {`${counts.answered ?? ''} of ${counts.total ?? ''}`}
             </span>
           </li>
         )

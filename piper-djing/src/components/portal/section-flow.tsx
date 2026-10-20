@@ -96,8 +96,8 @@ export function SectionFlow({ section }: { section: SectionId }) {
           {SECTION_LABEL[section]}
           {current.subsection !== SECTION_LABEL[section]
             ? ` · ${current.subsection}`
-            : ''}{' '}
-          ·{' '}
+            : ''}
+          {" · "}
           {place < 0 ? 'Hidden' : `Question ${place + 1} of ${visible.length}`}
         </p>
         <h1 className="portal-display mt-3 max-w-[18ch] text-[32px] leading-[1.02] break-words min-[1024px]:text-[64px]">
@@ -135,9 +135,7 @@ export function SectionFlow({ section }: { section: SectionId }) {
             type="button"
             className="inline-flex min-h-[54px] w-full items-center justify-center rounded-[18px] bg-[var(--pink)] px-6 text-base font-bold text-[#0d0d0d] min-[1024px]:min-h-[60px] min-[1024px]:w-auto"
             onClick={() => go(1)}
-          >
-            Next: {nextLabel} →
-          </button>
+          >{`Next: ${nextLabel ?? ''} →`}</button>
           <button
             type="button"
             className="min-h-11 text-sm text-white underline min-[1024px]:ml-auto"

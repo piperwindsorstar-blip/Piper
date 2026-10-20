@@ -12,6 +12,7 @@ import type { Letter, LetterBooking } from './mail-copy.ts'
 import { publicUrl } from './safe-origin.ts'
 import {
   deskProfile,
+  ensureCouplePasscode,
   listBookings,
   paymentsForBooking,
 } from './store.server.ts'
@@ -104,7 +105,7 @@ export async function emailBooking(bookingId: number): Promise<MailResult> {
     booking.id,
     'booking',
     to,
-    bookingLetter(toLetter(booking), publicUrl),
+    bookingLetter(await withPasscode(toLetter(booking)), publicUrl),
   )
 }
 
@@ -115,7 +116,7 @@ export async function emailInvoice(bookingId: number): Promise<MailResult> {
     booking.id,
     'invoice',
     to,
-    invoiceLetter(toLetter(booking), publicUrl),
+    invoiceLetter(await withPasscode(toLetter(booking)), publicUrl),
   )
 }
 
@@ -131,8 +132,17 @@ export async function emailPayment(
     booking.id,
     'booking',
     to,
-    paymentLetter(toLetter(booking), payments, paymentId, publicUrl),
+    paymentLetter(await withPasscode(toLetter(booking)), payments, paymentId, publicUrl),
   )
+}
+
+async function withPasscode(letter: LetterBooking): Promise<LetterBooking> {
+  if (letter.sample) return letter
+  try {
+    return { ...letter, passcode: await ensureCouplePasscode(letter.slug) }
+  } catch {
+    return letter
+  }
 }
 
 async function requireBooking(bookingId: number): Promise<BookingView> {

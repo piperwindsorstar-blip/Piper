@@ -42,6 +42,7 @@ function TermsPage() {
           id="terms"
           name="body"
           rows={16}
+          required
           defaultValue={data.body}
           className="leading-relaxed"
         />
@@ -53,6 +54,11 @@ function TermsPage() {
           surface={deskSurface}
           onRun={async (form: FormData): Promise<RunResult | undefined> => {
             const body = String(form.get('body') ?? '')
+            if (!body.trim()) {
+              const message = 'The terms cannot be empty.'
+              setNotice(message)
+              return { ok: false, message }
+            }
             const result = await save({ data: { body } })
             setNotice(result.ok ? 'The terms are updated.' : result.error)
             if (result.ok) await router.invalidate()

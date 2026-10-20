@@ -233,7 +233,7 @@ export function GoogleReviewsSection({
             </span>
             <Stars rating={google.rating} size="h-6 w-6" />
             <span className={look.faint}>
-              {google.count} Google review{google.count === 1 ? '' : 's'}
+              {`${google.count ?? ''} Google review${google.count === 1 ? '' : 's'}`}
             </span>
           </p>
         </div>

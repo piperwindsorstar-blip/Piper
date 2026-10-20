@@ -25,9 +25,7 @@ export function Reviews({ reviews }: { reviews: PublicReview[] }) {
               className="flex flex-col rounded-2xl border border-line bg-paper p-6"
             >
               <ReviewStars stars={review.stars} />
-              <blockquote className="flex-1 leading-relaxed text-ink">
-                “{review.quote}”
-              </blockquote>
+              <blockquote className="flex-1 leading-relaxed text-ink">{`“${review.quote ?? ''}”`}</blockquote>
               <figcaption className="mt-5 border-t border-line pt-4 text-sm text-soft">
                 {reviewCaption(review)}
                 <ReviewLink link={review.link} className="font-semibold text-violet" />

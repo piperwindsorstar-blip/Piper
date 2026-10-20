@@ -153,8 +153,7 @@ export function MealOptions({
         <SaveStatus phase={autosave.phase} error={autosave.error} />
       </div>
       <p className="mt-2 text-xs text-[var(--text-faint)]">
-        {filled} of {MAX_MEALS} meals · empty boxes are left out · changes save on their own
-      </p>
+        {`${filled ?? ''} of ${MAX_MEALS ?? ''} meals · empty boxes are left out · changes save on their own`}</p>
     </section>
   )
 }
