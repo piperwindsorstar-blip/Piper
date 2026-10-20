@@ -37,7 +37,7 @@ jobs:
         run: |
           npm run build
           # The Node bundle leaves out the in-memory database's data files.
-          cp node_modules/@electric-sql/pglite/dist/pglite.data node_modules/@electric-sql/pglite/dist/pglite.wasm .output/server/_libs/ 2>/dev/null || cp node_modules/@electric-sql/pglite/dist/*.data node_modules/@electric-sql/pglite/dist/*.wasm .output/server/_libs/
+          find node_modules/@electric-sql/pglite/dist -maxdepth 1 \( -name '*.data' -o -name '*.wasm' \) -exec cp {} .output/server/_libs/ \;
           ls .output/server/_libs | grep -i pglite
 
       - name: Browser and mail sink
