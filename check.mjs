@@ -1,6 +1,15 @@
 import { chromium } from 'playwright'
 const out = []
 const note = (k, v) => { out.push(`${k}: ${String(v).replace(/\n/g, ' | ').slice(0, 400)}`) }
+
+function glued(text) {
+  const ALLOW = new Set(['DjPiperP','PiperPWeddingDJ','YouTube','TikTok','iPhone','WhatsApp','SoundCloud','LinkedIn','PayPal'])
+  const f = new Set()
+  for (const m of text.matchAll(/[A-Za-z]*[a-z][A-Z][A-Za-z]*/g)) if (!ALLOW.has(m[0])) f.add(m[0])
+  for (const m of text.matchAll(/\b\d{2,}[a-z]{2,}\b/g)) if (!/^\d+(st|nd|rd|th|km|am|pm)$/.test(m[0])) f.add(m[0])
+  for (const m of text.matchAll(/\$[\d,.]+[A-Za-z]{2,}/g)) f.add(m[0])
+  return [...f]
+}
 const browser = await chromium.launch()
 const page = await browser.newPage()
 const errors = []
@@ -35,9 +44,11 @@ try {
   await page.waitForTimeout(800)
   const est = await page.$('[aria-label="Price estimate"]')
   note('book estimate', est ? (await est.textContent()).replace(/\s+/g, ' ') : 'NO ESTIMATE')
-  for (const path of ['/rsvp', '/rsvp/sign-in', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/contact']) {
+  for (const path of ['/', '/rsvp', '/rsvp/sign-in', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/contact']) {
     const res = await page.goto(base + path + '?r=' + Date.now(), { waitUntil: 'networkidle' })
     const h = await page.$$eval('h1,h2', (els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()).slice(0, 4).join(' / '))
+    const g = glued(await page.evaluate(() => document.body.innerText))
+    note(`${path} glued`, g.length ? g.join(' | ') : 'none')
     const sticky = await page.$$eval('*', (els) => els.some((e) => getComputedStyle(e).position === 'fixed' && /Check/i.test(e.textContent || '')))
     note(`${path} ${res.status()}`, `${h}${sticky ? ' | fixed Check bar' : ''}`)
   }
