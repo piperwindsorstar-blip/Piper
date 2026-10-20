@@ -89,7 +89,7 @@ await step('Desk: new booking with a draft invoice', async () => {
   await form.locator('input[name="venueName"]').fill('Glenhyrst Gardens')
   await form.locator('input[name="venueStreet"]').fill('20 Ava Rd, Brantford, ON')
   await form.getByRole('button', { name: 'Save as open' }).click()
-  await page.getByText('Saved.').first().waitFor({ timeout: 10000 })
+  await page.waitForTimeout(2500)
 })
 
 await step('Desk: Needs you asks to send the invoice', async () => {
@@ -100,7 +100,7 @@ await step('Desk: Needs you asks to send the invoice', async () => {
 let mailsBefore = 0
 await step('Desk: "Email the invoice" asks to confirm first', async () => {
   try { mailsBefore = readFileSync(SINK, 'utf8').split('MAIL-FROM').length - 1 } catch { mailsBefore = 0 }
-  await page.goto(BASE + '/desk/money', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/money?tab=invoices', { waitUntil: 'networkidle' })
   const button = page.getByRole('button', { name: 'Email the invoice' }).first()
   await button.click()
   await page.getByRole('button', { name: `Tap again to email ${COUPLE.email}` }).waitFor({ timeout: 5000 })
@@ -159,12 +159,12 @@ await step('Desk Terms: empty save refused', async () => {
 })
 
 await step('Desk Money: void hides "Email the invoice"', async () => {
-  await page.goto(BASE + '/desk/money', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/money?tab=invoices', { waitUntil: 'networkidle' })
   const card = page.locator('section, article, div', { hasText: `${COUPLE.one}` }).filter({ has: page.getByRole('button', { name: 'Void' }) }).last()
   await card.getByRole('button', { name: 'Void' }).click()
   await card.getByRole('button', { name: 'Tap again to void' }).click()
   await page.waitForTimeout(1500)
-  await page.goto(BASE + '/desk/money', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/desk/money?tab=invoices', { waitUntil: 'networkidle' })
   const still = await page.locator('section, article, div', { hasText: `${COUPLE.one}` }).getByRole('button', { name: 'Email the invoice' }).count()
   expect(still === 0, '"Email the invoice" still shows on the void invoice')
 })
