@@ -538,7 +538,10 @@ export const deleteReview = createServerFn({ method: 'POST' })
 
 export const getCouple = createServerFn({ method: 'POST' })
   .validator((data: { slug: string }) => data)
-  .handler(async ({ data }) => coupleBySlug(data.slug))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    return coupleBySlug(data.slug)
+  })
 
 export const savePortalDesk = createServerFn({ method: 'POST' })
   .validator(
@@ -929,11 +932,37 @@ export const sendInvoiceMail = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireDesk()
     try {
-      return { ok: true as const, ...(await emailInvoice(data.id)) }
+      const before = await invoiceState(data.id)
+      if (before === 'void') {
+        throw new Error('A void invoice is not emailed.')
+      }
+      const mail = await emailInvoice(data.id)
+      if (!mail.delivered || before !== 'draft') {
+        return { ok: true as const, ...mail, markedSent: false }
+      }
+      // A sent email is a sent invoice: mark it, so the Needs you reminder clears.
+      try {
+        await sendInvoice(data.id)
+        return { ok: true as const, ...mail, markedSent: true }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'It could not be marked sent.'
+        return {
+          ok: true as const,
+          delivered: true,
+          detail: `The invoice email went out, but it is not marked sent: ${reason}`,
+          markedSent: false,
+        }
+      }
     } catch (error) {
       return fail(error)
     }
   })
+
+async function invoiceState(id: number): Promise<string | null> {
+  const booking = (await listBookings()).find((item) => item.id === id)
+  if (!booking) throw new Error('That booking is not on the book.')
+  return booking.invoice?.status ?? null
+}
 
 type MasterDraftInput = {
   id: string

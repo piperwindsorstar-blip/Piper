@@ -111,6 +111,7 @@ function BookPage() {
   const general = !WEDDING_INQUIRY.has(requestedEvent)
   const today = todayInToronto()
   const dateIsAhead = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= today
+  const datePassed = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate < today
   const [packageId, setPackageId] = useState(
     () => PACKAGE_FOR_EVENT[requestedEvent] ?? 'full',
   )
@@ -215,6 +216,10 @@ function BookPage() {
             <p className="mt-6 rounded-xl border border-neon/40 bg-neon/10 px-4 py-3 text-lg font-semibold">
               {openDateLabel(requestedDate)} is open. Tell Piper a little more
               and the reply comes by email.
+            </p>
+          ) : datePassed && !done ? (
+            <p role="alert" className="mt-6 rounded-xl border border-ink/30 bg-paper px-4 py-3 text-lg font-semibold">
+              That date has passed, please pick another.
             </p>
           ) : (
             <p className="mt-2 text-lg text-soft">

@@ -835,6 +835,7 @@ function InvoiceCard({
   } | null>(null)
   const [pending, setPending] = useState(false)
   const [confirmVoid, setConfirmVoid] = useState(false)
+  const [confirmMail, setConfirmMail] = useState(false)
   const controls = invoiceControls(booking.invoice?.status ?? null)
   const canMail = hasCoupleAddress(booking.email)
 
@@ -845,6 +846,7 @@ function InvoiceCard({
           newlyBooked?: boolean
           delivered?: boolean
           detail?: string
+          markedSent?: boolean
         }
       | { ok: false; error: string }
     >,
@@ -853,6 +855,7 @@ function InvoiceCard({
       newlyBooked?: boolean
       delivered?: boolean
       detail?: string
+      markedSent?: boolean
     }) => string,
   ) {
     setPending(true)
@@ -954,22 +957,32 @@ function InvoiceCard({
             {confirmVoid ? 'Tap again to void' : 'Void'}
           </button>
         ) : null}
-        {booking.invoice && canMail ? (
+        {booking.invoice && booking.invoice.status !== 'void' && canMail ? (
           <button
             type="button"
             disabled={pending}
             className={deskGhost}
+            onBlur={() => setConfirmMail(false)}
             onClick={() => {
+              if (!confirmMail) {
+                setConfirmMail(true)
+                return
+              }
+              setConfirmMail(false)
               void run(
                 () => mailInvoice({ data: { id: booking.id } }),
                 (result) =>
                   result.delivered
-                    ? `The invoice email is on its way to ${booking.email}.`
+                    ? result.markedSent
+                      ? `The invoice email is on its way to ${booking.email}. The invoice is marked sent.`
+                      : (result.detail ?? '').startsWith('The invoice email went out')
+                        ? result.detail
+                        : `The invoice email is on its way to ${booking.email}.`
                     : (result.detail ?? 'That did not save.'),
               )
             }}
           >
-            Email the invoice
+            {confirmMail ? `Tap again to email ${booking.email}` : 'Email the invoice'}
           </button>
         ) : null}
       </div>

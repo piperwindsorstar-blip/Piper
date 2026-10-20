@@ -234,8 +234,11 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
   const upcoming = shown.filter((row) => row.date >= today)
   const past = shown.filter((row) => row.date < today)
   const live = rows.filter((row) => !gone(row) && row.date >= today)
-  const yours = live.filter((row) => row.mine && (row.status === 'hold' || row.status === 'booked')).length
-  const theirs = live.filter((row) => !row.mine).length
+  // The same rules as the tabs, so the header and the tab counts agree.
+  const yours = live.filter((row) => test('yours', row)).length
+  const theirs = live.filter((row) => test('pynx', row)).length
+  const notBooked = live.filter((row) => test('pending', row)).length
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
   const filters: [Filter, string][] = [
     ['all', 'All'],
@@ -255,8 +258,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
       ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <DeskTitle kicker="Your book" title="Bookings">
-          {yours + theirs} {yours + theirs === 1 ? 'wedding' : 'weddings'} on the book. {yours} {yours === 1 ? 'is' : 'are'} yours,{' '}
-          {theirs} {theirs === 1 ? 'is' : 'are'} for Pynx.
+          {`${plural(live.length, 'wedding', 'weddings')} ahead: ${yours} yours, ${theirs} for Pynx.${notBooked > 0 ? ` ${notBooked} of yours ${notBooked === 1 ? 'is' : 'are'} not booked yet.` : ''}`}
         </DeskTitle>
         <button
           type="button"
@@ -1861,6 +1863,7 @@ function BookingCard({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmMail, setConfirmMail] = useState(false)
   const [packageId, setPackageId] = useState(booking.packageId)
   const [open, setOpen] = useState(startOpen)
   const [action, setAction] = useState('release')
@@ -2200,11 +2203,17 @@ function BookingCard({
               Email the booking
             </button>
           ) : null}
-          {booking.invoice && canMail ? (
+          {booking.invoice && booking.invoice.status !== 'void' && canMail ? (
             <button
               type="button"
               className={deskGhost}
+              onBlur={() => setConfirmMail(false)}
               onClick={() => {
+                if (!confirmMail) {
+                  setConfirmMail(true)
+                  return
+                }
+                setConfirmMail(false)
                 void mailInvoice({ data: { id: booking.id } })
                   .then(async (result) => {
                     if (!result.ok) {
@@ -2214,7 +2223,11 @@ function BookingCard({
                     setError(null)
                     setNotice(
                       result.delivered
-                        ? `The invoice email is on its way to ${booking.email}.`
+                        ? result.markedSent
+                          ? `The invoice email is on its way to ${booking.email}. The invoice is marked sent.`
+                          : result.detail.startsWith('The invoice email went out')
+                            ? result.detail
+                            : `The invoice email is on its way to ${booking.email}.`
                         : result.detail,
                     )
                     await router.invalidate()
@@ -2228,7 +2241,7 @@ function BookingCard({
                   })
               }}
             >
-              Email the invoice
+              {confirmMail ? `Tap again to email ${booking.email}` : 'Email the invoice'}
             </button>
           ) : null}
         </div>

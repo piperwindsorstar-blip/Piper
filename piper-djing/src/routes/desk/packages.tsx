@@ -70,6 +70,7 @@ function PackageCard({ item }: { item: PackageOffer }) {
           name="price"
           inputMode="decimal"
           required
+          pattern="[0-9]+(\.[0-9]{1,2})?"
           defaultValue={(item.cents / 100).toFixed(2)}
         />
       </label>
@@ -86,6 +87,7 @@ function PackageCard({ item }: { item: PackageOffer }) {
         onRun={async (form: FormData): Promise<RunResult | undefined> => {
           try {
             const cents = dollarsToCents(String(form.get('price') ?? ''))
+            if (cents <= 0) throw new Error('Enter a price above $0.')
             const result = await save({
               data: {
                 id: item.id,

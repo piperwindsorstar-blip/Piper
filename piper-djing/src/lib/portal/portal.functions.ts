@@ -16,21 +16,17 @@ import {
 import { isPlanLocked } from '../crm/planning.ts'
 import { changeLetter, planLetter } from './letter.ts'
 import { overallProgress } from './progress.ts'
-import { isDesk } from '../auth/session.server.ts'
+import {
+  clearTries,
+  isDesk,
+  noteWrongTry,
+  triesLocked,
+} from '../auth/session.server.ts'
 import { coupleSlugFromCookie, rememberCoupleSlug } from './session.server.ts'
 import { lookupSongs } from './song-search.ts'
 
-export const openCouplePortal = createServerFn({ method: 'POST' })
-  .validator((data: { slug: string }) => data)
-  .handler(async ({ data }) => {
-    const page = await coupleBySlug(data.slug)
-    if (!page) return { ok: false as const }
-    rememberCoupleSlug(data.slug)
-    return { ok: true as const }
-  })
-
 export const getPortal = createServerFn({ method: 'GET' }).handler(async () => {
-  const slug = coupleSlugFromCookie()
+  const slug = await coupleSlugFromCookie()
   if (!slug) return null
   const page = await coupleBySlug(slug)
   if (!page) return null
@@ -50,21 +46,29 @@ export const getPortal = createServerFn({ method: 'GET' }).handler(async () => {
 export const openPortalPasscode = createServerFn({ method: 'POST' })
   .validator((data: { passcode: string }) => data)
   .handler(async ({ data }) => {
+    if (await triesLocked('portal-passcode')) {
+      return {
+        ok: false as const,
+        error: 'Too many tries. Wait 15 minutes and try again.',
+      }
+    }
     const slug = await coupleByPasscode(data.passcode)
     if (!slug) {
+      await noteWrongTry('portal-passcode')
       return {
         ok: false as const,
         error: 'That passcode does not match a plan.',
       }
     }
-    rememberCoupleSlug(slug)
+    await clearTries('portal-passcode')
+    await rememberCoupleSlug(slug)
     return { ok: true as const }
   })
 
 export const savePortal = createServerFn({ method: 'POST' })
   .validator((data: { planning: unknown }) => data)
   .handler(async ({ data }) => {
-    const slug = coupleSlugFromCookie()
+    const slug = await coupleSlugFromCookie()
     if (!slug)
       return { ok: false as const, error: 'Open the link Piper sent you.' }
     try {
@@ -78,7 +82,7 @@ export const savePortal = createServerFn({ method: 'POST' })
 
 export const sendPortalPlan = createServerFn({ method: 'POST' }).handler(
   async () => {
-    const slug = coupleSlugFromCookie()
+    const slug = await coupleSlugFromCookie()
     if (!slug)
       return { ok: false as const, error: 'Open the link Piper sent you.' }
     const page = await coupleBySlug(slug)
@@ -107,7 +111,7 @@ export const sendPortalPlan = createServerFn({ method: 'POST' }).handler(
 
 export const sharePortalPlan = createServerFn({ method: 'POST' }).handler(
   async () => {
-    const slug = coupleSlugFromCookie()
+    const slug = await coupleSlugFromCookie()
     if (!slug)
       return { ok: false as const, error: 'Open the link Piper sent you.' }
     try {
@@ -123,7 +127,7 @@ export const sharePortalPlan = createServerFn({ method: 'POST' }).handler(
 
 export const stopPortalShare = createServerFn({ method: 'POST' }).handler(
   async () => {
-    const slug = coupleSlugFromCookie()
+    const slug = await coupleSlugFromCookie()
     if (!slug)
       return { ok: false as const, error: 'Open the link Piper sent you.' }
     await disableCoupleShare(slug)
@@ -140,7 +144,7 @@ export const getSharedPlan = createServerFn({ method: 'GET' })
 export const requestPortalChange = createServerFn({ method: 'POST' })
   .validator((data: { note: string }) => data)
   .handler(async ({ data }) => {
-    const slug = coupleSlugFromCookie()
+    const slug = await coupleSlugFromCookie()
     if (!slug)
       return { ok: false as const, error: 'Open the link Piper sent you.' }
     const page = await coupleBySlug(slug)
@@ -164,7 +168,7 @@ export const searchSongs = createServerFn({ method: 'POST' })
     return { query: query.slice(0, 80) }
   })
   .handler(async ({ data }) => {
-    if (!coupleSlugFromCookie() && !(await isDesk())) return []
+    if (!(await coupleSlugFromCookie()) && !(await isDesk())) return []
     try {
       return await lookupSongs(data.query)
     } catch {
@@ -180,7 +184,7 @@ export const suggestSongs = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data }) => {
     const desk = await isDesk()
-    const viewer = coupleSlugFromCookie()
+    const viewer = await coupleSlugFromCookie()
     if (!desk && !viewer) return []
     const slug = desk ? data.slug : viewer
     if (!slug) return []

@@ -29,6 +29,8 @@ export type LetterBooking = {
   depositCents: number
   discountCents?: number
   slug: string
+  /** The portal passcode the couple types to open their page. */
+  passcode?: string
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -105,6 +107,7 @@ export function bookingLetter(
     ),
     '',
     `Your page: ${url(`/c/${booking.slug}`)}`,
+    booking.passcode ? `Passcode: ${booking.passcode}` : '',
     'Your planning form is on that page.',
     booking.invoice ? `Invoice: ${url(`/p/${booking.invoice.slug}`)}` : '',
     '',
@@ -143,6 +146,7 @@ export function invoiceLetter(
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
     `Your page: ${url(`/c/${booking.slug}`)}`,
+    booking.passcode ? `Passcode: ${booking.passcode}` : '',
     '',
     signOff(),
   ]
@@ -219,6 +223,7 @@ export function paymentLetter(
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
     `Your page: ${url(`/c/${booking.slug}`)}`,
+    booking.passcode ? `Passcode: ${booking.passcode}` : '',
     '',
     signOff(),
   ]

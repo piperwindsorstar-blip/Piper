@@ -27,7 +27,7 @@ export function deskPasswordSet(): boolean {
 }
 
 const WINDOW_MS = 15 * 60_000
-const MAX_TRIES = 8
+const MAX_TRIES = 5
 
 function clientKey(): string {
   try {
@@ -70,7 +70,7 @@ function who(key: string): string {
   return createHash('sha256').update(`desk-login:${key}`).digest('hex')
 }
 
-/** Eight wrong passwords in 15 minutes locks that address out for a while. */
+/** Five wrong tries in 15 minutes locks that address out for a while. */
 async function lockedOut(key: string, now: number): Promise<boolean> {
   const recent = (memory.get(key) ?? []).filter((at) => now - at < WINDOW_MS)
   memory.set(key, recent)
@@ -160,6 +160,7 @@ export async function startDeskSession(
   if (await lockedOut(key, now)) return 'locked'
   if (!passwordsMatch(password, expected)) {
     await noteMiss(key, now)
+    await slowDown()
     return 'wrong'
   }
   await clearMisses(key)
@@ -173,4 +174,26 @@ export async function endDeskSession(): Promise<void> {
   const id = getCookie(COOKIE)
   if (id) await query('DELETE FROM sessions WHERE id = $1', [id])
   deleteCookie(COOKIE, { path: '/' })
+}
+
+/** A wrong guess answers a second late, so guessing stays slow. */
+function slowDown(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 1000))
+}
+
+/**
+ * The same limit for other secrets typed by the public, such as a couple's
+ * portal passcode. Each scope counts on its own.
+ */
+export async function triesLocked(scope: string): Promise<boolean> {
+  return lockedOut(`${scope}:${clientKey()}`, Date.now())
+}
+
+export async function noteWrongTry(scope: string): Promise<void> {
+  await noteMiss(`${scope}:${clientKey()}`, Date.now())
+  await slowDown()
+}
+
+export async function clearTries(scope: string): Promise<void> {
+  await clearMisses(`${scope}:${clientKey()}`)
 }
