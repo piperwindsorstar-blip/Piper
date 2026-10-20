@@ -160,12 +160,12 @@ await step('Desk Terms: empty save refused', async () => {
 
 await step('Desk Money: void hides "Email the invoice"', async () => {
   await page.goto(BASE + '/desk/money?tab=invoices', { waitUntil: 'networkidle' })
-  const card = page.locator('section, article, div', { hasText: `${COUPLE.one}` }).filter({ has: page.getByRole('button', { name: 'Void' }) }).last()
-  await card.getByRole('button', { name: 'Void' }).click()
+  const card = page.locator('li', { hasText: COUPLE.one }).first()
+  await card.getByRole('button', { name: 'Void', exact: true }).click()
   await card.getByRole('button', { name: 'Tap again to void' }).click()
   await page.waitForTimeout(1500)
   await page.goto(BASE + '/desk/money?tab=invoices', { waitUntil: 'networkidle' })
-  const still = await page.locator('section, article, div', { hasText: `${COUPLE.one}` }).getByRole('button', { name: 'Email the invoice' }).count()
+  const still = await page.locator('li', { hasText: COUPLE.one }).getByRole('button', { name: 'Email the invoice' }).count()
   expect(still === 0, '"Email the invoice" still shows on the void invoice')
 })
 
