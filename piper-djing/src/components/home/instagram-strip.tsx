@@ -22,6 +22,17 @@ export function InstagramStrip() {
             <Icon n="insta" className="h-4 w-4" />
             Open Instagram
           </a>
+          {LINKS.facebook ? (
+            <a
+              href={LINKS.facebook}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 font-semibold text-hot hover:underline"
+            >
+              <Icon n="facebook" className="h-4 w-4" />
+              Facebook
+            </a>
+          ) : null}
         </div>
         <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
           {INSTAGRAM_POSTS.map((src) => (

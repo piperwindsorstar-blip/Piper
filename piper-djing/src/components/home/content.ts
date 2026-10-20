@@ -1,3 +1,5 @@
+import { FACEBOOK_PAGE_URL } from '../../lib/crm/defaults.ts'
+
 export const PHOTOS = {
   mixer: '/photos/brand/brand-mixer.jpg',
   phones: '/photos/brand/brand-phones.jpg',
@@ -14,12 +16,20 @@ export const PORTRAIT_ALT = 'DJ Piper P at the booth.'
 /** Sample review and Instagram notes stay hidden until real content replaces them. */
 export const SHOW_PLACEHOLDER_NOTES = false as boolean
 
+/**
+ * Google reviewer names to leave out of the homepage reviews, e.g.
+ * ['Jane Doe']. Reviews always show exactly as Google returns them.
+ */
+export const HIDDEN_HOME_REVIEWS: readonly string[] = []
+
 export const LINKS = {
   weddings: '/weddings',
   book: '/book',
   review: 'https://g.page/r/CZeXBF6gallvEAI/review',
   insta: 'https://www.instagram.com/dj_piperp',
   email: 'PiperPWeddingDJ@gmail.com',
+  facebook: FACEBOOK_PAGE_URL,
+  contact: '/contact',
   bulls: 'https://www.facebook.com/share/1CHxV2PubR/',
 } as const
 

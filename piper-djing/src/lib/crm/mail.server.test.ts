@@ -30,7 +30,7 @@ describe('bot emails', { skip: liveBook }, () => {
     const status = mailStatus()
     delete process.env.PIPER_SMTP_PASS
     assert.equal(status.ready, true)
-    assert.equal(status.from, 'Piper DJing <PiperPWeddingDJ@gmail.com>')
+    assert.equal(status.from, 'DJ Piper P <PiperPWeddingDJ@gmail.com>')
 
     const reader = await inviteBot('Reader', 'reader')
     const writer = await inviteBot('Writer', 'writer')

@@ -68,7 +68,7 @@ function SignIn() {
         </p>
       ) : null}
       <p className="mt-8 text-sm text-[var(--text-muted)]">
-        No RSVP site yet?{' '}
+        {'No RSVP site yet? '}
         <Link to="/rsvp" className="text-[var(--pink-soft)] underline">
           See how it works
         </Link>

@@ -14,7 +14,7 @@ export type RsvpPurchase = {
   partnerTwo: string
   email: string
   eventDate: string
-  /** Optional: their Piper DJing booking email or invoice code. */
+  /** Optional: their DJ Piper P booking email or invoice code. */
   bookingRef: string
 }
 

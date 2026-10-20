@@ -159,17 +159,16 @@ export function DateChecker() {
             />
           </label>
         ) : null}
-        <label htmlFor="home-company" className="sr-only">
-          Company
-        </label>
-        <input
-          id="home-company"
-          value={company}
-          onChange={(event) => setCompany(event.target.value)}
-          tabIndex={-1}
-          autoComplete="off"
-          className="absolute -left-[9999px] h-px w-px overflow-hidden"
-        />
+        <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+          <label htmlFor="home-company">Company</label>
+          <input
+            id="home-company"
+            value={company}
+            onChange={(event) => setCompany(event.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+          />
+        </div>
         <div className="mt-6 flex items-center justify-between gap-2">
           <button
             type="button"

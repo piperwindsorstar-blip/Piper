@@ -87,7 +87,7 @@ export function balanceLetter(input: {
     '',
     'If it is already on its way, thank you, and you can ignore this.',
     '',
-    `Martin · Piper DJing\n${PUBLIC_EMAIL}`,
+    `Martin · DJ Piper P\n${PUBLIC_EMAIL}`,
   ]
   return {
     subject:
@@ -95,7 +95,7 @@ export function balanceLetter(input: {
         ? `Balance reminder: ${amount} due before your wedding`
         : `Your balance before the big day: ${amount}`,
     text: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
-    fromName: 'Martin at Piper DJing',
+    fromName: 'Martin at DJ Piper P',
   }
 }
 

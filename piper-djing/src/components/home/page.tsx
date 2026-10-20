@@ -10,6 +10,7 @@ import { About } from './about.tsx'
 import { DateChecker } from './date-checker.tsx'
 import { EventCards } from './event-cards.tsx'
 import { FinalCta } from './final-cta.tsx'
+import { HIDDEN_HOME_REVIEWS } from './content.ts'
 import { Header } from './header.tsx'
 import { Hero } from './hero.tsx'
 import { InstagramStrip } from './instagram-strip.tsx'
@@ -58,6 +59,8 @@ export function HomePage({
             anchorId={showMine ? 'google-reviews' : 'reviews'}
             pageUrl={publicUrl('/')}
             heading="What people say."
+            compact
+            hideAuthors={HIDDEN_HOME_REVIEWS}
           />
         )}
         {showMine ? <Reviews reviews={reviews} /> : null}

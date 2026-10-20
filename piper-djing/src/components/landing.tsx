@@ -59,7 +59,7 @@ export function Landing({
           </div>
           <img
             src="/photos/logo-inverted.png"
-            alt="Piper DJing"
+            alt="DJ Piper P"
             fetchPriority="high"
             className="mt-10 h-auto w-full max-w-2xl"
           />
@@ -286,14 +286,14 @@ export function Landing({
                 ))}
               </ul>
               <p className="mt-8 text-sm text-paper-deep">
-                Danced at a wedding with Piper? Send a few words to{' '}
+                {'Danced at a wedding with Piper? Send a few words to '}
                 <a
                   href={`mailto:${PUBLIC_EMAIL}`}
                   className="underline underline-offset-4"
                 >
                   {PUBLIC_EMAIL}
                 </a>
-                , or leave a{' '}
+                {', or leave a '}
                 <a
                   href={GOOGLE_REVIEW_URL}
                   target="_blank"

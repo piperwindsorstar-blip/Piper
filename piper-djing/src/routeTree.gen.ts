@@ -17,6 +17,7 @@ import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as HamiltonWeddingDjRouteImport } from './routes/hamilton-wedding-dj'
 import { Route as CambridgeWeddingDjRouteImport } from './routes/cambridge-wedding-dj'
 import { Route as ParisWeddingDjRouteImport } from './routes/paris-wedding-dj'
@@ -125,6 +126,11 @@ const ParisWeddingDjRoute = ParisWeddingDjRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WeddingsRoute = WeddingsRouteImport.update({
@@ -392,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/contact': typeof ContactRoute
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
@@ -454,6 +461,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/contact': typeof ContactRoute
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
@@ -518,6 +526,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/contact': typeof ContactRoute
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
@@ -584,6 +593,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/contact'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
@@ -646,6 +656,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/contact'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
@@ -709,6 +720,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/contact'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
@@ -774,6 +786,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  ContactRoute: typeof ContactRoute
   HamiltonWeddingDjRoute: typeof HamiltonWeddingDjRoute
   CambridgeWeddingDjRoute: typeof CambridgeWeddingDjRoute
   ParisWeddingDjRoute: typeof ParisWeddingDjRoute
@@ -872,6 +885,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/weddings': {
@@ -1343,6 +1363,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  ContactRoute: ContactRoute,
   HamiltonWeddingDjRoute: HamiltonWeddingDjRoute,
   CambridgeWeddingDjRoute: CambridgeWeddingDjRoute,
   ParisWeddingDjRoute: ParisWeddingDjRoute,

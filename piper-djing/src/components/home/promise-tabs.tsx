@@ -22,8 +22,9 @@ export function PromiseTabs() {
       <div className="mx-auto max-w-7xl px-5 py-24">
         <Eyebrow>The Piper P Promise</Eyebrow>
         <h2 className="mt-4 max-w-4xl font-display text-4xl leading-tight font-bold text-balance md:text-6xl">
-          Five things you get with <span className="text-neon">every</span>{' '}
-          event, big or small.
+          {'Five things you get with '}
+          <span className="text-neon">every</span>
+          {' event, big or small.'}
         </h2>
         <div className="mt-12 grid gap-6 lg:grid-cols-[320px_1fr]">
           <div

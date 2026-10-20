@@ -90,10 +90,18 @@ function Stars({ rating, size = 'h-4 w-4' }: { rating: number; size?: string }) 
   )
 }
 
-function ReviewCard({ review, variant }: { review: GoogleReview; variant: Variant }) {
+function ReviewCard({
+  review,
+  variant,
+  compact = false,
+}: {
+  review: GoogleReview
+  variant: Variant
+  compact?: boolean
+}) {
   const look = LOOK[variant]
   const [open, setOpen] = useState(false)
-  const long = review.text.length > 240
+  const long = review.text.length > (compact ? 120 : 240)
   const initial = review.author.trim()[0]?.toUpperCase() ?? 'G'
   return (
     <figure className={`flex flex-col rounded-2xl border p-6 transition ${look.card}`}>
@@ -119,23 +127,23 @@ function ReviewCard({ review, variant }: { review: GoogleReview; variant: Varian
               href={review.authorUri}
               target="_blank"
               rel="noreferrer"
-              className={`block truncate font-semibold hover:underline ${look.muted}`}
+              className={`block truncate font-semibold hover:underline ${compact ? 'text-lg' : ''} ${look.muted}`}
             >
               {review.author}
             </a>
           ) : (
-            <span className={`block truncate font-semibold ${look.muted}`}>
+            <span className={`block truncate font-semibold ${compact ? 'text-lg' : ''} ${look.muted}`}>
               {review.author}
             </span>
           )}
           <span className={`flex items-center gap-2 text-sm ${look.faint}`}>
-            <Stars rating={review.rating} size="h-3.5 w-3.5" />
+            <Stars rating={review.rating} size={compact ? 'h-5 w-5' : 'h-3.5 w-3.5'} />
             {review.relative}
           </span>
         </span>
       </figcaption>
       <blockquote
-        className={`mt-4 flex-1 whitespace-pre-line leading-relaxed ${look.muted} ${open || !long ? '' : 'line-clamp-5'}`}
+        className={`mt-4 flex-1 whitespace-pre-line leading-relaxed ${compact ? `text-sm ${look.faint}` : look.muted} ${open || !long ? '' : compact ? 'line-clamp-3' : 'line-clamp-5'}`}
       >
         {review.text}
       </blockquote>
@@ -178,6 +186,8 @@ export function GoogleReviewsSection({
   pageUrl,
   heading = 'What couples say.',
   anchorId = 'google-reviews',
+  compact = false,
+  hideAuthors = [],
 }: {
   google: GoogleReviews | null
   variant: Variant
@@ -185,8 +195,16 @@ export function GoogleReviewsSection({
   heading?: string
   /** "reviews" when this is the page's only review section (menu links). */
   anchorId?: string
+  /** Rating, name and date lead; the quote is smaller and clamped. */
+  compact?: boolean
+  /** Reviewer names left out of this showcase. Review text is never edited. */
+  hideAuthors?: readonly string[]
 }) {
   if (!google || google.reviews.length === 0) return null
+  const hidden = new Set(hideAuthors.map((name) => name.trim().toLowerCase()))
+  const shown = google.reviews.filter(
+    (review) => !hidden.has(review.author.trim().toLowerCase()),
+  )
   const look = LOOK[variant]
   return (
     <section
@@ -240,15 +258,18 @@ export function GoogleReviewsSection({
           </a>
         </div>
       </div>
-      <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        {google.reviews.map((review) => (
-          <ReviewCard
-            key={`${review.author}-${review.publishTime}`}
-            review={review}
-            variant={variant}
-          />
-        ))}
-      </div>
+      {shown.length > 0 ? (
+        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {shown.map((review) => (
+            <ReviewCard
+              key={`${review.author}-${review.publishTime}`}
+              review={review}
+              variant={variant}
+              compact={compact}
+            />
+          ))}
+        </div>
+      ) : null}
       <p className={`mt-6 text-xs ${look.faint}`}>
         Reviews and rating from <GoogleWordmark />, shown as Google returns
         them.

@@ -17,7 +17,7 @@ export function SiteFooter() {
             Wedding & event DJ · Brantford, Ontario
           </p>
           <p className="mt-1">
-            Wedding DJ in{' '}
+            {'Wedding DJ in '}
             {TOWN_LIST.map((town, index) => (
               <span key={town.path}>
                 {index > 0 ? ' · ' : ''}
@@ -29,10 +29,13 @@ export function SiteFooter() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <span className="inline-flex items-center gap-1.5 select-all">
+          <a
+            href={`mailto:${LINKS.email}`}
+            className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-white underline underline-offset-4 hover:text-white"
+          >
             <Icon n="mail" className="h-4 w-4 text-hot" />
-            {LINKS.email}
-          </span>
+            Email Piper: {LINKS.email}
+          </a>
           <a
             href={LINKS.insta}
             target="_blank"
@@ -42,6 +45,20 @@ export function SiteFooter() {
             <Icon n="insta" className="h-4 w-4 text-hot" />
             @DJ_PIPERP
           </a>
+          {LINKS.facebook ? (
+            <a
+              href={LINKS.facebook}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 hover:text-white"
+            >
+              <Icon n="facebook" className="h-4 w-4 text-hot" />
+              Facebook
+            </a>
+          ) : null}
+          <Link to="/contact" className="hover:text-white">
+            Contact
+          </Link>
           <Link to="/rsvp" className="hover:text-white">
             RSVP
           </Link>

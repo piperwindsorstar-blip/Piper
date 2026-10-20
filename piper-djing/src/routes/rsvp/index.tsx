@@ -70,7 +70,7 @@ function RsvpProduct() {
               <article className="rounded-3xl border border-[var(--pink)] p-4">
                 <p className="text-3xl font-semibold">{priceLabel(PIPER_RSVP_CENTS)}</p>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
-                  With a Piper DJing booking (deposit paid)
+                  With a DJ Piper P booking (deposit paid)
                 </p>
               </article>
               <article className="rounded-3xl border border-[var(--border)] p-4">
@@ -270,7 +270,7 @@ function BuyForm() {
       <Field id="date" label="Wedding date">
         <input id="date" type="date" required className={rsvpField} value={form.eventDate} onChange={update('eventDate')} />
       </Field>
-      <Field id="ref" label="Booked with Piper DJing? Booking email or invoice code (optional)">
+      <Field id="ref" label="Booked with DJ Piper P? Booking email or invoice code (optional)">
         <input
           id="ref"
           className={rsvpField}
