@@ -168,9 +168,15 @@ export const STEPS = [
 ] as const
 
 // TODO: replace with real Instagram posts or a feed embed.
+/** Posts from @DJ_PIPERP. Tall story posts keep their caption at the bottom in view. */
 export const INSTAGRAM_POSTS = [
-  '/photos/spotlight.jpg',
-  '/photos/dance.jpg',
-  '/photos/spin.jpg',
-  '/photos/instagram-nametag.png',
+  { src: '/photos/insta/ring-record-card.webp', position: '50% 50%' },
+  { src: '/photos/insta/setup-matters.webp', position: '50% 50%' },
+  { src: '/photos/insta/this-is-the-job.webp', position: '50% 100%' },
+  { src: '/photos/insta/ceremonies-covered.webp', position: '50% 100%' },
+  { src: '/photos/insta/golden-hour.webp', position: '50% 50%' },
+  { src: '/photos/insta/the-twirl.webp', position: '50% 100%' },
+  { src: '/photos/insta/behind-the-music.webp', position: '50% 50%' },
+  { src: '/photos/insta/garden-ceremonies.webp', position: '50% 50%' },
+  { src: '/photos/insta/peak-party.webp', position: '50% 100%' },
 ]
