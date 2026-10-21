@@ -1,4 +1,4 @@
-import { CHECKLIST, LOGO_ALT, LOGO_SRC } from './content.ts'
+import { CHECKLIST, RINGS_LOGO_ALT, RINGS_LOGO_SRC } from './content.ts'
 import { DateCheckForm } from './date-check-form.tsx'
 import { Icon } from './icon.tsx'
 import { ButtonOutline, ButtonPrimary } from './ui.tsx'
@@ -12,11 +12,11 @@ export function Hero() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pt-14 pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-20">
         <div className="min-w-0">
           <img
-            src={LOGO_SRC}
-            alt={LOGO_ALT}
-            width={600}
-            height={410}
-            className="mb-8 h-32 w-auto sm:h-40"
+            src={RINGS_LOGO_SRC}
+            alt={RINGS_LOGO_ALT}
+            width={1137}
+            height={1088}
+            className="mb-8 h-36 w-auto sm:h-44"
           />
           <h1 className="font-display text-[clamp(2.5rem,6vw,4.9rem)] leading-[0.98] font-extrabold tracking-tight text-balance">
             {'Your wedding date is only available '}
