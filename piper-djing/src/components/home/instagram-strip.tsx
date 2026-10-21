@@ -34,22 +34,26 @@ export function InstagramStrip() {
             </a>
           ) : null}
         </div>
-        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {INSTAGRAM_POSTS.map((src) => (
+        <div className="mt-8 grid grid-cols-3 gap-2 md:gap-3">
+          {INSTAGRAM_POSTS.map(({ src, position }) => (
             <a
               key={src}
               href={LINKS.insta}
               target="_blank"
               rel="noreferrer"
               aria-label="Open @DJ_PIPERP on Instagram"
-              className="group relative block aspect-square overflow-hidden rounded-xl border border-white/10"
+              className="group relative block aspect-[4/5] overflow-hidden rounded-xl border border-white/10"
             >
               <img
                 src={src}
                 alt=""
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                width={720}
+                height={900}
+                style={{ objectPosition: position }}
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 loading="lazy"
-                sizes="(min-width: 768px) 25vw, 50vw"
+                decoding="async"
+                sizes="(min-width: 1280px) 400px, 33vw"
               />
               <span className="absolute inset-0 bg-neon/0 transition group-hover:bg-neon/20" />
             </a>
