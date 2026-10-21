@@ -19,6 +19,10 @@ export const LINKS = {
 export const LOGO_SRC = '/brand/dj-piper-p-lined.png'
 export const LOGO_ALT = 'DJ Piper P'
 
+/** The wedding hero's ring and record logo, on the light background. */
+export const RINGS_LOGO_SRC = '/brand/piper-p-rings.webp'
+export const RINGS_LOGO_ALT = 'Piper P Wedding DJ'
+
 export const PHOTOS = {
   mixer: '/photos/brand/brand-mixer.jpg',
   phones: '/photos/brand/brand-phones.jpg',
