@@ -16,7 +16,7 @@ export function Hero() {
             alt={RINGS_LOGO_ALT}
             width={1137}
             height={1088}
-            className="mb-8 h-36 w-auto sm:h-44"
+            className="mx-auto mb-8 block h-auto w-full max-w-[22rem] sm:max-w-[28rem]"
           />
           <h1 className="font-display text-[clamp(2.5rem,6vw,4.9rem)] leading-[0.98] font-extrabold tracking-tight text-balance">
             {'Your wedding date is only available '}
