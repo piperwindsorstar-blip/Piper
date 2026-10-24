@@ -223,6 +223,31 @@ await step('Portal link asks for the passcode', async () => {
   expect(!/Your plan|Start planning/i.test(text) || /passcode/i.test(text), 'The plan opened without a passcode')
 })
 
+let passcode = ''
+await step('Desk Portals shows a passcode', async () => {
+  await page.goto(BASE + '/desk/portals', { waitUntil: 'networkidle' })
+  const values = await page.$$eval('input', (els) => els.map((e) => e.value))
+  passcode = values.find((v) => /^[A-Z0-9]{4,12}$/.test(v)) ?? ''
+  expect(passcode, `No passcode on /desk/portals: ${values.slice(0, 10).join(',')}`)
+  return passcode
+})
+
+await step('Couple opens their plan with the passcode', async () => {
+  const couple = await browser.newPage()
+  couple.setDefaultTimeout(15000)
+  const pageErrors = []
+  couple.on('pageerror', (e) => pageErrors.push(e.message))
+  await couple.goto(BASE + '/portal', { waitUntil: 'networkidle' })
+  await couple.locator('input.portal-input').fill(`Passcode: ${passcode.slice(0, 3).toLowerCase()}-${passcode.slice(3)}.`)
+  const enabled = await couple.getByRole('button', { name: 'Open the plan' }).isEnabled()
+  expect(enabled, `The button stays disabled after typing. Errors: ${pageErrors.join(' | ')}`)
+  await couple.getByRole('button', { name: 'Open the plan' }).click()
+  await couple.waitForTimeout(3000)
+  const text = await couple.evaluate(() => document.body.innerText)
+  expect(!/Enter the passcode Piper sent you/.test(text), `Still on the passcode page: ${text.slice(0, 300)} Errors: ${pageErrors.join(' | ')}`)
+  return text.slice(0, 120).replace(/\s+/g, ' ')
+})
+
 await step('Public page text spacing', async () => {
   const out = []
   for (const path of ['/', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/book', '/rsvp', '/rsvp/sign-in', '/contact', '/terms', '/portal']) {

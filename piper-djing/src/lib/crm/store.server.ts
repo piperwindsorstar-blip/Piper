@@ -3648,7 +3648,7 @@ export async function saveCouplePasscode(
   code: string,
 ): Promise<string> {
   await ensurePortalColumns()
-  const passcode = code.trim().toUpperCase()
+  const passcode = cleanPasscode(code)
   if (!/^[A-Z0-9]{4,12}$/.test(passcode)) {
     throw new Error('Use 4 to 12 letters or numbers.')
   }
@@ -3670,9 +3670,18 @@ export async function saveCouplePasscode(
   return passcode
 }
 
+/**
+ * A passcode as typed or pasted: case, spaces, dashes and stray punctuation
+ * do not matter, and a pasted "Passcode: AB12CD" line still works.
+ */
+export function cleanPasscode(code: string): string {
+  const letters = code.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return letters.startsWith('PASSCODE') && letters.length > 8 ? letters.slice(8) : letters
+}
+
 export async function coupleByPasscode(code: string): Promise<string | null> {
   await ensurePortalColumns()
-  const passcode = code.trim().toUpperCase()
+  const passcode = cleanPasscode(code)
   if (!/^[A-Z0-9]{4,12}$/.test(passcode)) return null
   const rows = await query<{ slug: string }>(
     'SELECT slug FROM bookings WHERE upper(portal_passcode) = $1',
