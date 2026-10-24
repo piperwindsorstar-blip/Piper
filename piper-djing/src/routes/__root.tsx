@@ -2,6 +2,22 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import appCss from '../styles.css?url'
 
+/**
+ * Older phones and tablets (Safari before 15.4, Chrome before 93, older
+ * Samsung Internet) lack a few newer built-ins the site uses. This small
+ * classic script fills them in before the app's modules run.
+ */
+const OLD_BROWSER_FILLS = `(function(){
+var d=function(o,k,v){if(!o[k])Object.defineProperty(o,k,{value:v,writable:true,configurable:true})};
+d(Object,'hasOwn',function(o,k){return Object.prototype.hasOwnProperty.call(o,k)});
+var at=function(i){i=Math.trunc(i)||0;if(i<0)i+=this.length;return i<0||i>=this.length?undefined:this[i]};
+d(Array.prototype,'at',at);d(String.prototype,'at',at);
+d(Array.prototype,'findLast',function(f,t){for(var i=this.length-1;i>=0;i--)if(f.call(t,this[i],i,this))return this[i]});
+d(Array.prototype,'findLastIndex',function(f,t){for(var i=this.length-1;i>=0;i--)if(f.call(t,this[i],i,this))return i;return -1});
+d(String.prototype,'replaceAll',function(a,b){return a instanceof RegExp?this.replace(a,b):this.split(a).join(b)});
+if(typeof structuredClone!=='function')window.structuredClone=function(v){return v===undefined?v:JSON.parse(JSON.stringify(v))};
+})();`
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -32,6 +48,7 @@ export const Route = createRootRoute({
       { rel: 'manifest', href: '/manifest.webmanifest' },
       { rel: 'apple-touch-icon', href: '/icons/icon-180.png' },
     ],
+    scripts: [{ children: OLD_BROWSER_FILLS }],
   }),
   shellComponent: RootDocument,
   notFoundComponent: NotFound,
