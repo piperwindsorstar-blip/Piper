@@ -85,6 +85,7 @@ await step('Desk: new booking with a draft invoice', async () => {
   await form.locator('input[name="partnerOne"]').fill(COUPLE.one)
   await form.locator('input[name="partnerTwo"]').fill(COUPLE.two)
   await form.locator('input[name="email"]').fill(COUPLE.email)
+  await form.locator('input[name="emailTwo"]').fill('jordan.second@example.com')
   await form.locator('input[name="eventDate"]').fill(DATE)
   await form.locator('input[name="venueName"]').fill('Glenhyrst Gardens')
   await form.locator('input[name="venueStreet"]').fill('20 Ava Rd, Brantford, ON')
@@ -110,11 +111,13 @@ await step('Desk: "Email the invoice" asks to confirm first', async () => {
   expect(mails === mailsBefore, 'An email went out on the first tap')
 })
 
-await step('Desk: second tap sends and marks the invoice sent', async () => {
+await step('Desk: second tap sends to both emails and marks the invoice sent', async () => {
   await page.getByRole('button', { name: `Tap again to email ${COUPLE.email}` }).click()
   await page.getByText('The invoice is marked sent.').waitFor({ timeout: 15000 })
   const mails = readFileSync(SINK, 'utf8').split('MAIL-FROM').length - 1
-  expect(mails === mailsBefore + 1, `Expected one email, the sink has ${mails - mailsBefore}`)
+  expect(mails === mailsBefore + 2, `Expected two emails (both addresses), the sink has ${mails - mailsBefore}`)
+  const log = readFileSync(SINK, 'utf8')
+  expect(log.includes('jordan.second@example.com'), 'The second email got nothing')
 })
 
 await step('Desk: Needs you reminder cleared', async () => {
