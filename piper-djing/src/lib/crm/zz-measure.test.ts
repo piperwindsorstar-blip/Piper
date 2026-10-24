@@ -1,7 +1,7 @@
 // Temporary: counts Book calls for Desk saves and reloads, reported as a failure message.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { takeBookCalls } from '../db.server.ts'
+import { takeBookCalls, traceBookCalls } from '../db.server.ts'
 import {
   addPayment,
   createBooking,
@@ -61,6 +61,11 @@ describe('measure', { concurrency: 1 }, () => {
       listBookings(), listPayments(), listLeads(), listExternalDates(), listQuestions(),
       listMedia(), listPartners(), listReviews(), listBots(), listPackageOffers(), listVenues(),
     ]).then(() => listPlanProgress()))
-    assert.fail(`CALLS ${out.join(' | ')}`)
+    traceBookCalls(true)
+    await listBookings()
+    const a = traceBookCalls(true)
+    await updateBooking({ ...input, id, notes: 'z' })
+    const b = traceBookCalls(false)
+    assert.fail(`CALLS ${out.join(' | ')} ## LIST ${a.join(' ;; ')} ## UPDATE ${b.join(' ;; ')}`)
   })
 })
