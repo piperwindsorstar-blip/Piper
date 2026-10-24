@@ -100,7 +100,7 @@ export async function listEmails(): Promise<SentMail[]> {
 
 export async function emailBooking(bookingId: number): Promise<MailResult> {
   const booking = await requireBooking(bookingId)
-  const to = coupleAddress(booking.email)
+  const to = coupleAddresses(booking)
   return deliverAndRemember(
     booking.id,
     'booking',
@@ -111,7 +111,7 @@ export async function emailBooking(bookingId: number): Promise<MailResult> {
 
 export async function emailInvoice(bookingId: number): Promise<MailResult> {
   const booking = await requireBooking(bookingId)
-  const to = coupleAddress(booking.email)
+  const to = coupleAddresses(booking)
   return deliverAndRemember(
     booking.id,
     'invoice',
@@ -126,7 +126,7 @@ export async function emailPayment(
   paymentId: number,
 ): Promise<MailResult> {
   const booking = await requireBooking(bookingId)
-  const to = coupleAddress(booking.email)
+  const to = coupleAddresses(booking)
   const payments = await paymentsForBooking(bookingId)
   return deliverAndRemember(
     booking.id,
@@ -185,15 +185,38 @@ function toLetter(booking: BookingView): LetterBooking {
   }
 }
 
+/** The couple's main email, then their second one when it is set and different. */
+export function coupleAddresses(booking: { email: string; emailTwo?: string }): string[] {
+  const first = coupleAddress(booking.email)
+  const second = (booking.emailTwo ?? '').trim()
+  return second.includes('@') && second.toLowerCase() !== first.toLowerCase()
+    ? [first, second]
+    : [first]
+}
+
+/** One letter to each address; delivered when the main address got it. */
+export async function deliverToEach(to: string[], letter: Letter): Promise<MailResult> {
+  const results = []
+  for (const address of to) results.push(await deliver(address, letter))
+  const [first, ...rest] = results
+  const missed = rest
+    .map((result, index) => (result.delivered ? '' : `Not sent to ${to[index + 1]}: ${result.detail}`))
+    .filter(Boolean)
+  return {
+    delivered: first?.delivered ?? false,
+    detail: [first?.detail ?? '', ...missed].filter(Boolean).join(' '),
+  }
+}
+
 async function deliverAndRemember(
   bookingId: number,
   kind: 'booking' | 'invoice',
-  to: string,
+  to: string[],
   letter: Letter,
 ): Promise<MailResult> {
-  const result = await deliver(to, letter)
+  const result = await deliverToEach(to, letter)
   try {
-    await remember(bookingId, kind, to, letter, result)
+    await remember(bookingId, kind, to.join(', '), letter, result)
   } catch {
     return {
       delivered: result.delivered,

@@ -2,7 +2,7 @@ import { query } from '../db.server.ts'
 import { torontoToday } from '../piper/rules.ts'
 import { BALANCE_LABEL, balanceBlock, balanceDue, balanceLetter } from './balance-nudges.ts'
 import type { BalanceDue, BalanceRow, BalanceStep } from './balance-nudges.ts'
-import { emailLetter } from './mail.server.ts'
+import { coupleAddresses, deliverToEach } from './mail.server.ts'
 import { publicUrl } from './safe-origin.ts'
 import { cardStatus } from './stripe.server.ts'
 import { listBookings, readSiteSetting, writeSiteSetting } from './store.server.ts'
@@ -95,12 +95,13 @@ export async function deliverBalanceNudges(
         invoiceLink: publicUrl(`/p/${booking.invoice.slug}`),
         card: card.enabled,
       })
-      const result = await emailLetter(booking.email.trim(), letter)
+      const to = coupleAddresses(booking)
+      const result = await deliverToEach(to, letter)
       await query(
         `UPDATE balance_nudges SET to_address = $1, subject = $2, cents = $3, delivered = $4, detail = $5
          WHERE booking_id = $6 AND step = $7 AND event_date = $8`,
         [
-          booking.email.trim(),
+          to.join(', '),
           letter.subject,
           due.balanceCents,
           result.delivered ? 1 : 0,
