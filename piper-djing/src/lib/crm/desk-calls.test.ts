@@ -1,30 +1,15 @@
-// Temporary: counts Book calls for Desk saves and reloads, reported as a failure message.
+// Desk saves and reloads stay cheap: every Book call is a round trip on the live site.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { takeBookCalls, traceBookCalls } from '../db.server.ts'
-import {
-  addPayment,
-  createBooking,
-  listBookings,
-  listExternalDates,
-  listLeads,
-  listMedia,
-  listPackageOffers,
-  listPartners,
-  listPayments,
-  listQuestions,
-  listReviews,
-  listVenues,
-  listBots,
-  listPlanProgress,
-  sendInvoice,
-  updateBooking,
-} from './store.server.ts'
+import { takeBookCalls } from '../db.server.ts'
+import { createBooking, listVenues, updateBooking } from './store.server.ts'
+
+const liveBook = Boolean(process.env.DATABASE_URL)
 
 const input = {
-  partnerOne: 'Measure',
+  partnerOne: 'Desk',
   partnerTwo: 'Calls',
-  email: 'measure@example.com',
+  email: 'desk.calls@example.com',
   phone: '',
   eventDate: '2031-06-14',
   stagDate: null,
@@ -32,7 +17,7 @@ const input = {
   withStag: false,
   uplights: 0,
   venueKm: [],
-  venueName: 'Measure Hall',
+  venueName: 'Calls Hall',
   venueStreet: '',
   venueTwoName: '',
   venueTwoStreet: '',
@@ -40,38 +25,20 @@ const input = {
   notes: '',
 }
 
-describe('measure', { concurrency: 1 }, () => {
-  it('counts', async () => {
-    const out: string[] = []
-    const count = async (name: string, fn: () => Promise<unknown>) => {
-      takeBookCalls()
-      const start = performance.now()
-      await fn()
-      out.push(`${name}=${takeBookCalls()} (${Math.round(performance.now() - start)}ms)`)
-    }
-    let id = 0
-    await count('createBooking cold', async () => { id = (await createBooking(input)).id })
-    await count('createBooking warm', async () => { await createBooking({ ...input, partnerOne: 'Measure2', eventDate: '2031-06-21' }) })
-    await count('updateBooking', () => updateBooking({ ...input, id, notes: 'x' }))
-    await count('updateBooking again', () => updateBooking({ ...input, id, notes: 'y' }))
-    await count('sendInvoice', () => sendInvoice(id))
-    await count('addPayment', () => addPayment(id, 10_000, 'deposit'))
-    await count('listBookings', () => listBookings())
-    await count('getDesk lists', () => Promise.all([
-      listBookings(), listPayments(), listLeads(), listExternalDates(), listQuestions(),
-      listMedia(), listPartners(), listReviews(), listBots(), listPackageOffers(), listVenues(),
-    ]).then(() => listPlanProgress()))
-    const desk = () => Promise.all([
-      listBookings(), listPayments(), listLeads(), listExternalDates(), listQuestions(),
-      listMedia(), listPartners(), listReviews(), listBots(), listPackageOffers(), listVenues(),
-    ]).then(() => listPlanProgress())
-    await count('getDesk warm', desk)
-    await count('listBookings warm', () => listBookings())
-    traceBookCalls(true)
-    await desk()
-    const a = traceBookCalls(true)
-    await updateBooking({ ...input, id, notes: 'z' })
-    const b = traceBookCalls(false)
-    assert.fail(`CALLS ${out.join(' | ')} ## DESK ${a.join(' ;; ')} ## UPDATE ${b.join(' ;; ')}`)
+describe('desk calls', { skip: liveBook, concurrency: 1 }, () => {
+  it('lists venues in one call however many bookings there are', async () => {
+    const { id } = await createBooking(input)
+    await createBooking({ ...input, partnerOne: 'Desk2', eventDate: '2031-06-21', venueName: 'Other Hall' })
+    await listVenues()
+    takeBookCalls()
+    const venues = await listVenues()
+    assert.equal(takeBookCalls(), 1)
+    assert.ok(venues.some((venue) => venue.name === 'Calls Hall'))
+    assert.ok(venues.some((venue) => venue.name === 'Other Hall'))
+    await updateBooking({ ...input, id, notes: 'warm' })
+    takeBookCalls()
+    const saved = await updateBooking({ ...input, id, notes: 'saved' })
+    assert.ok(takeBookCalls() <= 12)
+    assert.equal(saved.notes, 'saved')
   })
 })
