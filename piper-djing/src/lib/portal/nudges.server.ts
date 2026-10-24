@@ -1,6 +1,6 @@
 import { query } from '../db.server.ts'
 import { lastJobRun } from '../job-runs.server.ts'
-import { emailLetter } from '../crm/mail.server.ts'
+import { coupleAddresses, deliverToEach } from '../crm/mail.server.ts'
 import { publicUrl } from '../crm/safe-origin.ts'
 import { listPlanContacts, readSiteSetting, writeSiteSetting } from '../crm/store.server.ts'
 import type { PlanContact } from '../crm/store.server.ts'
@@ -104,8 +104,9 @@ export async function deliverPlanNudges(
     try {
       if (!(await claim(couple.bookingId, due, new Date().toISOString()))) continue
       const letter = letterFor(couple, due)
-      const result = await emailLetter(couple.email, letter)
-      await record(couple.bookingId, due, couple.email, letter.subject, result.delivered, result.detail)
+      const to = coupleAddresses(couple)
+      const result = await deliverToEach(to, letter)
+      await record(couple.bookingId, due, to.join(', '), letter.subject, result.delivered, result.detail)
       if (result.delivered) sent += 1
       else failed += 1
     } catch (error) {

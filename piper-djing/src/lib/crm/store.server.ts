@@ -105,6 +105,8 @@ export type BookingView = {
   partnerOne: string
   partnerTwo: string
   email: string
+  /** A second address for the couple; empty when there is none. */
+  emailTwo: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -181,6 +183,7 @@ type BookingRow = {
   partner_one: string
   partner_two: string
   email: string
+  email_two?: string | null
   phone: string
   event_date: string
   stag_date: string | null
@@ -391,6 +394,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     partnerOne: state.partnerOne,
     partnerTwo: state.partnerTwo,
     email: row.email,
+    emailTwo: (row.email_two ?? '').trim(),
     phone: row.phone,
     eventDate: state.eventDate,
     stagDate: state.stagDate,
@@ -451,6 +455,8 @@ async function ensureCustomColumnsStep(): Promise<void> {
   for (const [name, definition] of [
     ['custom_total_cents', 'integer NOT NULL DEFAULT 0'],
     ['locked_total', 'boolean NOT NULL DEFAULT false'],
+    // The couple's second email: booking, invoice, receipt and reminder emails go to both.
+    ['email_two', "text NOT NULL DEFAULT ''"],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -622,6 +628,7 @@ export type BookingInput = {
   partnerOne: string
   partnerTwo: string
   email: string
+  emailTwo?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -1097,6 +1104,7 @@ export async function removeVenue(id: number): Promise<void> {
 }
 
 export async function createBooking(input: BookingInput): Promise<BookingView> {
+  checkEmailTwo(input.emailTwo)
   await ensureDiscountColumn()
   const next = normalize(input)
   await guardIdentity(
@@ -1160,11 +1168,28 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   )
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
+  await saveEmailTwo(id, input.emailTwo)
   await refreshTravel(id).catch((error: unknown) => {
     console.warn('[travel] not worked out:', error)
   })
   const row = await bookingRow(id)
   return present(toView(row, await invoiceFor(id)))
+}
+
+/** The couple's second email. Undefined leaves it as it is; blank clears it. */
+function checkEmailTwo(value: string | undefined): void {
+  const clean = (value ?? '').trim()
+  if (clean && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+    throw new Error('The second email does not look like an email address.')
+  }
+}
+
+async function saveEmailTwo(id: number, value: string | undefined): Promise<void> {
+  if (value === undefined) return
+  checkEmailTwo(value)
+  await ensureCustomColumns()
+  const clean = value.trim().slice(0, 120)
+  await query('UPDATE bookings SET email_two = $1 WHERE id = $2', [clean, id])
 }
 
 // --- travel ------------------------------------------------------------------
@@ -1746,6 +1771,7 @@ export type BookingPatch = {
   partnerOne: string
   partnerTwo: string
   email: string
+  emailTwo?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -1766,6 +1792,7 @@ export type BookingPatch = {
 }
 
 export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
+  checkEmailTwo(patch.emailTwo)
   const current = await bookingRow(patch.id)
   const state = toState(current)
   const next = normalize(patch)
@@ -1859,6 +1886,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
       current.id,
     ],
   )
+  await saveEmailTwo(current.id, patch.emailTwo)
   const invoiceRow = await invoiceFor(current.id)
   if (invoiceRow && invoiceRow.status !== 'void') {
     const invoice = toInvoice(invoiceRow)
@@ -3549,6 +3577,7 @@ export type PlanContact = {
   status: string
   sample: boolean
   email: string
+  emailTwo: string
   phone: string
   venueName: string
   planning: Planning
@@ -3577,6 +3606,7 @@ export async function listPlanContacts(): Promise<PlanContact[]> {
       status: row.status,
       sample: flag(row.sample),
       email: (row.email ?? '').trim(),
+      emailTwo: (row.email_two ?? '').trim(),
       phone: (row.phone ?? '').trim(),
       venueName: (row.venue_name ?? '').trim(),
       planning,

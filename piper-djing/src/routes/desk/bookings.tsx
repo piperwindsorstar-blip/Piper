@@ -1030,6 +1030,7 @@ function NewBooking({
     partnerOne: string
     partnerTwo: string
     email: string
+    emailTwo?: string
     phone: string
     eventDate: string
     stagDate: string
@@ -1165,6 +1166,7 @@ function NewBooking({
                   partnerOne: String(form.get('partnerOne') ?? ''),
                   partnerTwo: String(form.get('partnerTwo') ?? ''),
                   email: String(form.get('email') ?? ''),
+                  emailTwo: String(form.get('emailTwo') ?? ''),
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -1802,6 +1804,7 @@ function BookingCard({
     partnerOne: string
     partnerTwo: string
     email: string
+    emailTwo?: string
     phone: string
     eventDate: string
     stagDate: string | null
@@ -2027,6 +2030,7 @@ function BookingCard({
               partnerOne: booking.partnerOne,
               partnerTwo: booking.partnerTwo,
               email: booking.email,
+              emailTwo: booking.emailTwo ?? '',
               phone: booking.phone,
               eventDate: booking.eventDate,
               stagDate: booking.stagDate ?? '',
@@ -2070,6 +2074,7 @@ function BookingCard({
                   partnerOne: String(form.get('partnerOne') ?? ''),
                   partnerTwo: String(form.get('partnerTwo') ?? ''),
                   email: String(form.get('email') ?? ''),
+                  emailTwo: String(form.get('emailTwo') ?? ''),
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2793,7 +2798,11 @@ function BookingFields({
       </label>
       <label className="field">
         Email
-        <input name="email" defaultValue={defaults?.email} />
+        <input name="email" type="email" defaultValue={defaults?.email} />
+      </label>
+      <label className="field">
+        Second email (optional)
+        <input name="emailTwo" type="email" defaultValue={defaults?.emailTwo} />
       </label>
       <label className="field">
         Phone
