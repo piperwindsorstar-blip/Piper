@@ -554,6 +554,27 @@ async function bookingRow(id: number): Promise<BookingRow> {
   return row
 }
 
+/** A booking and its invoice in one Book call. */
+async function bookingAndInvoice(
+  id: number,
+): Promise<{ row: BookingRow; invoice: InvoiceRow | null }> {
+  await ensureDiscountColumn()
+  await ensureCustomColumns()
+  await ensureTravelColumns()
+  const [rows, invoices] = await queryBatch([
+    { sql: 'SELECT * FROM bookings WHERE id = $1', params: [id] },
+    { sql: 'SELECT * FROM invoices WHERE booking_id = $1', params: [id] },
+  ])
+  const row = (rows as BookingRow[]).at(0)
+  if (!row) throw new Error('That booking is not on the book.')
+  return { row, invoice: (invoices as InvoiceRow[]).at(0) ?? null }
+}
+
+async function viewOf(id: number): Promise<BookingView> {
+  const { row, invoice } = await bookingAndInvoice(id)
+  return present(toView(row, invoice))
+}
+
 async function states(): Promise<BookingState[]> {
   const rows = await bookingRows()
   return rows.map(toState)
@@ -922,15 +943,6 @@ async function venueRow(name: string): Promise<SavedVenue | null> {
   return { id: whole(row.id, 'Venue'), name: row.name, street: row.street }
 }
 
-async function venueHidden(name: string): Promise<boolean> {
-  await ensureVenues()
-  const rows = await query<{ name: string }>(
-    'SELECT name FROM hidden_venues WHERE name = $1',
-    [name.trim().toLowerCase()],
-  )
-  return rows.length > 0
-}
-
 async function showVenue(name: string): Promise<void> {
   await ensureVenues()
   await query('DELETE FROM hidden_venues WHERE name = $1', [
@@ -938,86 +950,89 @@ async function showVenue(name: string): Promise<void> {
   ])
 }
 
-async function seedVenue(name: string, street: string): Promise<void> {
-  const cleanName = optional(name, 160)
-  if (!cleanName || (await venueHidden(cleanName))) return
-  const cleanStreet = optional(street, 160)
-  const existing = await venueRow(cleanName)
-  if (!existing) {
-    // Two requests can seed the same venue at once; the second one is a no-op.
-    await query(
-      'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [cleanName, cleanStreet],
-    )
-    return
-  }
-  if (!existing.street && cleanStreet) {
-    await query('UPDATE venues SET street = $1 WHERE id = $2', [
-      cleanStreet,
-      existing.id,
-    ])
-  }
-}
-
 async function rememberVenue(name: string, street: string): Promise<void> {
   const cleanName = optional(name, 160)
   if (!cleanName) return
   const cleanStreet = optional(street, 160)
-  await showVenue(cleanName)
-  const existing = await venueRow(cleanName)
-  if (!existing) {
-    // Two requests can seed the same venue at once; the second one is a no-op.
-    await query(
-      'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [cleanName, cleanStreet],
-    )
-    return
-  }
-  if (!cleanStreet || existing.street === cleanStreet) return
-  await query('UPDATE venues SET name = $1, street = $2 WHERE id = $3', [
-    cleanName,
-    cleanStreet,
-    existing.id,
+  await ensureVenues()
+  // One Book call: show it again, add it if new, take a newer street.
+  await queryBatch([
+    { sql: 'DELETE FROM hidden_venues WHERE name = $1', params: [cleanName.toLowerCase()] },
+    {
+      sql: 'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      params: [cleanName, cleanStreet],
+    },
+    {
+      sql: "UPDATE venues SET name = $1, street = $2 WHERE lower(name) = lower($1) AND $2 <> '' AND street <> $2",
+      params: [cleanName, cleanStreet],
+    },
   ])
 }
 
-async function seedKnownVenues(): Promise<void> {
+/**
+ * Every venue a booking, an outside date or a saved wedding names is on the
+ * venue list. One Book call reads it all; only missing venues are written.
+ */
+async function seedKnownVenues(): Promise<VenueRowLite[]> {
   await ensureVenues()
-  const bookings = await query<{
-    venue_name: string
-    venue_street: string
-    venue_two_name: string
-    venue_two_street: string
-  }>(
-    'SELECT venue_name, venue_street, venue_two_name, venue_two_street FROM bookings',
-  )
-  for (const row of bookings) {
-    await seedVenue(row.venue_name, row.venue_street)
-    await seedVenue(row.venue_two_name, row.venue_two_street)
-  }
   await ensureExternalDates()
-  const externals = await query<{
-    venue_name: string
-    venue_street: string
-    venue_two_name: string
-    venue_two_street: string
-  }>(
-    'SELECT venue_name, venue_street, venue_two_name, venue_two_street FROM external_dates',
-  )
-  for (const row of externals) {
-    await seedVenue(row.venue_name, row.venue_street)
-    await seedVenue(row.venue_two_name, row.venue_two_street)
+  const [bookings, externals, venues, hidden] = (await queryBatch([
+    { sql: 'SELECT venue_name, venue_street, venue_two_name, venue_two_street FROM bookings' },
+    { sql: 'SELECT venue_name, venue_street, venue_two_name, venue_two_street FROM external_dates' },
+    { sql: 'SELECT id, name, street FROM venues ORDER BY lower(name), id' },
+    { sql: 'SELECT name FROM hidden_venues' },
+  ])) as [VenuePair[], VenuePair[], VenueRowLite[], { name: string }[]]
+  const hiddenNames = new Set(hidden.map((row) => row.name.trim().toLowerCase()))
+  const known = new Map(venues.map((row) => [row.name.trim().toLowerCase(), { ...row }]))
+  const writes: { sql: string; params: unknown[] }[] = []
+  const candidates: [string, string][] = [
+    ...[...bookings, ...externals].flatMap((row): [string, string][] => [
+      [row.venue_name, row.venue_street],
+      [row.venue_two_name, row.venue_two_street],
+    ]),
+    ...SAVED_WEDDINGS.map((wedding): [string, string] => [wedding.venueName, '']),
+  ]
+  for (const [name, street] of candidates) {
+    const cleanName = optional(name, 160)
+    if (!cleanName) continue
+    const key = cleanName.toLowerCase()
+    if (hiddenNames.has(key)) continue
+    const cleanStreet = optional(street, 160)
+    const existing = known.get(key)
+    if (!existing) {
+      known.set(key, { id: 0, name: cleanName, street: cleanStreet })
+      writes.push({
+        // Two requests can seed the same venue at once; the second one is a no-op.
+        sql: 'INSERT INTO venues (name, street) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        params: [cleanName, cleanStreet],
+      })
+    } else if (!existing.street && cleanStreet) {
+      existing.street = cleanStreet
+      writes.push({
+        sql: 'UPDATE venues SET street = $1 WHERE lower(name) = lower($2)',
+        params: [cleanStreet, existing.name],
+      })
+    }
   }
-  for (const wedding of SAVED_WEDDINGS) {
-    await seedVenue(wedding.venueName, '')
-  }
+  if (writes.length === 0) return venues
+  const results = await queryBatch([
+    ...writes,
+    { sql: 'SELECT id, name, street FROM venues ORDER BY lower(name), id' },
+  ])
+  return results.at(-1) as VenueRowLite[]
 }
 
+type VenuePair = {
+  venue_name: string
+  venue_street: string
+  venue_two_name: string
+  venue_two_street: string
+}
+
+type VenueRowLite = { id: number; name: string; street: string }
+
 export async function listVenues(): Promise<SavedVenue[]> {
-  await seedKnownVenues()
-  const rows = await query<{ id: number; name: string; street: string }>(
-    'SELECT id, name, street FROM venues ORDER BY lower(name), id',
-  )
+  const rows = await seedKnownVenues()
   return rows.map((row) => ({
     id: whole(row.id, 'Venue'),
     name: row.name,
@@ -1169,11 +1184,12 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
   await saveEmailTwo(id, input.emailTwo)
-  await refreshTravel(id).catch((error: unknown) => {
+  try {
+    return await refreshTravel(id)
+  } catch (error) {
     console.warn('[travel] not worked out:', error)
-  })
-  const row = await bookingRow(id)
-  return present(toView(row, await invoiceFor(id)))
+    return viewOf(id)
+  }
 }
 
 /** The couple's second email. Undefined leaves it as it is; blank clears it. */
@@ -1204,13 +1220,12 @@ export async function refreshTravel(
   bookingId: number,
   options: { force?: boolean } = {},
 ): Promise<BookingView> {
-  const row = await bookingRow(bookingId)
-  const invoiceRow = await invoiceFor(bookingId)
+  const { row, invoice: invoiceRow } = await bookingAndInvoice(bookingId)
   const source = travelSourceOf(row)
   const street = (row.venue_street ?? '').trim()
   const key = addressKey(street)
   const paid = Boolean(invoiceRow && whole(invoiceRow.received_cents, 'Received') > 0)
-  const done = async () => present(toView(await bookingRow(bookingId), await invoiceFor(bookingId)))
+  const done = () => viewOf(bookingId)
   if (!options.force) {
     if (source === 'manual') return done()
     if (source !== '' && (row.travel_address ?? '') === key) return done()
@@ -1902,12 +1917,12 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
   // A new venue address works travel out again, unless set by hand or paid.
-  await refreshTravel(current.id).catch((error: unknown) => {
+  try {
+    return await refreshTravel(current.id)
+  } catch (error) {
     console.warn('[travel] not refreshed:', error)
-  })
-  return present(
-    toView(await bookingRow(current.id), await invoiceFor(current.id)),
-  )
+    return viewOf(current.id)
+  }
 }
 
 export async function setBookingStatus(
