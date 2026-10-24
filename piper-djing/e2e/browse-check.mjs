@@ -248,6 +248,23 @@ await step('Couple opens their plan with the passcode', async () => {
   return text.slice(0, 120).replace(/\s+/g, ' ')
 })
 
+await step('Older browsers without Object.hasOwn still load', async () => {
+  const old = await browser.newPage()
+  const oldErrors = []
+  old.on('pageerror', (e) => oldErrors.push(e.message))
+  await old.addInitScript(() => {
+    delete Object.hasOwn
+    delete Array.prototype.at
+    delete Array.prototype.findLast
+  })
+  for (const path of ['/', '/portal', '/rsvp']) {
+    await old.goto(BASE + path, { waitUntil: 'networkidle' })
+  }
+  const filled = await old.evaluate(() => typeof Object.hasOwn === 'function' && [1, 2].at(-1) === 2)
+  expect(filled, 'The fill-ins did not load')
+  expect(oldErrors.length === 0, oldErrors.slice(0, 3).join(' | '))
+})
+
 await step('Public page text spacing', async () => {
   const out = []
   for (const path of ['/', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/book', '/rsvp', '/rsvp/sign-in', '/contact', '/terms', '/portal']) {
