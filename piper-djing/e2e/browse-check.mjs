@@ -238,7 +238,7 @@ await step('Couple opens their plan with the passcode', async () => {
   const pageErrors = []
   couple.on('pageerror', (e) => pageErrors.push(e.message))
   await couple.goto(BASE + '/portal', { waitUntil: 'networkidle' })
-  await couple.locator('input.portal-input').fill(passcode.toLowerCase())
+  await couple.locator('input.portal-input').fill(`Passcode: ${passcode.slice(0, 3).toLowerCase()}-${passcode.slice(3)}.`)
   const enabled = await couple.getByRole('button', { name: 'Open the plan' }).isEnabled()
   expect(enabled, `The button stays disabled after typing. Errors: ${pageErrors.join(' | ')}`)
   await couple.getByRole('button', { name: 'Open the plan' }).click()
