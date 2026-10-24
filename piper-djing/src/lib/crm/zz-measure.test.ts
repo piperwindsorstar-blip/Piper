@@ -61,11 +61,17 @@ describe('measure', { concurrency: 1 }, () => {
       listBookings(), listPayments(), listLeads(), listExternalDates(), listQuestions(),
       listMedia(), listPartners(), listReviews(), listBots(), listPackageOffers(), listVenues(),
     ]).then(() => listPlanProgress()))
+    const desk = () => Promise.all([
+      listBookings(), listPayments(), listLeads(), listExternalDates(), listQuestions(),
+      listMedia(), listPartners(), listReviews(), listBots(), listPackageOffers(), listVenues(),
+    ]).then(() => listPlanProgress())
+    await count('getDesk warm', desk)
+    await count('listBookings warm', () => listBookings())
     traceBookCalls(true)
-    await listBookings()
+    await desk()
     const a = traceBookCalls(true)
     await updateBooking({ ...input, id, notes: 'z' })
     const b = traceBookCalls(false)
-    assert.fail(`CALLS ${out.join(' | ')} ## LIST ${a.join(' ;; ')} ## UPDATE ${b.join(' ;; ')}`)
+    assert.fail(`CALLS ${out.join(' | ')} ## DESK ${a.join(' ;; ')} ## UPDATE ${b.join(' ;; ')}`)
   })
 })
