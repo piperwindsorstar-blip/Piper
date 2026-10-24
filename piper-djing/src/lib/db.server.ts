@@ -203,8 +203,18 @@ export function takeBookCalls(): number {
   return count
 }
 
-function noteBookCall(): void {
+/** Tests can switch this on to see which statements a step sends. */
+let bookLog: string[] | null = null
+
+export function traceBookCalls(on: boolean): string[] {
+  const seen = bookLog ?? []
+  bookLog = on ? [] : null
+  return seen
+}
+
+function noteBookCall(sql = ''): void {
   bookCalls += 1
+  if (bookLog) bookLog.push(sql.replace(/\s+/g, ' ').trim().slice(0, 70))
 }
 
 function edgeBook(): EdgeBook | null {
@@ -283,12 +293,12 @@ export async function query<T extends Row>(
   if (book) {
     const stub = book.get(book.idFromName('piper'))
     const statement = positional(text, params)
-    noteBookCall()
+    noteBookCall(text)
     return (await stub.query(statement.sql, statement.params)) as T[]
   }
   if (!opening) opening = open()
   const client = await opening
-  noteBookCall()
+  noteBookCall(text)
   return (await client.query(text, params)) as T[]
 }
 
