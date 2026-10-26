@@ -1,18 +1,14 @@
-import { chromium } from 'playwright'
-const browser = await chromium.launch()
-const page = await browser.newPage()
-for (const path of ['/', '/weddings']) {
-  await page.goto('https://piperpweddingdj.services' + path + '?r=' + Date.now(), { waitUntil: 'networkidle' })
-  const r = await page.evaluate(() => {
-    const links = [...document.querySelectorAll('a')].map((a) => a.href).filter((h) => /google\.|goo\.gl/.test(h))
-    const ld = [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => s.textContent).join(' ')
-    const agg = (ld.match(/"aggregateRating":\{[^}]*\}/) || [''])[0]
-    const txt = document.body.innerText
-    const i = txt.search(/google/i)
-    return { links: [...new Set(links)], agg, around: i >= 0 ? txt.slice(Math.max(0, i - 300), i + 500).replace(/\s+/g, ' ') : 'no google text' }
-  })
-  console.log(`::notice title=${path} links::${r.links.join(' , ') || 'none'}`)
-  console.log(`::notice title=${path} rating::${r.agg || 'none'}`)
-  console.log(`::notice title=${path} text::${r.around}`)
+const ua = { 'user-agent': 'piper-site-distance-check/1.0' }
+async function geo(q) {
+  const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q), { headers: ua })
+  const j = await r.json(); await new Promise((s) => setTimeout(s, 1200))
+  return j[0] ? [Number(j[0].lon), Number(j[0].lat), j[0].display_name] : null
 }
-await browser.close()
+const home = await geo('39 Butcher Crescent, Brantford, Ontario') || await geo('Butcher Crescent, Brantford, Ontario')
+console.log(`::notice title=home::${home}`)
+for (const town of ['Woodstock, Ontario', 'Burlington, Ontario', 'Guelph, Ontario', 'Oakville, Ontario', 'Hamilton, Ontario', 'Cambridge, Ontario']) {
+  const t = await geo(town)
+  const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${home[0]},${home[1]};${t[0]},${t[1]}?overview=false`, { headers: ua })
+  const j = await r.json()
+  console.log(`::notice title=${town}::${(j.routes[0].distance / 1000).toFixed(1)} km to ${t[2]}`)
+}
