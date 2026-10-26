@@ -6,6 +6,8 @@ import type {
 } from '../../lib/crm/google-reviews.ts'
 import { publicUrl } from '../../lib/crm/safe-origin.ts'
 import { GoogleReviewsSection } from '../google-reviews.tsx'
+import { BrandStrip } from '../brand-strip.tsx'
+import type { PublicBrand } from '../../lib/crm/brands.ts'
 import { AreaMarquee } from './area-marquee.tsx'
 import { DateCalendarDialog } from './date-calendar.tsx'
 import { DateDraftProvider } from './date-draft.tsx'
@@ -30,11 +32,13 @@ export function WeddingsPage({
   packages,
   google = null,
   display = 'both',
+  brands = [],
 }: {
   reviews: PublicReview[]
   packages: PackageOffer[]
   google?: GoogleReviews | null
   display?: ReviewDisplay
+  brands?: PublicBrand[]
 }) {
   // "Google only" with nothing from Google still shows the site's own
   // reviews, so the page never loses its reviews or the #reviews anchor.
@@ -62,6 +66,7 @@ export function WeddingsPage({
           <AreaMarquee />
           <Process />
           <GearSection />
+          <BrandStrip brands={brands} tone="light" />
           {display === 'mine' ? null : (
             <GoogleReviewsSection
               google={google}

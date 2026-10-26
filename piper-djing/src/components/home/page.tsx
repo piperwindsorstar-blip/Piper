@@ -5,6 +5,8 @@ import type {
 } from '../../lib/crm/google-reviews.ts'
 import { publicUrl } from '../../lib/crm/safe-origin.ts'
 import { GoogleReviewsSection } from '../google-reviews.tsx'
+import { BrandStrip } from '../brand-strip.tsx'
+import type { PublicBrand } from '../../lib/crm/brands.ts'
 import { homeLocalBusinessJsonLd, personJsonLd } from '../../lib/seo.ts'
 import { About } from './about.tsx'
 import { DateChecker } from './date-checker.tsx'
@@ -24,10 +26,12 @@ export function HomePage({
   reviews,
   google = null,
   display = 'both',
+  brands = [],
 }: {
   reviews: PublicReview[]
   google?: GoogleReviews | null
   display?: ReviewDisplay
+  brands?: PublicBrand[]
 }) {
   // "Google only" with nothing from Google still shows the site's own
   // reviews, so the page never loses its reviews or the #reviews anchor.
@@ -46,6 +50,7 @@ export function HomePage({
       <Header />
       <main>
         <Hero />
+        <BrandStrip brands={brands} tone="dark" />
         <DateChecker />
         <Marquee />
         <About />
