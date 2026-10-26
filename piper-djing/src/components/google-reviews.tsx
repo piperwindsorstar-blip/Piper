@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { aggregateRatingJsonLd } from '../lib/crm/google-reviews.ts'
 import type { GoogleReview, GoogleReviews } from '../lib/crm/google-reviews.ts'
+import { ReviewCarousel } from './review-carousel.tsx'
 
 type Variant = 'dark' | 'light'
 
@@ -104,7 +105,7 @@ function ReviewCard({
   const long = review.text.length > (compact ? 120 : 240)
   const initial = review.author.trim()[0]?.toUpperCase() ?? 'G'
   return (
-    <figure className={`flex flex-col rounded-2xl border p-6 transition ${look.card}`}>
+    <figure className={`flex w-full flex-col rounded-2xl border p-6 transition ${look.card}`}>
       <figcaption className="flex items-center gap-3">
         {review.photo ? (
           <img
@@ -259,7 +260,8 @@ export function GoogleReviewsSection({
         </div>
       </div>
       {shown.length > 0 ? (
-        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10">
+          <ReviewCarousel tone={variant === 'dark' ? 'dark' : 'light'} label="Google reviews">
           {shown.map((review) => (
             <ReviewCard
               key={`${review.author}-${review.publishTime}`}
@@ -268,6 +270,7 @@ export function GoogleReviewsSection({
               compact={compact}
             />
           ))}
+          </ReviewCarousel>
         </div>
       ) : null}
       <p className={`mt-6 text-xs ${look.faint}`}>

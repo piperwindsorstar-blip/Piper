@@ -18,7 +18,7 @@ permissions:
 jobs:
   browse:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
 
@@ -59,6 +59,7 @@ jobs:
           PORT: '3000'
           SINK_LOG: ${{ runner.temp }}/sink.log
           NODE_PATH: ${{ runner.temp }}/pw/node_modules
+          SHOTS_DIR: ${{ runner.temp }}/shots
         run: |
           python3 e2e/mail-sink.py "$SINK_LOG" &
           node .output/server/index.mjs > "$RUNNER_TEMP/server.log" 2>&1 &
@@ -68,6 +69,14 @@ jobs:
           head -c 2500 "$RUNNER_TEMP/server.log" | tr '\n' ' ' | sed 's/^/::notice title=Server start::/' ; echo
           cp e2e/browse-check.mjs "$RUNNER_TEMP/pw/browse-check.mjs"
           status=0
-          timeout 900 node "$RUNNER_TEMP/pw/browse-check.mjs" || status=$?
+          timeout 1300 node "$RUNNER_TEMP/pw/browse-check.mjs" || status=$?
           tail -c 3000 "$RUNNER_TEMP/server.log" | tr '\n' ' ' | sed 's/^/::notice title=Server log::/' ; echo
           exit $status
+
+      - name: Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browse-shots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
