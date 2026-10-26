@@ -129,6 +129,8 @@ export const TOWNS: Record<TownPath, Town> = {
       'Piper is based in Brantford and travels to Woodstock and the rest of Oxford County for weddings of every size. Your night starts with a planning meeting, so the music suits your families and friends, and the timeline is confirmed in writing well before the day.',
     ],
     travel: WOODSTOCK_TRAVEL,
+    nearby:
+      `Woodstock is about 46 km from Brantford, so travel is included for most Woodstock weddings, and venues past 50 km are ${NEAR_FEE}. Celebrations here often have a country feel, with barns, farms and halls spread across Oxford County.`,
     faq: townFaq('Woodstock', WOODSTOCK_TRAVEL),
   },
   '/burlington-wedding-dj': {
@@ -142,6 +144,8 @@ export const TOWNS: Record<TownPath, Town> = {
       'From his home base in Brantford, Piper travels to Burlington for ceremonies, receptions and full-day weddings. He learns your story at a planning meeting, builds the music around your must-play list, and keeps every entrance and speech on cue.',
     ],
     travel: BURLINGTON_TRAVEL,
+    nearby:
+      `Burlington sits about 56 km from Brantford, so travel comes to ${NEAR_FEE}. Couples here tend to choose waterfront and lakeside settings, golf clubs and banquet halls.`,
     faq: townFaq('Burlington', BURLINGTON_TRAVEL),
   },
   '/guelph-wedding-dj': {
@@ -155,6 +159,8 @@ export const TOWNS: Record<TownPath, Town> = {
       'Piper lives in Brantford and makes the trip up to Guelph for weddings big and small. You get a planning meeting, your own do-not-play list, and a DJ who sets up and sound checks before your first guest arrives.',
     ],
     travel: GUELPH_TRAVEL,
+    nearby:
+      `From Brantford it’s about 54 km to Guelph, so travel is ${NEAR_FEE}. Guelph weddings mix university-town spots, historic stone buildings and rustic barns just outside the city.`,
     faq: townFaq('Guelph', GUELPH_TRAVEL),
   },
   '/oakville-wedding-dj': {
@@ -168,6 +174,8 @@ export const TOWNS: Record<TownPath, Town> = {
       'Piper is a Brantford-based wedding DJ who travels to Oakville to play ceremonies and receptions. Every booking includes a planning meeting and a written timeline, and on the day he works alongside your planner so the evening flows.',
     ],
     travel: OAKVILLE_TRAVEL,
+    nearby:
+      `Oakville is about 72 km from Brantford along the 403, so travel is ${NEAR_FEE}. Weddings here lean toward lakeside settings, golf and country clubs, and elegant halls.`,
     faq: townFaq('Oakville', OAKVILLE_TRAVEL),
   },
 }
