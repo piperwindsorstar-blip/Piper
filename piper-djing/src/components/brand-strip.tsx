@@ -2,9 +2,9 @@ import type { PublicBrand } from '../lib/crm/brands.ts'
 import { stripCopies } from '../lib/crm/brands.ts'
 
 /**
- * "Brands I've worked with": the same scrolling row as the towns strip, with
- * logos. The first copy of the list is the real one; the rest only fill the
- * loop and are hidden from screen readers and from reduced-motion visitors.
+ * "Brands I've worked with": brand names in the same scrolling row as the
+ * towns strip. The first copy of the list is the real one; the rest only fill
+ * the loop and are hidden from screen readers and from reduced-motion visitors.
  */
 export function BrandStrip({
   brands,
@@ -23,7 +23,7 @@ export function BrandStrip({
   return (
     <section
       aria-labelledby="brands-title"
-      className={`brand-strip overflow-hidden border-y py-6 ${dark ? 'border-white/10 bg-ink-900' : 'border-line bg-mist'}`}
+      className={`brand-strip overflow-hidden border-y py-4 ${dark ? 'border-white/10 bg-ink-900' : 'border-line bg-mist'}`}
     >
       <h2
         id="brands-title"
@@ -31,19 +31,11 @@ export function BrandStrip({
       >
         Brands I’ve worked with
       </h2>
-      <ul className="marquee mt-4 flex items-center gap-10">
+      <ul
+        className={`marquee mt-3 flex gap-10 font-display font-semibold ${dark ? 'text-2xl text-white/30' : 'text-xl text-soft/70'}`}
+      >
         {items.map(({ brand, copy }) => {
           const extra = copy > 0
-          const logo = (
-            <span className="flex h-14 items-center rounded-xl bg-white px-4">
-              <img
-                src={brand.logo}
-                alt={`${brand.name} logo`}
-                loading="lazy"
-                className="h-9 w-auto max-w-[9rem] object-contain"
-              />
-            </span>
-          )
           return (
             <li
               key={`${copy}-${brand.id}`}
@@ -57,12 +49,12 @@ export function BrandStrip({
                   target="_blank"
                   rel="noopener"
                   tabIndex={extra ? -1 : undefined}
-                  className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon"
+                  className={dark ? 'hover:text-white' : 'hover:text-ink'}
                 >
-                  {logo}
+                  {brand.name}
                 </a>
               ) : (
-                logo
+                <span>{brand.name}</span>
               )}
               <span className="text-neon" aria-hidden="true">
                 ✦

@@ -3,7 +3,6 @@ import { describe, it } from 'node:test'
 import { stripCopies } from './brands.ts'
 import {
   addBrand,
-  brandLogo,
   listDeskBrands,
   listPublicBrands,
   moveBrand,
@@ -13,8 +12,6 @@ import {
 } from './brands.server.ts'
 
 const liveBook = Boolean(process.env.DATABASE_URL)
-const png =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 describe('brand strip copies', () => {
   it('repeats a short list enough to fill the loop', () => {
@@ -28,11 +25,11 @@ describe('brand strip copies', () => {
 describe('brands in the book', { skip: liveBook }, () => {
   it('starts empty, then adds, orders, hides, edits and deletes', async () => {
     assert.deepEqual(await listPublicBrands(), [])
-    await addBrand({ name: 'Pioneer DJ', href: 'https://pioneerdj.example.com', logo: png })
-    await addBrand({ name: 'Local Sound', logo: png })
-    await assert.rejects(() => addBrand({ name: 'No logo', logo: '' }), /logo/)
+    await addBrand({ name: 'Pioneer DJ', href: 'https://pioneerdj.example.com' })
+    await addBrand({ name: 'Local Sound' })
+    await assert.rejects(() => addBrand({ name: '  ' }), /required/)
     await assert.rejects(
-      () => addBrand({ name: 'Bad link', href: 'http://bad.example.com', logo: png }),
+      () => addBrand({ name: 'Bad link', href: 'http://bad.example.com' }),
       /https:\/\//,
     )
     let brands = await listPublicBrands()
@@ -41,8 +38,7 @@ describe('brands in the book', { skip: liveBook }, () => {
     assert.ok(pioneer && local)
     assert.equal(pioneer.href, 'https://pioneerdj.example.com/')
     assert.equal(local.href, null)
-    assert.match(pioneer.logo, /^\/brand-logo\/\d+\?v=1$/)
-    assert.equal((await brandLogo(pioneer.id))?.mime, 'image/png')
+    assert.equal('logo' in pioneer, false)
 
     await moveBrand(local.id, 'up')
     brands = await listPublicBrands()
@@ -52,11 +48,10 @@ describe('brands in the book', { skip: liveBook }, () => {
     assert.deepEqual((await listPublicBrands()).map((b) => b.name), ['Pioneer DJ'])
     assert.equal((await listDeskBrands()).length, 2)
 
-    await updateBrand({ id: pioneer.id, name: 'Pioneer', href: '', logo: png })
+    await updateBrand({ id: pioneer.id, name: 'Pioneer', href: '' })
     const edited = (await listPublicBrands())[0]
     assert.equal(edited?.name, 'Pioneer')
     assert.equal(edited?.href, null)
-    assert.match(edited?.logo ?? '', /\?v=2$/)
 
     await removeBrand(pioneer.id)
     await removeBrand(local.id)

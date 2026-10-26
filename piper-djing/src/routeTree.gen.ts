@@ -75,7 +75,6 @@ import { Route as RsvpManageTimelineRouteImport } from './routes/rsvp/manage/tim
 import { Route as RsvpOpenTokenRouteImport } from './routes/rsvp/open/$token'
 import { Route as ApiRsvpSlugPhotoRouteImport } from './routes/api/rsvp/$slug/photo'
 import { Route as VendorLogoIdRouteImport } from './routes/vendor-logo/$id'
-import { Route as BrandLogoIdRouteImport } from './routes/brand-logo/$id'
 import { Route as DeskPortalsSlugIndexRouteImport } from './routes/desk/portals/$slug/index'
 import { Route as DeskPortalsSlugPlanRouteImport } from './routes/desk/portals/$slug/plan'
 import { Route as RsvpSlugPTokenIndexRouteImport } from './routes/rsvp/$slug/p/$token/index'
@@ -412,11 +411,6 @@ const VendorLogoIdRoute = VendorLogoIdRouteImport.update({
   path: '/vendor-logo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BrandLogoIdRoute = BrandLogoIdRouteImport.update({
-  id: '/brand-logo/$id',
-  path: '/brand-logo/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DeskPortalsSlugIndexRoute = DeskPortalsSlugIndexRouteImport.update({
   id: '/portals/$slug/',
   path: '/portals/$slug/',
@@ -510,7 +504,6 @@ export interface FileRoutesByFullPath {
   '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/vendor-logo/$id': typeof VendorLogoIdRoute
-  '/brand-logo/$id': typeof BrandLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -581,7 +574,6 @@ export interface FileRoutesByTo {
   '/rsvp/manage': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/vendor-logo/$id': typeof VendorLogoIdRoute
-  '/brand-logo/$id': typeof BrandLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -656,7 +648,6 @@ export interface FileRoutesById {
   '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/vendor-logo/$id': typeof VendorLogoIdRoute
-  '/brand-logo/$id': typeof BrandLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -732,7 +723,6 @@ export interface FileRouteTypes {
     | '/rsvp/manage/'
     | '/api/rsvp/$slug/photo'
     | '/vendor-logo/$id'
-    | '/brand-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -803,7 +793,6 @@ export interface FileRouteTypes {
     | '/rsvp/manage'
     | '/api/rsvp/$slug/photo'
     | '/vendor-logo/$id'
-    | '/brand-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug'
     | '/rsvp/$slug/p/$token/done'
@@ -877,7 +866,6 @@ export interface FileRouteTypes {
     | '/rsvp/manage/'
     | '/api/rsvp/$slug/photo'
     | '/vendor-logo/$id'
-    | '/brand-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -917,7 +905,6 @@ export interface RootRouteChildren {
   RsvpSlugIndexRoute: typeof RsvpSlugIndexRoute
   ApiRsvpSlugPhotoRoute: typeof ApiRsvpSlugPhotoRoute
   VendorLogoIdRoute: typeof VendorLogoIdRoute
-  BrandLogoIdRoute: typeof BrandLogoIdRoute
   RsvpSlugPTokenDoneRoute: typeof RsvpSlugPTokenDoneRoute
   RsvpSlugPTokenReviewRoute: typeof RsvpSlugPTokenReviewRoute
   RsvpSlugPTokenIndexRoute: typeof RsvpSlugPTokenIndexRoute
@@ -1387,13 +1374,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorLogoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/brand-logo/$id': {
-      id: '/brand-logo/$id'
-      path: '/brand-logo/$id'
-      fullPath: '/brand-logo/$id'
-      preLoaderRoute: typeof BrandLogoIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/desk/portals/$slug/': {
       id: '/desk/portals/$slug/'
       path: '/portals/$slug'
@@ -1568,7 +1548,6 @@ const rootRouteChildren: RootRouteChildren = {
   RsvpSlugIndexRoute: RsvpSlugIndexRoute,
   ApiRsvpSlugPhotoRoute: ApiRsvpSlugPhotoRoute,
   VendorLogoIdRoute: VendorLogoIdRoute,
-  BrandLogoIdRoute: BrandLogoIdRoute,
   RsvpSlugPTokenDoneRoute: RsvpSlugPTokenDoneRoute,
   RsvpSlugPTokenReviewRoute: RsvpSlugPTokenReviewRoute,
   RsvpSlugPTokenIndexRoute: RsvpSlugPTokenIndexRoute,
