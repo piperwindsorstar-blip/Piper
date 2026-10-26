@@ -349,6 +349,11 @@ for (const path of ['/', '/weddings']) {
       expect(first.heights.length === 1, `Card heights differ: ${first.heights}`)
       expect(first.dots === Math.ceil(8 / expected), `${first.dots} dots`)
       expect(!first.overflowX, 'Page scrolls sideways')
+      const rows = await region.evaluate((el) => {
+        const dots = [...el.querySelectorAll('button[aria-label^="Go to slide"], button[aria-label$=" reviews"]')]
+        return new Set(dots.filter((d) => d.offsetParent).map((d) => Math.round(d.getBoundingClientRect().top))).size
+      })
+      expect(rows === 1, `Arrows and dots wrap onto ${rows} rows`)
       await v.screenshot({ path: `${SHOTS}/${path === '/' ? 'home' : 'weddings'}-${width}.png`, fullPage: false, clip: await region.boundingBox().then((b) => ({ x: 0, y: Math.max(0, b.y - 20), width, height: Math.min(900, b.height + 40) })) })
       const nextButton = region.getByRole('button', { name: 'Next reviews' }).locator('visible=true')
       await nextButton.click()

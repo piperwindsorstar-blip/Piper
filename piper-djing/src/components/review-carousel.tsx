@@ -203,27 +203,33 @@ export function ReviewCarousel({
         </ul>
         <div className="absolute top-1/2 right-0 hidden -translate-y-1/2 md:block">{next}</div>
       </div>
-      <div className="mt-6 flex items-center justify-center gap-4">
+      <div className="mt-6 flex items-center justify-center gap-3 sm:gap-4">
         <div className="md:hidden">{prev}</div>
-        <div className="flex flex-wrap items-center justify-center">
-          {Array.from({ length: pages }, (_, index) => (
-            <button
-              key={index}
-              type="button"
-              aria-label={`Go to slide ${index + 1} of ${pages}`}
-              aria-current={index === page ? 'true' : undefined}
-              onClick={() => {
-                setTouched(true)
-                goTo(index)
-              }}
-              className={`grid h-11 min-w-8 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 ${look.focus}`}
-            >
-              <span
-                className={`block h-2.5 rounded-full transition-all motion-reduce:transition-none ${index === page ? 'w-6 bg-neon' : `w-2.5 ${look.dot}`}`}
-              />
-            </button>
-          ))}
-        </div>
+        {pages > 9 ? (
+          <p className={`min-w-16 text-center text-sm font-semibold ${tone === 'dark' ? 'text-white/70' : 'text-soft'}`} aria-live="polite">
+            {`${page + 1} / ${pages}`}
+          </p>
+        ) : (
+          <div className="flex items-center justify-center">
+            {Array.from({ length: pages }, (_, index) => (
+              <button
+                key={index}
+                type="button"
+                aria-label={`Go to slide ${index + 1} of ${pages}`}
+                aria-current={index === page ? 'true' : undefined}
+                onClick={() => {
+                  setTouched(true)
+                  goTo(index)
+                }}
+                className={`grid h-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 ${pages > 6 ? 'min-w-6 sm:min-w-8' : 'min-w-8'} ${look.focus}`}
+              >
+                <span
+                  className={`block h-2.5 rounded-full transition-all motion-reduce:transition-none ${index === page ? `${pages > 6 ? 'w-4 sm:w-6' : 'w-6'} bg-neon` : `w-2.5 ${look.dot}`}`}
+                />
+              </button>
+            ))}
+          </div>
+        )}
         <div className="md:hidden">{next}</div>
       </div>
     </div>
