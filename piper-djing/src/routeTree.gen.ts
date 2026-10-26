@@ -21,6 +21,10 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as HamiltonWeddingDjRouteImport } from './routes/hamilton-wedding-dj'
 import { Route as CambridgeWeddingDjRouteImport } from './routes/cambridge-wedding-dj'
 import { Route as ParisWeddingDjRouteImport } from './routes/paris-wedding-dj'
+import { Route as WoodstockWeddingDjRouteImport } from './routes/woodstock-wedding-dj'
+import { Route as BurlingtonWeddingDjRouteImport } from './routes/burlington-wedding-dj'
+import { Route as GuelphWeddingDjRouteImport } from './routes/guelph-wedding-dj'
+import { Route as OakvilleWeddingDjRouteImport } from './routes/oakville-wedding-dj'
 import { Route as WeddingsRouteImport } from './routes/weddings'
 import { Route as CSlugRouteImport } from './routes/c/$slug'
 import { Route as DeskIndexRouteImport } from './routes/desk/index'
@@ -121,6 +125,26 @@ const CambridgeWeddingDjRoute = CambridgeWeddingDjRouteImport.update({
 const ParisWeddingDjRoute = ParisWeddingDjRouteImport.update({
   id: '/paris-wedding-dj',
   path: '/paris-wedding-dj',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WoodstockWeddingDjRoute = WoodstockWeddingDjRouteImport.update({
+  id: '/woodstock-wedding-dj',
+  path: '/woodstock-wedding-dj',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BurlingtonWeddingDjRoute = BurlingtonWeddingDjRouteImport.update({
+  id: '/burlington-wedding-dj',
+  path: '/burlington-wedding-dj',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuelphWeddingDjRoute = GuelphWeddingDjRouteImport.update({
+  id: '/guelph-wedding-dj',
+  path: '/guelph-wedding-dj',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OakvilleWeddingDjRoute = OakvilleWeddingDjRouteImport.update({
+  id: '/oakville-wedding-dj',
+  path: '/oakville-wedding-dj',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -402,6 +426,10 @@ export interface FileRoutesByFullPath {
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
+  '/woodstock-wedding-dj': typeof WoodstockWeddingDjRoute
+  '/burlington-wedding-dj': typeof BurlingtonWeddingDjRoute
+  '/guelph-wedding-dj': typeof GuelphWeddingDjRoute
+  '/oakville-wedding-dj': typeof OakvilleWeddingDjRoute
   '/weddings': typeof WeddingsRoute
   '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
@@ -465,6 +493,10 @@ export interface FileRoutesByTo {
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
+  '/woodstock-wedding-dj': typeof WoodstockWeddingDjRoute
+  '/burlington-wedding-dj': typeof BurlingtonWeddingDjRoute
+  '/guelph-wedding-dj': typeof GuelphWeddingDjRoute
+  '/oakville-wedding-dj': typeof OakvilleWeddingDjRoute
   '/weddings': typeof WeddingsRoute
   '/c/$slug': typeof CSlugRoute
   '/desk/bookings': typeof DeskBookingsRoute
@@ -530,6 +562,10 @@ export interface FileRoutesById {
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
+  '/woodstock-wedding-dj': typeof WoodstockWeddingDjRoute
+  '/burlington-wedding-dj': typeof BurlingtonWeddingDjRoute
+  '/guelph-wedding-dj': typeof GuelphWeddingDjRoute
+  '/oakville-wedding-dj': typeof OakvilleWeddingDjRoute
   '/weddings': typeof WeddingsRoute
   '/rsvp/manage': typeof RsvpManageRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
@@ -597,6 +633,10 @@ export interface FileRouteTypes {
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
+    | '/woodstock-wedding-dj'
+    | '/burlington-wedding-dj'
+    | '/guelph-wedding-dj'
+    | '/oakville-wedding-dj'
     | '/weddings'
     | '/rsvp/manage'
     | '/c/$slug'
@@ -660,6 +700,10 @@ export interface FileRouteTypes {
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
+    | '/woodstock-wedding-dj'
+    | '/burlington-wedding-dj'
+    | '/guelph-wedding-dj'
+    | '/oakville-wedding-dj'
     | '/weddings'
     | '/c/$slug'
     | '/desk/bookings'
@@ -724,6 +768,10 @@ export interface FileRouteTypes {
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
+    | '/woodstock-wedding-dj'
+    | '/burlington-wedding-dj'
+    | '/guelph-wedding-dj'
+    | '/oakville-wedding-dj'
     | '/weddings'
     | '/rsvp/manage'
     | '/c/$slug'
@@ -790,6 +838,10 @@ export interface RootRouteChildren {
   HamiltonWeddingDjRoute: typeof HamiltonWeddingDjRoute
   CambridgeWeddingDjRoute: typeof CambridgeWeddingDjRoute
   ParisWeddingDjRoute: typeof ParisWeddingDjRoute
+  WoodstockWeddingDjRoute: typeof WoodstockWeddingDjRoute
+  BurlingtonWeddingDjRoute: typeof BurlingtonWeddingDjRoute
+  GuelphWeddingDjRoute: typeof GuelphWeddingDjRoute
+  OakvilleWeddingDjRoute: typeof OakvilleWeddingDjRoute
   WeddingsRoute: typeof WeddingsRoute
   RsvpManageRouteRoute: typeof RsvpManageRouteRouteWithChildren
   CSlugRoute: typeof CSlugRoute
@@ -878,6 +930,34 @@ declare module '@tanstack/react-router' {
       path: '/paris-wedding-dj'
       fullPath: '/paris-wedding-dj'
       preLoaderRoute: typeof ParisWeddingDjRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/woodstock-wedding-dj': {
+      id: '/woodstock-wedding-dj'
+      path: '/woodstock-wedding-dj'
+      fullPath: '/woodstock-wedding-dj'
+      preLoaderRoute: typeof WoodstockWeddingDjRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/burlington-wedding-dj': {
+      id: '/burlington-wedding-dj'
+      path: '/burlington-wedding-dj'
+      fullPath: '/burlington-wedding-dj'
+      preLoaderRoute: typeof BurlingtonWeddingDjRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guelph-wedding-dj': {
+      id: '/guelph-wedding-dj'
+      path: '/guelph-wedding-dj'
+      fullPath: '/guelph-wedding-dj'
+      preLoaderRoute: typeof GuelphWeddingDjRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oakville-wedding-dj': {
+      id: '/oakville-wedding-dj'
+      path: '/oakville-wedding-dj'
+      fullPath: '/oakville-wedding-dj'
+      preLoaderRoute: typeof OakvilleWeddingDjRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -1367,6 +1447,10 @@ const rootRouteChildren: RootRouteChildren = {
   HamiltonWeddingDjRoute: HamiltonWeddingDjRoute,
   CambridgeWeddingDjRoute: CambridgeWeddingDjRoute,
   ParisWeddingDjRoute: ParisWeddingDjRoute,
+  WoodstockWeddingDjRoute: WoodstockWeddingDjRoute,
+  BurlingtonWeddingDjRoute: BurlingtonWeddingDjRoute,
+  GuelphWeddingDjRoute: GuelphWeddingDjRoute,
+  OakvilleWeddingDjRoute: OakvilleWeddingDjRoute,
   WeddingsRoute: WeddingsRoute,
   RsvpManageRouteRoute: RsvpManageRouteRouteWithChildren,
   CSlugRoute: CSlugRoute,

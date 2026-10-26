@@ -35,6 +35,10 @@ export function publicHead(opts: {
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
+    | '/woodstock-wedding-dj'
+    | '/burlington-wedding-dj'
+    | '/guelph-wedding-dj'
+    | '/oakville-wedding-dj'
   title: string
   description?: string
 }) {
@@ -72,8 +76,13 @@ const CPDJA = {
   url: 'https://cpdja.ca',
 }
 
+/** Towns already named in the shared areaServed list. */
+const BASE_TOWNS = ['Brantford', 'Hamilton', 'Cambridge', 'Paris']
+
 export function professionalServiceJsonLd(
   offers?: { name: string; cents: number }[],
+  /** A town page's town, added to areaServed when it isn't listed already. */
+  townName?: string,
 ): string {
   const priced =
     offers ??
@@ -110,6 +119,15 @@ export function professionalServiceJsonLd(
         containedInPlace: { '@type': 'AdministrativeArea', name: 'Ontario' },
       },
       { '@type': 'AdministrativeArea', name: 'Brant County' },
+      ...(townName && !BASE_TOWNS.includes(townName)
+        ? [
+            {
+              '@type': 'City',
+              name: townName,
+              containedInPlace: { '@type': 'AdministrativeArea', name: 'Ontario' },
+            },
+          ]
+        : []),
     ],
     serviceType: 'Wedding DJ',
     sameAs: SAME_AS,
