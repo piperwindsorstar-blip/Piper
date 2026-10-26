@@ -2,6 +2,8 @@ name: Live check
 on:
   push:
     branches: [claude/live-check]
+permissions:
+  contents: write
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -11,3 +13,8 @@ jobs:
         with: { node-version: 22 }
       - run: npm init -y >/dev/null && npm i playwright@1.48.2 && npx playwright install --with-deps chromium
       - run: node check.mjs
+      - name: Push screenshots
+        run: |
+          git config user.name shots && git config user.email shots@example.com
+          git checkout --orphan claude/live-shots
+          git rm -rq --cached . && git add -f shots && git commit -qm shots && git push -qf origin HEAD:claude/live-shots
