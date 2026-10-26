@@ -101,6 +101,12 @@ export function TownPage({
               </div>
             </div>
           </section>
+          {town.nearby ? (
+            <section className="mx-auto max-w-3xl px-5 pb-12">
+              <Eyebrow>{`Weddings in ${town.name}`}</Eyebrow>
+              <p className="mt-3 text-lg leading-relaxed text-soft">{town.nearby}</p>
+            </section>
+          ) : null}
           <TrustBar />
           <section className="mx-auto max-w-3xl px-5 py-16">
             <Eyebrow>{`${town.name ?? ''} weddings`}</Eyebrow>

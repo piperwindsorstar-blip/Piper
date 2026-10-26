@@ -16,7 +16,7 @@ describe('town pages', () => {
   })
 
   it('gives every town its own words, not a copy', () => {
-    const texts = TOWN_LIST.flatMap((town) => [town.description, town.intro, ...town.body])
+    const texts = TOWN_LIST.flatMap((town) => [town.description, town.intro, ...town.body, ...(town.nearby ? [town.nearby] : [])])
     assert.equal(new Set(texts).size, texts.length)
     for (const town of TOWN_LIST) {
       assert.ok(town.description.length < 155, `${town.name} description is too long`)
