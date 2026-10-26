@@ -1,3 +1,4 @@
+import { TRAVEL_NEAR_CENTS } from '../../lib/piper/rules.ts'
 import { FAQ } from './content.ts'
 
 /**
@@ -11,6 +12,10 @@ export type TownPath =
   | '/hamilton-wedding-dj'
   | '/cambridge-wedding-dj'
   | '/paris-wedding-dj'
+  | '/woodstock-wedding-dj'
+  | '/burlington-wedding-dj'
+  | '/guelph-wedding-dj'
+  | '/oakville-wedding-dj'
 
 export type Town = {
   path: TownPath
@@ -38,6 +43,26 @@ const CAMBRIDGE_TRAVEL =
 
 const PARIS_TRAVEL =
   'Paris is about 15 km from Piper’s home base in Brantford, well under 50 km, so travel is included.'
+
+/** The 50 to 100 km fee, from the terms. */
+const NEAR_FEE = `$${TRAVEL_NEAR_CENTS / 100}`
+
+/** The same description shape for the newer town pages. */
+function townDescription(name: string): string {
+  return `${name} wedding DJ Piper P, based in Brantford. Ceremony, reception and full-day wedding packages with clear pricing. Check if your date is open.`
+}
+
+const WOODSTOCK_TRAVEL =
+  `Woodstock is about 46 km from Piper’s home base in Brantford, so for most Woodstock weddings travel is included. Venues past 50 km are ${NEAR_FEE}, and the booking form works out the exact fee from your venue address.`
+
+const BURLINGTON_TRAVEL =
+  `Burlington is about 56 km from Brantford, which puts it in the 50 to 100 km travel band: ${NEAR_FEE}, one flat fee. The booking form confirms it from your venue address.`
+
+const GUELPH_TRAVEL =
+  `Guelph is about 54 km from Brantford, so travel is ${NEAR_FEE} (the 50 to 100 km band). Add your venue address in the booking form for the exact figure.`
+
+const OAKVILLE_TRAVEL =
+  `Oakville is about 72 km from Brantford along the 403, inside the 50 to 100 km band, so travel is a flat ${NEAR_FEE}. The booking form checks your exact venue address.`
 
 export const TOWNS: Record<TownPath, Town> = {
   '/hamilton-wedding-dj': {
@@ -84,6 +109,58 @@ export const TOWNS: Record<TownPath, Town> = {
     ],
     travel: PARIS_TRAVEL,
     faq: townFaq('Paris', PARIS_TRAVEL),
+  },
+  '/woodstock-wedding-dj': {
+    path: '/woodstock-wedding-dj',
+    name: 'Woodstock',
+    title: 'Woodstock wedding DJ | DJ Piper P',
+    description: townDescription('Woodstock'),
+    intro:
+      'Relaxed, well-planned wedding music for Woodstock couples, from a DJ just down the 403. Check your date in 30 seconds.',
+    body: [
+      'Piper is based in Brantford and travels to Woodstock and the rest of Oxford County for weddings of every size. Your night starts with a planning meeting, so the music suits your families and friends, and the timeline is confirmed in writing well before the day.',
+    ],
+    travel: WOODSTOCK_TRAVEL,
+    faq: townFaq('Woodstock', WOODSTOCK_TRAVEL),
+  },
+  '/burlington-wedding-dj': {
+    path: '/burlington-wedding-dj',
+    name: 'Burlington',
+    title: 'Burlington wedding DJ | DJ Piper P',
+    description: townDescription('Burlington'),
+    intro:
+      'A full dance floor and a night that stays on schedule, for Burlington couples planning their wedding. Check your date in 30 seconds.',
+    body: [
+      'From his home base in Brantford, Piper travels to Burlington for ceremonies, receptions and full-day weddings. He learns your story at a planning meeting, builds the music around your must-play list, and keeps every entrance and speech on cue.',
+    ],
+    travel: BURLINGTON_TRAVEL,
+    faq: townFaq('Burlington', BURLINGTON_TRAVEL),
+  },
+  '/guelph-wedding-dj': {
+    path: '/guelph-wedding-dj',
+    name: 'Guelph',
+    title: 'Guelph wedding DJ | DJ Piper P',
+    description: townDescription('Guelph'),
+    intro:
+      'Warm, friendly DJing with a real plan behind it, for Guelph couples who want everyone dancing. Check your date in 30 seconds.',
+    body: [
+      'Piper lives in Brantford and makes the trip up to Guelph for weddings big and small. You get a planning meeting, your own do-not-play list, and a DJ who sets up and sound checks before your first guest arrives.',
+    ],
+    travel: GUELPH_TRAVEL,
+    faq: townFaq('Guelph', GUELPH_TRAVEL),
+  },
+  '/oakville-wedding-dj': {
+    path: '/oakville-wedding-dj',
+    name: 'Oakville',
+    title: 'Oakville wedding DJ | DJ Piper P',
+    description: townDescription('Oakville'),
+    intro:
+      'Polished, personal wedding entertainment for Oakville couples, with clear pricing from the start. Check your date in 30 seconds.',
+    body: [
+      'Piper is a Brantford-based wedding DJ who travels to Oakville to play ceremonies and receptions. Every booking includes a planning meeting and a written timeline, and on the day he works alongside your planner so the evening flows.',
+    ],
+    travel: OAKVILLE_TRAVEL,
+    faq: townFaq('Oakville', OAKVILLE_TRAVEL),
   },
 }
 

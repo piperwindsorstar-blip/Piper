@@ -12,6 +12,10 @@ export const Route = createFileRoute('/sitemap.xml')({
   <url><loc>${publicUrl('/hamilton-wedding-dj')}</loc></url>
   <url><loc>${publicUrl('/cambridge-wedding-dj')}</loc></url>
   <url><loc>${publicUrl('/paris-wedding-dj')}</loc></url>
+  <url><loc>${publicUrl('/woodstock-wedding-dj')}</loc></url>
+  <url><loc>${publicUrl('/burlington-wedding-dj')}</loc></url>
+  <url><loc>${publicUrl('/guelph-wedding-dj')}</loc></url>
+  <url><loc>${publicUrl('/oakville-wedding-dj')}</loc></url>
   <url><loc>${publicUrl('/book')}</loc></url>
   <url><loc>${publicUrl('/rsvp')}</loc></url>
   <url><loc>${publicUrl('/contact')}</loc></url>

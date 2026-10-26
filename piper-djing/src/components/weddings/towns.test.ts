@@ -4,10 +4,10 @@ import { describe, it } from 'node:test'
 import { TOWN_LIST, TOWNS } from './towns.ts'
 
 describe('town pages', () => {
-  it('has one page each for Hamilton, Cambridge and Paris', () => {
+  it('has one page per town', () => {
     assert.deepEqual(
       TOWN_LIST.map((town) => town.name),
-      ['Hamilton', 'Cambridge', 'Paris'],
+      ['Hamilton', 'Cambridge', 'Paris', 'Woodstock', 'Burlington', 'Guelph', 'Oakville'],
     )
     for (const [path, town] of Object.entries(TOWNS)) {
       assert.equal(town.path, path)
@@ -19,7 +19,7 @@ describe('town pages', () => {
     const texts = TOWN_LIST.flatMap((town) => [town.description, town.intro, ...town.body])
     assert.equal(new Set(texts).size, texts.length)
     for (const town of TOWN_LIST) {
-      assert.ok(town.description.length <= 160, `${town.name} description is too long`)
+      assert.ok(town.description.length < 155, `${town.name} description is too long`)
       assert.ok(town.description.includes(town.name))
     }
   })

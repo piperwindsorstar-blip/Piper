@@ -49,7 +49,7 @@ export function TownPage({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: professionalServiceJsonLd(packages),
+            __html: professionalServiceJsonLd(packages, town.name),
           }}
         />
         <script

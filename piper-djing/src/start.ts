@@ -58,6 +58,10 @@ function cachePublicPage(response: Response, request: Request): void {
     path !== '/hamilton-wedding-dj' &&
     path !== '/cambridge-wedding-dj' &&
     path !== '/paris-wedding-dj' &&
+    path !== '/woodstock-wedding-dj' &&
+    path !== '/burlington-wedding-dj' &&
+    path !== '/guelph-wedding-dj' &&
+    path !== '/oakville-wedding-dj' &&
     path !== '/book' &&
     path !== '/contact' &&
     path !== '/rsvp' &&
