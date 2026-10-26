@@ -1,8 +1,11 @@
 const ua = { 'user-agent': 'piper-site-distance-check/1.0' }
 async function geo(q) {
-  const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q), { headers: ua })
-  const j = await r.json(); await new Promise((s) => setTimeout(s, 1200))
-  return j[0] ? [Number(j[0].lon), Number(j[0].lat), j[0].display_name] : null
+  const r = await fetch('https://photon.komoot.io/api/?limit=1&q=' + encodeURIComponent(q), { headers: ua })
+  const t = await r.text(); let j
+  try { j = JSON.parse(t) } catch { console.log(`::notice title=geo fail::${r.status} ${t.slice(0, 200)}`); return null }
+  const f = j.features?.[0]; if (!f) return null
+  const p = f.properties
+  return [f.geometry.coordinates[0], f.geometry.coordinates[1], [p.housenumber, p.street ?? p.name, p.city, p.state].filter(Boolean).join(' ')]
 }
 const home = await geo('39 Butcher Crescent, Brantford, Ontario') || await geo('Butcher Crescent, Brantford, Ontario')
 console.log(`::notice title=home::${home}`)
