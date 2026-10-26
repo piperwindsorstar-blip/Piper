@@ -169,6 +169,7 @@ export const NAV = [
   ['The Booth', '#the-booth'],
   ['Reviews', '#reviews'],
   ['FAQ', '#faq'],
+  ['Vendors', '/wedding-vendors'],
 ] as const
 
 export const CHECKLIST = [

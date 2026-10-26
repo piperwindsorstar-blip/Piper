@@ -12,6 +12,7 @@ import {
 import { emailOwner } from './mail.server.ts'
 import { readPublicSite } from './public-site.server.ts'
 import { readGoogleReviews } from './google-reviews.server.ts'
+import { listPublicVendors } from './vendors.server.ts'
 import {
   createEventInquiry,
   createInquiry,
@@ -33,6 +34,11 @@ export const getPublicSite = createServerFn({ method: 'GET' }).handler(
       google,
     }
   },
+)
+
+/** The vendors page: read-only, visible vendors only, straight from the Book. */
+export const getPublicVendors = createServerFn({ method: 'GET' }).handler(
+  async () => ({ groups: await listPublicVendors() }),
 )
 
 export const getPublicTerms = createServerFn({ method: 'GET' }).handler(

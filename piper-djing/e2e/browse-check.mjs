@@ -128,7 +128,7 @@ await step('Desk: Needs you reminder cleared', async () => {
 
 await step('Desk: page text spacing', async () => {
   const out = []
-  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs']) {
+  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors']) {
     out.push(await spacing(page, path))
   }
   return out.join(', ')
@@ -170,6 +170,70 @@ await step('Desk Money: void hides "Email the invoice"', async () => {
   await page.goto(BASE + '/desk/money?tab=invoices', { waitUntil: 'networkidle' })
   const still = await page.locator('li', { hasText: COUPLE.one }).getByRole('button', { name: 'Email the invoice' }).count()
   expect(still === 0, '"Email the invoice" still shows on the void invoice')
+})
+
+await step('Desk Vendors: http:// website refused', async () => {
+  await page.goto(BASE + '/desk/vendors', { waitUntil: 'networkidle' })
+  const form = page.locator('form', { hasText: 'Add a vendor' })
+  await form.locator('input[name=name]').fill('Maple Hall')
+  await form.locator('input[name=href]').evaluate((el) => el.removeAttribute('pattern'))
+  await form.locator('input[name=href]').fill('http://maplehall.example.com')
+  await form.getByRole('button', { name: 'Add the vendor' }).click()
+  await page.getByText('must start with https://').first().waitFor({ timeout: 10000 })
+})
+
+await step('Desk Vendors: add a vendor with a big logo (shrunk) and one without', async () => {
+  const big = await page.screenshot({ type: 'png' })
+  await page.goto(BASE + '/desk/vendors', { waitUntil: 'networkidle' })
+  let form = page.locator('form', { hasText: 'Add a vendor' })
+  await form.locator('input[name=name]').fill('Willow Florals')
+  await form.locator('select[name=categoryId]').selectOption({ label: 'Florists' })
+  await form.locator('input[name=href]').fill('https://willowflorals.example.com')
+  await form.locator('input[name=logo]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: big })
+  await form.getByRole('button', { name: 'Add the vendor' }).click()
+  await page.locator('li', { hasText: 'Willow Florals' }).first().waitFor({ timeout: 15000 })
+  form = page.locator('form', { hasText: 'Add a vendor' })
+  await form.locator('input[name=name]').fill('Maple Hall')
+  await form.locator('select[name=categoryId]').selectOption({ label: 'Venues' })
+  await form.locator('input[name=href]').fill('https://maplehall.example.com')
+  await form.getByRole('button', { name: 'Add the vendor' }).click()
+  await page.locator('li', { hasText: 'Maple Hall' }).first().waitFor({ timeout: 15000 })
+  return `screenshot logo was ${big.length} bytes`
+})
+
+await step('Public /wedding-vendors lists them in the server HTML', async () => {
+  const html = await (await page.request.get(BASE + '/wedding-vendors')).text()
+  expect(html.includes('Willow Florals') && html.includes('Maple Hall'), 'Vendor names missing from the server HTML')
+  expect(html.includes('>Florists<') && html.includes('>Venues<'), 'Category headings missing')
+  expect(!html.includes('>Photographers<'), 'An empty category is showing')
+  expect(html.includes('rel="noopener"') && html.includes('target="_blank"'), 'Links do not open in a new tab with noopener')
+  expect(html.includes('alt="Willow Florals logo"'), 'Logo alt text missing')
+  expect(/<link[^>]*rel="canonical"[^>]*\/wedding-vendors"/.test(html), 'Canonical missing')
+  const v = await browser.newPage()
+  await v.goto(BASE + '/wedding-vendors', { waitUntil: 'networkidle' })
+  const size = await v.locator('img[alt="Willow Florals logo"]').evaluate((img) => [img.naturalWidth, img.naturalHeight, img.currentSrc])
+  expect(size[0] > 0 && size[0] <= 600 && size[1] <= 300, `Logo not shrunk: ${size}`)
+  const logo = await v.request.get(new URL(size[2]).href)
+  const kb = Math.round((await logo.body()).length / 1024)
+  expect(kb <= 200, `Logo is ${kb} KB`)
+  await v.close()
+  return `logo ${size[0]}x${size[1]}, ${kb} KB, ${logo.headers()['content-type']}`
+})
+
+await step('Desk Vendors: hide one, it leaves the public page right away', async () => {
+  await page.goto(BASE + '/desk/vendors', { waitUntil: 'networkidle' })
+  const row = page.locator('li', { hasText: 'Maple Hall' }).first()
+  await row.getByRole('switch').click()
+  await page.waitForTimeout(1500)
+  const html = await (await page.request.get(BASE + '/wedding-vendors')).text()
+  expect(!html.includes('Maple Hall') && !html.includes('>Venues<'), 'Hidden vendor or its empty category still shows')
+})
+
+await step('Desk Vendors: non-empty category refuses to delete', async () => {
+  const card = page.locator('section', { hasText: 'Willow Florals' }).last()
+  await card.getByRole('button', { name: 'Delete category' }).click()
+  await card.getByRole('button', { name: 'Tap again to confirm' }).click()
+  await card.getByText('first.').waitFor({ timeout: 10000 })
 })
 
 // --- Public ----------------------------------------------------------------
@@ -267,7 +331,7 @@ await step('Older browsers without Object.hasOwn still load', async () => {
 
 await step('Public page text spacing', async () => {
   const out = []
-  for (const path of ['/', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/book', '/rsvp', '/rsvp/sign-in', '/contact', '/terms', '/portal']) {
+  for (const path of ['/', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/book', '/rsvp', '/rsvp/sign-in', '/contact', '/terms', '/portal', '/wedding-vendors']) {
     out.push(await spacing(pub, path))
   }
   return out.join(', ')

@@ -56,6 +56,9 @@ export function SiteFooter() {
           <Link to="/contact" className="hover:text-ink">
             Contact
           </Link>
+          <Link to="/wedding-vendors" className="hover:text-ink">
+            Vendors
+          </Link>
           <Link to="/rsvp" className="hover:text-ink">
             RSVP
           </Link>

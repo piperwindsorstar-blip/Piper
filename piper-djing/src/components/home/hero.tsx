@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { LINKS, LOGO_ALT, LOGO_SRC, PHOTOS, VENUES_PLAYED } from './content.ts'
 import { SpinningBadge } from './spinning-badge.tsx'
 import { ButtonGhost, ButtonPrimary, Eyebrow } from './ui.tsx'
@@ -67,6 +68,14 @@ export function Hero() {
               </ul>
               <p className="mt-2 text-base text-white/60">
                 Getting married somewhere else? I’ll scout the room and plan with your venue ahead of time.
+              </p>
+              <p className="mt-2 text-base">
+                <Link
+                  to="/wedding-vendors"
+                  className="font-semibold text-white underline underline-offset-2 hover:text-hot"
+                >
+                  Vendors I love working with
+                </Link>
               </p>
             </div>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
