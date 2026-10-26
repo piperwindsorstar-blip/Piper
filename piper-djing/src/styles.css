@@ -301,6 +301,20 @@ html:has(.desk) {
   color: var(--color-muted);
 }
 
+.review-carousel .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.review-carousel .no-scrollbar {
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .review-carousel .no-scrollbar {
+    scroll-behavior: smooth;
+  }
+}
+
 .desk .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

@@ -296,6 +296,119 @@ await step('Desk Brands: hiding every brand removes the strip right away', async
   }
 })
 
+const SHOTS = process.env.SHOTS_DIR ?? '/tmp/shots'
+await import('node:fs').then((fs) => fs.mkdirSync(SHOTS, { recursive: true }))
+const LONG_QUOTE = 'Piper made our whole day feel easy. From the first planning call he asked about our families, the songs that mattered and the ones to avoid at all costs. On the night he kept the timeline moving without anyone noticing, handled a late speech change like a pro, read the room perfectly after dinner and had both grandmothers and our college friends on the floor until the last song. We still get messages from guests about how good the music was, and we would book him again in a heartbeat.'
+
+await step('Desk Reviews: add eight shown reviews', async () => {
+  for (let i = 1; i <= 8; i += 1) {
+    await page.goto(BASE + '/desk/reviews', { waitUntil: 'networkidle' })
+    const form = page.locator('form', { hasText: 'Add a review' })
+    await form.locator('textarea[name=quote]').fill(i === 2 ? LONG_QUOTE : `Review number ${i}. Great music, great energy and a packed dance floor all night.`)
+    await form.locator('input[name=names]').fill(`Couple ${i}`)
+    await form.locator('input[name=eventType]').fill('Wedding')
+    await form.locator('input[name=date]').fill(`2026-0${(i % 9) + 1}-1${i % 9}`)
+    await form.getByRole('switch').check()
+    await form.getByRole('button', { name: 'Add the review' }).click()
+    await page.getByText('Review added.').first().waitFor({ timeout: 15000 })
+  }
+})
+
+for (const path of ['/', '/weddings']) {
+  await step(`Reviews carousel on ${path}: server HTML has all eight`, async () => {
+    const html = await (await page.request.get(BASE + path)).text()
+    const missing = [1, 2, 3, 4, 5, 6, 7, 8].filter((i) => !html.includes(`Couple ${i}`))
+    expect(missing.length === 0, `Missing from server HTML: ${missing.join(',')}`)
+    expect(html.includes('Read or leave a Google review'), 'Review link above the carousel missing')
+    expect(html.includes('aria-roledescription="carousel"'), 'No carousel in the HTML')
+  })
+  for (const [width, expected] of [[390, 1], [768, 2], [1280, 3]]) {
+    await step(`Reviews carousel on ${path} at ${width}px`, async () => {
+      const v = await browser.newPage({ viewport: { width, height: 900 } })
+      v.on('pageerror', (e) => errors.push(e.message))
+      await v.goto(BASE + path, { waitUntil: 'networkidle' })
+      const region = v.locator('[aria-roledescription="carousel"]').last()
+      await region.scrollIntoViewIfNeeded()
+      await v.mouse.move(1, 1)
+      const info = async () => region.evaluate((el) => {
+        const list = el.querySelector('ul')
+        const box = list.getBoundingClientRect()
+        const cards = [...list.children].map((li) => li.getBoundingClientRect())
+        const visible = cards.filter((r) => r.left >= box.left - 2 && r.right <= box.right + 2)
+        const current = [...el.querySelectorAll('button[aria-current="true"]')].map((b) => b.getAttribute('aria-label'))
+        return {
+          visible: visible.length,
+          heights: [...new Set(visible.map((r) => Math.round(r.height)))],
+          dots: el.querySelectorAll('button[aria-label^="Go to slide"]').length,
+          current: current[0] ?? '',
+          overflowX: document.documentElement.scrollWidth > window.innerWidth,
+        }
+      })
+      const first = await info()
+      expect(first.visible === expected, `${first.visible} cards visible, expected ${expected}`)
+      expect(first.heights.length === 1, `Card heights differ: ${first.heights}`)
+      expect(first.dots === Math.ceil(8 / expected), `${first.dots} dots`)
+      expect(!first.overflowX, 'Page scrolls sideways')
+      await v.screenshot({ path: `${SHOTS}/${path === '/' ? 'home' : 'weddings'}-${width}.png`, fullPage: false, clip: await region.boundingBox().then((b) => ({ x: 0, y: Math.max(0, b.y - 20), width, height: Math.min(900, b.height + 40) })) })
+      const nextButton = region.getByRole('button', { name: 'Next reviews' }).locator('visible=true')
+      await nextButton.click()
+      await v.waitForTimeout(900)
+      const second = await info()
+      expect(second.current === `Go to slide 2 of ${first.dots}`, `After Next: ${second.current}`)
+      // Loop: from the last dot, Next goes back to the first.
+      await region.getByRole('button', { name: `Go to slide ${first.dots} of ${first.dots}` }).click()
+      await v.waitForTimeout(900)
+      await nextButton.click()
+      await v.waitForTimeout(1200)
+      const looped = await info()
+      expect(looped.current === `Go to slide 1 of ${first.dots}`, `Did not loop: ${looped.current}`)
+      // Keyboard: focus Next and press Enter.
+      await nextButton.focus()
+      await v.keyboard.press('Enter')
+      await v.waitForTimeout(900)
+      const keyed = await info()
+      expect(keyed.current === `Go to slide 2 of ${first.dots}`, `Keyboard Next: ${keyed.current}`)
+      await v.close()
+      return `${first.visible} visible, ${first.dots} dots, height ${first.heights}`
+    })
+  }
+  await step(`Reviews carousel on ${path}: Read more opens the long review in place`, async () => {
+    const v = await browser.newPage({ viewport: { width: 390, height: 900 } })
+    await v.goto(BASE + path, { waitUntil: 'networkidle' })
+    const card = v.locator('figure', { hasText: 'Couple 2' }).last()
+    const more = card.getByRole('button', { name: 'Read more' })
+    await more.waitFor({ timeout: 10000 })
+    const quote = card.locator('blockquote')
+    const before = await quote.evaluate((el) => el.clientHeight)
+    await more.click()
+    const after = await quote.evaluate((el) => [el.clientHeight, el.scrollHeight])
+    await v.close()
+    expect(after[0] > before && after[0] >= after[1] - 1, `Did not open: ${before} -> ${after}`)
+    return `${before}px -> ${after[0]}px`
+  })
+  await step(`Reviews carousel on ${path}: advances by itself, not with reduced motion or on hover`, async () => {
+    const watch = async (options, hover) => {
+      const v = await browser.newPage({ viewport: { width: 1280, height: 900 }, ...options })
+      await v.goto(BASE + path, { waitUntil: 'networkidle' })
+      const region = v.locator('[aria-roledescription="carousel"]').last()
+      await region.scrollIntoViewIfNeeded()
+      if (hover) await region.hover()
+      else await v.mouse.move(1, 1)
+      await v.waitForTimeout(7000)
+      const current = await region.locator('button[aria-current="true"]').getAttribute('aria-label')
+      await v.close()
+      return current
+    }
+    const moving = await watch({}, false)
+    const still = await watch({ reducedMotion: 'reduce' }, false)
+    const hovered = await watch({}, true)
+    expect(moving === 'Go to slide 2 of 3', `Auto-advance: ${moving}`)
+    expect(still === 'Go to slide 1 of 3', `Reduced motion moved: ${still}`)
+    expect(hovered === 'Go to slide 1 of 3', `Hover did not pause: ${hovered}`)
+    return `auto ${moving}; reduced ${still}; hover ${hovered}`
+  })
+}
+
 // --- Public ----------------------------------------------------------------
 
 const pub = await browser.newPage()

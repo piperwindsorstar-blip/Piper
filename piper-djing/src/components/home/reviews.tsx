@@ -1,5 +1,7 @@
 import type { PublicReview } from '../../lib/crm/reviews.ts'
 import { reviewCaption } from '../../lib/crm/reviews.ts'
+import { ReviewCarousel } from '../review-carousel.tsx'
+import { ReviewQuote } from '../review-quote.tsx'
 import { ReviewLink, ReviewStars } from '../review-stars.tsx'
 import { LINKS } from './content.ts'
 import { Eyebrow } from './ui.tsx'
@@ -24,20 +26,26 @@ export function Reviews({ reviews }: { reviews: PublicReview[] }) {
         </a>
       </div>
       {reviews.length > 0 ? (
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
+        <div className="mt-10">
+          <ReviewCarousel tone="dark" label="What people say">
           {reviews.map((review) => (
             <figure
               key={review.id}
-              className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl transition hover:border-neon/50"
+              className="flex w-full flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl transition hover:border-neon/50"
             >
               <ReviewStars stars={review.stars} />
-              <blockquote className="flex-1 leading-relaxed text-white/85">{`“${review.quote ?? ''}”`}</blockquote>
+              <ReviewQuote
+                text={`“${review.quote ?? ''}”`}
+                className="leading-relaxed text-white/85"
+                buttonClassName="text-hot"
+              />
               <figcaption className="mt-5 border-t border-white/10 pt-4 text-sm text-white/50">
                 {reviewCaption(review)}
                 <ReviewLink link={review.link} className="font-semibold text-hot" />
               </figcaption>
             </figure>
           ))}
+          </ReviewCarousel>
         </div>
       ) : null}
     </section>
