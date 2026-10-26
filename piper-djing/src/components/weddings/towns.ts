@@ -93,7 +93,7 @@ export const TOWNS: Record<TownPath, Town> = {
     intro:
       'A DJ who reads the room and cares how your night feels, for Cambridge couples from Galt to Hespeler. Check your date in 30 seconds.',
     body: [
-      'Cambridge weddings happen everywhere from riverside spots along the Grand to halls in Preston and Hespeler and farms just outside town. Piper already has a wedding booked at The Lavender Farm in nearby Ayr.',
+      'Cambridge weddings happen everywhere from riverside spots along the Grand to halls in Preston and Hespeler and farms just outside town.',
       'Every wedding starts with at least one planning meeting, so the music fits your crowd and your story. On the day, Piper sets up early, coordinates with your venue and planner, and keeps the floor full from the first dance to the last song.',
     ],
     travel: CAMBRIDGE_TRAVEL,
@@ -110,7 +110,7 @@ export const TOWNS: Record<TownPath, Town> = {
     intro:
       'Paris is right up the Grand River from Piper’s home in Brantford, so travel is included. Check your date in 30 seconds.',
     body: [
-      'Paris is one of the busiest wedding towns in Brant County, with riverside venues in town and barns and farms all around it. Piper has several weddings booked at Rivers Edge on the Grand.',
+      'Paris is one of the busiest wedding towns in Brant County, with riverside venues in town and barns and farms all around it.',
       'Every wedding starts with at least one planning meeting and a timeline confirmed in writing. On the day, Piper arrives early, sound checks before guests walk in, and handles every transition so you can enjoy the night.',
     ],
     travel: PARIS_TRAVEL,
