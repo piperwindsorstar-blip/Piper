@@ -575,6 +575,27 @@ html:has(.desk) {
   }
 }
 
+/* The brands strip stops while a visitor points at or tabs into it. */
+.brand-strip:hover .marquee,
+.brand-strip:focus-within .marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* A still, centred row with each brand once. */
+  .brand-strip .marquee {
+    width: auto;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 1rem;
+    padding: 0 1.25rem;
+  }
+
+  .brand-strip [data-copy] {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home .marquee,
   .weddings .marquee,
