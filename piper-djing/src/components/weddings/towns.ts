@@ -27,6 +27,8 @@ export type Town = {
   travel: string
   /** A short section near the top, written only for this town. */
   nearby?: string
+  /** A venue line under the town section, only for venues Piper has played. */
+  venueLine?: string
   faq: (readonly [string, string])[]
 }
 
@@ -116,6 +118,8 @@ export const TOWNS: Record<TownPath, Town> = {
     travel: PARIS_TRAVEL,
     nearby:
       'Paris is only about 15 km from Brantford, so there’s no travel charge at all. Weddings here have a small-town feel, often along the Grand River, with family and friends who all seem to know each other.',
+    venueLine:
+      'I’ve DJ’d weddings at River’s Edge at the Arlington, right on the Grand River in Paris, so I know the room, the load-in and how the night flows there.',
     faq: townFaq('Paris', PARIS_TRAVEL),
   },
   '/woodstock-wedding-dj': {

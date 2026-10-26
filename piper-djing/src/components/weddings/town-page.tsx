@@ -105,6 +105,9 @@ export function TownPage({
             <section className="mx-auto max-w-3xl px-5 pb-12">
               <Eyebrow>{`Weddings in ${town.name}`}</Eyebrow>
               <p className="mt-3 text-lg leading-relaxed text-soft">{town.nearby}</p>
+              {town.venueLine ? (
+                <p className="mt-3 text-lg leading-relaxed text-soft">{town.venueLine}</p>
+              ) : null}
             </section>
           ) : null}
           <TrustBar />
