@@ -25,6 +25,8 @@ export type Town = {
   intro: string
   body: string[]
   travel: string
+  /** A short section near the top, written only for this town. */
+  nearby?: string
   faq: (readonly [string, string])[]
 }
 
@@ -78,6 +80,8 @@ export const TOWNS: Record<TownPath, Town> = {
       'On the night, Piper arrives early, sets up and sound checks before guests walk in, and works with your venue and planner so every entrance, speech and first dance lands when it should. The Main Event and The After Party include dancefloor lighting and light MC duties.',
     ],
     travel: HAMILTON_TRAVEL,
+    nearby:
+      'Downtown Hamilton is about 40 km from Piper’s home in Brantford, so travel is included for most Hamilton weddings, and venues past 50 km on the east side are $110. Hamilton couples tend to celebrate in city venues and banquet halls, with a few heading up the escarpment or out to the countryside.',
     faq: townFaq('Hamilton', HAMILTON_TRAVEL),
   },
   '/cambridge-wedding-dj': {
@@ -93,6 +97,8 @@ export const TOWNS: Record<TownPath, Town> = {
       'Every wedding starts with at least one planning meeting, so the music fits your crowd and your story. On the day, Piper sets up early, coordinates with your venue and planner, and keeps the floor full from the first dance to the last song.',
     ],
     travel: CAMBRIDGE_TRAVEL,
+    nearby:
+      'Cambridge is a quick 30 to 40 km drive from Brantford depending on the part of town, well under 50 km, so travel is included. Weddings around Cambridge lean toward riverside settings on the Grand and rustic barns on the farms just outside the city.',
     faq: townFaq('Cambridge', CAMBRIDGE_TRAVEL),
   },
   '/paris-wedding-dj': {
@@ -108,6 +114,8 @@ export const TOWNS: Record<TownPath, Town> = {
       'Every wedding starts with at least one planning meeting and a timeline confirmed in writing. On the day, Piper arrives early, sound checks before guests walk in, and handles every transition so you can enjoy the night.',
     ],
     travel: PARIS_TRAVEL,
+    nearby:
+      'Paris is only about 15 km from Brantford, so there’s no travel charge at all. Weddings here have a small-town feel, often along the Grand River, with family and friends who all seem to know each other.',
     faq: townFaq('Paris', PARIS_TRAVEL),
   },
   '/woodstock-wedding-dj': {
