@@ -39,6 +39,7 @@ export const NAV = [
   { label: 'Events', href: '#events' },
   { label: 'Process', href: '#process' },
   { label: 'Reviews', href: '#reviews' },
+  { label: 'Vendors', href: '/wedding-vendors' },
 ] as const
 
 export const TAGS = [

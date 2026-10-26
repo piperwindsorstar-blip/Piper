@@ -18,6 +18,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as WeddingVendorsRouteImport } from './routes/wedding-vendors'
 import { Route as HamiltonWeddingDjRouteImport } from './routes/hamilton-wedding-dj'
 import { Route as CambridgeWeddingDjRouteImport } from './routes/cambridge-wedding-dj'
 import { Route as ParisWeddingDjRouteImport } from './routes/paris-wedding-dj'
@@ -36,6 +37,7 @@ import { Route as DeskMediaRouteImport } from './routes/desk/media'
 import { Route as DeskMoneyRouteImport } from './routes/desk/money'
 import { Route as DeskPackagesRouteImport } from './routes/desk/packages'
 import { Route as DeskPartnersRouteImport } from './routes/desk/partners'
+import { Route as DeskVendorsRouteImport } from './routes/desk/vendors'
 import { Route as DeskPaymentsRouteImport } from './routes/desk/payments'
 import { Route as DeskQuestionsRouteImport } from './routes/desk/questions'
 import { Route as DeskReviewsRouteImport } from './routes/desk/reviews'
@@ -71,6 +73,7 @@ import { Route as RsvpManageSongsRouteImport } from './routes/rsvp/manage/songs'
 import { Route as RsvpManageTimelineRouteImport } from './routes/rsvp/manage/timeline'
 import { Route as RsvpOpenTokenRouteImport } from './routes/rsvp/open/$token'
 import { Route as ApiRsvpSlugPhotoRouteImport } from './routes/api/rsvp/$slug/photo'
+import { Route as VendorLogoIdRouteImport } from './routes/vendor-logo/$id'
 import { Route as DeskPortalsSlugIndexRouteImport } from './routes/desk/portals/$slug/index'
 import { Route as DeskPortalsSlugPlanRouteImport } from './routes/desk/portals/$slug/plan'
 import { Route as RsvpSlugPTokenIndexRouteImport } from './routes/rsvp/$slug/p/$token/index'
@@ -157,6 +160,11 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WeddingVendorsRoute = WeddingVendorsRouteImport.update({
+  id: '/wedding-vendors',
+  path: '/wedding-vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WeddingsRoute = WeddingsRouteImport.update({
   id: '/weddings',
   path: '/weddings',
@@ -210,6 +218,11 @@ const DeskPackagesRoute = DeskPackagesRouteImport.update({
 const DeskPartnersRoute = DeskPartnersRouteImport.update({
   id: '/partners',
   path: '/partners',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
+const DeskVendorsRoute = DeskVendorsRouteImport.update({
+  id: '/vendors',
+  path: '/vendors',
   getParentRoute: () => DeskRouteRoute,
 } as any)
 const DeskPaymentsRoute = DeskPaymentsRouteImport.update({
@@ -387,6 +400,11 @@ const ApiRsvpSlugPhotoRoute = ApiRsvpSlugPhotoRouteImport.update({
   path: '/api/rsvp/$slug/photo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendorLogoIdRoute = VendorLogoIdRouteImport.update({
+  id: '/vendor-logo/$id',
+  path: '/vendor-logo/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeskPortalsSlugIndexRoute = DeskPortalsSlugIndexRouteImport.update({
   id: '/portals/$slug/',
   path: '/portals/$slug/',
@@ -423,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/contact': typeof ContactRoute
+  '/wedding-vendors': typeof WeddingVendorsRoute
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
@@ -441,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/partners': typeof DeskPartnersRoute
+  '/desk/vendors': typeof DeskVendorsRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
@@ -476,6 +496,7 @@ export interface FileRoutesByFullPath {
   '/rsvp/$slug/': typeof RsvpSlugIndexRoute
   '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
+  '/vendor-logo/$id': typeof VendorLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -490,6 +511,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/contact': typeof ContactRoute
+  '/wedding-vendors': typeof WeddingVendorsRoute
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
@@ -507,6 +529,7 @@ export interface FileRoutesByTo {
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/partners': typeof DeskPartnersRoute
+  '/desk/vendors': typeof DeskVendorsRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
@@ -542,6 +565,7 @@ export interface FileRoutesByTo {
   '/rsvp/$slug': typeof RsvpSlugIndexRoute
   '/rsvp/manage': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
+  '/vendor-logo/$id': typeof VendorLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -559,6 +583,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/contact': typeof ContactRoute
+  '/wedding-vendors': typeof WeddingVendorsRoute
   '/hamilton-wedding-dj': typeof HamiltonWeddingDjRoute
   '/cambridge-wedding-dj': typeof CambridgeWeddingDjRoute
   '/paris-wedding-dj': typeof ParisWeddingDjRoute
@@ -577,6 +602,7 @@ export interface FileRoutesById {
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/partners': typeof DeskPartnersRoute
+  '/desk/vendors': typeof DeskVendorsRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
   '/desk/reviews': typeof DeskReviewsRoute
@@ -612,6 +638,7 @@ export interface FileRoutesById {
   '/rsvp/$slug/': typeof RsvpSlugIndexRoute
   '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
+  '/vendor-logo/$id': typeof VendorLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -630,6 +657,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/contact'
+    | '/wedding-vendors'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
@@ -648,6 +676,7 @@ export interface FileRouteTypes {
     | '/desk/money'
     | '/desk/packages'
     | '/desk/partners'
+    | '/desk/vendors'
     | '/desk/payments'
     | '/desk/questions'
     | '/desk/reviews'
@@ -683,6 +712,7 @@ export interface FileRouteTypes {
     | '/rsvp/$slug/'
     | '/rsvp/manage/'
     | '/api/rsvp/$slug/photo'
+    | '/vendor-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -697,6 +727,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/contact'
+    | '/wedding-vendors'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
@@ -714,6 +745,7 @@ export interface FileRouteTypes {
     | '/desk/money'
     | '/desk/packages'
     | '/desk/partners'
+    | '/desk/vendors'
     | '/desk/payments'
     | '/desk/questions'
     | '/desk/reviews'
@@ -749,6 +781,7 @@ export interface FileRouteTypes {
     | '/rsvp/$slug'
     | '/rsvp/manage'
     | '/api/rsvp/$slug/photo'
+    | '/vendor-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug'
     | '/rsvp/$slug/p/$token/done'
@@ -765,6 +798,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/contact'
+    | '/wedding-vendors'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'
     | '/paris-wedding-dj'
@@ -783,6 +817,7 @@ export interface FileRouteTypes {
     | '/desk/money'
     | '/desk/packages'
     | '/desk/partners'
+    | '/desk/vendors'
     | '/desk/payments'
     | '/desk/questions'
     | '/desk/reviews'
@@ -818,6 +853,7 @@ export interface FileRouteTypes {
     | '/rsvp/$slug/'
     | '/rsvp/manage/'
     | '/api/rsvp/$slug/photo'
+    | '/vendor-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -835,6 +871,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   ContactRoute: typeof ContactRoute
+  WeddingVendorsRoute: typeof WeddingVendorsRoute
   HamiltonWeddingDjRoute: typeof HamiltonWeddingDjRoute
   CambridgeWeddingDjRoute: typeof CambridgeWeddingDjRoute
   ParisWeddingDjRoute: typeof ParisWeddingDjRoute
@@ -855,6 +892,7 @@ export interface RootRouteChildren {
   RsvpOpenTokenRoute: typeof RsvpOpenTokenRoute
   RsvpSlugIndexRoute: typeof RsvpSlugIndexRoute
   ApiRsvpSlugPhotoRoute: typeof ApiRsvpSlugPhotoRoute
+  VendorLogoIdRoute: typeof VendorLogoIdRoute
   RsvpSlugPTokenDoneRoute: typeof RsvpSlugPTokenDoneRoute
   RsvpSlugPTokenReviewRoute: typeof RsvpSlugPTokenReviewRoute
   RsvpSlugPTokenIndexRoute: typeof RsvpSlugPTokenIndexRoute
@@ -974,6 +1012,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wedding-vendors': {
+      id: '/wedding-vendors'
+      path: '/wedding-vendors'
+      fullPath: '/wedding-vendors'
+      preLoaderRoute: typeof WeddingVendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/weddings': {
       id: '/weddings'
       path: '/weddings'
@@ -1049,6 +1094,13 @@ declare module '@tanstack/react-router' {
       path: '/partners'
       fullPath: '/desk/partners'
       preLoaderRoute: typeof DeskPartnersRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
+    '/desk/vendors': {
+      id: '/desk/vendors'
+      path: '/vendors'
+      fullPath: '/desk/vendors'
+      preLoaderRoute: typeof DeskVendorsRouteImport
       parentRoute: typeof DeskRouteRoute
     }
     '/desk/payments': {
@@ -1296,6 +1348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRsvpSlugPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendor-logo/$id': {
+      id: '/vendor-logo/$id'
+      path: '/vendor-logo/$id'
+      fullPath: '/vendor-logo/$id'
+      preLoaderRoute: typeof VendorLogoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/desk/portals/$slug/': {
       id: '/desk/portals/$slug/'
       path: '/portals/$slug'
@@ -1343,6 +1402,7 @@ interface DeskRouteRouteChildren {
   DeskMoneyRoute: typeof DeskMoneyRoute
   DeskPackagesRoute: typeof DeskPackagesRoute
   DeskPartnersRoute: typeof DeskPartnersRoute
+  DeskVendorsRoute: typeof DeskVendorsRoute
   DeskPaymentsRoute: typeof DeskPaymentsRoute
   DeskQuestionsRoute: typeof DeskQuestionsRoute
   DeskReviewsRoute: typeof DeskReviewsRoute
@@ -1365,6 +1425,7 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskMoneyRoute: DeskMoneyRoute,
   DeskPackagesRoute: DeskPackagesRoute,
   DeskPartnersRoute: DeskPartnersRoute,
+  DeskVendorsRoute: DeskVendorsRoute,
   DeskPaymentsRoute: DeskPaymentsRoute,
   DeskQuestionsRoute: DeskQuestionsRoute,
   DeskReviewsRoute: DeskReviewsRoute,
@@ -1444,6 +1505,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   ContactRoute: ContactRoute,
+  WeddingVendorsRoute: WeddingVendorsRoute,
   HamiltonWeddingDjRoute: HamiltonWeddingDjRoute,
   CambridgeWeddingDjRoute: CambridgeWeddingDjRoute,
   ParisWeddingDjRoute: ParisWeddingDjRoute,
@@ -1464,6 +1526,7 @@ const rootRouteChildren: RootRouteChildren = {
   RsvpOpenTokenRoute: RsvpOpenTokenRoute,
   RsvpSlugIndexRoute: RsvpSlugIndexRoute,
   ApiRsvpSlugPhotoRoute: ApiRsvpSlugPhotoRoute,
+  VendorLogoIdRoute: VendorLogoIdRoute,
   RsvpSlugPTokenDoneRoute: RsvpSlugPTokenDoneRoute,
   RsvpSlugPTokenReviewRoute: RsvpSlugPTokenReviewRoute,
   RsvpSlugPTokenIndexRoute: RsvpSlugPTokenIndexRoute,
