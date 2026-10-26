@@ -180,3 +180,11 @@ export const INSTAGRAM_POSTS = [
   { src: '/photos/insta/garden-ceremonies.webp', position: '50% 50%' },
   { src: '/photos/insta/peak-party.webp', position: '50% 100%' },
 ]
+
+/** Venues Piper has played. Real ones only: no addresses, no links. */
+export const VENUES_PLAYED = [
+  'River’s Edge at the Arlington (Paris)',
+  'Brantford Golf & Country Club (Brantford)',
+  'Polish Hall (Brantford)',
+  'Embee Gardens',
+] as const

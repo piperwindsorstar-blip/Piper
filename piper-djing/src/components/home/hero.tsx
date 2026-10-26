@@ -1,4 +1,4 @@
-import { LINKS, LOGO_ALT, LOGO_SRC, PHOTOS } from './content.ts'
+import { LINKS, LOGO_ALT, LOGO_SRC, PHOTOS, VENUES_PLAYED } from './content.ts'
 import { SpinningBadge } from './spinning-badge.tsx'
 import { ButtonGhost, ButtonPrimary, Eyebrow } from './ui.tsx'
 
@@ -56,6 +56,19 @@ export function Hero() {
               </a>
               .
             </p>
+            <div className="mt-6 max-w-xl">
+              <h2 className="font-display text-xl font-bold text-white">
+                Venues I’ve played
+              </h2>
+              <ul className="mt-2 grid gap-1 text-base text-white/70">
+                {VENUES_PLAYED.map((venue) => (
+                  <li key={venue}>{venue}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-base text-white/60">
+                Getting married somewhere else? I’ll scout the room and plan with your venue ahead of time.
+              </p>
+            </div>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#check-a-date"
