@@ -261,7 +261,8 @@ await step('Home and /weddings: brand strip in the server HTML', async () => {
     expect(html.includes('Brands I’ve worked with'), `${path}: heading missing`)
     expect(/<a href="https:\/\/soundco\.example\.com\/" target="_blank" rel="noopener"[^>]*>Sound Co<\/a>/.test(html), `${path}: linked name not a new-tab noopener link`)
     expect(html.includes('<span>Light Works</span>'), `${path}: unlinked name missing or clickable`)
-    expect(!/brand-strip[\s\S]{0,4000}<img/.test(html), `${path}: the strip has images`)
+    const strip = (html.match(/<section aria-labelledby="brands-title"[\s\S]*?<\/section>/) || [''])[0]
+    expect(strip && !strip.includes('<img'), `${path}: the strip has images`)
     out.push(`${path} ok`)
   }
   const v = await browser.newPage()

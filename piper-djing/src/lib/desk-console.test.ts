@@ -116,11 +116,7 @@ describe('desk console meters', () => {
     assert.equal(paid.fill, 1)
   })
 
-  it('greys partners when there are none and fills the fixed channels', () => {
-    const empty = channelMeter('Partners', blank([]), today)
-    assert.equal(empty.led, 'off')
-    const some = channelMeter('Partners', { ...blank([]), partners: 2 }, today)
-    assert.equal(some.led, 'green')
+  it('fills the fixed channels', () => {
     assert.equal(channelMeter('Packages', blank([]), today).fill, 1)
     assert.equal(channelMeter('Leads', { ...blank([]), leads }, today).badge, 1)
     assert.equal(
@@ -230,7 +226,6 @@ function blank(bookings: ConsoleBooking[]) {
     leads: [] as ConsoleLead[],
     questions: 0,
     media: 0,
-    partners: 0,
     reviews: [],
     bots: 0,
     totalCents: 0,

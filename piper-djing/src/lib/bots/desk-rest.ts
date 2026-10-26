@@ -8,7 +8,6 @@ const RESOURCES = [
   'terms',
   'questions',
   'media',
-  'partners',
   'reviews',
   'bots',
   'emails',

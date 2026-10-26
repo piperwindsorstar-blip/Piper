@@ -41,7 +41,7 @@ function BotsPage() {
       <DeskTitle kicker="Bots" title="Bots">
         <p className="mt-1 max-w-prose text-sm text-white/65">
           Every bot can read. A writer or the Ceo bot can change the book, the
-          packages, the questions, the media, the reviews, the partners, and the
+          packages, the questions, the media, the reviews, and the
           one terms document. The Ceo bot can also change invites and settings.
           The token is shown once.
         </p>

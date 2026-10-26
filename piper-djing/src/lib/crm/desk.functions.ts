@@ -60,12 +60,9 @@ import {
   listBots,
   listBookings,
   listLeads,
-  addPartner,
   listMedia,
-  listPartners,
   listPayments,
   listQuestions,
-  removePartner,
   sendInvoice,
   setBookingStatus,
   updateBooking,
@@ -86,7 +83,6 @@ import {
   removeMedia,
   updateLead,
   removeLead,
-  updatePartner,
   updatePayment,
   removePayment,
   deskProfile,
@@ -166,7 +162,6 @@ export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
     externalDates,
     questions,
     media,
-    partners,
     reviews,
     bots,
     packages,
@@ -178,7 +173,6 @@ export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
     listExternalDates(),
     listQuestions(),
     listMedia(),
-    listPartners(),
     listReviews(),
     listBots(),
     listPackageOffers(),
@@ -194,7 +188,6 @@ export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
     externalDates,
     questions,
     media,
-    partners,
     reviews,
     bots,
     packages,
@@ -402,36 +395,6 @@ export const getMedia = createServerFn({ method: 'GET' }).handler(async () => {
   await requireDesk()
   return listMedia()
 })
-
-export const getPartners = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    await requireDesk()
-    return listPartners()
-  },
-)
-
-export const savePartner = createServerFn({ method: 'POST' })
-  .validator((data: { name: string; href: string; logo: string }) => data)
-  .handler(async ({ data }) => {
-    await requireDesk()
-    try {
-      return { ok: true as const, partner: await addPartner(data) }
-    } catch (error) {
-      return fail(error)
-    }
-  })
-
-export const deletePartner = createServerFn({ method: 'POST' })
-  .validator((data: { id: number }) => data)
-  .handler(async ({ data }) => {
-    await requireDesk()
-    try {
-      await removePartner(data.id)
-      return { ok: true as const }
-    } catch (error) {
-      return fail(error)
-    }
-  })
 
 export const getBots = createServerFn({ method: 'GET' }).handler(async () => {
   await requireDesk()
@@ -832,19 +795,6 @@ export const deleteLead = createServerFn({ method: 'POST' })
     try {
       await removeLead(data.id)
       return { ok: true as const }
-    } catch (error) {
-      return fail(error)
-    }
-  })
-
-export const editPartner = createServerFn({ method: 'POST' })
-  .validator(
-    (data: { id: number; name: string; href: string; logo: string }) => data,
-  )
-  .handler(async ({ data }) => {
-    await requireDesk()
-    try {
-      return { ok: true as const, partner: await updatePartner(data) }
     } catch (error) {
       return fail(error)
     }
