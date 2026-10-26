@@ -2929,78 +2929,8 @@ function positiveId(id: number, missing: string): number {
   return id
 }
 
-const PARTNER_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp'])
-
-const ensurePartners = once(ensurePartnersStep)
-async function ensurePartnersStep(): Promise<void> {
-  await query(
-    `CREATE TABLE IF NOT EXISTS partners (
-      id integer PRIMARY KEY,
-      name text NOT NULL,
-      href text NOT NULL,
-      mime text NOT NULL,
-      logo text NOT NULL
-    )`,
-  )
-}
-
-function partnerWebsite(value: string): string {
-  const next = text(value, 300, 'A website')
-  let url: URL
-  try {
-    url = new URL(next)
-  } catch {
-    throw new Error('Enter a full website address, starting with https://.')
-  }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error('Enter a full website address, starting with https://.')
-  }
-  return url.toString()
-}
-
-function partnerLogoData(value: string): { mime: string; logo: string } {
-  const match =
-    /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/.exec(
-      value.trim(),
-    )
-  if (!match) throw new Error('Use a PNG, JPEG, or WebP logo.')
-  const [, mime = '', encodedLogo = ''] = match
-  const logo = encodedLogo.replace(/\s/g, '')
-  if (!PARTNER_MIMES.has(mime) || !logo) {
-    throw new Error('Use a PNG, JPEG, or WebP logo.')
-  }
-  if (logo.length > 280_000)
-    throw new Error('That logo is too large. Keep it under 200 KB.')
-  return { mime, logo }
-}
-
-export type PartnerView = {
-  id: number
-  name: string
-  href: string
-  src: string
-}
-
-export async function listPartners(): Promise<PartnerView[]> {
-  await ensurePartners()
-  const rows = await query<{
-    id: number
-    name: string
-    href: string
-    mime: string
-    logo: string
-  }>('SELECT id, name, href, mime, logo FROM partners ORDER BY id')
-  return rows.map((row) => ({
-    id: whole(row.id, 'Partner'),
-    name: row.name,
-    href: row.href,
-    src: `data:${row.mime};base64,${row.logo}`,
-  }))
-}
-
 export type PublicCatalog = {
   reviews: PublicReview[]
-  partners: PartnerView[]
   packages: PackageOffer[]
   /** Which reviews each page shows: Google's, the owner's, or both. */
   reviewDisplay: Record<ReviewPage, ReviewDisplay>
@@ -3050,7 +2980,7 @@ export async function setReviewDisplay(
   return readReviewDisplay()
 }
 
-/** Reviews, partners, and packages in one Book call. */
+/** Reviews and packages in one Book call. */
 export async function loadPublicCatalog(): Promise<PublicCatalog> {
   await reviewsOnce()
   const results = await queryBatch([
@@ -3059,7 +2989,6 @@ export async function loadPublicCatalog(): Promise<PublicCatalog> {
             WHERE show_on_site <> 0
             ORDER BY reviewed_on DESC, id DESC`,
     },
-    { sql: 'SELECT id, name, href, mime, logo FROM partners ORDER BY id' },
     { sql: PACKAGE_OFFER_TABLE },
     { sql: 'SELECT id, name, detail, cents FROM package_offers' },
     { sql: REVIEW_DISPLAY_TABLE },
@@ -3079,102 +3008,13 @@ export async function loadPublicCatalog(): Promise<PublicCatalog> {
       link: review.link,
     }
   })
-  const partners = (
-    results[1] as {
-      id: number
-      name: string
-      href: string
-      mime: string
-      logo: string
-    }[]
-  ).map((row) => ({
-    id: whole(row.id, 'Partner'),
-    name: row.name,
-    href: row.href,
-    src: `data:${row.mime};base64,${row.logo}`,
-  }))
   return {
     reviews,
-    partners,
-    packages: offersFromRows(results[3] as OfferRow[]),
+    packages: offersFromRows(results[2] as OfferRow[]),
     reviewDisplay: reviewDisplayFrom(
-      (results[5] ?? []) as { page: string; mode: string }[],
+      (results[4] ?? []) as { page: string; mode: string }[],
     ),
   }
-}
-
-export async function partnerLogo(
-  id: number,
-): Promise<{ mime: string; logo: string } | null> {
-  if (!Number.isInteger(id) || id < 1) return null
-  await ensurePartners()
-  const rows = await query<{ mime: string; logo: string }>(
-    'SELECT mime, logo FROM partners WHERE id = $1',
-    [id],
-  )
-  const row = rows.at(0)
-  if (!row || !PARTNER_MIMES.has(row.mime)) return null
-  return row
-}
-
-export async function addPartner(input: {
-  name: string
-  href: string
-  logo: string
-}): Promise<PartnerView> {
-  await ensurePartners()
-  const name = text(input.name, 80, 'A brand name')
-  const href = partnerWebsite(input.href)
-  const { mime, logo } = partnerLogoData(input.logo)
-  const ids = await query<{ id: number }>(
-    'SELECT COALESCE(MAX(id), 0) + 1 AS id FROM partners',
-  )
-  const id = whole(ids.at(0)?.id, 'Partner')
-  await query(
-    'INSERT INTO partners (id, name, href, mime, logo) VALUES ($1, $2, $3, $4, $5)',
-    [id, name, href, mime, logo],
-  )
-  await forgetPublicSite()
-  return { id, name, href, src: `data:${mime};base64,${logo}` }
-}
-
-export async function removePartner(id: number): Promise<void> {
-  if (!Number.isInteger(id) || id < 1)
-    throw new Error('That brand is not on the page.')
-  await ensurePartners()
-  await query('DELETE FROM partners WHERE id = $1', [id])
-  await forgetPublicSite()
-}
-
-export async function updatePartner(input: {
-  id: number
-  name: string
-  href: string
-  logo?: string
-}): Promise<PartnerView> {
-  const id = positiveId(input.id, 'That brand is not on the page.')
-  await ensurePartners()
-  const current = (await listPartners()).find((partner) => partner.id === id)
-  if (!current) throw new Error('That brand is not on the page.')
-  const name = text(input.name, 80, 'A brand name')
-  const href = partnerWebsite(input.href)
-  const replacement = input.logo?.trim() ? partnerLogoData(input.logo) : null
-  if (replacement) {
-    await query(
-      'UPDATE partners SET name = $1, href = $2, mime = $3, logo = $4 WHERE id = $5',
-      [name, href, replacement.mime, replacement.logo, id],
-    )
-  } else {
-    await query('UPDATE partners SET name = $1, href = $2 WHERE id = $3', [
-      name,
-      href,
-      id,
-    ])
-  }
-  const saved = (await listPartners()).find((partner) => partner.id === id)
-  if (!saved) throw new Error('That brand is not on the page.')
-  await forgetPublicSite()
-  return saved
 }
 
 /**

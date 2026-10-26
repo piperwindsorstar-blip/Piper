@@ -14,7 +14,6 @@ import {
 } from '../../components/desk-ui.tsx'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
-import { shrinkLogo } from '../../components/logo-shrink.ts'
 import {
   deleteBrand,
   getDeskBrands,
@@ -36,11 +35,6 @@ export const Route = createFileRoute('/desk/brands')({
 })
 
 type Result = { ok: true } | { ok: false; error: string }
-
-function pickedFile(form: HTMLFormElement | null): File | undefined {
-  const input = form?.elements.namedItem('logo')
-  return input instanceof HTMLInputElement ? input.files?.[0] : undefined
-}
 
 function asRun(result: Result, done: string): RunResult {
   return result.ok ? { ok: true, message: done } : { ok: false, message: result.error }
@@ -72,10 +66,6 @@ function BrandsPage() {
           <input name="name" required maxLength={80} />
         </label>
         <label className="field">
-          Logo
-          <input name="logo" type="file" required accept="image/png,image/jpeg,image/webp" />
-        </label>
-        <label className="field">
           Link (optional)
           <input name="href" type="url" placeholder="https://" pattern="https://.*" />
         </label>
@@ -88,14 +78,10 @@ function BrandsPage() {
           surface={deskSurface}
           onRun={async (form, element) => {
             try {
-              const file = pickedFile(element)
-              if (!file) return { ok: false, message: 'Choose a logo.' }
-              const logo = await shrinkLogo(file)
               const result = await add({
                 data: {
                   name: String(form.get('name') ?? ''),
                   href: String(form.get('href') ?? ''),
-                  logo,
                   shown,
                 },
               })
@@ -160,9 +146,6 @@ function BrandRow({ brand, first, last }: { brand: DeskBrand; first: boolean; la
   return (
     <li className={`${deskCard} !p-4`}>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="flex h-12 w-24 shrink-0 items-center justify-center rounded-lg border border-[#e6def4] bg-white p-1">
-          <img src={brand.logo} alt="" className="max-h-10 max-w-full object-contain" />
-        </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{brand.name}</p>
           {brand.href ? (
@@ -227,10 +210,6 @@ function BrandRow({ brand, first, last }: { brand: DeskBrand; first: boolean; la
             <input name="name" required maxLength={80} defaultValue={brand.name} />
           </label>
           <label className="field">
-            Replace logo
-            <input name="logo" type="file" accept="image/png,image/jpeg,image/webp" />
-          </label>
-          <label className="field">
             Link (optional)
             <input
               name="href"
@@ -247,16 +226,13 @@ function BrandRow({ brand, first, last }: { brand: DeskBrand; first: boolean; la
               busy="Saving…"
               done="Saved"
               surface={deskSurface}
-              onRun={async (form, element) => {
+              onRun={async (form) => {
                 try {
-                  const file = pickedFile(element)
-                  const logo = file ? await shrinkLogo(file) : ''
                   const result = await save({
                     data: {
                       id: brand.id,
                       name: String(form.get('name') ?? ''),
                       href: String(form.get('href') ?? ''),
-                      logo,
                     },
                   })
                   if (result.ok) {

@@ -4,7 +4,6 @@ import { listEmails } from '../crm/mail.server.ts'
 import {
   addMedia,
   bookExternalDate,
-  addPartner,
   addPayment,
   addQuestion,
   addReviewOnce,
@@ -22,7 +21,6 @@ import {
   listMedia,
   listPackageOffers,
   packagesForToken,
-  listPartners,
   listPayments,
   listQuestions,
   listReviews,
@@ -33,7 +31,6 @@ import {
   removeBot,
   removeLead,
   removeMedia,
-  removePartner,
   removePayment,
   removeQuestion,
   removeReview,
@@ -47,7 +44,6 @@ import {
   updateLead,
   updateMedia,
   updatePackageOffer,
-  updatePartner,
   updatePayment,
   updateQuestion,
   updateReview,
@@ -305,8 +301,6 @@ async function route(
       return questions(method, target.id, body)
     case 'media':
       return media(method, target.id, body)
-    case 'partners':
-      return partners(method, target.id, body)
     case 'reviews':
       return reviews(method, target.id, body)
     case 'bots':
@@ -861,42 +855,6 @@ async function media(
   if (method === 'DELETE' && id) {
     await removeMedia(intId(id))
     return botJson({ media: await listMedia() })
-  }
-  return botJson({ error: 'That action is not on the desk.' }, 405)
-}
-
-async function partners(
-  method: string,
-  id: string | null,
-  body: Record<string, unknown>,
-): Promise<Response> {
-  if (method === 'GET' && !id)
-    return botJson({ partners: await listPartners() })
-  if (method === 'POST' && !id) {
-    return botJson({
-      partner: await addPartner({
-        name: str(body, 'name'),
-        href: str(body, 'href') || str(body, 'website'),
-        logo: str(body, 'logo'),
-      }),
-    })
-  }
-  if ((method === 'PATCH' || method === 'PUT') && id) {
-    const current = (await listPartners()).find((item) => item.id === intId(id))
-    if (!current)
-      return botJson({ error: 'That brand is not on the page.' }, 404)
-    return botJson({
-      partner: await updatePartner({
-        id: current.id,
-        name: str(body, 'name') || current.name,
-        href: str(body, 'href') || str(body, 'website') || current.href,
-        logo: str(body, 'logo'),
-      }),
-    })
-  }
-  if (method === 'DELETE' && id) {
-    await removePartner(intId(id))
-    return botJson({ partners: await listPartners() })
   }
   return botJson({ error: 'That action is not on the desk.' }, 405)
 }

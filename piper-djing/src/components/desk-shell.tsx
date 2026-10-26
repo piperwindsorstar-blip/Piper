@@ -35,7 +35,6 @@ type SmallPath =
   | '/desk/questions'
   | '/desk/reviews'
   | '/desk/media'
-  | '/desk/partners'
   | '/desk/vendors'
   | '/desk/brands'
   | '/desk/bots'
@@ -73,7 +72,6 @@ const SMALL: { name: string; links: { name: string; to: SmallPath }[] }[] = [
     links: [
       { name: 'Reviews', to: '/desk/reviews' },
       { name: 'Media', to: '/desk/media' },
-      { name: 'Partners', to: '/desk/partners' },
       { name: 'Vendors', to: '/desk/vendors' },
       { name: 'Brands', to: '/desk/brands' },
     ],
@@ -94,7 +92,6 @@ export type DeskConsoleData = {
   externalDates: { eventDate: string; released: boolean }[]
   questions: unknown[]
   media: unknown[]
-  partners: unknown[]
   reviews: ConsoleReview[]
   bots: unknown[]
   plans?: ConsolePlan[]
@@ -127,7 +124,6 @@ export function DeskShell({
     leads: data.leads,
     questions: data.questions.length,
     media: data.media.length,
-    partners: data.partners.length,
     reviews: data.reviews,
     bots: data.bots.length,
     totalCents: data.overview.totalCents,

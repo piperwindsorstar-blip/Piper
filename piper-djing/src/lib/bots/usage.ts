@@ -39,10 +39,10 @@ export function usageDocument(packages: UsagePackage[]) {
     version: 1,
     book: 'piperpweddingdj.services',
     about:
-      'This desk holds the book, the packages, the questions, the media, the reviews, the partners, the leads, the money (payments and invoices, shown together on the Money page), the external dates, the saved venues, and the one terms document. A writer or the CEO can change package names, details, and prices. These four packages stay. The terms document stays. Delete a booking to remove it, its invoice, its payments, and its emails. Delete an inquiry to remove the inquiry. Delete an external date to remove that row. Emails are a record of what was sent until that booking is deleted.',
+      'This desk holds the book, the packages, the questions, the media, the reviews, the vendors, the brands, the leads, the money (payments and invoices, shown together on the Money page), the external dates, the saved venues, and the one terms document. A writer or the CEO can change package names, details, and prices. These four packages stay. The terms document stays. Delete a booking to remove it, its invoice, its payments, and its emails. Delete an inquiry to remove the inquiry. Delete an external date to remove that row. Emails are a record of what was sent until that booking is deleted.',
     auth: 'Authorization: Bearer <token from the desk Bots page>',
     roles:
-      'Every bot can read. A writer can change leads, bookings, invoices, payments, packages, questions, media, partners, reviews, external dates, venues, and the terms text. The CEO can do those writes and can also change invites and settings. A reader can only read.',
+      'Every bot can read. A writer can change leads, bookings, invoices, payments, packages, questions, media, reviews, external dates, venues, and the terms text. The CEO can do those writes and can also change invites and settings. A reader can only read.',
     money: `Integer Canadian cents. ${PACKAGE_CENTS.full} is the default full wedding day. Send cents, priceCents, amountCents, or amountDollars. Wired uplights are ${UPLIGHT_CENTS} cents each. A separate ceremony venue is $75. ${DESK_TRAVEL_COPY}`,
     dates: 'YYYY-MM-DD',
     token: {
@@ -52,7 +52,7 @@ export function usageDocument(packages: UsagePackage[]) {
     reads: {
       usage: 'GET /api/bots/v1',
       glance: 'GET /api/bots/v1/glance',
-      list: 'GET /api/bots/v1/{leads|bookings|invoices|payments|money|packages|terms|questions|media|partners|reviews|bots|emails|externals|venues|settings|rsvps}',
+      list: 'GET /api/bots/v1/{leads|bookings|invoices|payments|money|packages|terms|questions|media|reviews|bots|emails|externals|venues|settings|rsvps}',
       money: MONEY_READ,
       one: 'GET /api/bots/v1/{resource}/{id}',
       filters: 'List leads with ?date=YYYY-MM-DD or ?q=text',

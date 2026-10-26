@@ -244,12 +244,10 @@ await step('Home and /weddings: no brand strip while there are no brands', async
 })
 
 await step('Desk Brands: add one with a link and one without', async () => {
-  const big = await page.screenshot({ type: 'png' })
   for (const [name, href] of [['Sound Co', 'https://soundco.example.com'], ['Light Works', '']]) {
     await page.goto(BASE + '/desk/brands', { waitUntil: 'networkidle' })
     const form = page.locator('form', { hasText: 'Add a brand' })
     await form.locator('input[name=name]').fill(name)
-    await form.locator('input[name=logo]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: big })
     if (href) await form.locator('input[name=href]').fill(href)
     await form.getByRole('button', { name: 'Add the brand' }).click()
     await page.locator('li', { hasText: name }).first().waitFor({ timeout: 15000 })
@@ -261,9 +259,10 @@ await step('Home and /weddings: brand strip in the server HTML', async () => {
   for (const path of ['/', '/weddings']) {
     const html = await (await page.request.get(BASE + path)).text()
     expect(html.includes('Brands I’ve worked with'), `${path}: heading missing`)
-    expect(html.includes('alt="Sound Co logo"') && html.includes('alt="Light Works logo"'), `${path}: logo alt text missing`)
-    expect(/<a href="https:\/\/soundco\.example\.com\/" target="_blank" rel="noopener"/.test(html), `${path}: linked logo not a new-tab noopener link`)
-    expect(!/<a[^>]*>\s*<span[^>]*>\s*<img[^>]*alt="Light Works logo"/.test(html), `${path}: unlinked logo is clickable`)
+    expect(/<a href="https:\/\/soundco\.example\.com\/" target="_blank" rel="noopener"[^>]*>Sound Co<\/a>/.test(html), `${path}: linked name not a new-tab noopener link`)
+    expect(html.includes('<span>Light Works</span>'), `${path}: unlinked name missing or clickable`)
+    const strip = (html.match(/<section aria-labelledby="brands-title"[\s\S]*?<\/section>/) || [''])[0]
+    expect(strip && !strip.includes('<img'), `${path}: the strip has images`)
     out.push(`${path} ok`)
   }
   const v = await browser.newPage()

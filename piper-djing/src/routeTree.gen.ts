@@ -36,7 +36,6 @@ import { Route as DeskLeadsRouteImport } from './routes/desk/leads'
 import { Route as DeskMediaRouteImport } from './routes/desk/media'
 import { Route as DeskMoneyRouteImport } from './routes/desk/money'
 import { Route as DeskPackagesRouteImport } from './routes/desk/packages'
-import { Route as DeskPartnersRouteImport } from './routes/desk/partners'
 import { Route as DeskVendorsRouteImport } from './routes/desk/vendors'
 import { Route as DeskBrandsRouteImport } from './routes/desk/brands'
 import { Route as DeskPaymentsRouteImport } from './routes/desk/payments'
@@ -75,7 +74,6 @@ import { Route as RsvpManageTimelineRouteImport } from './routes/rsvp/manage/tim
 import { Route as RsvpOpenTokenRouteImport } from './routes/rsvp/open/$token'
 import { Route as ApiRsvpSlugPhotoRouteImport } from './routes/api/rsvp/$slug/photo'
 import { Route as VendorLogoIdRouteImport } from './routes/vendor-logo/$id'
-import { Route as BrandLogoIdRouteImport } from './routes/brand-logo/$id'
 import { Route as DeskPortalsSlugIndexRouteImport } from './routes/desk/portals/$slug/index'
 import { Route as DeskPortalsSlugPlanRouteImport } from './routes/desk/portals/$slug/plan'
 import { Route as RsvpSlugPTokenIndexRouteImport } from './routes/rsvp/$slug/p/$token/index'
@@ -215,11 +213,6 @@ const DeskMoneyRoute = DeskMoneyRouteImport.update({
 const DeskPackagesRoute = DeskPackagesRouteImport.update({
   id: '/packages',
   path: '/packages',
-  getParentRoute: () => DeskRouteRoute,
-} as any)
-const DeskPartnersRoute = DeskPartnersRouteImport.update({
-  id: '/partners',
-  path: '/partners',
   getParentRoute: () => DeskRouteRoute,
 } as any)
 const DeskVendorsRoute = DeskVendorsRouteImport.update({
@@ -412,11 +405,6 @@ const VendorLogoIdRoute = VendorLogoIdRouteImport.update({
   path: '/vendor-logo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BrandLogoIdRoute = BrandLogoIdRouteImport.update({
-  id: '/brand-logo/$id',
-  path: '/brand-logo/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DeskPortalsSlugIndexRoute = DeskPortalsSlugIndexRouteImport.update({
   id: '/portals/$slug/',
   path: '/portals/$slug/',
@@ -471,7 +459,6 @@ export interface FileRoutesByFullPath {
   '/desk/media': typeof DeskMediaRoute
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
-  '/desk/partners': typeof DeskPartnersRoute
   '/desk/vendors': typeof DeskVendorsRoute
   '/desk/brands': typeof DeskBrandsRoute
   '/desk/payments': typeof DeskPaymentsRoute
@@ -510,7 +497,6 @@ export interface FileRoutesByFullPath {
   '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/vendor-logo/$id': typeof VendorLogoIdRoute
-  '/brand-logo/$id': typeof BrandLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -542,7 +528,6 @@ export interface FileRoutesByTo {
   '/desk/media': typeof DeskMediaRoute
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
-  '/desk/partners': typeof DeskPartnersRoute
   '/desk/vendors': typeof DeskVendorsRoute
   '/desk/brands': typeof DeskBrandsRoute
   '/desk/payments': typeof DeskPaymentsRoute
@@ -581,7 +566,6 @@ export interface FileRoutesByTo {
   '/rsvp/manage': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/vendor-logo/$id': typeof VendorLogoIdRoute
-  '/brand-logo/$id': typeof BrandLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -617,7 +601,6 @@ export interface FileRoutesById {
   '/desk/media': typeof DeskMediaRoute
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
-  '/desk/partners': typeof DeskPartnersRoute
   '/desk/vendors': typeof DeskVendorsRoute
   '/desk/brands': typeof DeskBrandsRoute
   '/desk/payments': typeof DeskPaymentsRoute
@@ -656,7 +639,6 @@ export interface FileRoutesById {
   '/rsvp/manage/': typeof RsvpManageIndexRoute
   '/api/rsvp/$slug/photo': typeof ApiRsvpSlugPhotoRoute
   '/vendor-logo/$id': typeof VendorLogoIdRoute
-  '/brand-logo/$id': typeof BrandLogoIdRoute
   '/desk/portals/$slug/plan': typeof DeskPortalsSlugPlanRoute
   '/desk/portals/$slug/': typeof DeskPortalsSlugIndexRoute
   '/rsvp/$slug/p/$token/done': typeof RsvpSlugPTokenDoneRoute
@@ -693,7 +675,6 @@ export interface FileRouteTypes {
     | '/desk/media'
     | '/desk/money'
     | '/desk/packages'
-    | '/desk/partners'
     | '/desk/vendors'
     | '/desk/brands'
     | '/desk/payments'
@@ -732,7 +713,6 @@ export interface FileRouteTypes {
     | '/rsvp/manage/'
     | '/api/rsvp/$slug/photo'
     | '/vendor-logo/$id'
-    | '/brand-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -764,7 +744,6 @@ export interface FileRouteTypes {
     | '/desk/media'
     | '/desk/money'
     | '/desk/packages'
-    | '/desk/partners'
     | '/desk/vendors'
     | '/desk/brands'
     | '/desk/payments'
@@ -803,7 +782,6 @@ export interface FileRouteTypes {
     | '/rsvp/manage'
     | '/api/rsvp/$slug/photo'
     | '/vendor-logo/$id'
-    | '/brand-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug'
     | '/rsvp/$slug/p/$token/done'
@@ -838,7 +816,6 @@ export interface FileRouteTypes {
     | '/desk/media'
     | '/desk/money'
     | '/desk/packages'
-    | '/desk/partners'
     | '/desk/vendors'
     | '/desk/brands'
     | '/desk/payments'
@@ -877,7 +854,6 @@ export interface FileRouteTypes {
     | '/rsvp/manage/'
     | '/api/rsvp/$slug/photo'
     | '/vendor-logo/$id'
-    | '/brand-logo/$id'
     | '/desk/portals/$slug/plan'
     | '/desk/portals/$slug/'
     | '/rsvp/$slug/p/$token/done'
@@ -917,7 +893,6 @@ export interface RootRouteChildren {
   RsvpSlugIndexRoute: typeof RsvpSlugIndexRoute
   ApiRsvpSlugPhotoRoute: typeof ApiRsvpSlugPhotoRoute
   VendorLogoIdRoute: typeof VendorLogoIdRoute
-  BrandLogoIdRoute: typeof BrandLogoIdRoute
   RsvpSlugPTokenDoneRoute: typeof RsvpSlugPTokenDoneRoute
   RsvpSlugPTokenReviewRoute: typeof RsvpSlugPTokenReviewRoute
   RsvpSlugPTokenIndexRoute: typeof RsvpSlugPTokenIndexRoute
@@ -1112,13 +1087,6 @@ declare module '@tanstack/react-router' {
       path: '/packages'
       fullPath: '/desk/packages'
       preLoaderRoute: typeof DeskPackagesRouteImport
-      parentRoute: typeof DeskRouteRoute
-    }
-    '/desk/partners': {
-      id: '/desk/partners'
-      path: '/partners'
-      fullPath: '/desk/partners'
-      preLoaderRoute: typeof DeskPartnersRouteImport
       parentRoute: typeof DeskRouteRoute
     }
     '/desk/vendors': {
@@ -1387,13 +1355,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorLogoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/brand-logo/$id': {
-      id: '/brand-logo/$id'
-      path: '/brand-logo/$id'
-      fullPath: '/brand-logo/$id'
-      preLoaderRoute: typeof BrandLogoIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/desk/portals/$slug/': {
       id: '/desk/portals/$slug/'
       path: '/portals/$slug'
@@ -1440,7 +1401,6 @@ interface DeskRouteRouteChildren {
   DeskMediaRoute: typeof DeskMediaRoute
   DeskMoneyRoute: typeof DeskMoneyRoute
   DeskPackagesRoute: typeof DeskPackagesRoute
-  DeskPartnersRoute: typeof DeskPartnersRoute
   DeskVendorsRoute: typeof DeskVendorsRoute
   DeskBrandsRoute: typeof DeskBrandsRoute
   DeskPaymentsRoute: typeof DeskPaymentsRoute
@@ -1464,7 +1424,6 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskMediaRoute: DeskMediaRoute,
   DeskMoneyRoute: DeskMoneyRoute,
   DeskPackagesRoute: DeskPackagesRoute,
-  DeskPartnersRoute: DeskPartnersRoute,
   DeskVendorsRoute: DeskVendorsRoute,
   DeskBrandsRoute: DeskBrandsRoute,
   DeskPaymentsRoute: DeskPaymentsRoute,
@@ -1568,7 +1527,6 @@ const rootRouteChildren: RootRouteChildren = {
   RsvpSlugIndexRoute: RsvpSlugIndexRoute,
   ApiRsvpSlugPhotoRoute: ApiRsvpSlugPhotoRoute,
   VendorLogoIdRoute: VendorLogoIdRoute,
-  BrandLogoIdRoute: BrandLogoIdRoute,
   RsvpSlugPTokenDoneRoute: RsvpSlugPTokenDoneRoute,
   RsvpSlugPTokenReviewRoute: RsvpSlugPTokenReviewRoute,
   RsvpSlugPTokenIndexRoute: RsvpSlugPTokenIndexRoute,

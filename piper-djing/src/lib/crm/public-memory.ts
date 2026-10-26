@@ -48,7 +48,7 @@ export async function writePublicEdge(value: unknown): Promise<void> {
   )
 }
 
-/** Drop the public snapshot after a review, partner, or package change. */
+/** Drop the public snapshot after a review or package change. */
 export async function forgetPublicSite(): Promise<void> {
   memory = null
   const cache = cacheStorage()

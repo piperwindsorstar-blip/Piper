@@ -2,7 +2,6 @@ import { optionalDiscount } from '../crm/money.ts'
 import { emailBooking, emailInvoice, listEmails } from '../crm/mail.server.ts'
 import {
   addMedia,
-  addPartner,
   addPayment,
   addQuestion,
   addReviewOnce,
@@ -17,7 +16,6 @@ import {
   listVenues,
   listMedia,
   listPackageOffers,
-  listPartners,
   listPayments,
   listQuestions,
   listReviews,
@@ -27,7 +25,6 @@ import {
   removeLead,
   removeVenue,
   removeMedia,
-  removePartner,
   removePayment,
   removeQuestion,
   removeReview,
@@ -42,7 +39,6 @@ import {
   updateLead,
   updateMedia,
   updatePackageOffer,
-  updatePartner,
   updatePayment,
   updateQuestion,
   updateReview,
@@ -152,8 +148,6 @@ async function readResource(resource: string): Promise<Response> {
       return Response.json({ leads: await listLeads() })
     case 'packages':
       return Response.json({ packages: await listPackageOffers() })
-    case 'partners':
-      return Response.json({ partners: await listPartners() })
     case 'reviews':
       return Response.json({ reviews: await listReviews() })
     case 'settings':
@@ -395,26 +389,6 @@ async function writeAction(
           cents: num(body, 'cents'),
         }),
       })
-    case 'add_partner':
-      return Response.json({
-        partner: await addPartner({
-          name: str(body, 'name'),
-          href: str(body, 'href'),
-          logo: str(body, 'logo'),
-        }),
-      })
-    case 'update_partner':
-      return Response.json({
-        partner: await updatePartner({
-          id: num(body, 'id'),
-          name: str(body, 'name'),
-          href: str(body, 'href'),
-          logo: str(body, 'logo'),
-        }),
-      })
-    case 'delete_partner':
-      await removePartner(num(body, 'id'))
-      return Response.json({ partners: await listPartners() })
     case 'add_review': {
       const added = await addReviewOnce({
         quote: str(body, 'quote'),

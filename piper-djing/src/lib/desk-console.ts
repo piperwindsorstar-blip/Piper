@@ -191,7 +191,6 @@ export function channelMeter(
     leads: ConsoleLead[]
     questions: number
     media: number
-    partners: number
     reviews: ConsoleReview[]
     bots: number
     totalCents: number
@@ -267,13 +266,6 @@ export function channelMeter(
   }
   if (channel === 'Media')
     return { fill: input.media / 5, led: 'green', badge: 0 }
-  if (channel === 'Partners') {
-    return {
-      fill: input.partners / 4,
-      led: input.partners > 0 ? 'green' : 'off',
-      badge: 0,
-    }
-  }
   if (channel === 'Bots')
     return { fill: input.bots / 6, led: 'green', badge: 0 }
   if (channel === 'Packages' || channel === 'Terms' || channel === 'Settings') {

@@ -28,21 +28,20 @@ export const getDeskBrands = createServerFn({ method: 'GET' }).handler(async () 
 })
 
 export const saveNewBrand = createServerFn({ method: 'POST' })
-  .validator((data: { name: string; href: string; logo: string; shown: boolean }) => data)
+  .validator((data: { name: string; href: string; shown: boolean }) => data)
   .handler(async ({ data }) => {
     await requireDesk()
     return run(() =>
       addBrand({
         name: String(data.name ?? ''),
         href: String(data.href ?? ''),
-        logo: String(data.logo ?? ''),
         shown: data.shown !== false,
       }),
     )
   })
 
 export const saveBrand = createServerFn({ method: 'POST' })
-  .validator((data: { id: number; name: string; href: string; logo: string }) => data)
+  .validator((data: { id: number; name: string; href: string }) => data)
   .handler(async ({ data }) => {
     await requireDesk()
     return run(() =>
@@ -50,7 +49,6 @@ export const saveBrand = createServerFn({ method: 'POST' })
         id: Number(data.id),
         name: String(data.name ?? ''),
         href: String(data.href ?? ''),
-        logo: String(data.logo ?? ''),
       }),
     )
   })

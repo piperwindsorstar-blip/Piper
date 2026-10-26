@@ -29,7 +29,6 @@ export async function readPublicSite(): Promise<PublicCatalog> {
 function staticCatalog(): PublicCatalog {
   return {
     reviews: [],
-    partners: [],
     packages: PACKAGE_BUTTON_COPY.map((item) => ({
       id: item.id,
       name: item.name,

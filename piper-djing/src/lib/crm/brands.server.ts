@@ -1,10 +1,9 @@
 import { query, queryBatch } from '../db.server.ts'
-import { brandLogoUrl } from './brands.ts'
 import type { DeskBrand, PublicBrand } from './brands.ts'
-import { moved, vendorLogoData, vendorName, vendorWebsite } from './vendors.ts'
+import { moved, vendorName, vendorWebsite } from './vendors.ts'
 
 /**
- * Brands for the scrolling strip, kept in the Book so the desk can change the
+ * Brand names for the scrolling text strip, kept in the Book so the desk can change the
  * home page and /weddings without a redeploy. Starts empty.
  */
 
@@ -12,8 +11,8 @@ const TABLE = `CREATE TABLE IF NOT EXISTS brands (
   id integer PRIMARY KEY,
   name text NOT NULL,
   href text NOT NULL DEFAULT '',
-  mime text NOT NULL,
-  logo text NOT NULL,
+  mime text NOT NULL DEFAULT '',
+  logo text NOT NULL DEFAULT '',
   shown integer NOT NULL DEFAULT 1,
   position integer NOT NULL,
   version integer NOT NULL DEFAULT 1
@@ -39,10 +38,9 @@ type BrandRow = {
   name: string
   href: string
   shown: unknown
-  version: unknown
 }
 
-const COLUMNS = 'id, name, href, shown, version'
+const COLUMNS = 'id, name, href, shown'
 
 function num(value: unknown): number {
   const n = typeof value === 'number' ? value : Number(value)
@@ -59,7 +57,6 @@ function deskBrand(row: BrandRow): DeskBrand {
     id,
     name: row.name,
     href: row.href ? row.href : null,
-    logo: brandLogoUrl(id, num(row.version)),
     shown: truthy(row.shown),
   }
 }
@@ -77,8 +74,8 @@ export async function listPublicBrands(): Promise<PublicBrand[]> {
     `SELECT ${COLUMNS} FROM brands WHERE shown <> 0 ORDER BY position, id`,
   )
   return rows.map((row) => {
-    const { id, name, href, logo } = deskBrand(row)
-    return { id, name, href, logo }
+    const { id, name, href } = deskBrand(row)
+    return { id, name, href }
   })
 }
 
@@ -86,20 +83,6 @@ export async function listDeskBrands(): Promise<DeskBrand[]> {
   await ensureBrands()
   const rows = await query<BrandRow>(`SELECT ${COLUMNS} FROM brands ORDER BY position, id`)
   return rows.map(deskBrand)
-}
-
-export async function brandLogo(
-  id: number,
-): Promise<{ mime: string; logo: string; version: number } | null> {
-  if (!Number.isInteger(id) || id < 1) return null
-  await ensureBrands()
-  const rows = await query<{ mime: string; logo: string; version: unknown }>(
-    'SELECT mime, logo, version FROM brands WHERE id = $1',
-    [id],
-  )
-  const row = rows.at(0)
-  if (!row || !row.logo || !/^image\/(png|jpeg|webp)$/.test(row.mime)) return null
-  return { mime: row.mime, logo: row.logo, version: num(row.version) }
 }
 
 async function brandExists(id: number): Promise<boolean> {
@@ -110,14 +93,11 @@ async function brandExists(id: number): Promise<boolean> {
 export async function addBrand(input: {
   name: string
   href?: string
-  logo: string
   shown?: boolean
 }): Promise<void> {
   await ensureBrands()
   const name = vendorName(input.name, 'The brand name')
   const href = brandLink(input.href)
-  if (!input.logo?.trim()) throw new Error('Choose a logo.')
-  const logo = vendorLogoData(input.logo)
   const [ids = []] = (await queryBatch([
     {
       sql: `SELECT COALESCE(MAX(id), 0) + 1 AS next, COALESCE(MAX(position), -1) + 1 AS position
@@ -125,14 +105,14 @@ export async function addBrand(input: {
     },
   ])) as [{ next: unknown; position: unknown }[]]
   await query(
+    // mime and logo stay blank: the strip is text only. They are listed
+    // because the first version of this table had no defaults for them.
     `INSERT INTO brands (id, name, href, mime, logo, shown, position, version)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 1)`,
+     VALUES ($1, $2, $3, '', '', $4, $5, 1)`,
     [
       num(ids[0]?.next) || 1,
       name,
       href,
-      logo.mime,
-      logo.logo,
       input.shown === false ? 0 : 1,
       num(ids[0]?.position),
     ],
@@ -143,25 +123,12 @@ export async function updateBrand(input: {
   id: number
   name: string
   href?: string
-  /** A new logo, '' to keep the current one. */
-  logo?: string
 }): Promise<void> {
   await ensureBrands()
   if (!(await brandExists(input.id))) throw new Error('That brand is no longer on the list.')
   const name = vendorName(input.name, 'The brand name')
   const href = brandLink(input.href)
-  const logo = input.logo?.trim() ? vendorLogoData(input.logo) : null
-  await queryBatch([
-    { sql: 'UPDATE brands SET name = $1, href = $2 WHERE id = $3', params: [name, href, input.id] },
-    ...(logo
-      ? [
-          {
-            sql: 'UPDATE brands SET mime = $1, logo = $2, version = version + 1 WHERE id = $3',
-            params: [logo.mime, logo.logo, input.id],
-          },
-        ]
-      : []),
-  ])
+  await query('UPDATE brands SET name = $1, href = $2 WHERE id = $3', [name, href, input.id])
 }
 
 export async function setBrandShown(id: number, shown: boolean): Promise<void> {
