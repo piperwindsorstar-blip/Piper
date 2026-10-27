@@ -1,11 +1,15 @@
 import { chromium } from 'playwright'
 const browser = await chromium.launch()
-const v = await browser.newPage({ viewport: { width: 390, height: 900 } })
-await v.goto('https://piperpweddingdj.services/rsvp?r=' + Date.now(), { waitUntil: 'networkidle' })
-const r = await v.evaluate(() => ({
-  cards: [...document.querySelectorAll('article')].map((a) => a.tagName + ':' + a.innerText.replace(/\s+/g, ' ') + ':clickable=' + !!a.closest('a,button,label')),
-  form: document.querySelector('form h2')?.innerText ?? 'no form',
-  button: [...document.querySelectorAll('form button[type=submit]')].map((b) => b.innerText).join('|'),
-}))
-console.log(`::notice title=rsvp::${JSON.stringify(r)}`)
+for (const width of [390, 1280]) {
+  const v = await browser.newPage({ viewport: { width, height: 800 } })
+  await v.goto('https://piperpweddingdj.services/rsvp?r=' + Date.now(), { waitUntil: 'networkidle' })
+  const out = []
+  for (const name of ['$40', 'Free']) {
+    await v.locator('a[href="#get-rsvp"]', { hasText: name }).click()
+    await v.waitForTimeout(800)
+    out.push(name + '->' + (await v.evaluate(() => document.activeElement?.id || document.activeElement?.tagName)))
+  }
+  console.log(`::notice title=rsvp ${width}::${out.join(' ')}`)
+  await v.close()
+}
 await browser.close()
