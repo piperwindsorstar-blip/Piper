@@ -156,7 +156,7 @@ export const STEPS = [
   ],
   [
     'Show up early',
-    'I arrive early, set up, run a sound check and coordinate with your venue and team.',
+    'I arrive early, set up, and run a sound check before guests arrive.',
   ],
   [
     'Run the night',
