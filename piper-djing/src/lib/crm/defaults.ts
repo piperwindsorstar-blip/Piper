@@ -45,12 +45,12 @@ export const PACKAGE_BUTTON_COPY = [
     id: 'ceremony',
     name: 'Ceremony only',
     detail:
-      'Ceremony audio only. One speaker, one wireless microphone, backup, and at least one planning meeting. No reception, no dancefloor lighting, and no MC. The officiant conducts the ceremony.',
+      'Ceremony audio only. One speaker, one wireless microphone, backup, and one planning meeting. No reception, no dancefloor lighting, and no MC. The officiant conducts the ceremony.',
     includes: [
       'Ceremony audio only',
       'One speaker and one wireless microphone for the officiant',
       'Backup equipment',
-      'At least one planning meeting',
+      'One planning meeting',
       'No reception audio, dancefloor lighting, or MC',
     ],
   },

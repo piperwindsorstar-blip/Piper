@@ -78,8 +78,8 @@ export const TOWNS: Record<TownPath, Town> = {
     intro:
       'Big energy and a plan for everything, for Hamilton couples who want a packed dance floor and a night that runs on time. Check your date in 30 seconds.',
     body: [
-      'Hamilton weddings run from downtown halls and golf clubs to estates on the escarpment and barns past the edge of the city. Piper plans every one the same way: at least one planning meeting, your must-play and do-not-play lists, and a timeline confirmed in writing before the day.',
-      'On the night, Piper arrives early, sets up and sound checks before guests walk in, and works with your venue and planner so every entrance, speech and first dance lands when it should. The Main Event and The After Party include dancefloor lighting and light MC duties.',
+      'Hamilton weddings run from downtown halls and golf clubs to estates on the escarpment and barns past the edge of the city. Piper plans every one the same way: one planning meeting, your must-play and do-not-play lists, and a timeline confirmed in writing before the day.',
+      'On the night, Piper arrives early, sets up and sound checks before guests walk in, and keeps every entrance, speech and first dance on cue. The Main Event and The After Party include dancefloor lighting and light MC duties.',
     ],
     travel: HAMILTON_TRAVEL,
     nearby:
@@ -96,7 +96,7 @@ export const TOWNS: Record<TownPath, Town> = {
       'A DJ who reads the room and cares how your night feels, for Cambridge couples from Galt to Hespeler. Check your date in 30 seconds.',
     body: [
       'Cambridge weddings happen everywhere from riverside spots along the Grand to halls in Preston and Hespeler and farms just outside town.',
-      'Every wedding starts with at least one planning meeting, so the music fits your crowd and your story. On the day, Piper sets up early, coordinates with your venue and planner, and keeps the floor full from the first dance to the last song.',
+      'Every wedding starts with one planning meeting, so the music fits your crowd and your story. On the day, Piper sets up early, sound checks before guests arrive, and keeps the floor full from the first dance to the last song.',
     ],
     travel: CAMBRIDGE_TRAVEL,
     nearby:
@@ -113,7 +113,7 @@ export const TOWNS: Record<TownPath, Town> = {
       'Paris is right up the Grand River from Piper’s home in Brantford, so travel is included. Check your date in 30 seconds.',
     body: [
       'Paris is one of the busiest wedding towns in Brant County, with riverside venues in town and barns and farms all around it.',
-      'Every wedding starts with at least one planning meeting and a timeline confirmed in writing. On the day, Piper arrives early, sound checks before guests walk in, and handles every transition so you can enjoy the night.',
+      'Every wedding starts with one planning meeting and a timeline confirmed in writing. On the day, Piper arrives early, sound checks before guests walk in, and handles every transition so you can enjoy the night.',
     ],
     travel: PARIS_TRAVEL,
     nearby:
@@ -175,7 +175,7 @@ export const TOWNS: Record<TownPath, Town> = {
     intro:
       'Polished, personal wedding entertainment for Oakville couples, with clear pricing from the start. Check your date in 30 seconds.',
     body: [
-      'Piper is a Brantford-based wedding DJ who travels to Oakville to play ceremonies and receptions. Every booking includes a planning meeting and a written timeline, and on the day he works alongside your planner so the evening flows.',
+      'Piper is a Brantford-based wedding DJ who travels to Oakville to play ceremonies and receptions. Every booking includes one planning meeting and a written timeline, and on the day he arrives early so the evening flows.',
     ],
     travel: OAKVILLE_TRAVEL,
     nearby:

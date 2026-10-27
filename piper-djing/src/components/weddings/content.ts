@@ -146,10 +146,6 @@ export const FAQ = [
     'Can we control the music?',
     'Completely. Send must-play, do-not-play and special-moment songs. Piper handles the flow and transitions.',
   ],
-  [
-    'Do you work with our planner and venue?',
-    'Always. Piper confirms timelines, power, load-in and sound limits ahead of time so the day runs quietly in the background.',
-  ],
 ] as const
 
 export const AREAS = [
@@ -175,7 +171,7 @@ export const NAV = [
 export const CHECKLIST = [
   'Custom playlists',
   'Pro sound & lighting',
-  'Planner-friendly coordination',
+  'One planning meeting',
   'Peace of mind wedding professional',
 ]
 

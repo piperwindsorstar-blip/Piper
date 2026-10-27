@@ -11,8 +11,8 @@ export function Process() {
             Four steps to a stress-free night.
           </h2>
           <p className="mt-5 max-w-sm text-soft">
-            Custom playlists, no awkward transitions, and clear coordination
-            with your planner, venue and photographer.
+            Custom playlists, no awkward transitions, and a timeline confirmed
+            with you in writing.
           </p>
         </div>
         <ol className="border-l border-ink">
