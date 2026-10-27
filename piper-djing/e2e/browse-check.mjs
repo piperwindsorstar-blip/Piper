@@ -454,6 +454,29 @@ await step('/rsvp prices', async () => {
   expect(/13% HST/.test(text), 'HST note missing')
 })
 
+await step('/rsvp price boxes are tappable and jump to the form', async () => {
+  const out = []
+  for (const width of [390, 1280]) {
+    const v = await browser.newPage({ viewport: { width, height: 800 } })
+    await v.goto(BASE + '/rsvp', { waitUntil: 'networkidle' })
+    for (const [name, field] of [['$40', 'one'], ['Free', 'ref']]) {
+      await v.locator('a[href="#get-rsvp"]', { hasText: name }).click()
+      await v.waitForTimeout(700)
+      const focused = await v.evaluate(() => document.activeElement?.id ?? '')
+      const inView = await v.evaluate(() => {
+        const r = document.activeElement?.getBoundingClientRect()
+        return !!r && r.top >= 0 && r.bottom <= window.innerHeight
+      })
+      // With card sales off the form is replaced by "Contact us".
+      expect(focused === field || focused === 'rsvp-contact', `${name} at ${width}px focused "${focused}"`)
+      expect(inView, `${name} at ${width}px: target not on screen`)
+      out.push(`${width} ${name} -> ${focused}`)
+    }
+    await v.close()
+  }
+  return out.join(', ')
+})
+
 await step('/rsvp/sign-in form', async () => {
   await pub.goto(BASE + '/rsvp/sign-in', { waitUntil: 'networkidle' })
   await pub.getByRole('button', { name: 'Email me a sign-in link' }).waitFor({ timeout: 5000 })

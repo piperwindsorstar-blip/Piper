@@ -67,18 +67,26 @@ function RsvpProduct() {
               link to reply.
             </p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <article className="rounded-3xl border border-[var(--pink)] p-4">
+              <a
+                href="#get-rsvp"
+                onClick={(event) => jumpTo(event, 'ref')}
+                className="block rounded-3xl border border-[var(--pink)] p-4 transition hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--pink)]"
+              >
                 <p className="text-3xl font-semibold">{priceLabel(PIPER_RSVP_CENTS)}</p>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
                   With a DJ Piper P booking (deposit paid)
                 </p>
-              </article>
-              <article className="rounded-3xl border border-[var(--border)] p-4">
+              </a>
+              <a
+                href="#get-rsvp"
+                onClick={(event) => jumpTo(event, 'one')}
+                className="block rounded-3xl border border-[var(--border)] p-4 transition hover:border-[var(--pink)] hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--pink)]"
+              >
                 <p className="text-3xl font-semibold">{priceLabel(STANDALONE_RSVP_CENTS)}</p>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
                   On its own
                 </p>
-              </article>
+              </a>
             </div>
             <p className="mt-3 text-sm text-[var(--text-faint)]">
               Prices in CAD. Paying by card adds 13% HST.
@@ -88,7 +96,7 @@ function RsvpProduct() {
             Brantford, Ontario · piperpweddingdj.services
           </p>
         </section>
-        <section className="flex items-center px-6 py-10 lg:px-12">
+        <section id="get-rsvp" className="flex scroll-mt-24 items-center px-6 py-10 lg:px-12">
           {session ? (
             <Welcome session={session} />
           ) : sale.card ? (
@@ -155,6 +163,21 @@ function Welcome({ session }: { session: string }) {
   )
 }
 
+/**
+ * A price box jumps to the form: the booking-code box for the booked price,
+ * the first name for the stand-alone one. With card sales off there is no
+ * form, so it lands on "Contact us" instead.
+ */
+function jumpTo(event: { preventDefault: () => void }, field: 'ref' | 'one') {
+  const target =
+    document.getElementById(field) ?? document.getElementById('rsvp-contact')
+  if (!target) return
+  event.preventDefault()
+  const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  target.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'center' })
+  target.focus({ preventScroll: true })
+}
+
 function ContactUs() {
   return (
     <div className="grid w-full max-w-md gap-4">
@@ -163,6 +186,7 @@ function ContactUs() {
         Contact us and we will set up your RSVP page for you.
       </p>
       <a
+        id="rsvp-contact"
         className={rsvpButton}
         href={`mailto:${PUBLIC_EMAIL}?subject=${encodeURIComponent('RSVP page')}`}
       >
