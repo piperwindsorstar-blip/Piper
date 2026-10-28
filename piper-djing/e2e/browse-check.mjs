@@ -128,7 +128,7 @@ await step('Desk: Needs you reminder cleared', async () => {
 
 await step('Desk: page text spacing', async () => {
   const out = []
-  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors', '/desk/brands']) {
+  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors', '/desk/brands', '/desk/gear']) {
     out.push(await spacing(page, path))
   }
   return out.join(', ')
@@ -415,6 +415,47 @@ for (const path of ['/', '/weddings']) {
   })
 }
 
+await step('Desk Gear: loads with the starting list and a $8,659 total', async () => {
+  await page.goto(BASE + '/desk/gear', { waitUntil: 'networkidle' })
+  const total = (await page.locator('[data-gear-total]').innerText()).trim()
+  const rows = await page.locator('[data-gear-id]').count()
+  expect(total === '$8,659', `Total ${total}`)
+  expect(rows === 22, `${rows} items`)
+  const nav = await page.locator('a[href="/desk/gear"]').count()
+  expect(nav > 0, 'No Gear link in the Desk menu')
+  return `${rows} items, ${total}`
+})
+
+await step('Desk Gear: add, edit and delete an item; total follows', async () => {
+  const form = page.locator('form', { hasText: 'Add gear' })
+  await form.locator('input[name=item]').fill('Test Speaker QA')
+  await form.locator('input[name=serial]').fill('Unknown')
+  await form.locator('input[name=purchased]').fill('2026-10-28')
+  await form.locator('input[name=value]').fill('100')
+  await form.locator('textarea[name=notes]').fill('Browse check')
+  await form.getByRole('button', { name: 'Add the item' }).click()
+  const row = page.locator('[data-gear-id]', { hasText: 'Test Speaker QA' })
+  await row.waitFor({ timeout: 15000 })
+  await page.waitForTimeout(500)
+  const added = (await page.locator('[data-gear-total]').innerText()).trim()
+  expect(added === '$8,759', `After add: ${added}`)
+  await row.getByRole('button', { name: 'Edit' }).click()
+  await row.locator('input[name=item]').fill('Test Speaker QA Edited')
+  await row.locator('input[name=value]').fill('')
+  await row.getByRole('button', { name: 'Save' }).click()
+  const edited = page.locator('[data-gear-id]', { hasText: 'Test Speaker QA Edited' })
+  await edited.getByText('Not priced').waitFor({ timeout: 15000 })
+  const afterEdit = (await page.locator('[data-gear-total]').innerText()).trim()
+  expect(afterEdit === '$8,659', `After edit: ${afterEdit}`)
+  await edited.getByRole('button', { name: 'Edit' }).click()
+  await edited.getByRole('button', { name: 'Delete item' }).click()
+  await edited.getByRole('button', { name: 'Tap again to confirm' }).click()
+  await page.locator('[data-gear-id]', { hasText: 'Test Speaker QA' }).waitFor({ state: 'detached', timeout: 15000 })
+  const rows = await page.locator('[data-gear-id]').count()
+  expect(rows === 22, `${rows} items after delete`)
+  return `${added} -> ${afterEdit}, back to ${rows} items`
+})
+
 // --- Public ----------------------------------------------------------------
 
 const pub = await browser.newPage()
@@ -559,6 +600,21 @@ await step('Copy: homepage setup sentence and One planning meeting on the cards'
   const all = await pub.evaluate(() => document.body.innerText)
   expect(!/at least one planning meeting/i.test(all), '"At least one planning meeting" still on /weddings')
   return names.join(', ')
+})
+
+await step('Gear stays off the public site', async () => {
+  const marks = ['PTI20426A0089', '0101G0A0605AAD', 'KYS299YY40001YL', 'Behringer XR18', 'Replacement value', '8,659']
+  const found = []
+  for (const path of ['/', '/weddings', '/faq', '/contact', '/book', '/rsvp', '/terms', '/wedding-vendors', '/hamilton-wedding-dj', '/sitemap.xml', '/robots.txt']) {
+    const html = await (await pub.request.get(BASE + path)).text()
+    for (const mark of marks) if (html.includes(mark)) found.push(`${path}: ${mark}`)
+    if (/href="\/desk\/gear"/.test(html)) found.push(`${path}: link to /desk/gear`)
+  }
+  expect(found.length === 0, found.join(', '))
+  const signedOut = await pub.request.get(BASE + '/desk/gear', { maxRedirects: 0 })
+  const body = signedOut.status() === 200 ? await signedOut.text() : ''
+  expect(signedOut.status() !== 200 || !body.includes('PTI20426A0089'), 'Signed-out /desk/gear shows serials')
+  return `signed out /desk/gear -> ${signedOut.status()}`
 })
 
 await step('Public page text spacing', async () => {

@@ -38,6 +38,7 @@ import { Route as DeskMediaRouteImport } from './routes/desk/media'
 import { Route as DeskMoneyRouteImport } from './routes/desk/money'
 import { Route as DeskPackagesRouteImport } from './routes/desk/packages'
 import { Route as DeskVendorsRouteImport } from './routes/desk/vendors'
+import { Route as DeskGearRouteImport } from './routes/desk/gear'
 import { Route as DeskBrandsRouteImport } from './routes/desk/brands'
 import { Route as DeskPaymentsRouteImport } from './routes/desk/payments'
 import { Route as DeskQuestionsRouteImport } from './routes/desk/questions'
@@ -224,6 +225,11 @@ const DeskPackagesRoute = DeskPackagesRouteImport.update({
 const DeskVendorsRoute = DeskVendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
+  getParentRoute: () => DeskRouteRoute,
+} as any)
+const DeskGearRoute = DeskGearRouteImport.update({
+  id: '/gear',
+  path: '/gear',
   getParentRoute: () => DeskRouteRoute,
 } as any)
 const DeskBrandsRoute = DeskBrandsRouteImport.update({
@@ -467,6 +473,7 @@ export interface FileRoutesByFullPath {
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/vendors': typeof DeskVendorsRoute
+  '/desk/gear': typeof DeskGearRoute
   '/desk/brands': typeof DeskBrandsRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
@@ -537,6 +544,7 @@ export interface FileRoutesByTo {
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/vendors': typeof DeskVendorsRoute
+  '/desk/gear': typeof DeskGearRoute
   '/desk/brands': typeof DeskBrandsRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
@@ -611,6 +619,7 @@ export interface FileRoutesById {
   '/desk/money': typeof DeskMoneyRoute
   '/desk/packages': typeof DeskPackagesRoute
   '/desk/vendors': typeof DeskVendorsRoute
+  '/desk/gear': typeof DeskGearRoute
   '/desk/brands': typeof DeskBrandsRoute
   '/desk/payments': typeof DeskPaymentsRoute
   '/desk/questions': typeof DeskQuestionsRoute
@@ -686,6 +695,7 @@ export interface FileRouteTypes {
     | '/desk/money'
     | '/desk/packages'
     | '/desk/vendors'
+    | '/desk/gear'
     | '/desk/brands'
     | '/desk/payments'
     | '/desk/questions'
@@ -756,6 +766,7 @@ export interface FileRouteTypes {
     | '/desk/money'
     | '/desk/packages'
     | '/desk/vendors'
+    | '/desk/gear'
     | '/desk/brands'
     | '/desk/payments'
     | '/desk/questions'
@@ -829,6 +840,7 @@ export interface FileRouteTypes {
     | '/desk/money'
     | '/desk/packages'
     | '/desk/vendors'
+    | '/desk/gear'
     | '/desk/brands'
     | '/desk/payments'
     | '/desk/questions'
@@ -1114,6 +1126,13 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/desk/vendors'
       preLoaderRoute: typeof DeskVendorsRouteImport
+      parentRoute: typeof DeskRouteRoute
+    }
+    '/desk/gear': {
+      id: '/desk/gear'
+      path: '/gear'
+      fullPath: '/desk/gear'
+      preLoaderRoute: typeof DeskGearRouteImport
       parentRoute: typeof DeskRouteRoute
     }
     '/desk/brands': {
@@ -1422,6 +1441,7 @@ interface DeskRouteRouteChildren {
   DeskMoneyRoute: typeof DeskMoneyRoute
   DeskPackagesRoute: typeof DeskPackagesRoute
   DeskVendorsRoute: typeof DeskVendorsRoute
+  DeskGearRoute: typeof DeskGearRoute
   DeskBrandsRoute: typeof DeskBrandsRoute
   DeskPaymentsRoute: typeof DeskPaymentsRoute
   DeskQuestionsRoute: typeof DeskQuestionsRoute
@@ -1445,6 +1465,7 @@ const DeskRouteRouteChildren: DeskRouteRouteChildren = {
   DeskMoneyRoute: DeskMoneyRoute,
   DeskPackagesRoute: DeskPackagesRoute,
   DeskVendorsRoute: DeskVendorsRoute,
+  DeskGearRoute: DeskGearRoute,
   DeskBrandsRoute: DeskBrandsRoute,
   DeskPaymentsRoute: DeskPaymentsRoute,
   DeskQuestionsRoute: DeskQuestionsRoute,
