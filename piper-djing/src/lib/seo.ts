@@ -32,6 +32,7 @@ export function publicHead(opts: {
     | '/terms'
     | '/contact'
     | '/wedding-vendors'
+    | '/faq'
     | '/rsvp'
     | '/hamilton-wedding-dj'
     | '/cambridge-wedding-dj'

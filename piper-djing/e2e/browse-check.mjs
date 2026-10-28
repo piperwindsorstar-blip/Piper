@@ -531,9 +531,39 @@ await step('Older browsers without Object.hasOwn still load', async () => {
   expect(oldErrors.length === 0, oldErrors.slice(0, 3).join(' | '))
 })
 
+await step('/faq: twenty questions, no insurance, linked from the menu', async () => {
+  const html = await (await pub.request.get(BASE + '/faq')).text()
+  const questions = (html.match(/<h3[^>]*>/g) || []).length
+  expect(questions === 20, `${questions} questions`)
+  expect(!/insur|liability/i.test(html), 'Insurance is mentioned')
+  expect(/<link[^>]*rel="canonical"[^>]*\/faq"/.test(html), 'Canonical missing')
+  expect(html.includes('"@type":"FAQPage"'), 'FAQ structured data missing')
+  for (const path of ['/', '/weddings']) {
+    const page = await (await pub.request.get(BASE + path)).text()
+    expect(/<header[\s\S]*?href="\/faq"[\s\S]*?<\/header>/.test(page), `${path}: no FAQ link in the menu`)
+  }
+})
+
+await step('Copy: homepage setup sentence and One planning meeting on the cards', async () => {
+  const home = await (await pub.request.get(BASE + '/')).text()
+  expect(home.includes('I arrive early, set up, and run a sound check before guests arrive.'), 'New sentence missing')
+  expect(!home.includes('coordinate with your venue and team'), 'Old sentence still there')
+  await pub.goto(BASE + '/weddings', { waitUntil: 'networkidle' })
+  const cards = await pub.evaluate(() => [...document.querySelectorAll('#packages article')].map((el) => ({
+    name: el.querySelector('h3')?.textContent?.trim() ?? '',
+    one: [...el.querySelectorAll('li')].some((li) => li.textContent.trim() === 'One planning meeting'),
+    least: /at least one/i.test(el.textContent),
+  })).filter((c) => ['The Main Event', 'The After Party', 'The Aisle'].includes(c.name)))
+  const names = [...new Set(cards.filter((c) => c.one && !c.least).map((c) => c.name))]
+  expect(names.length === 3, `Cards with "One planning meeting": ${names.join(', ')}`)
+  const all = await pub.evaluate(() => document.body.innerText)
+  expect(!/at least one planning meeting/i.test(all), '"At least one planning meeting" still on /weddings')
+  return names.join(', ')
+})
+
 await step('Public page text spacing', async () => {
   const out = []
-  for (const path of ['/', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/book', '/rsvp', '/rsvp/sign-in', '/contact', '/terms', '/portal', '/wedding-vendors']) {
+  for (const path of ['/', '/weddings', '/hamilton-wedding-dj', '/cambridge-wedding-dj', '/paris-wedding-dj', '/book', '/rsvp', '/rsvp/sign-in', '/contact', '/terms', '/portal', '/wedding-vendors', '/faq']) {
     out.push(await spacing(pub, path))
   }
   return out.join(', ')

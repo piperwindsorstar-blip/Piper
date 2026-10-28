@@ -64,6 +64,7 @@ function cachePublicPage(response: Response, request: Request): void {
     path !== '/oakville-wedding-dj' &&
     path !== '/book' &&
     path !== '/contact' &&
+    path !== '/faq' &&
     path !== '/rsvp' &&
     path !== '/rsvp/'
   ) {

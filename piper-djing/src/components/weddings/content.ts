@@ -164,7 +164,7 @@ export const NAV = [
   ['Process', '#process'],
   ['The Booth', '#the-booth'],
   ['Reviews', '#reviews'],
-  ['FAQ', '#faq'],
+  ['FAQ', '/faq'],
   ['Vendors', '/wedding-vendors'],
 ] as const
 
