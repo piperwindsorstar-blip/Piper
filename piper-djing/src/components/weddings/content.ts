@@ -41,7 +41,7 @@ export const TIERS = [
       'Two speakers',
       'Dancefloor lighting',
       'Backup equipment',
-      'At least one planning meeting',
+      'One planning meeting',
       'Light MC duties',
     ],
     hl: true,
@@ -56,7 +56,7 @@ export const TIERS = [
       'Two speakers',
       'Dancefloor lighting',
       'Backup equipment',
-      'At least one planning meeting',
+      'One planning meeting',
       'Light MC duties',
     ],
     hl: false,
@@ -83,7 +83,7 @@ export const TIERS = [
       'Ceremony audio',
       'One speaker and one wireless microphone for the officiant',
       'Backup equipment',
-      'At least one planning meeting',
+      'One planning meeting',
       'No dancefloor lighting or MC',
     ],
     hl: false,
@@ -146,10 +146,6 @@ export const FAQ = [
     'Can we control the music?',
     'Completely. Send must-play, do-not-play and special-moment songs. Piper handles the flow and transitions.',
   ],
-  [
-    'Do you work with our planner and venue?',
-    'Always. Piper confirms timelines, power, load-in and sound limits ahead of time so the day runs quietly in the background.',
-  ],
 ] as const
 
 export const AREAS = [
@@ -168,14 +164,14 @@ export const NAV = [
   ['Process', '#process'],
   ['The Booth', '#the-booth'],
   ['Reviews', '#reviews'],
-  ['FAQ', '#faq'],
+  ['FAQ', '/faq'],
   ['Vendors', '/wedding-vendors'],
 ] as const
 
 export const CHECKLIST = [
   'Custom playlists',
   'Pro sound & lighting',
-  'Planner-friendly coordination',
+  'One planning meeting',
   'Peace of mind wedding professional',
 ]
 

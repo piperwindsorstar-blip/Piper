@@ -39,6 +39,7 @@ export const NAV = [
   { label: 'Events', href: '#events' },
   { label: 'Process', href: '#process' },
   { label: 'Reviews', href: '#reviews' },
+  { label: 'FAQ', href: '/faq' },
   { label: 'Vendors', href: '/wedding-vendors' },
 ] as const
 
@@ -83,7 +84,7 @@ export const PILLARS = [
     d: 'We start with a short planning call, a written timeline and a music brief. By event day, every cue, mic and playlist is already sorted.',
     pts: [
       'You give me must-play and do-not-play lists.',
-      'I share the timeline with your planner and venue.',
+      'We confirm your timeline together in writing.',
       'I arrive early and run a full sound check.',
     ],
   },
@@ -156,7 +157,7 @@ export const STEPS = [
   ],
   [
     'Show up early',
-    'I arrive early, set up, run a sound check and coordinate with your venue and team.',
+    'I arrive early, set up, and run a sound check before guests arrive.',
   ],
   [
     'Run the night',
