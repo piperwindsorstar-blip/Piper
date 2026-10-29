@@ -82,6 +82,7 @@ export function statusTone(status: string): ChipTone {
 }
 
 export function invoiceTone(status: string): ChipTone {
+  if (status === 'paid') return 'green'
   if (status === 'sent') return 'pink'
   if (status === 'void') return 'red'
   return 'gray'

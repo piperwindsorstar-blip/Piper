@@ -206,6 +206,21 @@ export function assertBookableDate(
   }
 }
 
+/**
+ * The status to show for an invoice: "paid" once everything is received
+ * (worked out from the money, so a refund takes it back to "sent"), else the
+ * stored status.
+ */
+export function invoiceShownStatus(invoice: {
+  status: string
+  totalCents: number
+  receivedCents: number
+}): InvoiceStatus | 'paid' {
+  if (invoice.status === 'void') return 'void'
+  if (invoice.totalCents > 0 && invoice.receivedCents >= invoice.totalCents) return 'paid'
+  return invoice.status === 'draft' ? 'draft' : 'sent'
+}
+
 export function invoiceBalance(invoice: InvoiceState): number {
   if (invoice.status === 'void') return 0
   return Math.max(0, invoice.totalCents - invoice.receivedCents)

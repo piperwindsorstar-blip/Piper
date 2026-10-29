@@ -72,7 +72,7 @@ import {
   sendInvoiceMail,
   saveNotes,
 } from '../../lib/crm/desk.functions.ts'
-import { invoiceControls } from '../../lib/crm/booking-rules.ts'
+import { invoiceShownStatus, invoiceControls } from '../../lib/crm/booking-rules.ts'
 import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
 import { daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
@@ -793,7 +793,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                   <span className="text-[#5b5370]">{`left of ${dollars(total) ?? ''}`}</span>
                 </p>
               </div>
-              {invoice ? <Chip tone={invoiceTone(invoice.status)}>{`Invoice ${invoice.status ?? ''}`}</Chip> : <Chip>No invoice</Chip>}
+              {invoice ? <Chip tone={invoiceTone(invoiceShownStatus(invoice))}>{`Invoice ${invoiceShownStatus(invoice)}`}</Chip> : <Chip>No invoice</Chip>}
             </div>
             <Bar value={total > 0 ? (paid / total) * 100 : 0} label={`${cad(paid)} of ${cad(total)} paid`} height="h-2.5" />
             <div className="grid gap-5 sm:grid-cols-2">
@@ -1989,7 +1989,7 @@ function BookingCard({
           <div className="flex gap-2">
             <Chip tone={statusTone(booking.status)}>{booking.status}</Chip>
             {booking.invoice ? (
-              <Chip tone={invoiceTone(booking.invoice.status)}>{`invoice ${booking.invoice.status ?? ''}`}
+              <Chip tone={invoiceTone(invoiceShownStatus(booking.invoice))}>{`invoice ${invoiceShownStatus(booking.invoice)}`}
               </Chip>
             ) : null}
           </div>
