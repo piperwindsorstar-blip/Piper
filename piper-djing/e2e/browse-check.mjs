@@ -159,7 +159,7 @@ await step('Desk Bookings: a past wedding moves to the Archive', async () => {
 
 await step('Desk: page text spacing', async () => {
   const out = []
-  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors', '/desk/brands', '/desk/gear']) {
+  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors', '/desk/brands', '/desk/gear', '/desk/financials']) {
     out.push(await spacing(page, path))
   }
   return out.join(', ')
@@ -487,6 +487,40 @@ await step('Desk Gear: add, edit and delete an item; total follows', async () =>
   return `${added} -> ${afterEdit}, back to ${rows} items`
 })
 
+await step('Desk Financials: loads the sheet; add, edit and delete income', async () => {
+  await page.goto(BASE + '/desk/financials', { waitUntil: 'networkidle' })
+  const stat = page.locator('[data-fin-stat="Income 2026"]')
+  const total = (await stat.innerText()).trim()
+  expect(total === '$48,631', `Income total ${total}`)
+  const form = page.locator('form', { hasText: 'Add income' })
+  await form.locator('input[name=date]').fill('2026-10-28')
+  await form.locator('input[name=amount]').fill('100')
+  await form.locator('input[name=name]').fill('Tip - QA Couple')
+  await form.locator('select[name=category]').selectOption('tip')
+  await form.getByRole('button', { name: 'Add income' }).click()
+  const row = page.locator('[data-fin-row]', { hasText: 'Tip - QA Couple' })
+  await row.waitFor({ timeout: 15000 })
+  await page.waitForTimeout(500)
+  const added = (await stat.innerText()).trim()
+  await row.getByRole('button', { name: 'Edit' }).click()
+  await row.locator('input[name=amount]').fill('150')
+  await row.getByRole('button', { name: 'Save' }).click()
+  await page.waitForTimeout(1500)
+  const edited = (await stat.innerText()).trim()
+  await row.getByRole('button', { name: 'Edit' }).click()
+  await row.getByRole('button', { name: 'Delete' }).click()
+  await row.getByRole('button', { name: 'Tap again to confirm' }).click()
+  await page.locator('[data-fin-row]', { hasText: 'Tip - QA Couple' }).waitFor({ state: 'detached', timeout: 15000 })
+  const after = (await stat.innerText()).trim()
+  expect(added === '$48,731' && edited === '$48,781' && after === '$48,631', `${added} / ${edited} / ${after}`)
+  await page.getByRole('tab', { name: 'Pay periods' }).click()
+  const jan = (await page.locator('[data-fin-period="2026-01-18"]').innerText()).replace(/\s+/g, ' ')
+  expect(jan.includes('$892.50') && jan.includes('42.5 hours'), `Jan 18 period: ${jan}`)
+  await page.getByRole('tab', { name: 'Weekly hours' }).click()
+  await page.getByRole('button', { name: 'Download CSV' }).waitFor()
+  return `${total} -> ${added} -> ${edited} -> ${after}; ${jan}`
+})
+
 // --- Public ----------------------------------------------------------------
 
 const pub = await browser.newPage()
@@ -634,12 +668,12 @@ await step('Copy: homepage setup sentence and One planning meeting on the cards'
 })
 
 await step('Gear stays off the public site', async () => {
-  const marks = ['PTI20426A0089', '0101G0A0605AAD', 'KYS299YY40001YL', 'Behringer XR18', 'Replacement value', '8,659']
+  const marks = ['PTI20426A0089', '0101G0A0605AAD', 'KYS299YY40001YL', 'Behringer XR18', 'Replacement value', '8,659', '48,631', 'Tims Tillsonburg', 'Pay periods']
   const found = []
   for (const path of ['/', '/weddings', '/faq', '/contact', '/book', '/rsvp', '/terms', '/wedding-vendors', '/hamilton-wedding-dj', '/sitemap.xml', '/robots.txt']) {
     const html = await (await pub.request.get(BASE + path)).text()
     for (const mark of marks) if (html.includes(mark)) found.push(`${path}: ${mark}`)
-    if (/href="\/desk\/gear"/.test(html)) found.push(`${path}: link to /desk/gear`)
+    if (/href="\/desk\/(gear|financials)"/.test(html)) found.push(`${path}: link to a private Desk page`)
   }
   expect(found.length === 0, found.join(', '))
   const signedOut = await pub.request.get(BASE + '/desk/gear', { maxRedirects: 0 })
