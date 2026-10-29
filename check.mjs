@@ -1,14 +1,13 @@
 import { chromium } from 'playwright'
 const browser = await chromium.launch()
 const page = await browser.newPage()
+const errors = []
+page.on('pageerror', (e) => errors.push(e.message))
 const base = 'https://piperpweddingdj.services'
-const marks = ['48,631', 'Tims Tillsonburg', 'Pay periods', '/desk/financials']
-const found = []
-for (const path of ['/', '/weddings', '/faq', '/contact', '/book', '/rsvp', '/sitemap.xml']) {
-  const html = await (await page.request.get(base + path + (path.includes('.') ? '' : '?r=' + Date.now()))).text()
-  for (const m of marks) if (html.includes(m)) found.push(`${path}:${m}`)
+for (const p of ['/', '/weddings', '/p/not-a-real-invoice']) {
+  const r = await page.goto(base + p + '?r=' + Date.now(), { waitUntil: 'networkidle' })
+  console.log(`::notice title=${p}::${r.status()}`)
 }
-const r = await page.request.get(base + '/desk/financials', { maxRedirects: 0 })
-console.log(`::notice title=public::found=${found.join(',') || 'none'}`)
-console.log(`::notice title=desk/financials signed out::${r.status()} ${r.headers().location ?? ''}`)
+const d = await page.request.get(base + '/desk/money', { maxRedirects: 0 })
+console.log(`::notice title=desk/money::${d.status()} errors=${errors.join('|') || 'none'}`)
 await browser.close()
