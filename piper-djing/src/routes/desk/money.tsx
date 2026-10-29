@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Bar,
   Chip,
@@ -44,11 +44,13 @@ export const Route = createFileRoute('/desk/money')({
   // screen, so the server calls it imports stay off the public pages.
   codeSplitGroupings: [['loader', 'component']],
   head: () => deskHead('Money · DJ Piper P'),
-  validateSearch: (search: Record<string, unknown>): { tab?: MoneyTab } => {
+  validateSearch: (search: Record<string, unknown>): { tab?: MoneyTab; couple?: number } => {
+    const out: { tab?: MoneyTab; couple?: number } = {}
     const tab = search.tab
-    return tab === 'owes' || tab === 'paid' || tab === 'invoices' || tab === 'rsvp'
-      ? { tab }
-      : {}
+    if (tab === 'owes' || tab === 'paid' || tab === 'invoices' || tab === 'rsvp') out.tab = tab
+    const couple = Number(search.couple)
+    if (Number.isInteger(couple) && couple > 0) out.couple = couple
+    return out
   },
   loader: () => getPayments(),
   component: MoneyPage,
@@ -89,6 +91,18 @@ function MoneyPage() {
       formRef.current?.querySelector<HTMLInputElement>('input[name="amount"]')?.focus()
     })
   }
+
+  // From an Overview alert: open the payment form for that couple, with what
+  // is due (the rest of the deposit while held, otherwise the balance).
+  useEffect(() => {
+    if (!search.couple) return
+    const booking = payable.find((row) => row.id === search.couple)
+    if (!booking?.invoice) return
+    const deposit = Math.max(0, booking.invoice.depositCents - booking.invoice.receivedCents)
+    startPayment(booking.id, booking.status === 'hold' && deposit > 0 ? deposit : booking.invoice.balanceCents)
+    // Only when the page opens with a couple.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.couple])
 
   async function record(
     form: FormData,

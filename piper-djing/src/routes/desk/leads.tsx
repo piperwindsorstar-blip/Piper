@@ -147,7 +147,7 @@ function LeadCard({
     : lead.partnerOne
   const phone = lead.phone.replace(/[^\d+]/g, '')
   return (
-    <article className={`${deskCard} grid gap-3`}>
+    <article id={`lead-${lead.id}`} className={`${deskCard} grid scroll-mt-24 gap-3 target:ring-2 target:ring-[#ff007f]`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">

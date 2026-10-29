@@ -501,6 +501,22 @@ function NeedsYou({ items }: { items: Attention[] }) {
                   >
                     {item.action}
                   </Link>
+                ) : item.to === '/desk/money' ? (
+                  <Link
+                    to="/desk/money"
+                    search={item.couple ? { couple: item.couple } : {}}
+                    className={`${deskGhost} shrink-0 !min-h-11 !px-4`}
+                  >
+                    {item.action}
+                  </Link>
+                ) : item.lead ? (
+                  <Link
+                    to="/desk/leads"
+                    hash={`lead-${item.lead}`}
+                    className={`${deskGhost} shrink-0 !min-h-11 !px-4`}
+                  >
+                    {item.action}
+                  </Link>
                 ) : (
                   <Link to={item.to} className={`${deskGhost} shrink-0 !min-h-11 !px-4`}>
                     {item.action}
