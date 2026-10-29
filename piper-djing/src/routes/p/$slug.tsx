@@ -1,4 +1,5 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
+import { invoiceShownStatus } from '../../lib/crm/booking-rules.ts'
 import { useServerFn } from '@tanstack/react-start'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
@@ -40,6 +41,8 @@ function InvoicePage() {
   const { paid } = Route.useSearch()
   const { slug } = Route.useParams()
   const voided = invoice.status === 'void'
+  const shown = invoiceShownStatus(invoice)
+  const paidInFull = shown === 'paid'
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -50,7 +53,7 @@ function InvoicePage() {
           className="h-20 w-auto"
         />
         <p className="mt-6 text-sm tracking-wide text-muted uppercase">
-          {`${invoice.sample ? 'TEST invoice' : 'Invoice'} · ${invoice.status ?? ''}`}
+          {`${invoice.sample ? 'TEST invoice' : 'Invoice'} · ${shown}`}
         </p>
         <h1 className="mt-3 font-display text-4xl tracking-tight">
           {`${invoice.partnerOne ?? ''} and ${invoice.partnerTwo ?? ''}`}
@@ -105,6 +108,15 @@ function InvoicePage() {
           ) : null}
         </dl>
 
+        {paidInFull && !paid ? (
+          <p
+            role="status"
+            className="mt-8 rounded-2xl border border-line px-5 py-4 text-sm leading-relaxed"
+          >
+            Paid in full. Thank you.
+          </p>
+        ) : null}
+
         {paid ? (
           <p
             role="status"
@@ -115,6 +127,7 @@ function InvoicePage() {
           </p>
         ) : null}
 
+        {paidInFull ? null : (
         <section className="mt-8" aria-labelledby="how-to-pay">
           <h2 id="how-to-pay" className="font-display text-2xl tracking-tight">
             How to pay
@@ -136,6 +149,7 @@ function InvoicePage() {
             <PayByCard slug={slug} quote={invoice.card} />
           ) : null}
         </section>
+        )}
 
         <section
           className="mt-10 rounded-2xl border border-line px-5 py-6"

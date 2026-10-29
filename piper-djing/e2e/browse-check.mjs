@@ -157,6 +157,28 @@ await step('Desk Bookings: a past wedding moves to the Archive', async () => {
   return `All ${onAll}, Archive ${onArchive}`
 })
 
+await step('Desk Money: a fully paid invoice shows as paid', async () => {
+  await page.goto(BASE + '/desk/money', { waitUntil: 'networkidle' })
+  const owes = page.locator('li, article', { hasText: 'Morgan' }).filter({ has: page.getByRole('button', { name: 'Record payment' }) }).last()
+  await owes.getByRole('button', { name: 'Record payment' }).click()
+  const form = page.locator('form', { hasText: 'Record a payment' })
+  const amount = await form.locator('input[name=amount]').inputValue()
+  await form.getByRole('button', { name: 'Save payment' }).click()
+  await page.waitForTimeout(2500)
+  await page.goto(BASE + '/desk/money?tab=invoices', { waitUntil: 'networkidle' })
+  const card = page.locator('li, article', { hasText: 'Morgan' }).last()
+  const text = (await card.innerText()).replace(/\s+/g, ' ')
+  expect(/\bpaid\b/i.test(text), `Invoice not shown as paid: ${text.slice(0, 200)}`)
+  const href = await card.locator('a[href^="/p/"]').first().getAttribute('href').catch(() => null)
+  let pageNote = 'no invoice link'
+  if (href) {
+    const invoice = await page.request.get(BASE + href).then((r) => r.text()).catch(() => '')
+    pageNote = invoice.includes('Paid in full') ? 'invoice page says Paid in full' : 'invoice page missing Paid in full'
+    expect(invoice.includes('Paid in full'), pageNote)
+  }
+  return `paid $${amount}; ${pageNote}`
+})
+
 await step('Desk: page text spacing', async () => {
   const out = []
   for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors', '/desk/brands', '/desk/gear', '/desk/financials']) {

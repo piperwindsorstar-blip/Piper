@@ -15,7 +15,7 @@ import {
   deskSurface,
   invoiceTone,
 } from '../../components/desk-ui.tsx'
-import { invoiceControls } from '../../lib/crm/booking-rules.ts'
+import { invoiceShownStatus, invoiceControls } from '../../lib/crm/booking-rules.ts'
 import { longDate } from '../../lib/crm/dates.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
 import {
@@ -907,8 +907,8 @@ function InvoiceCard({
           )}
         </div>
         {booking.invoice ? (
-          <Chip tone={invoiceTone(booking.invoice.status)}>
-            {booking.invoice.status}
+          <Chip tone={invoiceTone(invoiceShownStatus(booking.invoice))}>
+            {invoiceShownStatus(booking.invoice)}
           </Chip>
         ) : null}
       </div>
