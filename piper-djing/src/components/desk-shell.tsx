@@ -38,6 +38,7 @@ type SmallPath =
   | '/desk/vendors'
   | '/desk/brands'
   | '/desk/gear'
+  | '/desk/financials'
   | '/desk/bots'
   | '/desk/settings'
 
@@ -79,7 +80,10 @@ const SMALL: { name: string; links: { name: string; to: SmallPath }[] }[] = [
   },
   {
     name: 'Business',
-    links: [{ name: 'Gear', to: '/desk/gear' }],
+    links: [
+      { name: 'Financials', to: '/desk/financials' },
+      { name: 'Gear', to: '/desk/gear' },
+    ],
   },
   {
     name: 'System',
