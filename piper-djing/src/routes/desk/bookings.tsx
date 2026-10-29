@@ -2088,8 +2088,8 @@ function BookingCard({
               const withStag = form.get('withStag') === 'on'
               const discount = readDiscount(form)
               if (!discount.ok) {
-                setError(discount.error)
-                return
+                setError(null)
+                return { ok: false, message: discount.error }
               }
               const result = await save({
                 data: {
@@ -2118,9 +2118,10 @@ function BookingCard({
                   lockedTotal: form.get('lockedTotal') === 'on',
                 },
               })
+              // The reason shows right under the button, not a generic retry.
               if (!result.ok) {
-                setError(result.error)
-                return
+                setError(null)
+                return { ok: false, message: result.error }
               }
               setError(null)
               setNotice('Saved.')

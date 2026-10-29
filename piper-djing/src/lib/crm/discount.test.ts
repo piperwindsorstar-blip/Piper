@@ -113,6 +113,35 @@ describe('custom discounts', { skip: liveBook }, () => {
     assert.equal(again.discountCents, 0)
   })
 
+  it('saves other details on a locked total that already has a discount', async () => {
+    setLegacyDateReader(async () => 'open')
+    const saved = await createBooking({
+      ...blank,
+      partnerOne: 'Locked',
+      partnerTwo: 'Pair',
+      email: 'locked@example.com',
+      eventDate: '2029-08-18',
+      discountCents: 10000,
+    })
+    const patch = {
+      ...blank,
+      id: saved.id,
+      partnerOne: 'Locked',
+      partnerTwo: 'Pair',
+      email: 'locked@example.com',
+      eventDate: '2029-08-18',
+      discountCents: 10000,
+    }
+    const locked = await updateBooking({ ...patch, lockedTotal: true })
+    const again = await updateBooking({ ...patch, lockedTotal: true, notes: 'New note', venueName: 'Polish Hall' })
+    assert.equal(again.notes, 'New note')
+    assert.equal(again.totalCents, locked.totalCents)
+    await assert.rejects(
+      () => updateBooking({ ...patch, lockedTotal: true, discountCents: 20000 }),
+      /agreed total stays/,
+    )
+  })
+
   it('books a discounted ceremony when that full amount is paid', () => {
     const booking: BookingState = {
       partnerOne: 'Ada',

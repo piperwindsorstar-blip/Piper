@@ -1835,14 +1835,16 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     current.id,
   )
   const prices = await packagePriceMap()
-  if (locked && next.discountCents > 0) {
+  // A locked total can't take a new discount. The discount already on it
+  // (the form shows it again) is fine, so the rest of the details still save.
+  if (locked && next.discountCents > 0 && next.discountCents !== state.discountCents) {
     throw new Error('That agreed total stays.')
   }
   const figures = locked
     ? {
         totalCents: state.totalCents,
         depositCents: state.depositCents,
-        discountCents: 0,
+        discountCents: state.discountCents,
       }
     : figuresFor(
         {
