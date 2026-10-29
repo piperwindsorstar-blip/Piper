@@ -124,7 +124,7 @@ export const Route = createFileRoute('/desk/bookings')({
 
 type BookingRow = Awaited<ReturnType<typeof getBookings>>[number]
 
-type Filter = 'all' | 'yours' | 'pynx' | 'owes' | 'pending' | 'cancelled'
+type Filter = 'all' | 'yours' | 'pynx' | 'owes' | 'pending' | 'cancelled' | 'archive'
 
 type ListRow = {
   key: string
@@ -219,9 +219,12 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
   ].sort((a, b) => a.date.localeCompare(b.date))
 
   const gone = (row: ListRow) => row.status === 'cancelled' || row.status === 'released'
+  // Weddings whose date has passed move to the Archive and off the other tabs.
   const test = (id: Filter, row: ListRow) => {
     if (id === 'cancelled') return gone(row)
     if (gone(row)) return false
+    if (id === 'archive') return row.date < today
+    if (row.date < today) return false
     if (id === 'yours') return row.mine
     if (id === 'pynx') return !row.mine
     if (id === 'owes') return row.owes
@@ -231,8 +234,13 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
   const shown = rows.filter(
     (row) => test(filter, row) && (!q || `${row.couple} ${row.venue} ${row.detail} ${row.date}`.toLowerCase().includes(q)),
   )
-  const upcoming = shown.filter((row) => row.date >= today)
-  const past = shown.filter((row) => row.date < today)
+  const upcoming = filter === 'archive' ? [] : shown.filter((row) => row.date >= today)
+  const past = filter === 'archive' || filter === 'cancelled' ? shown.filter((row) => row.date < today) : []
+  // A search on another tab also says how many archived weddings match.
+  const archivedMatches =
+    q && filter !== 'archive'
+      ? rows.filter((row) => test('archive', row) && `${row.couple} ${row.venue} ${row.detail} ${row.date}`.toLowerCase().includes(q)).length
+      : 0
   const live = rows.filter((row) => !gone(row) && row.date >= today)
   // The same rules as the tabs, so the header and the tab counts agree.
   const yours = live.filter((row) => test('yours', row)).length
@@ -247,6 +255,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
     ['owes', 'Owes money'],
     ['pending', 'Not booked yet'],
     ['cancelled', 'Cancelled'],
+    ['archive', 'Archive'],
   ]
 
   return (
@@ -306,8 +315,8 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
           />
           <div role="tablist" aria-label="Show" className="no-scrollbar flex min-w-0 gap-1.5 overflow-x-auto">
             {filters.map(([id, label]) => {
-              const count = rows.filter((row) => test(id, row) && (id === 'cancelled' || row.date >= today)).length
-              if ((id === 'pending' || id === 'cancelled') && count === 0 && filter !== id) return null
+              const count = rows.filter((row) => test(id, row)).length
+              if ((id === 'pending' || id === 'cancelled' || id === 'archive') && count === 0 && filter !== id) return null
               return (
                 <button
                   key={id}
@@ -360,30 +369,44 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
       </div>
 
       {view === 'calendar' ? (
-        <MonthCalendar rows={shown.filter((row) => !gone(row) || filter === 'cancelled')} today={today} start={search.month} />
+        <MonthCalendar
+          // The calendar still shows past months, so it ignores the Archive split.
+          rows={rows.filter(
+            (row) =>
+              (filter === 'archive' ? test('archive', row) : test(filter, row.date < today ? { ...row, date: today } : row)) &&
+              (!q || `${row.couple} ${row.venue} ${row.detail} ${row.date}`.toLowerCase().includes(q)),
+          )}
+          today={today}
+          start={search.month}
+        />
       ) : (
         <div className="grid gap-5">
           {upcoming.length === 0 && past.length === 0 ? (
             <p className={`${deskCard} text-[#5b5370]`}>
-              {q ? 'No booking matches that search.' : 'Nothing here yet.'}
+              {q ? 'No booking matches that search.' : filter === 'archive' ? 'No past weddings yet.' : 'Nothing here yet.'}
             </p>
           ) : null}
           {groupByMonth(upcoming).map(([key, group]) => (
             <MonthGroup key={key} label={monthLabel(key)} rows={group} today={today} />
           ))}
           {past.length > 0 ? (
-            <details className="group grid gap-3">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-1 font-display text-lg font-extrabold [&::-webkit-details-marker]:hidden">
-                <ChevronDown className="h-5 w-5 transition group-open:rotate-180" aria-hidden="true" />
-                {'Past weddings '}
-                <span className="font-sans text-sm font-medium text-[#5b5370]">{past.length}</span>
-              </summary>
-              <div className="mt-3 grid gap-5">
-                {groupByMonth([...past].reverse()).map(([key, group]) => (
-                  <MonthGroup key={key} label={monthLabel(key)} rows={group} today={today} />
-                ))}
-              </div>
-            </details>
+            <div className="grid gap-5">
+              {filter === 'archive' ? null : (
+                <h2 className="px-1 font-display text-lg font-extrabold">Past</h2>
+              )}
+              {groupByMonth([...past].reverse()).map(([key, group]) => (
+                <MonthGroup key={key} label={monthLabel(key)} rows={group} today={today} />
+              ))}
+            </div>
+          ) : null}
+          {archivedMatches > 0 ? (
+            <button
+              type="button"
+              onClick={() => setFilter('archive')}
+              className="min-h-11 w-fit px-1 text-sm font-semibold text-[#d1006b] hover:underline"
+            >
+              {`${archivedMatches} past ${archivedMatches === 1 ? 'wedding matches' : 'weddings match'} in the Archive`}
+            </button>
           ) : null}
         </div>
       )}

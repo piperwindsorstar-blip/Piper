@@ -95,7 +95,11 @@ await step('Desk: new booking with a draft invoice', async () => {
 
 await step('Desk: Needs you asks to send the invoice', async () => {
   await page.goto(BASE + '/desk', { waitUntil: 'networkidle' })
-  await page.getByText(`Send the invoice to ${COUPLE.one} and ${COUPLE.two}`).waitFor({ timeout: 8000 })
+  const item = page.locator('li', { hasText: new RegExp(`Send the \\$[\\d,]+ invoice to ${COUPLE.one} and ${COUPLE.two}`) }).first()
+  await item.waitFor({ timeout: 8000 })
+  const text = (await item.innerText()).replace(/\s+/g, ' ')
+  expect(text.includes('21 November 2026'), `Alert has no wedding date: ${text}`)
+  return text
 })
 
 let mailsBefore = 0
@@ -122,8 +126,35 @@ await step('Desk: second tap sends to both emails and marks the invoice sent', a
 
 await step('Desk: Needs you reminder cleared', async () => {
   await page.goto(BASE + '/desk', { waitUntil: 'networkidle' })
-  const left = await page.getByText(`Send the invoice to ${COUPLE.one} and ${COUPLE.two}`).count()
+  const left = await page.getByText(new RegExp(`Send the \\$[\\d,]+ invoice to ${COUPLE.one} and ${COUPLE.two}`)).count()
   expect(left === 0, 'The reminder is still there')
+})
+
+await step('Desk Bookings: a past wedding moves to the Archive', async () => {
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: /New booking/ }).first().click()
+  const form = page.locator('form', { has: page.getByRole('button', { name: 'Save as open' }) })
+  await form.locator('input[name="partnerOne"]').fill('Morgan')
+  await form.locator('input[name="partnerTwo"]').fill('Riley')
+  await form.locator('input[name="email"]').fill('morgan.riley@example.com')
+  await form.locator('input[name="eventDate"]').fill('2026-09-12')
+  await form.locator('input[name="venueName"]').fill('Polish Hall')
+  await form.getByRole('button', { name: 'Save as open' }).click()
+  await page.waitForTimeout(2500)
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  const onAll = await page.locator('main').getByText('Morgan & Riley').count()
+  const archiveTab = page.getByRole('tab', { name: /Archive/ })
+  await archiveTab.click()
+  await page.waitForTimeout(500)
+  const onArchive = await page.locator('main').getByText('Morgan & Riley').count()
+  const avery = await page.locator('main').getByText(`${COUPLE.one} & ${COUPLE.two}`).count()
+  expect(onAll === 0, 'The past wedding still shows on All')
+  expect(onArchive > 0, 'The past wedding is not in the Archive')
+  expect(avery === 0, 'An upcoming wedding shows in the Archive')
+  await page.getByRole('tab', { name: /^All/ }).click()
+  await page.getByRole('searchbox', { name: 'Search bookings' }).fill('Morgan')
+  await page.getByText('1 past wedding matches in the Archive').waitFor({ timeout: 5000 })
+  return `All ${onAll}, Archive ${onArchive}`
 })
 
 await step('Desk: page text spacing', async () => {

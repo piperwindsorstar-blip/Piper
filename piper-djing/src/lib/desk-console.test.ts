@@ -154,12 +154,14 @@ describe('desk console meters', () => {
     assert.deepEqual(
       items.map((item) => item.title),
       [
-        'Send the invoice to Sam and Jordan',
-        'Casey and Drew: deposit due',
+        'Send the $1,650 invoice to Sam and Jordan',
+        'Casey and Drew: deposit due by 30 October 2026',
         'Answer Alex and Taylor',
       ],
     )
-    assert.equal(items[1]?.detail.includes('21 days left'), true)
+    assert.equal(items[1]?.detail.includes('21 days left on the hold'), true)
+    assert.equal(items[1]?.couple, 3)
+    assert.equal(items[2]?.lead, leads[0]?.id)
   })
 
   it('names a one-person event inquiry without a dangling "and"', () => {
@@ -204,12 +206,14 @@ describe('desk console meters', () => {
       [
         ['plan', 'Roxana and Ibu have planned 10%'],
         ['balance', 'Roxana and Ibu still owe $700'],
-        ['email', '2 couples have no email address'],
+        ['email', 'Roxana and Ibu have no email address'],
+        ['email', 'A and B have no email address'],
       ],
     )
-    assert.equal(items[0]?.detail, '5 of 50 answers in, and the wedding is in 15 days.')
+    assert.equal(items[0]?.detail, '5 of 50 answers in, and the wedding is in 15 days (24 October 2026).')
     assert.equal(items[0]?.couple, 10)
     assert.equal(items[1]?.to, '/desk/money')
+    assert.equal(items[1]?.couple, 10)
   })
 
   it('starts the chart on the current month', () => {
