@@ -26,7 +26,7 @@ function expect(cond, message) {
 const ALLOW = new Set([
   'DjPiperP', 'PiperPWeddingDJ', 'YouTube', 'TikTok', 'iPhone', 'iPad', 'WhatsApp',
   'SoundCloud', 'McDonald', 'LinkedIn', 'JavaScript', 'PayPal', 'GitHub', 'OpenTable',
-  'eTransfer', 'DeskTitle', 'GigBAR', 'EliteBook', 'AmazonBasics', 'DJControl', 'HUANCHAIN',
+  'eTransfer', 'DeskTitle', 'GigBAR', 'EliteBook', 'AmazonBasics', 'DJControl', 'HUANCHAIN', 'BnD',
 ])
 
 /** Words glued together: "asPiper", "2026is", "$700by", "TESTQA". */
