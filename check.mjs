@@ -1,20 +1,22 @@
 import { chromium } from 'playwright'
-import { renderSVG } from './uqr.mjs'
-const url = 'otpauth://totp/DJ%20Piper%20P%3APiper%20Desk?secret=D7X7ABCDEFGHIJKLMNOPQRSTUVWXYZ23&issuer=DJ%20Piper%20P&algorithm=SHA1&digits=6&period=30'
-const svg = renderSVG(url, { border: 2, ecc: 'M', pixelSize: 6, whiteColor: '#ffffff', blackColor: '#000000' })
 const browser = await chromium.launch()
 const page = await browser.newPage()
-await page.setContent(`<html><body style="margin:0;background:#fff"><div id="q" style="width:300px">${svg}</div><script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script></body></html>`)
-await page.waitForFunction(() => typeof window.jsQR === 'function', null, { timeout: 20000 })
-const shot = await page.locator('#q svg').screenshot()
-const decoded = await page.evaluate(async (b64) => {
-  const img = new Image()
-  img.src = 'data:image/png;base64,' + b64
-  await img.decode()
-  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height
-  const x = c.getContext('2d'); x.drawImage(img, 0, 0)
-  const d = x.getImageData(0, 0, c.width, c.height)
-  return window.jsQR(d.data, d.width, d.height)?.data ?? null
-}, shot.toString('base64'))
-console.log(`::notice title=qr::${decoded === url ? 'MATCH' : 'MISMATCH ' + decoded}`)
+const errors = []
+page.on('pageerror', (e) => errors.push(e.message))
+const base = 'https://piperpweddingdj.services'
+for (const p of ['/', '/weddings', '/faq', '/wedding-vendors', '/book', '/rsvp']) {
+  const r = await page.goto(base + p + '?r=' + Date.now(), { waitUntil: 'networkidle' })
+  console.log(`::notice title=${p}::${r.status()}`)
+}
+for (const p of ['/desk', '/desk/security', '/desk/bookings']) {
+  const r = await page.request.get(base + p, { maxRedirects: 0 })
+  console.log(`::notice title=${p} signed out::${r.status()} ${r.headers().location ?? ''}`)
+}
+await page.goto(base + '/login', { waitUntil: 'networkidle' })
+await page.fill('input[type="password"]', 'definitely-not-it')
+await page.click('button[type="submit"]')
+await page.waitForTimeout(2500)
+const msg = await page.locator('[role="alert"]').innerText().catch(() => 'none')
+console.log(`::notice title=login wrong password::${msg}`)
+console.log(`::notice title=errors::${errors.join('|') || 'none'}`)
 await browser.close()
