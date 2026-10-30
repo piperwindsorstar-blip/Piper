@@ -2,8 +2,6 @@ name: Live check
 on:
   push:
     branches: [claude/live-check]
-permissions:
-  contents: write
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -11,14 +9,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - name: Fetch uqr
-        run: |
-          mkdir -p vendor && cd vendor
-          npm pack uqr@0.1.2 >/dev/null 2>&1 || npm pack uqr
-          tar xzf uqr-*.tgz
-          ls -R package | head -40
-          cd ..
-          git config user.name shots && git config user.email shots@example.com
-          git checkout --orphan claude/vendor-uqr
-          git rm -rq --cached .
-          git add -f vendor/package && git commit -qm uqr && git push -qf origin HEAD:claude/vendor-uqr
+      - run: npm init -y >/dev/null && npm i playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node check.mjs
