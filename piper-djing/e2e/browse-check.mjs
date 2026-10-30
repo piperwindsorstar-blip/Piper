@@ -3,6 +3,45 @@
 // an empty in-memory book (Desk password "piper-local") and a mail sink.
 import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
+import { createHmac } from 'node:crypto'
+
+/** Authenticator codes for the 2FA steps (RFC 6238, SHA-1, 6 digits). */
+function base32(text) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = 0
+  let value = 0
+  const out = []
+  for (const char of text.replace(/[^A-Z2-7]/gi, '').toUpperCase()) {
+    value = (value << 5) | alphabet.indexOf(char)
+    bits += 5
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 255)
+      bits -= 8
+    }
+  }
+  return Buffer.from(out)
+}
+function totp(secret, step) {
+  const counter = Buffer.alloc(8)
+  counter.writeBigUInt64BE(BigInt(step))
+  const mac = createHmac('sha1', base32(secret)).update(counter).digest()
+  const offset = mac[19] & 15
+  const n = ((mac[offset] & 127) << 24) | (mac[offset + 1] << 16) | (mac[offset + 2] << 8) | mac[offset + 3]
+  return String(n % 1000000).padStart(6, '0')
+}
+const nowStep = () => Math.floor(Date.now() / 30000)
+let usedStep = 0
+/** A code whose time step has not been used yet (waits if both nearby steps are). */
+async function freshCode(secret) {
+  let step = Math.max(nowStep(), usedStep + 1)
+  while (step > nowStep() + 1) {
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    step = Math.max(nowStep(), usedStep + 1)
+  }
+  usedStep = step
+  return totp(secret, step)
+}
+const TWO_FA = { secret: '', backup: [] }
 
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 const SINK = process.env.SINK_LOG ?? '/tmp/sink.log'
@@ -69,13 +108,30 @@ await step('Desk login: wrong password shows the generic message', async () => {
   await page.goto(BASE + '/login', { waitUntil: 'networkidle' })
   await page.fill('input[type="password"]', 'not-the-password')
   await page.click('button[type="submit"]')
-  await page.getByText('That password did not match.').waitFor({ timeout: 8000 })
+  await page.getByText('That did not match. Check it and try again.').waitFor({ timeout: 8000 })
 })
 
-await step('Desk login: right password opens the Desk', async () => {
+await step('2FA: the first sign-in sets it up (QR, typed key, confirm code, backup codes)', async () => {
   await page.fill('input[type="password"]', 'piper-local')
   await page.click('button[type="submit"]')
+  await page.getByText('Set up two-step sign-in').waitFor({ timeout: 15000 })
+  const qr = await page.locator('[aria-label="QR code for your authenticator app"] svg').count()
+  TWO_FA.secret = (await page.locator('[data-2fa-secret]').innerText()).replace(/\s/g, '')
+  expect(qr === 1, 'No QR code')
+  expect(/^[A-Z2-7]{32}$/.test(TWO_FA.secret), `Secret looks wrong: ${TWO_FA.secret}`)
+  // A wrong code does not turn it on.
+  await page.fill('input[name="code"]', '000000')
+  await page.click('button[type="submit"]')
+  await page.getByText('That did not match. Check it and try again.').waitFor({ timeout: 8000 })
+  expect(page.url().includes('/login'), 'A wrong code let the Desk open')
+  await page.fill('input[name="code"]', await freshCode(TWO_FA.secret))
+  await page.click('button[type="submit"]')
+  await page.getByText('Save your backup codes').waitFor({ timeout: 15000 })
+  TWO_FA.backup = (await page.locator('[data-2fa-backup] li').allInnerTexts()).map((t) => t.trim())
+  expect(TWO_FA.backup.length === 10, `${TWO_FA.backup.length} backup codes`)
+  await page.getByRole('button', { name: 'I saved them. Open the desk' }).click()
   await page.waitForURL(/\/desk/, { timeout: 30000 })
+  return `secret ${TWO_FA.secret.slice(0, 4)}…, ${TWO_FA.backup.length} backup codes`
 })
 
 await step('Desk: new booking with a draft invoice', async () => {
@@ -185,7 +241,7 @@ await step('Desk Money: a fully paid invoice shows as paid', async () => {
 
 await step('Desk: page text spacing', async () => {
   const out = []
-  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors', '/desk/brands', '/desk/gear', '/desk/financials']) {
+  for (const path of ['/desk', '/desk/bookings', '/desk/money', '/desk/leads', '/desk/portals', '/desk/rsvp', '/desk/bots', '/desk/packages', '/desk/settings', '/desk/songs', '/desk/vendors', '/desk/brands', '/desk/gear', '/desk/financials', '/desk/security']) {
     out.push(await spacing(page, path))
   }
   return out.join(', ')
@@ -714,6 +770,124 @@ await step('Public page text spacing', async () => {
     out.push(await spacing(pub, path))
   }
   return out.join(', ')
+})
+
+async function passwordStep(p) {
+  await p.goto(BASE + '/login', { waitUntil: 'networkidle' })
+  await p.fill('input[type="password"]', 'piper-local')
+  await p.click('button[type="submit"]')
+}
+
+await step('2FA: the password alone does not open the Desk; a wrong code fails, a right code works', async () => {
+  const context = await browser.newContext()
+  const p = await context.newPage()
+  await passwordStep(p)
+  await p.getByText('Your code').waitFor({ timeout: 15000 })
+  const desk = await p.request.get(BASE + '/desk/money', { maxRedirects: 0 })
+  expect(desk.status() !== 200, `Desk opened after the password alone (${desk.status()})`)
+  await p.fill('input[name="code"]', '111111')
+  await p.click('button[type="submit"]')
+  await p.getByText('That did not match. Check it and try again.').waitFor({ timeout: 8000 })
+  await p.fill('input[name="code"]', await freshCode(TWO_FA.secret))
+  await p.click('button[type="submit"]')
+  await p.waitForURL(/\/desk/, { timeout: 30000 })
+  await context.close()
+  return `password-only Desk request -> ${desk.status()}`
+})
+
+await step('2FA: a backup code works once, then stops working', async () => {
+  const code = TWO_FA.backup[0]
+  const first = await browser.newContext()
+  const a = await first.newPage()
+  await passwordStep(a)
+  await a.getByText('Your code').waitFor({ timeout: 15000 })
+  await a.fill('input[name="code"]', code)
+  await a.click('button[type="submit"]')
+  await a.waitForURL(/\/desk/, { timeout: 30000 })
+  await first.close()
+  const second = await browser.newContext()
+  const b = await second.newPage()
+  await passwordStep(b)
+  await b.getByText('Your code').waitFor({ timeout: 15000 })
+  await b.fill('input[name="code"]', code)
+  await b.click('button[type="submit"]')
+  await b.getByText('That did not match. Check it and try again.').waitFor({ timeout: 8000 })
+  expect(b.url().includes('/login'), 'The used backup code opened the Desk')
+  await second.close()
+  return `${code.slice(0, 2)}… worked once`
+})
+
+await step('2FA: trust this device skips the code there; removing it asks again', async () => {
+  const context = await browser.newContext()
+  const p = await context.newPage()
+  await passwordStep(p)
+  await p.getByText('Your code').waitFor({ timeout: 15000 })
+  await p.fill('input[name="code"]', await freshCode(TWO_FA.secret))
+  await p.check('input[name="trust"]')
+  await p.click('button[type="submit"]')
+  await p.waitForURL(/\/desk/, { timeout: 30000 })
+  await p.getByRole('button', { name: /Sign out/ }).first().click()
+  await p.waitForURL(/\/login/, { timeout: 15000 })
+  await passwordStep(p)
+  await p.waitForURL(/\/desk/, { timeout: 15000 })
+  await p.goto(BASE + '/desk/security', { waitUntil: 'networkidle' })
+  const devices = await p.locator('[data-2fa-device]').count()
+  const status = await p.locator('[data-2fa-status]').innerText()
+  await p.locator('[data-2fa-device]').first().getByRole('button', { name: 'Remove' }).click()
+  await p.locator('[data-2fa-device]').first().getByRole('button', { name: 'Tap again to confirm' }).click()
+  await p.waitForTimeout(1500)
+  await p.getByRole('button', { name: /Sign out/ }).first().click()
+  await p.waitForURL(/\/login/, { timeout: 15000 })
+  await passwordStep(p)
+  await p.getByText('Your code').waitFor({ timeout: 15000 })
+  await context.close()
+  expect(devices === 1, `${devices} trusted devices listed`)
+  expect(/On since/.test(status) && /9 unused backup codes/.test(status), `Status: ${status}`)
+  return status
+})
+
+await step('2FA: new backup codes replace the old set', async () => {
+  await page.goto(BASE + '/desk/security', { waitUntil: 'networkidle' })
+  const form = page.locator('form', { hasText: 'Make new backup codes' })
+  await form.locator('input[name="code"]').fill(await freshCode(TWO_FA.secret))
+  await form.getByRole('button', { name: 'Make new backup codes' }).click()
+  await page.locator('[data-2fa-backup] li').first().waitFor({ timeout: 15000 })
+  const fresh = (await page.locator('[data-2fa-backup] li').allInnerTexts()).map((t) => t.trim())
+  const old = TWO_FA.backup[1]
+  const context = await browser.newContext()
+  const p = await context.newPage()
+  await passwordStep(p)
+  await p.getByText('Your code').waitFor({ timeout: 15000 })
+  await p.fill('input[name="code"]', old)
+  await p.click('button[type="submit"]')
+  await p.getByText('That did not match. Check it and try again.').waitFor({ timeout: 8000 })
+  await p.fill('input[name="code"]', fresh[0])
+  await p.click('button[type="submit"]')
+  await p.waitForURL(/\/desk/, { timeout: 30000 })
+  await context.close()
+  expect(fresh.length === 10, `${fresh.length} new codes`)
+  return 'old set refused, new set works'
+})
+
+await step('2FA: wrong codes count toward the five-try lockout', async () => {
+  const context = await browser.newContext()
+  const p = await context.newPage()
+  let locked = false
+  for (let i = 0; i < 7 && !locked; i += 1) {
+    await passwordStep(p)
+    await p.waitForTimeout(800)
+    if ((await p.getByText('Too many tries').count()) > 0) {
+      locked = true
+      break
+    }
+    await p.getByText('Your code').waitFor({ timeout: 15000 })
+    await p.fill('input[name="code"]', '000000')
+    await p.click('button[type="submit"]')
+    await p.waitForTimeout(1600)
+    locked = (await p.getByText('Too many tries').count()) > 0
+  }
+  await context.close()
+  expect(locked, 'No lockout after repeated wrong codes')
 })
 
 await step('Desk login lockout after repeated wrong passwords', async () => {

@@ -41,6 +41,7 @@ type SmallPath =
   | '/desk/financials'
   | '/desk/bots'
   | '/desk/settings'
+  | '/desk/security'
 
 const ICONS = { home: House, mail: Mail, calendar: Calendar, wallet: Wallet } as const
 
@@ -90,6 +91,7 @@ const SMALL: { name: string; links: { name: string; to: SmallPath }[] }[] = [
     links: [
       { name: 'Bots', to: '/desk/bots' },
       { name: 'Settings', to: '/desk/settings' },
+      { name: 'Security', to: '/desk/security' },
     ],
   },
 ]

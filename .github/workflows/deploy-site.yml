@@ -63,6 +63,27 @@ jobs:
         working-directory: piper-djing
         run: npm run build:cloudflare
 
+      # Two-step sign-in stores the Desk's authenticator secret encrypted with
+      # DESK_2FA_KEY, a Worker secret that is never in the database or in this
+      # repo. Create it once, with a random value, if the Worker does not have
+      # it. It is never changed or printed afterwards: changing it would make
+      # the stored secret unreadable.
+      - name: Make sure the Desk 2FA key exists
+        working-directory: piper-djing
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          names=$(npx wrangler secret list --name piper-djing --format json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const list=JSON.parse(s);if(!Array.isArray(list))process.exit(1);console.log(list.map(x=>x.name).join(" "))})')
+          # A failed list stops the deploy, so an existing key is never replaced.
+          if echo " $names " | grep -q " DESK_2FA_KEY "; then
+            echo "DESK_2FA_KEY is already set."
+          else
+            node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("base64"))' | npx wrangler secret put DESK_2FA_KEY --name piper-djing >/dev/null
+            echo "DESK_2FA_KEY created."
+          fi
+
       - name: Deploy
         working-directory: piper-djing
         env:
