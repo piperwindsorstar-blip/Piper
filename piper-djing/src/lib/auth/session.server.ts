@@ -29,7 +29,7 @@ export function deskPasswordSet(): boolean {
 const WINDOW_MS = 15 * 60_000
 const MAX_TRIES = 5
 
-function clientKey(): string {
+export function clientKey(): string {
   try {
     const request = getRequest()
     return (
@@ -71,7 +71,7 @@ function who(key: string): string {
 }
 
 /** Five wrong tries in 15 minutes locks that address out for a while. */
-async function lockedOut(key: string, now: number): Promise<boolean> {
+export async function lockedOut(key: string, now: number): Promise<boolean> {
   const recent = (memory.get(key) ?? []).filter((at) => now - at < WINDOW_MS)
   memory.set(key, recent)
   try {
@@ -86,7 +86,7 @@ async function lockedOut(key: string, now: number): Promise<boolean> {
   }
 }
 
-async function noteMiss(key: string, now: number): Promise<void> {
+export async function noteMiss(key: string, now: number): Promise<void> {
   memory.set(key, [
     ...(memory.get(key) ?? []).filter((at) => now - at < WINDOW_MS),
     now,
@@ -103,7 +103,7 @@ async function noteMiss(key: string, now: number): Promise<void> {
   }
 }
 
-async function clearMisses(key: string): Promise<void> {
+export async function clearMisses(key: string): Promise<void> {
   memory.delete(key)
   try {
     await missesTable()
@@ -139,7 +139,7 @@ export async function requireDesk(): Promise<void> {
   if (!(await isDesk())) throw new Error('Sign in required.')
 }
 
-function cookieOptions() {
+export function cookieOptions() {
   const secure = new URL(getRequest().url).protocol === 'https:'
   return {
     httpOnly: true,
@@ -150,9 +150,22 @@ function cookieOptions() {
   }
 }
 
+/** A full Desk session: only after the password and the second step pass. */
+export async function openDeskSession(): Promise<void> {
+  const id = randomBytes(24).toString('hex')
+  await query('INSERT INTO sessions (id) VALUES ($1)', [id])
+  setCookie(COOKIE, id, cookieOptions())
+}
+
+/**
+ * Step one: the password. A right password never opens the Desk by itself;
+ * it leads to the authenticator code (or, the first time, to setting it up),
+ * unless this browser is a trusted device. Wrong tries are not cleared here,
+ * so the code step shares the same five-try limit.
+ */
 export async function startDeskSession(
   password: string,
-): Promise<'ok' | 'wrong' | 'locked' | 'unset'> {
+): Promise<'ok' | 'code' | 'enroll' | 'wrong' | 'locked' | 'unset' | 'unavailable'> {
   const expected = expectedPassword()
   if (!expected) return 'unset'
   const key = clientKey()
@@ -163,11 +176,8 @@ export async function startDeskSession(
     await slowDown()
     return 'wrong'
   }
-  await clearMisses(key)
-  const id = randomBytes(24).toString('hex')
-  await query('INSERT INTO sessions (id) VALUES ($1)', [id])
-  setCookie(COOKIE, id, cookieOptions())
-  return 'ok'
+  const { afterPassword } = await import('./two-factor.server.ts')
+  return afterPassword()
 }
 
 export async function endDeskSession(): Promise<void> {
@@ -177,7 +187,7 @@ export async function endDeskSession(): Promise<void> {
 }
 
 /** A wrong guess answers a second late, so guessing stays slow. */
-function slowDown(): Promise<void> {
+export function slowDown(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 1000))
 }
 
