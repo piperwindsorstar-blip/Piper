@@ -758,7 +758,8 @@ await step('Non-wedding invoice: one name, the event type, no wedding words or c
   const h1 = (await pub.locator('h1').first().innerText()).trim()
   expect(h1 === 'Dana Quinn', `Heading: ${h1}`)
   expect(/Event · Corporate/.test(text), 'Event type missing')
-  expect(!/wedding|couple|Ceremony only|Your page/i.test(text), `Wedding words: ${text.slice(0, 300)}`)
+  const words = text.replace(/PiperPWeddingDJ@gmail\.com/gi, '')
+  expect(!/wedding|couple|Ceremony only|Your page/i.test(words), `Wedding words: ${words.slice(0, 300)}`)
   return h1
 })
 
