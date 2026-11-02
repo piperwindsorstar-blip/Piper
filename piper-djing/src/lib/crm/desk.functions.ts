@@ -49,6 +49,9 @@ import {
   bookExternalDate,
   createBooking,
   listExternalDates,
+  listBlockedDates,
+  blockDate,
+  unblockDate,
   listVenues,
   releaseExternalDate,
   removeExternalDate,
@@ -169,6 +172,7 @@ export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
     bots,
     packages,
     venues,
+    blockedDates,
   ] = await Promise.all([
     listBookings(),
     listPayments(),
@@ -180,6 +184,7 @@ export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
     listBots(),
     listPackageOffers(),
     listVenues(),
+    listBlockedDates().catch(() => []),
   ])
   const plans = await listPlanProgress().catch(() => [])
   return {
@@ -195,6 +200,7 @@ export const getDesk = createServerFn({ method: 'GET' }).handler(async () => {
     bots,
     packages,
     venues,
+    blockedDates,
   }
 })
 
@@ -225,6 +231,20 @@ export const addExternalDate = createServerFn({ method: 'POST' })
     await requireDesk()
     try {
       return { ok: true as const, external: await bookExternalDate(data) }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const saveBlockedDate = createServerFn({ method: 'POST' })
+  .validator((data: { date: string; note?: string; unblock?: boolean }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      const dates = data.unblock
+        ? await unblockDate(String(data.date ?? ''))
+        : await blockDate(String(data.date ?? ''), String(data.note ?? ''))
+      return { ok: true as const, dates }
     } catch (error) {
       return fail(error)
     }
