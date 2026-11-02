@@ -675,6 +675,33 @@ for (const type of ['Private', 'Corporate', 'Community & Charity', 'Club night']
   })
 }
 
+await step('Desk: a blocked date shows as taken on the date checker, then opens again', async () => {
+  const now = new Date()
+  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 22))
+  const iso = day.toISOString().slice(0, 10)
+  const label = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(day)
+  const answer = async () => {
+    await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
+    await pub.click('button[aria-label="Next month"]')
+    await pub.click(`button[aria-label="${label}"]`)
+    await pub.getByText(/your date is (not )?available/).waitFor({ timeout: 10000 })
+    return (await pub.getByText(/your date is (not )?available/).first().innerText()).trim()
+  }
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  const card = page.locator('section', { has: page.getByRole('heading', { name: 'Blocked dates' }) })
+  await card.locator('input[name="date"]').fill(iso)
+  await card.locator('input[name="note"]').fill('Family trip')
+  await card.getByRole('button', { name: 'Block date' }).click()
+  await page.locator(`[data-blocked="${iso}"]`).waitFor({ timeout: 10000 })
+  const blocked = await answer()
+  await page.locator(`[data-blocked="${iso}"]`).getByRole('button', { name: 'Unblock' }).click()
+  await page.locator(`[data-blocked="${iso}"]`).waitFor({ state: 'detached', timeout: 10000 })
+  const open = await answer()
+  expect(blocked === 'No, your date is not available.', `Blocked: ${blocked}`)
+  expect(open === 'Yes, your date is available.', `Unblocked: ${open}`)
+  return `${iso}: ${blocked} → ${open}`
+})
+
 await step('Date checker with Corporate lands on the Corporate form', async () => {
   await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
   const options = await pub.locator('#home-event option').allTextContents()

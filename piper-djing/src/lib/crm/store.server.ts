@@ -634,6 +634,12 @@ const DISMISSED_TABLE = `CREATE TABLE IF NOT EXISTS dismissed_weddings (
   PRIMARY KEY (event_date, partner_one, partner_two)
 )`
 
+/** Dates Piper blocks off for personal reasons: never open to anyone. */
+const BLOCKED_TABLE = `CREATE TABLE IF NOT EXISTS blocked_dates (
+  event_date text PRIMARY KEY,
+  note text NOT NULL DEFAULT ''
+)`
+
 async function dateTakenByOthers(
   day: string,
   exceptId: number | null,
@@ -653,10 +659,13 @@ async function dateTakenByOthers(
       sql: 'SELECT * FROM bookings WHERE event_date = $1 OR stag_date = $1',
       params: [day],
     },
+    { sql: BLOCKED_TABLE },
+    { sql: 'SELECT event_date FROM blocked_dates WHERE event_date = $1', params: [day] },
   ])
   const dismissed = results[1] as { partner_one: string; partner_two: string }[]
   const externals = results[2] as { id: number }[]
   const bookings = results[3] as BookingRow[]
+  if ((results[5] as unknown[]).length > 0) return true
   if (externals.length > 0) return true
   const saved = SAVED_WEDDINGS.find((wedding) => wedding.date === day)
   if (saved) {
@@ -828,6 +837,10 @@ async function ensureDateFree(
   stagReleased: boolean,
   exceptId: number | null,
 ) {
+  if (await dateBlockedOff(eventDate)) throw new Error('You blocked that date off. Unblock it first.')
+  if (stagDate && !stagReleased && (await dateBlockedOff(stagDate))) {
+    throw new Error('You blocked the stag date off. Unblock it first.')
+  }
   if (await dateTakenByOthers(eventDate, exceptId))
     throw new Error('That wedding date is already held.')
   if (
@@ -1645,6 +1658,48 @@ export async function createInquiry(
         error instanceof Error ? error.message : 'That inquiry was not saved.',
     }
   }
+}
+
+export type BlockedDate = { eventDate: string; note: string }
+
+async function dateBlockedOff(day: string): Promise<boolean> {
+  const results = await queryBatch([
+    { sql: BLOCKED_TABLE },
+    { sql: 'SELECT event_date FROM blocked_dates WHERE event_date = $1', params: [day] },
+  ])
+  return (results[1] as unknown[]).length > 0
+}
+
+export async function listBlockedDates(): Promise<BlockedDate[]> {
+  const results = await queryBatch([
+    { sql: BLOCKED_TABLE },
+    { sql: 'SELECT event_date, note FROM blocked_dates ORDER BY event_date' },
+  ])
+  return (results[1] as { event_date: string; note: string | null }[]).map((row) => ({
+    eventDate: row.event_date,
+    note: (row.note ?? '').trim(),
+  }))
+}
+
+/** Blocks a free date off; a date with a booking or a Pynx date stays as it is. */
+export async function blockDate(day: string, note: string): Promise<BlockedDate[]> {
+  const eventDate = day.trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) throw new Error('Choose a date.')
+  if (await dateBlockedOff(eventDate)) throw new Error('That date is already blocked off.')
+  if (!(await dateOpen(eventDate))) throw new Error('That date already has a booking or a hold.')
+  await query('INSERT INTO blocked_dates (event_date, note) VALUES ($1, $2)', [
+    eventDate,
+    note.trim().slice(0, 200),
+  ])
+  return listBlockedDates()
+}
+
+export async function unblockDate(day: string): Promise<BlockedDate[]> {
+  await queryBatch([
+    { sql: BLOCKED_TABLE },
+    { sql: 'DELETE FROM blocked_dates WHERE event_date = $1', params: [day.trim()] },
+  ])
+  return listBlockedDates()
 }
 
 export async function dateOpen(day: string): Promise<boolean> {

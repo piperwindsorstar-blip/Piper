@@ -64,6 +64,7 @@ import {
   checkDistance,
   recalcTravel,
   releaseExternal,
+  saveBlockedDate,
   saveTravel,
   markSent,
   markVoid,
@@ -173,7 +174,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const bookings = Route.useLoaderData()
-  const { packages, externalDates, venues, leads } = deskRoute.useLoaderData()
+  const { packages, externalDates, venues, leads, blockedDates } = deskRoute.useLoaderData()
   const today = todayInToronto()
   const fromLead = search.lead ? leads.find((lead) => lead.id === search.lead) : undefined
   const [filter, setFilter] = useState<Filter>('all')
@@ -377,6 +378,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
 
       {view === 'calendar' ? (
         <MonthCalendar
+          blocked={(blockedDates ?? []).map((row) => row.eventDate)}
           // The calendar still shows past months, so it ignores the Archive split.
           rows={rows.filter(
             (row) =>
@@ -428,6 +430,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
           Other dates and venues
         </h2>
         <DistanceCheck />
+        <BlockedDates dates={blockedDates ?? []} />
         <ExternalDates dates={externalDates} venues={venues} />
         <SavedVenues venues={venues} />
       </section>
@@ -529,7 +532,17 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
   )
 }
 
-function MonthCalendar({ rows, today, start }: { rows: ListRow[]; today: string; start?: string }) {
+function MonthCalendar({
+  rows,
+  today,
+  start,
+  blocked = [],
+}: {
+  rows: ListRow[]
+  today: string
+  start?: string
+  blocked?: string[]
+}) {
   const [offset, setOffset] = useState(0)
   const base = start ?? today.slice(0, 7)
   const first = new Date(`${base}-01T12:00:00Z`)
@@ -578,6 +591,7 @@ function MonthCalendar({ rows, today, start }: { rows: ListRow[]; today: string;
           const isToday = iso === today
           const weekend = index % 7 >= 5
           const mine = events.find((row) => row.mine)
+          const off = blocked.includes(iso)
           return (
             <div
               key={iso}
@@ -585,11 +599,16 @@ function MonthCalendar({ rows, today, start }: { rows: ListRow[]; today: string;
                 isToday
                   ? 'border-2 border-[#ff007f] bg-[#fff5fa]'
                   : `border border-[#f0ebf8] ${weekend ? 'bg-[#f7f4fd]' : 'bg-[#fcfbfe]'}`
-              } ${events.length > 0 ? (mine ? 'max-md:bg-[#d1006b] max-md:text-white' : 'max-md:bg-[#e2dbf5]') : ''}`}
+              } ${events.length > 0 ? (mine ? 'max-md:bg-[#d1006b] max-md:text-white' : 'max-md:bg-[#e2dbf5]') : off ? 'max-md:bg-[#d9d4e3]' : ''}`}
             >
               <span className={`text-center text-[13px] font-semibold md:text-left ${isToday ? 'text-[#d1006b]' : ''} ${events.length ? 'max-md:font-extrabold' : ''}`}>
                 {Number(iso.slice(8))}
               </span>
+              {off ? (
+                <span className="hidden truncate rounded-md bg-[#d9d4e3] px-2 py-1 text-xs font-semibold text-[#3d3550] md:block">
+                  Blocked
+                </span>
+              ) : null}
               {events.map((row) =>
                 row.bookingId ? (
                   <Link
@@ -639,6 +658,10 @@ function MonthCalendar({ rows, today, start }: { rows: ListRow[]; today: string;
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded bg-[#e2dbf5]" aria-hidden="true" />
           For Pynx
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded bg-[#d9d4e3]" aria-hidden="true" />
+          Blocked
         </span>
       </p>
     </section>
@@ -1314,6 +1337,71 @@ function NewBooking({
           </ActionButton>
         </div>
       </form>
+    </section>
+  )
+}
+
+/** Personal days off: the date checker and /book show them as taken. */
+function BlockedDates({ dates }: { dates: { eventDate: string; note: string }[] }) {
+  const save = useServerFn(saveBlockedDate)
+  const router = useRouter()
+  return (
+    <section aria-labelledby="blocked-dates" className={`${deskCard} grid gap-3`}>
+      <h2 id="blocked-dates" className={deskH2}>
+        Blocked dates
+      </h2>
+      <form className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-end" onSubmit={(event) => event.preventDefault()}>
+        <label className="field">
+          Date
+          <input name="date" type="date" required />
+        </label>
+        <label className="field">
+          Note
+          <input name="note" maxLength={200} placeholder="Only you see this" />
+        </label>
+        <ActionButton
+          className={`${deskPrimary} w-fit`}
+          checkForm
+          busy="Blocking…"
+          done="Blocked"
+          surface={deskSurface}
+          onRun={async (form: FormData, element: HTMLFormElement | null): Promise<RunResult> => {
+            const result = await save({ data: { date: String(form.get('date') ?? ''), note: String(form.get('note') ?? '') } })
+            if (!result.ok) return { ok: false, message: result.error }
+            element?.reset()
+            await router.invalidate()
+            return { ok: true, message: 'Blocked.' }
+          }}
+        >
+          Block date
+        </ActionButton>
+      </form>
+      {dates.length === 0 ? null : (
+        <ul className="grid gap-2" aria-label="Blocked dates">
+          {dates.map((row) => (
+            <li key={row.eventDate} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6def4] px-4 py-2.5" data-blocked={row.eventDate}>
+              <span>
+                <span className="font-semibold">{longDate(row.eventDate)}</span>
+                {row.note ? <span className="text-sm text-[#5b5370]">{` · ${row.note}`}</span> : null}
+              </span>
+              <ActionButton
+                className={deskGhost}
+                busy="Unblocking…"
+                done="Unblocked"
+                surface={deskSurface}
+                onRun={async (): Promise<RunResult> => {
+                  const result = await save({ data: { date: row.eventDate, unblock: true } })
+                  if (!result.ok) return { ok: false, message: result.error }
+                  await router.invalidate()
+                  return { ok: true, message: 'Unblocked.' }
+                }}
+              >
+                Unblock
+              </ActionButton>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
