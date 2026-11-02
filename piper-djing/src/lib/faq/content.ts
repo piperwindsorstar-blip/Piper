@@ -35,7 +35,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'What is the deposit?',
-        a: '30% of your package, rounded to the nearest $25. Your booking confirmation lays out the balance timing.',
+        a: 'For The Main Event, a full wedding day, or The After Party, reception only, the deposit is 30% of the total. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. The Aisle, ceremony only, is $350, paid in full. The Main Event booked with The Pre-Party, a full wedding day with a stag and doe, is a flat $500 deposit.',
       },
     ],
   },

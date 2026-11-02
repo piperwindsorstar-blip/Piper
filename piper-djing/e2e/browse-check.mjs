@@ -612,10 +612,15 @@ pub.on('pageerror', (e) => errors.push(e.message))
 
 await step('Home date checker: open date goes to /book with date and Wedding', async () => {
   await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
+  // The 16th of next month, so the test does not depend on today's date.
+  const now = new Date()
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 16))
+  const label = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(next)
+  const iso = next.toISOString().slice(0, 10)
   await pub.click('button[aria-label="Next month"]')
-  await pub.click('button[aria-label="16 November 2026"]')
+  await pub.click(`button[aria-label="${label}"]`)
   await pub.getByText('Yes, your date is available.').waitFor({ timeout: 8000 })
-  await pub.waitForURL(/\/book\?date=2026-11-16&event=Wedding/, { timeout: 8000 })
+  await pub.waitForURL(new RegExp(`/book\\?date=${iso}&event=Wedding`), { timeout: 8000 })
 })
 
 await step('/book estimate with travel prompt', async () => {
