@@ -703,7 +703,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
       name: 'Deposit paid',
       note: depositDone
         ? `${dollars(paid >= deposit ? deposit : paid)}${firstPaid?.paidOn ? ` on ${shortDay(firstPaid.paidOn)}` : ''}`
-        : `${dollars(deposit)} due`,
+        : `${dollars(deposit)} due${booking.depositDue ? ` ${shortDay(booking.depositDue)}` : ''}`,
       state: depositDone ? 'done' : sent ? 'now' : 'later',
     },
     {

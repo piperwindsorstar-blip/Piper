@@ -143,6 +143,16 @@ export function holdLastDay(start: string, eventDate?: string): string {
   return before < end ? before : end
 }
 
+/** Days after the hold starts that a wedding deposit is due. */
+export const DEPOSIT_DUE_DAYS = 7
+
+/** A wedding's deposit due date: 7 days after the hold starts, never past the hold. */
+export function depositDueAfterHold(start: string, eventDate?: string): string {
+  const due = addDays(start, DEPOSIT_DUE_DAYS)
+  const last = holdLastDay(start, eventDate)
+  return due < last ? due : last
+}
+
 /** True when `day` falls inside the hold that started on `start`. */
 export function holdCovers(start: string, day: string, eventDate?: string): boolean {
   const end = holdLastDay(start, eventDate)

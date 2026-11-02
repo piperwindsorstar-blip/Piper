@@ -1,3 +1,4 @@
+import { invoiceShownStatus } from './booking-rules.ts'
 import { pairNames } from './names.ts'
 
 /**
@@ -124,7 +125,7 @@ export function moneySummary(
         eventDate: booking.eventDate,
         packageName: booking.packageName,
         status: booking.status,
-        invoiceStatus: booking.invoice?.status ?? null,
+        invoiceStatus: booking.invoice ? invoiceShownStatus(booking.invoice) : null,
         invoiceSlug: booking.invoice?.slug ?? null,
         totalCents: total,
         paidCents: paid,

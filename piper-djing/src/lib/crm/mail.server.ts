@@ -178,6 +178,7 @@ function toLetter(booking: BookingView): LetterBooking {
     slug: booking.slug,
     holdStartedOn: booking.holdStartedOn,
     holdLastDay: booking.holdLastDay,
+    depositDue: booking.depositDue,
     stagReleased: booking.stagReleased,
     invoice: booking.invoice
       ? {
