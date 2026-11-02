@@ -1,6 +1,6 @@
 import { torontoToday } from '../piper/rules.ts'
-import { cardPayment, cardQuote, checkoutForm } from './card-pay.ts'
-import type { CardQuote } from './card-pay.ts'
+import { CARD_FEE_PERCENT, cardPayment, cardQuote, checkoutForm } from './card-pay.ts'
+import type { CardQuote, CardRules } from './card-pay.ts'
 import { processStripeWebhook } from './stripe-webhook.ts'
 import {
   matchesPaidBooking,
@@ -64,6 +64,27 @@ export async function setCardPayments(on: boolean): Promise<CardStatus> {
   return cardStatus()
 }
 
+const HST_SETTING = 'invoice_hst'
+
+/** HST on invoice card payments: off unless switched on in Desk → Settings. */
+export async function invoiceHstOn(): Promise<boolean> {
+  try {
+    return (await readSiteSetting(HST_SETTING)) === 'on'
+  } catch {
+    return false
+  }
+}
+
+export async function setInvoiceHst(on: boolean): Promise<boolean> {
+  await writeSiteSetting(HST_SETTING, on ? 'on' : 'off')
+  return invoiceHstOn()
+}
+
+/** The rules every invoice card payment is priced with right now. */
+export async function invoiceCardRules(): Promise<CardRules> {
+  return { hst: await invoiceHstOn(), feePercent: CARD_FEE_PERCENT }
+}
+
 /** The card amounts the invoice page shows, or null to hide the button. */
 export async function cardQuoteForInvoice(
   slug: string,
@@ -73,7 +94,7 @@ export async function cardQuoteForInvoice(
     if (!status.enabled) return null
     const context = await cardContextBySlug(slug)
     if (!context) return null
-    return cardQuote(context.invoice, context)
+    return cardQuote(context.invoice, context, await invoiceCardRules())
   } catch {
     return null
   }
@@ -94,7 +115,7 @@ export async function startCheckout(
   }
   const context = await cardContextBySlug(slug)
   if (!context) return { ok: false, error: 'That invoice was not found.' }
-  const due = cardQuote(context.invoice, context)
+  const due = cardQuote(context.invoice, context, await invoiceCardRules())
   if (!due) return { ok: false, error: 'Nothing is due on this invoice.' }
   const chosen = cardPayment(due, amountCents)
   if (!chosen.ok) return chosen
@@ -168,6 +189,7 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
         input.paidOn,
         'card',
         input.hstCents,
+        input.feeCents,
       )
       return {
         paymentId: result.paymentId,

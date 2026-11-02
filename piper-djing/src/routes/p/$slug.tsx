@@ -7,6 +7,7 @@ import { useState } from 'react'
 import {
   HST_RATE_PERCENT,
   cardPayment,
+  feeLabel,
   hstLabel,
   parseAmount,
 } from '../../lib/crm/card-pay.ts'
@@ -56,7 +57,9 @@ function InvoicePage() {
           {`${invoice.sample ? 'TEST invoice' : 'Invoice'} · ${shown}`}
         </p>
         <h1 className="mt-3 font-display text-4xl tracking-tight">
-          {`${invoice.partnerOne ?? ''} and ${invoice.partnerTwo ?? ''}`}
+          {invoice.nonWedding || !invoice.partnerTwo?.trim()
+            ? invoice.partnerOne
+            : `${invoice.partnerOne ?? ''} and ${invoice.partnerTwo ?? ''}`}
         </h1>
         <p className="mt-4 text-ink-soft">{longDate(invoice.eventDate)}</p>
         {voided ? (
@@ -70,11 +73,18 @@ function InvoicePage() {
             What this covers
           </h2>
           <dl className="mt-4 grid gap-2 text-sm">
-            <Row label={`Package · ${invoice.packageName}`} value="" />
+            <Row
+              label={
+                invoice.nonWedding
+                  ? `Event · ${invoice.eventType || invoice.packageName}`
+                  : `Package · ${invoice.packageName}`
+              }
+              value=""
+            />
             {invoice.venueName ? (
               <Row label={`Venue · ${invoice.venueName}`} value="" />
             ) : null}
-            {invoice.venueTwoName ? (
+            {invoice.venueTwoName && !invoice.nonWedding ? (
               <Row
                 label={`Second ceremony venue · ${invoice.venueTwoName}`}
                 value=""
@@ -104,6 +114,12 @@ function InvoicePage() {
             <Row
               label="Card HST paid (on top, not part of the total)"
               value={cad(invoice.cardHstCents)}
+            />
+          ) : null}
+          {invoice.cardFeeCents > 0 ? (
+            <Row
+              label="Card fees paid (on top, not part of the total)"
+              value={cad(invoice.cardFeeCents)}
             />
           ) : null}
         </dl>
@@ -140,10 +156,8 @@ function InvoicePage() {
             >
               {PUBLIC_EMAIL}
             </a>
-            , or by cash. E-transfer and cash have no HST.
-            {invoice.card && !paid
-              ? ` Card adds ${HST_RATE_PERCENT}% HST on the amount you pay by card, never on the deposit. HST is on top and does not count toward your balance.`
-              : ''}
+            {invoice.card?.rules.hst ? ', or by cash. E-transfer and cash have no HST.' : ', or by cash.'}
+            {invoice.card && !paid ? ` ${cardTerms(invoice.card)}` : ''}
           </p>
           {invoice.card && !paid ? (
             <PayByCard slug={slug} quote={invoice.card} />
@@ -159,8 +173,9 @@ function InvoicePage() {
             I agree
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-            Sending the deposit, or paying a Ceremony only invoice in full, is
-            agreement to the terms. A signature is extra proof and does not hold
+            {invoice.nonWedding
+              ? 'Sending the deposit is agreement to the terms. A signature is extra proof and does not hold'
+              : 'Sending the deposit, or paying a Ceremony only invoice in full, is agreement to the terms. A signature is extra proof and does not hold'}
             {" the date by itself. Read the "}
             <Link to="/terms" className="text-ink underline underline-offset-4">
               full terms
@@ -174,6 +189,7 @@ function InvoicePage() {
           </div>
         </section>
 
+        {invoice.nonWedding ? null : (
         <p className="mt-8 text-sm">
           <Link
             to="/c/$slug"
@@ -183,10 +199,21 @@ function InvoicePage() {
             Your page
           </Link>
         </p>
+        )}
       </main>
       <SiteFooter />
     </div>
   )
+}
+
+/** What paying by card adds, in the invoice's own rules. */
+function cardTerms(quote: CardQuote): string {
+  const fee = quote.rules.feePercent
+  const parts: string[] = []
+  if (fee > 0) parts.push(`a ${fee}% card fee on every card payment`)
+  if (quote.rules.hst) parts.push(`${HST_RATE_PERCENT}% HST on the amount you pay by card (never on the deposit)`)
+  if (parts.length === 0) return ''
+  return `Card adds ${parts.join(' and ')}. ${parts.length > 1 ? 'Both are' : 'It is'} on top and ${parts.length > 1 ? 'do' : 'does'} not count toward your balance.`
 }
 
 function PayByCard({ slug, quote }: { slug: string; quote: CardQuote }) {
@@ -227,9 +254,15 @@ function PayByCard({ slug, quote }: { slug: string; quote: CardQuote }) {
           <Row label={shown.label} value={cad(shown.baseCents)} />
           {shown.hstCents > 0 ? (
             <Row label={hstLabel(shown.baseCents)} value={cad(shown.hstCents)} />
-          ) : (
+          ) : shown.rules.hst ? (
             <Row label="HST" value="None on the deposit" />
-          )}
+          ) : null}
+          {shown.feeCents > 0 ? (
+            <Row
+              label={feeLabel(shown.baseCents, shown.rules.feePercent)}
+              value={cad(shown.feeCents)}
+            />
+          ) : null}
           <div className="flex justify-between gap-4 border-t border-ink py-2 font-semibold">
             <dt>Card total</dt>
             <dd className="tabular-nums">{cad(shown.chargeCents)}</dd>

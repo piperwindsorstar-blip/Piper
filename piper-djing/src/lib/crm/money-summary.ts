@@ -33,6 +33,7 @@ export type MoneyPayment = {
   paidOn: string
   method: string
   hstCents: number
+  feeCents?: number
 }
 
 export type MoneyRsvpSale = {
@@ -153,7 +154,7 @@ export function moneySummary(
     group.payments.push({
       ...payment,
       kind: payment.cents < 0 ? 'refund' : 'payment',
-      chargedCents: Math.abs(payment.cents) + (payment.cents > 0 ? Math.max(0, payment.hstCents) : 0),
+      chargedCents: Math.abs(payment.cents) + (payment.cents > 0 ? Math.max(0, payment.hstCents) + Math.max(0, payment.feeCents ?? 0) : 0),
     })
   }
 

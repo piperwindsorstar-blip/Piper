@@ -659,6 +659,7 @@ function PaymentCard({
     paidOn: string
     method: string
     hstCents: number
+    feeCents?: number
   }
 }) {
   const save = useServerFn(editPayment)
@@ -705,6 +706,9 @@ function PaymentCard({
             {payment.hstCents > 0 ? (
               <span className="block text-xs text-[#5b5370] tabular-nums">{`+ ${cad(payment.hstCents) ?? ''} HST`}</span>
             ) : null}
+            {(payment.feeCents ?? 0) > 0 ? (
+              <span className="block text-xs text-[#5b5370] tabular-nums">{`+ ${cad(payment.feeCents ?? 0) ?? ''} card fee`}</span>
+            ) : null}
           </span>
         </summary>
         <form
@@ -712,7 +716,10 @@ function PaymentCard({
           onSubmit={(event) => event.preventDefault()}
         >
           {payment.hstCents > 0 ? (
-            <p className="text-sm text-[#5b5370] sm:col-span-2">{`Card HST ${cad(payment.hstCents) ?? ''} (13% of this payment) · charged ${cad(Math.abs(payment.cents) + payment.hstCents)} in total. HST is on top and does not count toward the balance.`}</p>
+            <p className="text-sm text-[#5b5370] sm:col-span-2">{`Card HST ${cad(payment.hstCents) ?? ''} (13% of this payment) · charged ${cad(Math.abs(payment.cents) + payment.hstCents + (payment.feeCents ?? 0))} in total. HST is on top and does not count toward the balance.`}</p>
+          ) : null}
+          {(payment.feeCents ?? 0) > 0 ? (
+            <p className="text-sm text-[#5b5370] sm:col-span-2">{`Card fee ${cad(payment.feeCents ?? 0) ?? ''} on top of this payment; it does not count toward the balance.`}</p>
           ) : null}
           <label className="field">
             Amount

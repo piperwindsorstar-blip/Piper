@@ -42,6 +42,8 @@ export type WebhookDeps = {
     bookingId: number
     cents: number
     hstCents: number
+    /** The card fee paid on top; 0 for sessions made before the fee. */
+    feeCents: number
     note: string
     paidOn: string
   }) => Promise<{
@@ -122,6 +124,8 @@ export async function processStripeWebhook(
   const bookingId = Number(meta.bookingId)
   const baseCents = Number(meta.baseCents)
   const hst = Number(meta.hstCents)
+  // Sessions started before the card fee carry no feeCents.
+  const fee = meta.feeCents === undefined ? 0 : Number(meta.feeCents)
   const kind = (['deposit', 'balance', 'full'].includes(text(meta.kind))
     ? meta.kind
     : 'balance') as CardKind
@@ -130,6 +134,8 @@ export async function processStripeWebhook(
     !Number.isInteger(bookingId) ||
     !Number.isInteger(baseCents) ||
     !Number.isInteger(hst) ||
+    !Number.isInteger(fee) ||
+    fee < 0 ||
     baseCents <= 0
   ) {
     return Response.json({ received: true, ignored: 'not a Piper invoice' })
@@ -155,18 +161,18 @@ export async function processStripeWebhook(
   const charged = Number(session.amount_total)
   const currency = text(session.currency).toLowerCase()
   if (
-    (Number.isFinite(charged) && charged !== baseCents + hst) ||
+    (Number.isFinite(charged) && charged !== baseCents + hst + fee) ||
     (currency && currency !== 'cad')
   ) {
     await deps.finish(
       sessionId,
       'needs-attention',
-      `Charged ${charged} ${currency}, expected ${baseCents + hst} cad.`,
+      `Charged ${charged} ${currency}, expected ${baseCents + hst + fee} cad.`,
     )
     await deps
       .emailOwner({
         subject: 'Card payment needs a look',
-        text: `Stripe session ${sessionId} charged ${charged} ${currency || '?'} (cents) for booking ${bookingId}, but ${baseCents + hst} cad was expected. Nothing was recorded. Check the payment in Stripe and record it by hand.`,
+        text: `Stripe session ${sessionId} charged ${charged} ${currency || '?'} (cents) for booking ${bookingId}, but ${baseCents + hst + fee} cad was expected. Nothing was recorded. Check the payment in Stripe and record it by hand.`,
       })
       .catch(() => undefined)
     return Response.json({ received: true, attention: true })
@@ -178,6 +184,7 @@ export async function processStripeWebhook(
       bookingId,
       cents: baseCents,
       hstCents: hst,
+      feeCents: fee,
       note,
       paidOn: deps.today(),
     })

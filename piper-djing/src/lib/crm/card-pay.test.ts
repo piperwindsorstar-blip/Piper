@@ -178,3 +178,47 @@ test('checkout is CAD only: CAD prices, CAD session, no adaptive pricing', () =>
     assert.deepEqual([...new Set(currencies)], ['cad'])
   }
 })
+
+test('HST off: card adds only the 3% fee, on the deposit too', () => {
+  const rules = { hst: false, feePercent: 3 }
+  const deposit = cardQuote(invoice(0), wedding, rules)!
+  assert.deepEqual(
+    { base: deposit.baseCents, hst: deposit.hstCents, fee: deposit.feeCents, charge: deposit.chargeCents },
+    { base: 50000, hst: 0, fee: 1500, charge: 51500 },
+  )
+  const balance = cardQuote(invoice(50000), wedding, rules)!
+  assert.deepEqual(
+    { hst: balance.hstCents, fee: balance.feeCents, charge: balance.chargeCents },
+    { hst: 0, fee: 3450, charge: 118450 },
+  )
+  const part = cardPayment(balance, 50000)
+  assert.ok(part.ok)
+  assert.deepEqual(
+    { hst: part.quote.hstCents, fee: part.quote.feeCents, charge: part.quote.chargeCents },
+    { hst: 0, fee: 1500, charge: 51500 },
+  )
+  const form = checkoutForm({
+    quote: part.quote,
+    bookingId: 7,
+    invoiceSlug: 'inv',
+    email: '',
+    successUrl: 'https://example.com/ok',
+    cancelUrl: 'https://example.com/no',
+    couple: 'Dana Quinn',
+  })
+  assert.equal(form.get('line_items[1][price_data][unit_amount]'), '1500')
+  assert.equal(form.get('line_items[2][quantity]'), null)
+  assert.equal(form.get('metadata[feeCents]'), '1500')
+  assert.equal(form.get('metadata[hstCents]'), '0')
+})
+
+test('HST on with the fee: both on a balance payment, only the fee on the deposit', () => {
+  const rules = { hst: true, feePercent: 3 }
+  const deposit = cardQuote(invoice(0), wedding, rules)!
+  assert.equal(deposit.hstCents, 0)
+  assert.equal(deposit.feeCents, 1500)
+  const balance = cardQuote(invoice(50000), wedding, rules)!
+  assert.equal(balance.hstCents, 14950)
+  assert.equal(balance.feeCents, 3450)
+  assert.equal(balance.chargeCents, 115000 + 14950 + 3450)
+})

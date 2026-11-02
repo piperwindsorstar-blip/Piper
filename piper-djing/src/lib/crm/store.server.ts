@@ -182,6 +182,8 @@ export type PaymentView = {
   method: string
   /** Card HST collected on top of this payment; never booking money. */
   hstCents: number
+  /** The card fee collected on top of this payment; never booking money. */
+  feeCents: number
 }
 
 type BookingRow = {
@@ -493,6 +495,7 @@ async function ensurePaymentColumnsStep(): Promise<void> {
     ['paid_on', "text NOT NULL DEFAULT ''"],
     ['method', "text NOT NULL DEFAULT ''"],
     ['hst_cents', 'integer NOT NULL DEFAULT 0'],
+    ['fee_cents', 'integer NOT NULL DEFAULT 0'],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM payments LIMIT 0`)
@@ -2095,6 +2098,7 @@ export async function addPayment(
   paidOn = '',
   method = '',
   hstCents = 0,
+  feeCents = 0,
 ): Promise<{
   view: BookingView
   newlyBooked: boolean
@@ -2104,6 +2108,8 @@ export async function addPayment(
     throw new Error('Enter an amount.')
   if (!Number.isInteger(hstCents) || hstCents < 0)
     throw new Error('HST must be whole cents.')
+  if (!Number.isInteger(feeCents) || feeCents < 0)
+    throw new Error('The card fee must be whole cents.')
   await ensurePaymentColumns()
   const row = await bookingRow(bookingId)
   const invoiceRow = await invoiceFor(bookingId)
@@ -2127,7 +2133,7 @@ export async function addPayment(
   let paymentId: number | null = null
   if (applied !== 0) {
     const inserted = await query<{ id: number }>(
-      'INSERT INTO payments (invoice_id, cents, note, paid_on, method, hst_cents) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      'INSERT INTO payments (invoice_id, cents, note, paid_on, method, hst_cents, fee_cents) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
       [
         invoiceRow.id,
         applied,
@@ -2135,6 +2141,7 @@ export async function addPayment(
         paymentDate(paidOn),
         paymentMethod(method),
         applied > 0 ? hstCents : 0,
+        applied > 0 ? feeCents : 0,
       ],
     )
     paymentId = inserted.at(0)?.id ?? null
@@ -2284,9 +2291,10 @@ export async function listPayments(): Promise<PaymentView[]> {
     paid_on: string
     method: string
     hst_cents: unknown
+    fee_cents: unknown
   }>(
     `SELECT payments.id, payments.invoice_id, invoices.booking_id, bookings.partner_one, bookings.partner_two,
-            payments.cents, payments.note, payments.paid_on, payments.method, payments.hst_cents
+            payments.cents, payments.note, payments.paid_on, payments.method, payments.hst_cents, payments.fee_cents
      FROM payments
      JOIN invoices ON invoices.id = payments.invoice_id
      JOIN bookings ON bookings.id = invoices.booking_id
@@ -2302,6 +2310,7 @@ export async function listPayments(): Promise<PaymentView[]> {
     paidOn: row.paid_on,
     method: row.method,
     hstCents: Math.max(0, Number(row.hst_cents ?? 0) || 0),
+    feeCents: Math.max(0, Number(row.fee_cents ?? 0) || 0),
   }))
 }
 
@@ -3789,12 +3798,15 @@ export async function invoiceBySlug(slugValue: string) {
   const row = await bookingRow(invoice.booking_id)
   const view = toView(row, invoice)
   await ensurePaymentColumns()
-  const hst = await query<{ total: unknown }>(
-    'SELECT COALESCE(SUM(hst_cents), 0) AS total FROM payments WHERE invoice_id = $1 AND cents > 0',
+  const hst = await query<{ total: unknown; fees: unknown }>(
+    'SELECT COALESCE(SUM(hst_cents), 0) AS total, COALESCE(SUM(fee_cents), 0) AS fees FROM payments WHERE invoice_id = $1 AND cents > 0',
     [invoice.id],
   )
   return {
     cardHstCents: Math.max(0, Number(hst.at(0)?.total ?? 0) || 0),
+    cardFeeCents: Math.max(0, Number(hst.at(0)?.fees ?? 0) || 0),
+    nonWedding: view.nonWedding,
+    eventType: view.eventType,
     partnerOne: view.partnerOne,
     partnerTwo: view.partnerTwo,
     eventDate: view.eventDate,

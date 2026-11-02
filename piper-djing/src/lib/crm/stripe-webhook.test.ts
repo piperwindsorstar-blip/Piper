@@ -42,6 +42,7 @@ function fakeBook(booking: BookingState, invoice: InvoiceState) {
     claimed: new Set<string>(),
     finished: new Map<string, string>(),
     receipts: 0,
+    fees: [] as number[],
     ownerMail: [] as string[],
   }
   const deps: WebhookDeps = {
@@ -59,7 +60,8 @@ function fakeBook(booking: BookingState, invoice: InvoiceState) {
     release: async (sessionId) => {
       book.claimed.delete(sessionId)
     },
-    record: async ({ cents, hstCents, note, paidOn }) => {
+    record: async ({ cents, hstCents, feeCents, note, paidOn }) => {
+      book.fees.push(feeCents)
       const next = recordMoney(book.booking, book.invoice, cents)
       book.booking = next.booking
       book.invoice = next.invoice
@@ -86,10 +88,12 @@ async function signedEvent(input: {
   invoice: InvoiceState
   booking: BookingState
   currency?: string
+  rules?: { hst: boolean; feePercent: number }
 }): Promise<Request> {
   const quote = cardQuote(
     { ...input.invoice, balanceCents: input.invoice.totalCents - input.invoice.receivedCents },
     { packageId: input.booking.packageId, packageName: 'Full wedding day' },
+    input.rules,
   )!
   const form = checkoutForm({
     quote,
@@ -129,6 +133,21 @@ async function signedEvent(input: {
 }
 
 describe('Stripe webhook', () => {
+  it('HST off: a card deposit records the 3% fee on top and books the date', async () => {
+    const invoice: InvoiceState = { status: 'sent', totalCents: 165000, depositCents: 50000, receivedCents: 0 }
+    const { book, deps } = fakeBook(openBooking(), invoice)
+    await processStripeWebhook(
+      await signedEvent({ sessionId: 'cs_fee', invoice, booking: book.booking, rules: { hst: false, feePercent: 3 } }),
+      deps,
+    )
+    assert.equal(book.booking.status, 'booked')
+    assert.equal(book.payments[0]?.cents, 50000)
+    assert.equal(book.payments[0]?.hstCents, 0)
+    assert.deepEqual(book.fees, [1500])
+    assert.equal(book.invoice.receivedCents, 50000)
+    assert.equal(book.finished.get('cs_fee'), 'recorded')
+  })
+
   it('a card deposit on an open, non-sample booking books the date', async () => {
     const invoice: InvoiceState = { status: 'sent', totalCents: 165000, depositCents: 50000, receivedCents: 0 }
     const { book, deps } = fakeBook(openBooking(), invoice)

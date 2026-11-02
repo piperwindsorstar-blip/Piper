@@ -7,9 +7,22 @@
  * payment, and never on a deposit. HST is added on top: it is not booking
  * money and never lowers the remaining balance. E-transfer and cash never
  * carry HST.
+ *
+ * HST can be switched off for invoices in Desk → Settings. The card fee (3%)
+ * is on every card payment, the deposit included; it is also on top and
+ * never lowers the balance.
  */
 
 export const HST_RATE_PERCENT = 13
+
+/** The card processing fee on invoice payments by card. */
+export const CARD_FEE_PERCENT = 3
+
+/** Whether invoice card payments carry HST, and the card fee percent. */
+export type CardRules = { hst: boolean; feePercent: number }
+
+/** How card payments worked before the HST switch and the card fee. */
+const LEGACY_RULES: CardRules = { hst: true, feePercent: 0 }
 
 /** The smallest card payment toward the balance (unless less is left). */
 export const MIN_CARD_PAYMENT_CENTS = 5000
@@ -22,10 +35,14 @@ export type CardQuote = {
   label: string
   /** The booking money this payment covers; recorded on the desk. */
   baseCents: number
-  /** Card HST: 13% of baseCents, or 0 for a deposit. */
+  /** Card HST: 13% of baseCents, or 0 for a deposit or with HST off. */
   hstCents: number
-  /** What the card is charged: base + HST. */
+  /** The card fee: CARD_FEE_PERCENT of baseCents. */
+  feeCents: number
+  /** What the card is charged: base + HST + fee. */
   chargeCents: number
+  /** The rules this quote was made with, kept for a chosen amount. */
+  rules: CardRules
   /** True when the couple may choose how much to pay (the balance). */
   adjustable: boolean
   /** The allowed range for baseCents. */
@@ -36,6 +53,19 @@ export type CardQuote = {
 /** 13% of an amount, to the nearest cent (a half cent rounds up). */
 export function hstCents(amountCents: number): number {
   return Math.round((amountCents * HST_RATE_PERCENT) / 100)
+}
+
+/** The card fee on an amount, to the nearest cent. */
+export function feeCents(amountCents: number, percent: number): number {
+  if (!(percent > 0)) return 0
+  return Math.round((amountCents * percent) / 100)
+}
+
+/** Base, HST and fee for one card payment under these rules. */
+function priced(base: number, hstApplies: boolean, rules: CardRules) {
+  const hst = hstApplies && rules.hst ? hstCents(base) : 0
+  const fee = feeCents(base, rules.feePercent)
+  return { baseCents: base, hstCents: hst, feeCents: fee, chargeCents: base + hst + fee, rules }
 }
 
 export type QuoteInvoice = {
@@ -51,13 +81,17 @@ export type QuoteBooking = {
   packageName: string
 }
 
-function fixed(kind: CardKind, label: string, base: number, hst: number): CardQuote {
+function fixed(
+  kind: CardKind,
+  label: string,
+  base: number,
+  hstApplies: boolean,
+  rules: CardRules,
+): CardQuote {
   return {
     kind,
     label,
-    baseCents: base,
-    hstCents: hst,
-    chargeCents: base + hst,
+    ...priced(base, hstApplies, rules),
     adjustable: false,
     minCents: base,
     maxCents: base,
@@ -73,6 +107,7 @@ function fixed(kind: CardKind, label: string, base: number, hst: number): CardQu
 export function cardQuote(
   invoice: QuoteInvoice,
   booking: QuoteBooking,
+  rules: CardRules = LEGACY_RULES,
 ): CardQuote | null {
   if (invoice.status === 'void') return null
   if (!Number.isInteger(invoice.totalCents) || invoice.totalCents <= 0) {
@@ -86,18 +121,16 @@ export function cardQuote(
     booking.packageId === 'ceremony' ||
     invoice.depositCents >= invoice.totalCents
   ) {
-    return fixed('full', `${name}, paid in full`, remaining, hstCents(remaining))
+    return fixed('full', `${name}, paid in full`, remaining, true, rules)
   }
   if (invoice.receivedCents < invoice.depositCents) {
     const due = invoice.depositCents - invoice.receivedCents
-    return fixed('deposit', `Deposit · ${name}`, due, 0)
+    return fixed('deposit', `Deposit · ${name}`, due, false, rules)
   }
   return {
     kind: 'balance',
     label: `Balance · ${name}`,
-    baseCents: remaining,
-    hstCents: hstCents(remaining),
-    chargeCents: remaining + hstCents(remaining),
+    ...priced(remaining, true, rules),
     adjustable: true,
     minCents: Math.min(MIN_CARD_PAYMENT_CENTS, remaining),
     maxCents: remaining,
@@ -130,17 +163,21 @@ export function cardPayment(
       error: `The most you can pay is the ${dollars(quote.maxCents)} remaining.`,
     }
   }
-  const hst = hstCents(amountCents)
+  // The chosen amount keeps the quote's rules.
+  const rules = quote.rules
   return {
     ok: true,
     quote: {
       ...quote,
       label: amountCents < quote.maxCents ? `Part of the balance · ${quote.label.replace(/^Balance · /, '')}` : quote.label,
-      baseCents: amountCents,
-      hstCents: hst,
-      chargeCents: amountCents + hst,
+      ...priced(amountCents, true, rules),
     },
   }
+}
+
+/** The invoice's card fee line for one card payment. */
+export function feeLabel(baseCents: number, percent = CARD_FEE_PERCENT): string {
+  return `Card fee ${percent}% on this card payment of ${dollars(baseCents)}`
 }
 
 /** The invoice's HST line for one card payment. */
@@ -184,6 +221,9 @@ export function checkoutForm(input: {
   if (input.quote.hstCents > 0) {
     lines.push([hstLabel(input.quote.baseCents), input.quote.hstCents])
   }
+  if (input.quote.feeCents > 0) {
+    lines.push([feeLabel(input.quote.baseCents), input.quote.feeCents])
+  }
   lines.forEach(([name, cents], index) => {
     form.set(`line_items[${index}][quantity]`, '1')
     form.set(`line_items[${index}][price_data][currency]`, 'cad')
@@ -196,6 +236,7 @@ export function checkoutForm(input: {
     kind: input.quote.kind,
     baseCents: String(input.quote.baseCents),
     hstCents: String(input.quote.hstCents),
+    feeCents: String(input.quote.feeCents),
     couple: input.couple.slice(0, 200),
   }
   for (const [key, value] of Object.entries(metadata)) {

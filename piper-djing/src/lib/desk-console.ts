@@ -2,6 +2,8 @@ import { longDate } from './crm/dates.ts'
 
 /** Fields the mixer reads. Pricing stays in the existing quote function. */
 export type ConsoleBooking = {
+  /** A non-wedding event: one client, no wedding wording. */
+  nonWedding?: boolean
   id: number
   partnerOne: string
   partnerTwo: string
@@ -366,8 +368,8 @@ export function attention(
     if (booking.status === 'booked' && balance > 0 && days <= BALANCE_DUE_DAYS) {
       items.push({
         id: `balance-${booking.id}`,
-        title: `${names(booking)} still owe ${dollarText(balance)}`,
-        detail: `Balance due before their wedding on ${longDate(booking.eventDate)}, ${when}.`,
+        title: `${names(booking)} ${booking.partnerTwo?.trim() ? 'still owe' : 'still owes'} ${dollarText(balance)}`,
+        detail: `Balance due before their ${booking.nonWedding ? 'event' : 'wedding'} on ${longDate(booking.eventDate)}, ${when}.`,
         to: '/desk/money',
         couple: booking.id,
         action: 'Record payment',
