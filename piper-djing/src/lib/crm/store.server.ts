@@ -109,6 +109,8 @@ export type BookingView = {
   emailTwo: string
   /** A non-wedding event: planning is by email, with no couple's page. */
   nonWedding: boolean
+  /** For a non-wedding event, its type (Private, Corporate…); empty otherwise. */
+  eventType: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -164,6 +166,9 @@ export type LeadView = {
   withStag: boolean
   stagDate: string | null
   message: string
+  /** From the event form on /book; empty for older inquiries. */
+  venueName?: string
+  venueStreet?: string
 }
 
 export type PaymentView = {
@@ -188,6 +193,7 @@ type BookingRow = {
   email_two?: string | null
   /** 1 for a non-wedding event: email-only planning, no couple's page. */
   non_wedding?: unknown
+  event_type?: string | null
   phone: string
   event_date: string
   stag_date: string | null
@@ -400,6 +406,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     email: row.email,
     emailTwo: (row.email_two ?? '').trim(),
     nonWedding: flag(row.non_wedding),
+    eventType: (row.event_type ?? '').trim(),
     phone: row.phone,
     eventDate: state.eventDate,
     stagDate: state.stagDate,
@@ -464,6 +471,8 @@ async function ensureCustomColumnsStep(): Promise<void> {
     ['email_two', "text NOT NULL DEFAULT ''"],
     // Non-wedding events plan by email: no couple's page, passcode or reminders.
     ['non_wedding', 'integer NOT NULL DEFAULT 0'],
+    // A non-wedding event's type: Private, Corporate, Community & Charity, Club night.
+    ['event_type', "text NOT NULL DEFAULT ''"],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -658,6 +667,7 @@ export type BookingInput = {
   email: string
   emailTwo?: string
   nonWedding?: boolean
+  eventType?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -1197,6 +1207,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   await saveEmailTwo(id, input.emailTwo)
   // New bookings start as weddings, so only a non-wedding event needs a write.
   if (input.nonWedding) await saveNonWedding(id, true)
+  if (input.nonWedding) await saveEventType(id, input.eventType)
   try {
     return await refreshTravel(id)
   } catch (error) {
@@ -1226,6 +1237,13 @@ async function saveNonWedding(id: number, value: boolean | undefined): Promise<v
   if (value === undefined) return
   await ensureCustomColumns()
   await query('UPDATE bookings SET non_wedding = $1 WHERE id = $2', [value ? 1 : 0, id])
+}
+
+/** A non-wedding event's type. Undefined leaves it as it is. */
+async function saveEventType(id: number, value: string | undefined): Promise<void> {
+  if (value === undefined) return
+  await ensureCustomColumns()
+  await query('UPDATE bookings SET event_type = $1 WHERE id = $2', [value.trim().slice(0, 60), id])
 }
 
 // --- travel ------------------------------------------------------------------
@@ -1823,6 +1841,7 @@ export type BookingPatch = {
   email: string
   emailTwo?: string
   nonWedding?: boolean
+  eventType?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -1942,6 +1961,9 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   await saveEmailTwo(current.id, patch.emailTwo)
   if (patch.nonWedding !== undefined && patch.nonWedding !== flag(current.non_wedding)) {
     await saveNonWedding(current.id, patch.nonWedding)
+  }
+  if (patch.eventType !== undefined && patch.eventType !== (current.event_type ?? '').trim()) {
+    await saveEventType(current.id, patch.eventType)
   }
   const invoiceRow = await invoiceFor(current.id)
   if (invoiceRow && invoiceRow.status !== 'void') {
@@ -2162,6 +2184,8 @@ export async function listLeads(): Promise<LeadView[]> {
     with_stag: unknown
     stag_date: string | null
     message: string
+    venue_name?: string | null
+    venue_street?: string | null
   }>('SELECT * FROM leads ORDER BY id DESC')
   return rows.map((row) => ({
     id: row.id,
@@ -2175,6 +2199,8 @@ export async function listLeads(): Promise<LeadView[]> {
     withStag: flag(row.with_stag),
     stagDate: row.stag_date,
     message: row.message,
+    venueName: (row.venue_name ?? '').trim(),
+    venueStreet: (row.venue_street ?? '').trim(),
   }))
 }
 
