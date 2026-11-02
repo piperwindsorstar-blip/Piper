@@ -30,6 +30,7 @@ import {
 import type { SectionId } from '../../../../lib/portal/questions.ts'
 import { ActionButton } from '../../../../components/action-button.tsx'
 import type { RunResult } from '../../../../components/action-button.tsx'
+import { pairNames } from '../../../../lib/crm/names.ts'
 
 export const Route = createFileRoute('/desk/portals/$slug/')({
   // Private page: its data loading rides in the same lazy chunk as its
@@ -64,7 +65,7 @@ function CouplePortalPage() {
     <div className="grid gap-5">
       <DeskTitle
         kicker="Couple portal"
-        title={`${page.partnerOne} & ${page.partnerTwo}`}
+        title={`${pairNames(page.partnerOne, page.partnerTwo, '&')}`}
       >
         <p className="mt-2 text-sm text-white/70">
           {`${longDate(page.eventDate) ?? ''} · Answers save on this wedding only.`}</p>

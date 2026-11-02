@@ -19,6 +19,7 @@ import {
   startCardPayment,
 } from '../../lib/crm/desk.functions.ts'
 import { cad } from '../../lib/crm/money.ts'
+import { invoiceLines } from '../../lib/crm/invoice-lines.ts'
 import { PUBLIC_EMAIL } from '../../lib/crm/defaults.ts'
 import { privateHead } from '../../lib/seo.ts'
 
@@ -76,28 +77,27 @@ function InvoicePage() {
             What this covers
           </h2>
           <dl className="mt-4 grid gap-2 text-sm">
-            <Row
-              label={
-                invoice.nonWedding
-                  ? `Event · ${invoice.eventType || invoice.packageName}`
-                  : `Package · ${invoice.packageName}`
-              }
-              value=""
-            />
+            {invoiceLines({
+              packageId: invoice.packageId,
+              packageName: invoice.packageName,
+              nonWedding: Boolean(invoice.nonWedding),
+              eventType: invoice.eventType ?? '',
+              lockedTotal: Boolean(invoice.lockedTotal),
+              withStag: Boolean(invoice.withStag),
+              totalCents: invoice.totalCents,
+              discountCents: invoice.discountCents,
+              uplights: invoice.uplights,
+              venueTwoName: invoice.nonWedding ? '' : (invoice.venueTwoName ?? ''),
+              travelFeeCents: invoice.travelFeeCents ?? 0,
+              distanceFeeCents: invoice.distanceFeeCents ?? 0,
+            }).map(([label, cents]) => (
+              <Row key={label} label={label} value={cad(cents)} />
+            ))}
             {invoice.venueName ? (
               <Row label={`Venue · ${invoice.venueName}`} value="" />
             ) : null}
             {invoice.venueTwoName && !invoice.nonWedding ? (
-              <Row
-                label={`Second ceremony venue · ${invoice.venueTwoName}`}
-                value=""
-              />
-            ) : null}
-            {invoice.uplights > 0 ? (
-              <Row label={`Wired uplights · ${invoice.uplights}`} value="" />
-            ) : null}
-            {invoice.distanceFeeCents > 0 ? (
-              <Row label="Distance fee" value={cad(invoice.distanceFeeCents)} />
+              <Row label={`Second venue · ${invoice.venueTwoName}`} value="" />
             ) : null}
           </dl>
         </section>
@@ -123,8 +123,11 @@ function InvoicePage() {
               value={longDate(invoice.depositDue)}
             />
           ) : null}
-          {invoice.balanceDue ? (
-            <Row label="Balance due" value={longDate(invoice.balanceDue)} />
+          {invoice.balanceCents > 0 && invoice.status !== 'void' ? (
+            <Row
+              label="Balance due"
+              value={invoice.balanceDue ? longDate(invoice.balanceDue) : `Before ${longDate(invoice.eventDate)}`}
+            />
           ) : null}
           <Row label="Paid so far" value={cad(invoice.receivedCents)} />
           <Row label="Remaining" value={cad(invoice.balanceCents)} />
@@ -174,7 +177,7 @@ function InvoicePage() {
             >
               {PUBLIC_EMAIL}
             </a>
-            {invoice.card?.rules.hst ? ', or by cash. E-transfer and cash have no HST.' : ', or by cash.'}
+            , or by cash. E-transfer and cash add nothing.
             {invoice.card && !paid ? ` ${cardTerms(invoice.card)}` : ''}
           </p>
           {invoice.card && !paid ? (
@@ -227,11 +230,9 @@ function InvoicePage() {
 /** What paying by card adds, in the invoice's own rules. */
 function cardTerms(quote: CardQuote): string {
   const fee = quote.rules.feePercent
-  const parts: string[] = []
-  if (fee > 0) parts.push(`a ${fee}% card fee on every card payment`)
-  if (quote.rules.hst) parts.push(`${HST_RATE_PERCENT}% HST on the amount you pay by card (never on the deposit)`)
-  if (parts.length === 0) return ''
-  return `Card adds ${parts.join(' and ')}. ${parts.length > 1 ? 'Both are' : 'It is'} on top and ${parts.length > 1 ? 'do' : 'does'} not count toward your balance.`
+  const hst = quote.rules.hst ? ` and ${HST_RATE_PERCENT}% HST on the amount past the deposit` : ''
+  if (!(fee > 0) && !hst) return ''
+  return `Card adds a ${fee}% card fee${hst}.`
 }
 
 function PayByCard({ slug, quote }: { slug: string; quote: CardQuote }) {

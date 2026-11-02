@@ -1,3 +1,5 @@
+import { pairNames } from '../crm/names.ts'
+
 export type SavedLead = {
   id: number
   partnerOne: string
@@ -44,7 +46,7 @@ export function isDeskLeadList(pathname: string, method: string): boolean {
 }
 
 export function toBotLead(lead: SavedLead): BotLead {
-  const name = `${lead.partnerOne} and ${lead.partnerTwo}`
+  const name = `${pairNames(lead.partnerOne, lead.partnerTwo)}`
   return {
     id: lead.id,
     name,

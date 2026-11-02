@@ -7,6 +7,7 @@ import { publicUrl } from './safe-origin.ts'
 import { cardStatus, invoiceHstOn } from './stripe.server.ts'
 import { listBookings, readSiteSetting, writeSiteSetting } from './store.server.ts'
 import type { BookingView } from './store.server.ts'
+import { pairNames } from './names.ts'
 
 const SETTING = 'balance_reminders'
 
@@ -155,7 +156,7 @@ export async function balanceNudgeOverview(
         id: booking.id,
         couple: booking.nonWedding || !booking.partnerTwo.trim()
           ? booking.partnerOne
-          : `${booking.partnerOne} & ${booking.partnerTwo}`,
+          : `${pairNames(booking.partnerOne, booking.partnerTwo, '&')}`,
         eventDate: booking.eventDate,
         balanceCents: booking.invoice?.balanceCents ?? 0,
         email: booking.email.trim(),

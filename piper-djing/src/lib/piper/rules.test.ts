@@ -222,3 +222,14 @@ describe('hold window', () => {
     )
   })
 })
+
+describe('a hold never runs past the event', () => {
+  it('a Nov 2 hold for a Nov 28 event ends Nov 27, not Dec 1', async () => {
+    const { holdLastDay, holdCovers } = await import('./rules.ts')
+    assert.equal(holdLastDay('2026-11-02'), '2026-12-01')
+    assert.equal(holdLastDay('2026-11-02', '2026-11-28'), '2026-11-27')
+    assert.equal(holdLastDay('2026-11-02', '2027-06-12'), '2026-12-01')
+    assert.equal(holdCovers('2026-11-02', '2026-11-28', '2026-11-28'), false)
+    assert.equal(holdCovers('2026-11-02', '2026-11-27', '2026-11-28'), true)
+  })
+})

@@ -49,6 +49,7 @@ import type { BookingView, BotRole } from '../crm/store.server.ts'
 import { loadMoneySummary } from '../crm/money-summary.server.ts'
 import { botSettings } from './settings.server.ts'
 import { travelFields } from './travel-fields.ts'
+import { pairNames } from '../crm/names.ts'
 
 type Bot = { id: number; name: string; role: BotRole }
 
@@ -173,7 +174,7 @@ async function readResource(resource: string): Promise<Response> {
 }
 
 function names(booking: BookingView): string {
-  return `${booking.partnerOne} and ${booking.partnerTwo}`
+  return `${pairNames(booking.partnerOne, booking.partnerTwo)}`
 }
 
 function str(body: Record<string, unknown>, key: string): string {

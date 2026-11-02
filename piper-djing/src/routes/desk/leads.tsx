@@ -18,6 +18,7 @@ import { deleteLead, getLeads, saveLead } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
+import { pairNames } from '../../lib/crm/names.ts'
 
 const deskRoute = getRouteApi('/desk')
 
@@ -144,7 +145,7 @@ function LeadCard({
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const names = lead.partnerTwo
-    ? `${lead.partnerOne} and ${lead.partnerTwo}`
+    ? `${pairNames(lead.partnerOne, lead.partnerTwo)}`
     : lead.partnerOne
   const phone = lead.phone.replace(/[^\d+]/g, '')
   return (

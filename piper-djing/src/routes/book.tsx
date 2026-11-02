@@ -65,7 +65,11 @@ export const Route = createFileRoute('/book')({
         ...head.meta.map((item) =>
           'property' in item && item.property === 'og:image'
             ? { property: 'og:image', content: WEDDING_OG_IMAGE }
-            : item,
+            : 'property' in item && item.property === 'og:image:width'
+              ? { property: 'og:image:width', content: '1152' }
+              : 'property' in item && item.property === 'og:image:height'
+                ? { property: 'og:image:height', content: '864' }
+                : item,
         ),
         { name: 'theme-color', content: '#FFFFFF' },
       ],

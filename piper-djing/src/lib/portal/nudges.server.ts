@@ -7,6 +7,7 @@ import type { PlanContact } from '../crm/store.server.ts'
 import { torontoToday } from '../piper/rules.ts'
 import { NUDGE_LABEL, finishDate, nudgeBlock, nudgeDue, nudgeLetter } from './nudges.ts'
 import type { NudgeDue, NudgeRow, NudgeStep } from './nudges.ts'
+import { pairNames } from '../crm/names.ts'
 
 const SETTING = 'plan_reminders'
 
@@ -143,7 +144,7 @@ export async function planNudgeOverview(today = torontoToday()): Promise<{
       const last = latest.get(couple.bookingId)
       return {
         slug: couple.slug,
-        couple: `${couple.partnerOne} & ${couple.partnerTwo}`,
+        couple: `${pairNames(couple.partnerOne, couple.partnerTwo, '&')}`,
         eventDate: couple.eventDate,
         finish: finishDate(couple.planning, couple.eventDate),
         percent: couple.percent,

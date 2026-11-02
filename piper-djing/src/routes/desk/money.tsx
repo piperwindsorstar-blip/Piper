@@ -37,6 +37,7 @@ import { moneySummary } from '../../lib/crm/money-summary.ts'
 import { stripeFromNote } from '../../lib/crm/card-pay.ts'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
+import { pairNames } from '../../lib/crm/names.ts'
 
 type MoneyTab = 'owes' | 'paid' | 'invoices' | 'rsvp'
 
@@ -892,7 +893,7 @@ function InvoiceCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
-            {`${booking.partnerOne ?? ''} and ${booking.partnerTwo ?? ''}`}
+            {`${pairNames(booking.partnerOne, booking.partnerTwo)}`}
             {booking.sample ? (
               <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
                 TEST

@@ -131,13 +131,21 @@ function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-export function holdLastDay(start: string): string {
-  return addDays(start, HOLD_DAYS - 1)
+/**
+ * The last day of a hold: 30 days counting the start, but never past the
+ * event: it ends the day before the event when that comes sooner.
+ */
+export function holdLastDay(start: string, eventDate?: string): string {
+  const end = addDays(start, HOLD_DAYS - 1)
+  if (!eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) return end
+  const before = addDays(eventDate, -1)
+  if (before < start) return start
+  return before < end ? before : end
 }
 
-/** True when `day` falls inside the inclusive 30-day hold that started on `start`. */
-export function holdCovers(start: string, day: string): boolean {
-  const end = holdLastDay(start)
+/** True when `day` falls inside the hold that started on `start`. */
+export function holdCovers(start: string, day: string, eventDate?: string): boolean {
+  const end = holdLastDay(start, eventDate)
   return day >= start && day <= end
 }
 

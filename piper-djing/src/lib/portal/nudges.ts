@@ -4,6 +4,7 @@ import { hasCoupleAddress } from '../crm/mail-copy.ts'
 import type { Letter } from '../crm/mail-copy.ts'
 import type { Planning } from '../crm/planning.ts'
 import { shiftIso } from './progress.ts'
+import { pairNames } from '../crm/names.ts'
 
 /**
  * Plan reminders: a short email to a booked couple whose music plan is not
@@ -125,7 +126,7 @@ export function nudgeLetter(input: {
           ? 'Time to start your music plan'
           : 'Your music plan: a few questions left'
   const lines = [
-    `Hello ${input.partnerOne} and ${input.partnerTwo},`,
+    `Hello ${pairNames(input.partnerOne, input.partnerTwo)},`,
     '',
     `${where} ${ask}`,
     input.next ? `Next up: ${input.next}.` : '',

@@ -10,6 +10,7 @@ import {
 } from '../../lib/portal/progress.ts'
 import type { SectionId } from '../../lib/portal/questions.ts'
 import { usePortal } from './portal-state.tsx'
+import { pairNames } from '../../lib/crm/names.ts'
 
 const STEPS = [
   { id: 'overview', label: 'Overview', to: '/portal' },
@@ -45,7 +46,7 @@ export function PortalChrome({ children }: { children: ReactNode }) {
           <img src="/brand/dj-piper-p.png" alt="" className="h-10 w-auto" />
         </Link>
         <p className="text-sm text-[var(--text-muted)]">
-          {`${page.partnerOne ?? ''} & ${page.partnerTwo ?? ''} · ${longDate(page.eventDate) ?? ''} · `}
+          {`${pairNames(page.partnerOne, page.partnerTwo, '&')} · ${longDate(page.eventDate) ?? ''} · `}
           <span className="font-bold text-[var(--pink)]">
             {`${progress.percent ?? ''}%`}</span>
           {' planned'}
