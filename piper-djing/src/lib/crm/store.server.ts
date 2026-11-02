@@ -65,6 +65,7 @@ import {
   PACKAGE_CENTS,
   torontoToday,
 } from '../piper/rules.ts'
+import { pairNames } from './names.ts'
 
 /**
  * Table and column set-up only adds what is missing, so each step runs once per
@@ -448,7 +449,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     customTotalCents: state.customTotalCents ?? 0,
     lockedTotal: state.lockedTotal ?? false,
     holdStartedOn: state.holdStartedOn,
-    holdLastDay: state.holdStartedOn ? holdLastDay(state.holdStartedOn) : null,
+    holdLastDay: state.holdStartedOn ? holdLastDay(state.holdStartedOn, state.eventDate) : null,
     stagReleased: state.stagReleased,
     notes: row.notes,
     travel: travelViewOf(row),
@@ -2392,7 +2393,7 @@ export async function listPayments(): Promise<PaymentView[]> {
     id: row.id,
     invoiceId: row.invoice_id,
     bookingId: row.booking_id,
-    names: `${row.partner_one} and ${row.partner_two}`,
+    names: `${pairNames(row.partner_one, row.partner_two)}`,
     cents: whole(row.cents, 'Payment'),
     note: row.note,
     paidOn: row.paid_on,
@@ -3292,7 +3293,7 @@ function planningSeed(row: BookingRow): PlanningSeed {
   const ceremony = row.venue_street.trim()
   const receptionStreet = row.venue_two_street.trim()
   return {
-    coupleNames: `${row.partner_one} and ${row.partner_two}`,
+    coupleNames: `${pairNames(row.partner_one, row.partner_two)}`,
     email: row.email,
     phone: row.phone,
     weddingDate: longDate(row.event_date),
@@ -3910,6 +3911,10 @@ export async function invoiceBySlug(slugValue: string) {
     businessName: view.nonWedding ? view.businessName : '',
     distanceFeeCents: view.nonWedding ? view.distanceFeeCents : 0,
     invoiceNote: view.invoiceNote,
+    packageId: view.packageId,
+    withStag: view.withStag,
+    lockedTotal: view.lockedTotal,
+    travelFeeCents: view.nonWedding ? 0 : Math.max(0, view.travel?.feeCents ?? 0),
     partnerOne: view.partnerOne,
     partnerTwo: view.partnerTwo,
     eventDate: view.eventDate,
@@ -3950,7 +3955,7 @@ export async function cardContextBySlug(slugValue: string) {
     packageId: view.packageId,
     packageName: view.packageName,
     email: view.email,
-    couple: `${view.partnerOne} and ${view.partnerTwo}`,
+    couple: `${pairNames(view.partnerOne, view.partnerTwo)}`,
     sample: view.sample,
     invoice: {
       status: view.invoice?.status ?? 'draft',

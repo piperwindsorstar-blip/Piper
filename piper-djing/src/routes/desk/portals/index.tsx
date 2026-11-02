@@ -24,6 +24,7 @@ import { SECTION_LABEL, SECTION_ORDER } from '../../../lib/portal/questions.ts'
 import type { MasterDraft } from '../../../lib/portal/master.ts'
 import { ActionButton } from '../../../components/action-button.tsx'
 import type { RunResult } from '../../../components/action-button.tsx'
+import { pairNames } from '../../../lib/crm/names.ts'
 
 export const Route = createFileRoute('/desk/portals/')({
   // Private page: its data loading rides in the same lazy chunk as its
@@ -67,7 +68,7 @@ function PortalsPage() {
             <article key={portal.slug} className={`${deskCard} grid gap-3`}>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-lg font-bold">
-                  {`${portal.partnerOne ?? ''} & ${portal.partnerTwo ?? ''}`}
+                  {`${pairNames(portal.partnerOne, portal.partnerTwo, '&')}`}
                 </h3>
                 {portal.sample ? <Chip tone="amber">TEST</Chip> : null}
                 {portal.locked ? <Chip tone="pink">Locked</Chip> : null}

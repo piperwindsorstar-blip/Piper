@@ -791,7 +791,8 @@ await step('Non-wedding invoice: one name, the event type, no wedding words or c
   const text = (await pub.locator('main').innerText()).replace(/\s+/g, ' ')
   const h1 = (await pub.locator('h1').first().innerText()).trim()
   expect(h1 === 'Dana Quinn', `Heading: ${h1}`)
-  expect(/Event · Corporate/.test(text), 'Event type missing')
+  expect(/Corporate \$900\.00/.test(text), `Line items: ${text.slice(0, 400)}`)
+  expect(/E-transfer and cash add nothing\./.test(text), 'Payment wording missing')
   expect(/Deposit \$200\.00/.test(text), `Deposit amount: ${text.slice(0, 400)}`)
   expect(/Quinn Logistics/.test(text), 'Business name missing')
   expect(/Distance fee \$50\.00/.test(text), 'Distance fee missing')
@@ -809,6 +810,17 @@ await step('Desk Settings: HST on invoices starts off', async () => {
   const state = await page.locator('[data-invoice-hst]').getAttribute('data-invoice-hst')
   expect(state === 'off', `HST is ${state}`)
   return state
+})
+
+await step('/weddings second venue and uplight wording; /book share image size', async () => {
+  await pub.goto(BASE + '/weddings', { waitUntil: 'networkidle' })
+  const text = (await pub.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ')
+  expect(text.includes('A second venue is a $75 setup fee. Uplights are $15 each.'), 'New wording missing')
+  expect(!/13% HST/.test(text), '13% HST still on /weddings')
+  await pub.goto(BASE + '/book', { waitUntil: 'networkidle' })
+  const og = await pub.evaluate(() => [...document.querySelectorAll('meta[property^="og:image"]')].map((m) => m.getAttribute('content')).join(' '))
+  expect(/brand-beam\.jpg 1152 864/.test(og), `og: ${og}`)
+  return og
 })
 
 await step('/book past date note', async () => {

@@ -1,3 +1,5 @@
+import { pairNames } from './names.ts'
+
 /**
  * The Money page in one shape: who owes what, and every payment in. The desk
  * page and the bot API both read it, so a bot sees the same numbers Piper does.
@@ -118,7 +120,7 @@ export function moneySummary(
     if (left > 0) {
       whoOwes.push({
         bookingId: booking.id,
-        names: `${booking.partnerOne} and ${booking.partnerTwo}`,
+        names: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
         eventDate: booking.eventDate,
         packageName: booking.packageName,
         status: booking.status,
