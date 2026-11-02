@@ -902,6 +902,7 @@ function InvoiceCard({
             ) : null}
           </h2>
           <p className="mt-1 text-sm text-white/65">
+            {booking.showNumber ? `${booking.showNumber} · ` : ''}
             {longDate(booking.eventDate)}
           </p>
           {booking.invoice ? (
