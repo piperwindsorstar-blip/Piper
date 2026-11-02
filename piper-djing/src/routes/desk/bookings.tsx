@@ -72,6 +72,7 @@ import {
   sendBookingMail,
   sendInvoiceMail,
   saveNotes,
+  saveInvoiceNote,
 } from '../../lib/crm/desk.functions.ts'
 import { invoiceShownStatus, invoiceControls } from '../../lib/crm/booking-rules.ts'
 import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
@@ -660,7 +661,8 @@ function CouplePage({ booking }: { booking: BookingRow }) {
   const left = Math.max(0, invoice ? invoice.balanceCents : total)
   const deposit = invoice?.depositCents ?? booking.depositCents
   const days = daysUntil(today, booking.eventDate)
-  const travelFee = booking.travel.feeCents ?? 0
+  const event = booking.nonWedding === true
+  const travelFee = event ? (booking.distanceFeeCents ?? 0) : (booking.travel.feeCents ?? 0)
   const base = total + booking.discountCents - travelFee
   const sent = invoice ? invoice.status === 'sent' : false
   const firstPaid = own.find((payment) => payment.cents > 0)
@@ -687,7 +689,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
       state: left === 0 && total > 0 ? 'done' : depositDone ? 'now' : 'later',
     },
     {
-      name: 'Wedding day',
+      name: event ? 'Event day' : 'Wedding day',
       note: shortDay(booking.eventDate),
       state: days < 0 ? 'done' : 'later',
     },
@@ -738,20 +740,22 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               <CoupleName one={booking.partnerOne} two={booking.partnerTwo} amp="text-[#ff8cc6]" />
             </h1>
             <p className="text-[#d9d0ea]">
-              {[when, booking.venueName, booking.packageName].filter(Boolean).join(' · ')}
+              {[when, event ? booking.businessName : '', booking.venueName, event ? booking.eventType || booking.packageName : booking.packageName].filter(Boolean).join(' · ')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <a href="#everything" className="inline-flex min-h-11 items-center rounded-lg border border-[#5a4c86] px-4 font-semibold !text-white hover:bg-white/8">
               Edit details
             </a>
-            <Link
-              to="/desk/portals/$slug/plan"
-              params={{ slug: booking.slug }}
-              className="inline-flex min-h-11 items-center rounded-lg border border-[#5a4c86] px-4 font-semibold !text-white hover:bg-white/8"
-            >
-              Their plan
-            </Link>
+            {event ? null : (
+              <Link
+                to="/desk/portals/$slug/plan"
+                params={{ slug: booking.slug }}
+                className="inline-flex min-h-11 items-center rounded-lg border border-[#5a4c86] px-4 font-semibold !text-white hover:bg-white/8"
+              >
+                Their plan
+              </Link>
+            )}
             <Link to="/desk/money" className="inline-flex min-h-11 items-center rounded-lg bg-[#ff007f] px-4 font-bold text-[#1c1533] hover:bg-[#ff3d9a]">
               Record a payment
             </Link>
@@ -804,7 +808,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             <Bar value={total > 0 ? (paid / total) * 100 : 0} label={`${cad(paid)} of ${cad(total)} paid`} height="h-2.5" />
             <div className="grid gap-5 sm:grid-cols-2">
               <dl className="grid grid-cols-[1fr_auto] content-start gap-x-4 gap-y-1.5 text-sm">
-                <dt className="text-[#5b5370]">{booking.packageName}</dt>
+                <dt className="text-[#5b5370]">{event ? booking.eventType || booking.packageName : booking.packageName}</dt>
                 <dd className="text-right tabular-nums">{cad(base)}</dd>
                 {booking.discountCents > 0 ? (
                   <>
@@ -812,9 +816,11 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                     <dd className="text-right tabular-nums">{`−${cad(booking.discountCents) ?? ''}`}</dd>
                   </>
                 ) : null}
-                <dt className="text-[#5b5370]">Travel</dt>
+                <dt className="text-[#5b5370]">{event ? 'Distance fee' : 'Travel'}</dt>
                 <dd className="text-right tabular-nums">
-                  {booking.travel.feeCents == null ? 'Not worked out' : booking.travel.feeCents === 0 ? 'Included' : cad(booking.travel.feeCents)}
+                  {event
+                    ? travelFee > 0 ? cad(travelFee) : 'None'
+                    : booking.travel.feeCents == null ? 'Not worked out' : booking.travel.feeCents === 0 ? 'Included' : cad(booking.travel.feeCents)}
                 </dd>
                 <dt className="border-t border-[#eee8f7] pt-1.5 font-bold">Total</dt>
                 <dd className="border-t border-[#eee8f7] pt-1.5 text-right font-bold tabular-nums">{cad(total)}</dd>
@@ -862,7 +868,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
 
           <section aria-labelledby="couple-day" className={`${deskCard} grid gap-4`}>
             <div>
-              <p className={deskKicker}>The day</p>
+              <p className={deskKicker}>{event ? 'The event' : 'The day'}</p>
               <h2 id="couple-day" className={`${deskH2} mt-1`}>
                 {booking.venueName || 'No venue yet'}
               </h2>
@@ -886,8 +892,8 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-[#efe9f8] bg-[#faf8fe] p-4">
-                <p className="font-semibold">{booking.packageName}</p>
-                {offer?.detail ? <p className="mt-1 text-sm text-[#4a4262]">{offer.detail}</p> : null}
+                <p className="font-semibold">{event ? booking.eventType || booking.packageName : booking.packageName}</p>
+                {offer?.detail && !event ? <p className="mt-1 text-sm text-[#4a4262]">{offer.detail}</p> : null}
                 {booking.withStag && booking.stagDate ? (
                   <p className="mt-2 text-sm text-[#4a4262]">{`Stag and doe on ${longDate(booking.stagDate) ?? ''}.`}</p>
                 ) : null}
@@ -895,7 +901,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                   <p className="mt-1 text-sm text-[#4a4262]">{`${booking.uplights ?? ''} uplights.`}</p>
                 ) : null}
               </div>
-              <TravelPanel booking={booking} />
+              {event ? null : <TravelPanel booking={booking} />}
             </div>
           </section>
         </div>
@@ -903,8 +909,9 @@ function CouplePage({ booking }: { booking: BookingRow }) {
         <div className="grid gap-5">
           <section aria-labelledby="couple-contact" className={`${deskCard} grid gap-3`}>
             <h2 id="couple-contact" className={deskH2}>
-              The couple
+              {event ? 'The client' : 'The couple'}
             </h2>
+            {event && booking.businessName ? <p className="font-semibold">{booking.businessName}</p> : null}
             {hasContact ? (
               <div className="grid gap-1">
                 {booking.email ? (
@@ -924,7 +931,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               <div className="rounded-2xl border border-dashed border-[#f3b6d3] bg-[#fff5fa] p-4">
                 <p className="font-semibold">No email or phone yet</p>
                 <p className="mt-1 text-sm text-[#4a4262]">
-                  Add one so the invoice, card link and portal link can reach them.
+                  {event ? 'Add one so the invoice and card link can reach them.' : 'Add one so the invoice, card link and portal link can reach them.'}
                 </p>
                 <a href="#everything" className={`${deskPrimary} mt-3`}>
                   Add their contact
@@ -933,6 +940,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             )}
           </section>
 
+          {event ? null : (
           <section aria-labelledby="couple-plan" className={`${deskCard} grid gap-3`}>
             <div className="flex items-baseline justify-between gap-3">
               <h2 id="couple-plan" className={deskH2}>
@@ -958,7 +966,9 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               </button>
             </div>
           </section>
+          )}
 
+          <InvoiceNoteCard id={booking.id} note={booking.invoiceNote ?? ''} />
           <NotesCard id={booking.id} notes={booking.notes} />
         </div>
       </div>
@@ -968,8 +978,9 @@ function CouplePage({ booking }: { booking: BookingRow }) {
           Details, invoice and status
         </h2>
         <p className="text-sm text-[#5b5370]">
-          Edit their names, contact, date, venue and price; send or void the invoice; release, cancel or
-          delete the booking.
+          {event
+            ? "Edit the client's name, contact, date, venue and price; send or void the invoice; release, cancel or delete the booking."
+            : 'Edit their names, contact, date, venue and price; send or void the invoice; release, cancel or delete the booking.'}
         </p>
         <BookingCard
           booking={booking}
@@ -998,6 +1009,50 @@ function shortDay(iso: string): string {
     month: 'short',
     timeZone: 'UTC',
   })
+}
+
+function InvoiceNoteCard({ id, note }: { id: number; note: string }) {
+  const save = useServerFn(saveInvoiceNote)
+  const router = useRouter()
+  const [value, setValue] = useState(note)
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const dirty = value !== note
+  async function commit() {
+    if (!dirty) return
+    setState('saving')
+    const result = await save({ data: { id, note: value } }).catch(() => ({ ok: false as const }))
+    setState(result.ok ? 'saved' : 'error')
+    if (result.ok) await router.invalidate()
+  }
+  return (
+    <section aria-labelledby={`invoice-note-${id}`} className={`${deskCard} grid gap-2`}>
+      <h2 id={`invoice-note-${id}`} className={deskH2}>
+        Invoice notes
+      </h2>
+      <label htmlFor={`invoice-note-text-${id}`} className="text-sm text-[#5b5370]">
+        Shown on the invoice
+      </label>
+      <textarea
+        id={`invoice-note-text-${id}`}
+        rows={3}
+        maxLength={2000}
+        value={value}
+        onChange={(event) => {
+          setValue(event.target.value)
+          setState('idle')
+        }}
+        onBlur={() => void commit()}
+      />
+      <div className="flex items-center gap-3">
+        <button type="button" className={deskGhost} disabled={!dirty || state === 'saving'} onClick={() => void commit()}>
+          {state === 'saving' ? 'Saving…' : 'Save invoice notes'}
+        </button>
+        <span className="text-sm text-[#5b5370]" role="status">
+          {state === 'saved' ? 'Saved.' : state === 'error' ? 'That did not save. Try again.' : ''}
+        </span>
+      </div>
+    </section>
+  )
 }
 
 function NotesCard({ id, notes }: { id: number; notes: string }) {
@@ -1209,6 +1264,7 @@ function NewBooking({
                   balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
                   businessName: form.has('businessName') ? String(form.get('businessName') ?? '') : undefined,
                   customDepositCents: eventDeposit(form),
+                  distanceFeeCents: form.has('distanceFee') ? dollarsOrZero(form, 'distanceFee') : undefined,
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -1802,6 +1858,11 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
   }
 }
 
+function dollarsOrZero(form: FormData, name: string): number {
+  const raw = String(form.get(name) ?? '').trim()
+  return raw ? dollarsToCents(raw) : 0
+}
+
 /** A non-wedding deposit typed in dollars; blank means the flat $350. */
 function eventDeposit(form: FormData): number | undefined {
   if (!form.has('customDeposit')) return undefined
@@ -1878,6 +1939,12 @@ function BookingCard({
     holdLastDay: string | null
     stagReleased: boolean
     notes: string
+    nonWedding?: boolean
+    eventType?: string
+    depositDueOn?: string
+    balanceDueOn?: string
+    businessName?: string
+    distanceFeeCents?: number
     travel: {
       km: number | null
       feeCents: number | null
@@ -1990,7 +2057,7 @@ function BookingCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-xl font-bold">
-              {`${booking.partnerOne ?? ''} and ${booking.partnerTwo ?? ''}`}
+              {joinNames(booking.partnerOne, booking.partnerTwo, 'and')}
             </h2>
             {booking.sample ? (
               <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">TEST<span className="sr-only">{'\u00a0'}</span></span>
@@ -2035,23 +2102,27 @@ function BookingCard({
         className={open ? 'space-y-5 border-t border-white/10 p-5' : 'hidden'}
       >
         <p className="flex flex-wrap gap-4 text-sm">
-          <Link
-            to="/c/$slug"
-            params={{ slug: booking.slug }}
-            className="font-semibold text-hot hover:underline"
-          >
-            Couple page
-          </Link>
-          <Link
-            to="/desk/portals/$slug/plan"
-            params={{ slug: booking.slug }}
-            className="font-semibold text-hot hover:underline"
-          >
-            Our plan
-          </Link>
-          <span className="text-white/65">
-            Their planning form is on that page.
-          </span>
+          {booking.nonWedding ? null : (
+            <>
+              <Link
+                to="/c/$slug"
+                params={{ slug: booking.slug }}
+                className="font-semibold text-hot hover:underline"
+              >
+                Couple page
+              </Link>
+              <Link
+                to="/desk/portals/$slug/plan"
+                params={{ slug: booking.slug }}
+                className="font-semibold text-hot hover:underline"
+              >
+                Our plan
+              </Link>
+              <span className="text-white/65">
+                Their planning form is on that page.
+              </span>
+            </>
+          )}
           {booking.invoice ? (
             <Link
               to="/p/$slug"
@@ -2063,7 +2134,7 @@ function BookingCard({
           ) : null}
         </p>
         {hideTravel ? null : <TravelPanel booking={booking} />}
-        {open ? <PortalDeskFields slug={booking.slug} /> : null}
+        {open && !booking.nonWedding ? <PortalDeskFields slug={booking.slug} /> : null}
         <form
           key={formKey}
           className="grid gap-3"
@@ -2101,6 +2172,7 @@ function BookingCard({
               discountCents: booking.discountCents,
               customTotalCents: booking.customTotalCents,
               depositCents: booking.invoice?.depositCents ?? 0,
+              distanceFeeCents: booking.distanceFeeCents ?? 0,
               businessName: booking.businessName ?? '',
               lockedTotal: booking.lockedTotal,
             }}
@@ -2137,6 +2209,7 @@ function BookingCard({
                   balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
                   businessName: form.has('businessName') ? String(form.get('businessName') ?? '') : undefined,
                   customDepositCents: eventDeposit(form),
+                  distanceFeeCents: form.has('distanceFee') ? dollarsOrZero(form, 'distanceFee') : undefined,
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2858,6 +2931,7 @@ function BookingFields({
     balanceDueOn?: string
     depositCents?: number
     businessName?: string
+    distanceFeeCents?: number
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
@@ -2932,6 +3006,15 @@ function BookingFields({
                 ? (defaults.customTotalCents / 100).toFixed(2)
                 : ''
             }
+          />
+        </label>
+        <label className="field">
+          Distance fee
+          <input
+            name="distanceFee"
+            inputMode="decimal"
+            placeholder="0.00"
+            defaultValue={defaults?.distanceFeeCents ? (defaults.distanceFeeCents / 100).toFixed(2) : ''}
           />
         </label>
         <label className="field">

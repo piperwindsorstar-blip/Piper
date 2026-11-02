@@ -116,6 +116,10 @@ export type BookingView = {
   balanceDueOn: string
   /** A non-wedding client's business name; empty when none. */
   businessName: string
+  /** A non-wedding event's distance fee, set by hand. */
+  distanceFeeCents: number
+  /** Notes Piper adds to the invoice; the client sees them. */
+  invoiceNote: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -203,6 +207,8 @@ type BookingRow = {
   event_type?: string | null
   deposit_due?: string | null
   business_name?: string | null
+  distance_fee_cents?: unknown
+  invoice_note?: string | null
   balance_due?: string | null
   phone: string
   event_date: string
@@ -420,6 +426,8 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     depositDueOn: (row.deposit_due ?? '').trim(),
     balanceDueOn: (row.balance_due ?? '').trim(),
     businessName: (row.business_name ?? '').trim(),
+    distanceFeeCents: Math.max(0, Number(row.distance_fee_cents ?? 0) || 0),
+    invoiceNote: (row.invoice_note ?? '').trim(),
     phone: row.phone,
     eventDate: state.eventDate,
     stagDate: state.stagDate,
@@ -491,6 +499,10 @@ async function ensureCustomColumnsStep(): Promise<void> {
     ['balance_due', "text NOT NULL DEFAULT ''"],
     // A non-wedding client's business name.
     ['business_name', "text NOT NULL DEFAULT ''"],
+    // A non-wedding event's distance fee, set by hand.
+    ['distance_fee_cents', 'integer NOT NULL DEFAULT 0'],
+    // Notes on the invoice, written by Piper and shown to the client.
+    ['invoice_note', "text NOT NULL DEFAULT ''"],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -690,6 +702,7 @@ export type BookingInput = {
   depositDueOn?: string
   balanceDueOn?: string
   businessName?: string
+  distanceFeeCents?: number
   phone: string
   eventDate: string
   stagDate: string | null
@@ -773,6 +786,7 @@ function normalize(input: BookingInput) {
         : wholeOrZero(input.customDepositCents),
     lockedTotal: input.lockedTotal ?? false,
     nonWedding: input.nonWedding ?? false,
+    distanceFeeCents: input.nonWedding ? wholeOrZero(input.distanceFeeCents) : 0,
   }
 }
 
@@ -1237,6 +1251,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   if (input.nonWedding) await saveEventType(id, input.eventType)
   if (input.nonWedding) await saveDueDates(id, input.depositDueOn, input.balanceDueOn)
   if (input.nonWedding) await saveBusinessName(id, input.businessName)
+  if (input.nonWedding) await saveDistanceFee(id, next.distanceFeeCents)
   try {
     return await refreshTravel(id)
   } catch (error) {
@@ -1273,6 +1288,11 @@ async function saveEventType(id: number, value: string | undefined): Promise<voi
   if (value === undefined) return
   await ensureCustomColumns()
   await query('UPDATE bookings SET event_type = $1 WHERE id = $2', [value.trim().slice(0, 60), id])
+}
+
+async function saveDistanceFee(id: number, cents: number): Promise<void> {
+  await ensureCustomColumns()
+  await query('UPDATE bookings SET distance_fee_cents = $1 WHERE id = $2', [cents, id])
 }
 
 /** A non-wedding client's business name. Undefined leaves it as it is. */
@@ -1902,6 +1922,7 @@ export type BookingPatch = {
   depositDueOn?: string
   balanceDueOn?: string
   businessName?: string
+  distanceFeeCents?: number
   phone: string
   eventDate: string
   stagDate: string | null
@@ -1925,7 +1946,12 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   checkEmailTwo(patch.emailTwo)
   const current = await bookingRow(patch.id)
   const state = toState(current)
-  const next = normalize({ ...patch, nonWedding: patch.nonWedding ?? flag(current.non_wedding) })
+  const next = normalize({
+    ...patch,
+    nonWedding: patch.nonWedding ?? flag(current.non_wedding),
+    distanceFeeCents:
+      patch.distanceFeeCents ?? Math.max(0, Number(current.distance_fee_cents ?? 0) || 0),
+  })
   const savedWedding = matchCustom(
     state.partnerOne,
     state.partnerTwo,
@@ -1970,6 +1996,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
           packageId: next.packageId,
           withStag: next.withStag,
           nonWedding: next.nonWedding,
+          distanceFeeCents: next.distanceFeeCents,
           uplights: next.uplights,
           venueKm: next.venueKm,
           venueName: next.venueName,
@@ -2028,6 +2055,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   }
   if (next.nonWedding) await saveDueDates(current.id, patch.depositDueOn, patch.balanceDueOn)
   if (next.nonWedding) await saveBusinessName(current.id, patch.businessName)
+  if (next.nonWedding) await saveDistanceFee(current.id, next.distanceFeeCents)
   const invoiceRow = await invoiceFor(current.id)
   if (invoiceRow && invoiceRow.status !== 'void') {
     const invoice = toInvoice(invoiceRow)
@@ -3630,6 +3658,17 @@ export async function setCoupleEmail(slugValue: string, email: string): Promise<
   return clean
 }
 
+/** Notes on the invoice: the client sees them on the invoice page and emails. */
+export async function setInvoiceNote(id: number, note: string): Promise<void> {
+  if (!Number.isInteger(id)) throw new Error('Choose a booking.')
+  await ensureCustomColumns()
+  const rows = await query<{ id: number }>(
+    'UPDATE bookings SET invoice_note = $1 WHERE id = $2 RETURNING id',
+    [note.trim().slice(0, 2000), id],
+  )
+  if (rows.length === 0) throw new Error('That booking is not on the book.')
+}
+
 /** Piper's private notes on a booking, saved on their own. */
 export async function setBookingNotes(id: number, notes: string): Promise<void> {
   if (!Number.isInteger(id)) throw new Error('Choose a booking.')
@@ -3869,6 +3908,8 @@ export async function invoiceBySlug(slugValue: string) {
     eventType: view.eventType,
     balanceDue: view.nonWedding ? view.balanceDueOn : '',
     businessName: view.nonWedding ? view.businessName : '',
+    distanceFeeCents: view.nonWedding ? view.distanceFeeCents : 0,
+    invoiceNote: view.invoiceNote,
     partnerOne: view.partnerOne,
     partnerTwo: view.partnerTwo,
     eventDate: view.eventDate,
