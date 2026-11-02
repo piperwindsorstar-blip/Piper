@@ -29,6 +29,10 @@ const SECOND_VENUE_PARAGRAPH =
   'If the ceremony is at a separate venue from the reception, a flat $75 second-venue fee applies. Two venues is the maximum; a third venue is not offered.'
 
 const PAYMENT_PARAGRAPH =
+  'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments carry a 3% card fee on the amount paid by card. E-transfer and cash carry no fee.'
+
+/** The payment wording while invoice card payments carried HST (to Nov 2026). */
+const HST_PAYMENT_PARAGRAPH =
   'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments toward the balance carry 13% HST on the amount paid by card. Deposits, e-transfer and cash carry no HST.'
 
 /** The payment wording before card HST was per card payment (Oct 2026). */
@@ -110,6 +114,7 @@ export function reviseTerms(body: string): string {
   // Older payment wording becomes the current one; a document that got both
   // (one start inserted the new paragraph beside the old) keeps one copy.
   next = next.split(PREVIOUS_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)
+  next = next.split(HST_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)
   next = keepFirst(next, PAYMENT_PARAGRAPH)
   next = keepFirst(next, AGREEMENT_PARAGRAPH)
   if (next.includes(PREVIOUS_DEPOSIT) || next.includes(PREVIOUS_TRAVEL)) {

@@ -17,6 +17,9 @@ const VENUE =
 const PAYMENT =
   'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments toward the balance carry 13% HST on the amount paid by card. Deposits, e-transfer and cash carry no HST.'
 
+const FEE_PAYMENT =
+  'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments carry a 3% card fee on the amount paid by card. E-transfer and cash carry no fee.'
+
 const AGREEMENT =
   '4.5 Sending the deposit, or paying Ceremony only in full, is agreement to these terms. A signature is extra proof of that agreement. A signature by itself does not hold and does not book a date.'
 
@@ -122,7 +125,7 @@ describe('terms', () => {
     const beforeChange = TERMS_BODY.replace(NEW, OLD)
     assert.equal(reviseTerms(beforeChange), TERMS_BODY)
     // What the live book held after one start: the old paragraph, then both again.
-    const doubled = PREVIOUS_NUMBERED.replace(NEW, `${OLD}\n\n${AGREEMENT}\n\n${NEW}`)
+    const doubled = PREVIOUS_NUMBERED.replace(FEE_PAYMENT, `${OLD}\n\n${AGREEMENT}\n\n${NEW}`)
     assert.equal(doubled.split('4.5 ').length - 1, 2)
     assert.equal(reviseTerms(doubled), TERMS_BODY)
     assert.equal(reviseTerms(TERMS_BODY), TERMS_BODY)
@@ -138,5 +141,14 @@ describe('non-wedding deposit sentence', () => {
     const revised = reviseTerms(older)
     assert.equal(revised, TERMS_BODY)
     assert.equal(revised.split(sentence).length, 2)
+  })
+})
+
+describe('card fee wording', () => {
+  it('the HST payment sentence becomes the 3% card fee, once', () => {
+    assert.ok(TERMS_BODY.includes(FEE_PAYMENT))
+    assert.ok(!TERMS_BODY.includes('HST'))
+    const older = TERMS_BODY.replace(FEE_PAYMENT, PAYMENT)
+    assert.equal(reviseTerms(older), TERMS_BODY)
   })
 })
