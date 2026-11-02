@@ -3359,6 +3359,7 @@ export async function savePortalMaster(value: unknown): Promise<MasterMap> {
 export async function listCouplePortals() {
   await ensurePlanningColumn()
   await ensurePortalColumns()
+  await ensureCustomColumns()
   const master = await readPortalMaster()
   const rows = await query<
     BookingRow & { planning?: string; portal_passcode?: string }
@@ -3371,6 +3372,8 @@ export async function listCouplePortals() {
   const today = torontoToday()
   const portals = []
   for (const row of rows) {
+    // The planning portal is weddings only: no page or passcode for events.
+    if (flag(row.non_wedding)) continue
     let passcode = (row.portal_passcode ?? '').trim().toUpperCase()
     if (!passcode) {
       passcode = unusedPasscode(taken)
