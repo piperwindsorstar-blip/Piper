@@ -39,6 +39,7 @@ import {
   deskSurface,
 } from '../../components/desk-ui.tsx'
 import { isPackageId } from '../../lib/crm/defaults.ts'
+import { BOOK_EVENT_TYPES } from '../../lib/crm/book-events.ts'
 import {
   externalCouple,
   externalKindLabel,
@@ -298,6 +299,9 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
                   // A non-wedding inquiry (its event, not a package) books as a Custom event.
                   packageId: isPackageId(fromLead.packageId) ? fromLead.packageId : 'custom',
                   nonWedding: !isPackageId(fromLead.packageId),
+                  eventType: leadEventType(fromLead.packageId),
+                  venueName: fromLead.venueName ?? '',
+                  venueStreet: fromLead.venueStreet ?? '',
                 }
               : undefined
           }
@@ -1063,6 +1067,9 @@ function NewBooking({
     packageId: string
     /** From a non-wedding inquiry: a Custom event planned by email. */
     nonWedding?: boolean
+    eventType?: string
+    venueName?: string
+    venueStreet?: string
   }
 }) {
   const add = useServerFn(addBooking)
@@ -1129,8 +1136,8 @@ function NewBooking({
                   uplights: 0,
                   kmOne: '',
                   kmTwo: '',
-                  venueName: '',
-                  venueStreet: '',
+                  venueName: prefill.venueName ?? '',
+                  venueStreet: prefill.venueStreet ?? '',
                   venueTwoName: '',
                   venueTwoStreet: '',
                   sample: false,
@@ -1138,6 +1145,7 @@ function NewBooking({
                   discountCents: 0,
                   customTotalCents: 0,
                   nonWedding: prefill.nonWedding ?? false,
+                  eventType: prefill.eventType ?? '',
                   lockedTotal: false,
                 }
               : undefined
@@ -1196,6 +1204,7 @@ function NewBooking({
                   email: String(form.get('email') ?? ''),
                   emailTwo: String(form.get('emailTwo') ?? ''),
                   nonWedding: form.get('nonWedding') === 'on',
+                  eventType: String(form.get('eventType') ?? ''),
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2060,6 +2069,7 @@ function BookingCard({
               partnerTwo: booking.partnerTwo,
               email: booking.email,
               nonWedding: booking.nonWedding ?? false,
+              eventType: booking.eventType ?? '',
               emailTwo: booking.emailTwo ?? '',
               phone: booking.phone,
               eventDate: booking.eventDate,
@@ -2106,6 +2116,7 @@ function BookingCard({
                   email: String(form.get('email') ?? ''),
                   emailTwo: String(form.get('emailTwo') ?? ''),
                   nonWedding: form.get('nonWedding') === 'on',
+                  eventType: String(form.get('eventType') ?? ''),
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2773,6 +2784,13 @@ function VenueFields({
   )
 }
 
+/** "Corporate · Christmas party" → "Corporate"; a wedding package → ''. */
+function leadEventType(label: string): string {
+  const type = label.split(' · ')[0]?.trim() ?? ''
+  if (isPackageId(label)) return ''
+  return (BOOK_EVENT_TYPES as readonly string[]).includes(type) && type !== 'Wedding' ? type : 'Private'
+}
+
 function kilometres(form: FormData): number[] {
   return ['kmOne', 'kmTwo']
     .map((name) => String(form.get(name) ?? '').trim())
@@ -2814,20 +2832,113 @@ function BookingFields({
     customTotalCents: number
     lockedTotal: boolean
     nonWedding?: boolean
+    eventType?: string
+    emailTwo?: string
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
+  const [kind, setKind] = useState<string>(
+    defaults?.nonWedding ? defaults.eventType || 'Private' : 'Wedding',
+  )
+  const typeSelect = (
+    <label className="field">
+      Type of event
+      <select
+        value={kind}
+        onChange={(event) => {
+          const next = event.target.value
+          setKind(next)
+          onPackage(next === 'Wedding' ? 'full' : 'custom')
+        }}
+      >
+        {BOOK_EVENT_TYPES.map((type) => (
+          <option key={type} value={type}>
+            {type}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+
+  if (kind !== 'Wedding') {
+    return (
+      <div
+        className={`grid gap-3 ${columns === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
+      >
+        {typeSelect}
+        <input type="hidden" name="nonWedding" value="on" />
+        <input type="hidden" name="eventType" value={kind} />
+        <input type="hidden" name="packageId" value="custom" />
+        <label className="field">
+          Name
+          <input name="partnerOne" required defaultValue={defaults?.partnerOne} />
+        </label>
+        <label className="field">
+          Email
+          <input name="email" type="email" defaultValue={defaults?.email} />
+        </label>
+        <label className="field">
+          Event date
+          <input name="eventDate" type="date" required defaultValue={defaults?.eventDate} />
+        </label>
+        <VenueFields
+          venues={venues}
+          chooseLabel="Choose a venue"
+          nameLabel="Venue name"
+          streetLabel="Venue location"
+          nameField="venueName"
+          streetField="venueStreet"
+          defaultName={defaults?.venueName ?? ''}
+          defaultStreet={defaults?.venueStreet ?? ''}
+          span={span}
+          labelClass="field"
+        />
+        <label className="field">
+          Price
+          <input
+            name="customTotal"
+            inputMode="decimal"
+            placeholder="In dollars"
+            defaultValue={
+              defaults?.customTotalCents
+                ? (defaults.customTotalCents / 100).toFixed(2)
+                : ''
+            }
+          />
+        </label>
+        {/* Wedding-only details are kept as they are. */}
+        <input type="hidden" name="partnerTwo" value="" />
+        <input type="hidden" name="emailTwo" defaultValue={defaults?.emailTwo ?? ''} />
+        <input type="hidden" name="phone" defaultValue={defaults?.phone ?? ''} />
+        <input type="hidden" name="uplights" defaultValue={defaults?.uplights ?? 0} />
+        <input type="hidden" name="kmOne" defaultValue={defaults?.kmOne} />
+        <input type="hidden" name="kmTwo" defaultValue={defaults?.kmTwo} />
+        <input
+          type="hidden"
+          name="discount"
+          defaultValue={defaults?.discountCents ? (defaults.discountCents / 100).toFixed(2) : ''}
+        />
+        <input type="hidden" name="venueTwoName" defaultValue={defaults?.venueTwoName ?? ''} />
+        <input type="hidden" name="venueTwoStreet" defaultValue={defaults?.venueTwoStreet ?? ''} />
+        <input type="hidden" name="notes" defaultValue={defaults?.notes ?? ''} />
+        {defaults?.lockedTotal ? <input type="hidden" name="lockedTotal" value="on" /> : null}
+        {defaults?.sample ? <input type="hidden" name="sample" value="on" /> : null}
+      </div>
+    )
+  }
+
   return (
     <div
       className={`grid gap-3 ${columns === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
     >
+      {typeSelect}
       <label className="field">
         First partner
         <input name="partnerOne" required defaultValue={defaults?.partnerOne} />
       </label>
       <label className="field">
         Second partner
-        <input name="partnerTwo" defaultValue={defaults?.partnerTwo} placeholder="Blank for a non-wedding event" />
+        <input name="partnerTwo" defaultValue={defaults?.partnerTwo} />
       </label>
       <label className="field">
         Email
@@ -2960,10 +3071,6 @@ function BookingFields({
       <label className={`field ${span}`}>
         Notes
         <textarea name="notes" rows={3} defaultValue={defaults?.notes} />
-      </label>
-      <label className={`flex items-center gap-3 text-sm text-white/85 ${span}`}>
-        <input name="nonWedding" type="checkbox" defaultChecked={defaults?.nonWedding} />
-        Non-wedding event. Planning by email: no couple's page, passcode or planning reminders.
       </label>
       <label
         className={`flex items-center gap-3 text-sm text-white/85 ${span}`}
