@@ -27,6 +27,7 @@ import {
   useCloseSheet,
 } from './portal-chrome.tsx'
 import { usePortal } from './portal-state.tsx'
+import { pairNames } from '../../lib/crm/names.ts'
 
 export function OverviewScreen() {
   const { page, planning, locked } = usePortal()
@@ -55,7 +56,7 @@ export function OverviewScreen() {
       <p className="text-[13px] font-bold tracking-[0.16em] text-[var(--pink)] uppercase">
         {`${longDate(page.eventDate) ?? ''} · ${venue ?? ''}`}
       </p>
-      <h1 className="portal-display mt-3 text-[32px] leading-[1.02] break-words min-[1024px]:text-[64px]">{`Hi ${page.partnerOne ?? ''} & ${page.partnerTwo ?? ''}. Let's plan your night.`}</h1>
+      <h1 className="portal-display mt-3 text-[32px] leading-[1.02] break-words min-[1024px]:text-[64px]">{`Hi ${pairNames(page.partnerOne, page.partnerTwo, '&')}. Let's plan your night.`}</h1>
       <p className="mt-4 max-w-[600px] text-lg text-[var(--text-muted)]">
         One question at a time. Answer what you know, skip what you don't, and
         come back whenever.

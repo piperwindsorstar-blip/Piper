@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { entryName, momentKind, PARTY_OPTIONS } from '../../lib/crm/planning.ts'
 import type { Planning, TimelineRow } from '../../lib/crm/planning.ts'
 import { linkPlatform, songsOf } from '../../lib/portal/questions.ts'
+import { pairNames } from '../../lib/crm/names.ts'
 
 export function PlanSheet({
   partnerOne,
@@ -44,7 +45,7 @@ export function PlanSheet({
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <h1 className="plan-display text-[32px] leading-[1.05] min-[720px]:text-[40px]">
-              {`${partnerOne ?? ''} & ${partnerTwo ?? ''}`}
+              {`${pairNames(partnerOne, partnerTwo, '&')}`}
             </h1>
             <p className="mt-2 text-sm text-[#3a3a40]">
               {`${planDate(eventDate) ?? ''} · `}{`${venue || '—'} · `}

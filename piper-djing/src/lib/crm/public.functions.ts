@@ -21,6 +21,7 @@ import {
   getTerms,
   listPackageOffers,
 } from './store.server.ts'
+import { pairNames } from './names.ts'
 
 export const getPublicSite = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -178,9 +179,9 @@ export const sendInquiry = createServerFn({ method: 'POST' })
       : 'No'
     try {
       await emailOwner({
-        subject: `Inquiry from ${data.partnerOne.trim()} and ${data.partnerTwo.trim()}`,
+        subject: `Inquiry from ${pairNames(data.partnerOne, data.partnerTwo)}`,
         text: [
-          `${data.partnerOne.trim()} and ${data.partnerTwo.trim()}`,
+          `${pairNames(data.partnerOne, data.partnerTwo)}`,
           data.email.trim(),
           data.phone.trim(),
           `Wedding date: ${data.eventDate}`,

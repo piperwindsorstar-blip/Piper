@@ -411,7 +411,7 @@ export function dateIsTaken(
     if (row.status !== 'hold' && row.status !== 'booked') return false
     const active =
       row.status === 'booked' ||
-      (row.holdStartedOn != null && holdCovers(row.holdStartedOn, today))
+      (row.holdStartedOn != null && holdCovers(row.holdStartedOn, today, row.eventDate))
     if (!active) return false
     if (row.eventDate === day) return true
     if (row.stagDate === day && !row.stagReleased) return true

@@ -82,6 +82,7 @@ import { deskBotTarget, rsvpBotTarget } from './desk-rest.ts'
 import { loadMoneySummary } from '../crm/money-summary.server.ts'
 import { torontoToday } from '../piper/rules.ts'
 import type { DeskBotTarget, RsvpBotAction } from './desk-rest.ts'
+import { pairNames } from '../crm/names.ts'
 
 const DENIED = 'Send Authorization: Bearer and the token from the desk Bots page.'
 
@@ -166,7 +167,7 @@ export async function deskGlanceResponse(
       date: booking.eventDate,
       status: booking.status,
       kind: 'wedding',
-      couple: `${booking.partnerOne} and ${booking.partnerTwo}`,
+      couple: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
       venue: booking.venueName,
       packageId: booking.packageId,
     }))
@@ -183,7 +184,7 @@ export async function deskGlanceResponse(
       date: booking.stagDate as string,
       status: booking.status,
       kind: 'stag',
-      couple: `${booking.partnerOne} and ${booking.partnerTwo}`,
+      couple: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
       venue: booking.venueName,
       packageId: booking.packageId,
     }))
@@ -632,7 +633,7 @@ async function invoices(
       .map((booking) => ({
         id: booking.invoice?.id,
         bookingId: booking.id,
-        names: `${booking.partnerOne} and ${booking.partnerTwo}`,
+        names: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
         ...booking.invoice,
         ...travelFields(booking),
       }))
@@ -693,7 +694,7 @@ async function moneyResource(
   return botJson({
     money: {
       bookingId,
-      names: `${booking.partnerOne} and ${booking.partnerTwo}`,
+      names: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
       eventDate: booking.eventDate,
       status: booking.status,
       invoice: booking.invoice,
@@ -1191,7 +1192,7 @@ function botBooking(booking: BookingView) {
   return {
     ...travelFields(booking),
     ...booking,
-    couple: `${booking.partnerOne} and ${booking.partnerTwo}`,
+    couple: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
     weddingDate: booking.eventDate,
     venue: booking.venueName,
     streetAddress: booking.venueStreet,
