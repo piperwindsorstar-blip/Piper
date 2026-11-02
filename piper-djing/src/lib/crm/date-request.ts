@@ -9,6 +9,7 @@ export const HOME_EVENT_TYPES = [
   ...WEDDING_EVENT_TYPES,
   'Birthday party',
   'Christmas party',
+  'Corporate',
 ] as const
 
 export const CUSTOM_EVENT = 'Something else'

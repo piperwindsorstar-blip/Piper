@@ -13,6 +13,8 @@ describe('/book event types', () => {
     assert.equal(bookEventType('Birthday party'), 'Private')
     assert.equal(bookEventType('Christmas party'), 'Corporate')
     assert.equal(bookEventType('Corporate'), 'Corporate')
+    assert.equal(bookEventLabel('Corporate', 'Corporate'), 'Corporate')
+    assert.equal(bookEventType('Corporate'), 'Corporate')
     assert.equal(bookEventType('Club night'), 'Club night')
     assert.equal(bookEventType('Community & Charity'), 'Community & Charity')
     assert.equal(bookEventType('Retirement party'), 'Private')
