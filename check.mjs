@@ -1,22 +1,13 @@
 import { chromium } from 'playwright'
 const browser = await chromium.launch()
 const page = await browser.newPage()
-const errors = []
-page.on('pageerror', (e) => errors.push(e.message))
-const base = 'https://piperpweddingdj.services'
-for (const p of ['/', '/weddings', '/faq', '/wedding-vendors', '/book', '/rsvp']) {
-  const r = await page.goto(base + p + '?r=' + Date.now(), { waitUntil: 'networkidle' })
-  console.log(`::notice title=${p}::${r.status()}`)
-}
-for (const p of ['/desk', '/desk/security', '/desk/bookings']) {
-  const r = await page.request.get(base + p, { maxRedirects: 0 })
-  console.log(`::notice title=${p} signed out::${r.status()} ${r.headers().location ?? ''}`)
-}
-await page.goto(base + '/login', { waitUntil: 'networkidle' })
-await page.fill('input[type="password"]', 'definitely-not-it')
-await page.click('button[type="submit"]')
-await page.waitForTimeout(2500)
-const msg = await page.locator('[role="alert"]').innerText().catch(() => 'none')
-console.log(`::notice title=login wrong password::${msg}`)
-console.log(`::notice title=errors::${errors.join('|') || 'none'}`)
+await page.goto('https://piperpweddingdj.services/faq?r=' + Date.now(), { waitUntil: 'networkidle' })
+const r = await page.evaluate(() => {
+  const h = [...document.querySelectorAll('main h3')].find((x) => x.textContent.trim() === 'What is the deposit?')
+  const visible = h?.nextElementSibling?.textContent?.trim() ?? ''
+  const ld = [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => JSON.parse(s.textContent)).find((j) => j['@type'] === 'FAQPage')
+  const q = ld?.mainEntity.find((e) => e.name === 'What is the deposit?')
+  return { visible, same: visible === q?.acceptedAnswer?.text, count: ld?.mainEntity.length }
+})
+console.log(`::notice title=faq deposit::${JSON.stringify(r)}`)
 await browser.close()
