@@ -67,6 +67,7 @@ import {
   torontoToday,
 } from '../piper/rules.ts'
 import { pairNames } from './names.ts'
+import { missingNumbers } from './show-numbers.ts'
 
 /**
  * Table and column set-up only adds what is missing, so each step runs once per
@@ -127,6 +128,8 @@ export type BookingView = {
   distanceFeeCents: number
   /** Notes Piper adds to the invoice; the client sees them. */
   invoiceNote: string
+  /** The show number, such as 26-01; empty for a test sample. */
+  showNumber: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -216,6 +219,7 @@ type BookingRow = {
   business_name?: string | null
   distance_fee_cents?: unknown
   invoice_note?: string | null
+  show_number?: string | null
   balance_due?: string | null
   phone: string
   event_date: string
@@ -438,6 +442,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     businessName: (row.business_name ?? '').trim(),
     distanceFeeCents: Math.max(0, Number(row.distance_fee_cents ?? 0) || 0),
     invoiceNote: (row.invoice_note ?? '').trim(),
+    showNumber: flag(row.sample) ? '' : (row.show_number ?? '').trim(),
     phone: row.phone,
     eventDate: state.eventDate,
     stagDate: state.stagDate,
@@ -513,6 +518,8 @@ async function ensureCustomColumnsStep(): Promise<void> {
     ['distance_fee_cents', 'integer NOT NULL DEFAULT 0'],
     // Notes on the invoice, written by Piper and shown to the client.
     ['invoice_note', "text NOT NULL DEFAULT ''"],
+    // The show number, such as 26-01: event year and its running count.
+    ['show_number', "text NOT NULL DEFAULT ''"],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -984,8 +991,30 @@ async function ensureSavedWeddingsStep(): Promise<void> {
   }
 }
 
+/** Gives every booking without a show number (or one from another year) its number. */
+async function numberShows(): Promise<void> {
+  await ensureCustomColumns()
+  const rows = await query<{ id: number; event_date: string; sample: unknown; show_number: string | null }>(
+    'SELECT id, event_date, sample, show_number FROM bookings',
+  )
+  const next = missingNumbers(
+    rows.map((row) => ({
+      id: row.id,
+      eventDate: row.event_date,
+      sample: flag(row.sample),
+      showNumber: (row.show_number ?? '').trim(),
+    })),
+  )
+  for (const row of next) {
+    await query('UPDATE bookings SET show_number = $1 WHERE id = $2', [row.showNumber, row.id])
+  }
+}
+
+const numberShowsOnce = once(numberShows)
+
 export async function listBookings(): Promise<BookingView[]> {
   await ensureSavedWeddings()
+  await numberShowsOnce()
   const rows = await bookingRows()
   const invoices = await query<InvoiceRow>('SELECT * FROM invoices')
   const byBooking = new Map(invoices.map((row) => [row.booking_id, row]))
@@ -1267,6 +1296,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
   await saveEmailTwo(id, input.emailTwo)
+  if (!next.sample) await numberShows()
   // New bookings start as weddings, so only a non-wedding event needs a write.
   if (input.nonWedding) await saveNonWedding(id, true)
   if (input.nonWedding) await saveEventType(id, input.eventType)
@@ -2111,6 +2141,13 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     ],
   )
   await saveEmailTwo(current.id, patch.emailTwo)
+  // A new event year, or a sample made real, takes its next show number.
+  if (
+    !next.sample &&
+    (flag(current.sample) || next.eventDate.slice(0, 4) !== current.event_date.slice(0, 4) || !(current.show_number ?? '').trim())
+  ) {
+    await numberShows()
+  }
   if (patch.nonWedding !== undefined && patch.nonWedding !== flag(current.non_wedding)) {
     await saveNonWedding(current.id, patch.nonWedding)
   }
@@ -3974,6 +4011,7 @@ export async function invoiceBySlug(slugValue: string) {
     businessName: view.nonWedding ? view.businessName : '',
     distanceFeeCents: view.nonWedding ? view.distanceFeeCents : 0,
     invoiceNote: view.invoiceNote,
+    showNumber: view.showNumber,
     packageId: view.packageId,
     withStag: view.withStag,
     lockedTotal: view.lockedTotal,

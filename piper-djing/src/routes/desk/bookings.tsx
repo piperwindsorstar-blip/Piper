@@ -195,7 +195,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
           key: `b-${booking.id}`,
           date: booking.eventDate,
           couple: joinNames(booking.partnerOne, booking.partnerTwo),
-          detail: booking.packageName,
+          detail: [booking.showNumber, booking.packageName].filter(Boolean).join(' · '),
           venue: booking.venueName,
           mine: true,
           bookingId: booking.id,
@@ -757,6 +757,11 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               </span>
               {booking.sample ? (
                 <span className="rounded-md bg-rose-200 px-2 py-0.5 text-[11px] font-bold tracking-[0.1em] text-rose-900 uppercase">Test</span>
+              ) : null}
+              {booking.showNumber ? (
+                <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.1em]" data-show-number>
+                  {booking.showNumber}
+                </span>
               ) : null}
             </span>
             <h1 className="font-display text-[36px] leading-[1.02] font-extrabold tracking-[-0.02em] md:text-[52px]">
@@ -2033,6 +2038,7 @@ function BookingCard({
     balanceDueOn?: string
     businessName?: string
     distanceFeeCents?: number
+    showNumber?: string
     travel: {
       km: number | null
       feeCents: number | null
@@ -2152,7 +2158,7 @@ function BookingCard({
             ) : null}
           </div>
           <p className="text-sm text-white/65">
-            {`${longDate(booking.eventDate) ?? ''} · ${booking.packageName ?? ''}`}
+            {[booking.showNumber, longDate(booking.eventDate), booking.packageName].filter(Boolean).join(' · ')}
             {booking.stagDate ? ` · stag ${longDate(booking.stagDate)}` : ''}
             {booking.stagReleased ? ' · stag released' : ''}
           </p>
