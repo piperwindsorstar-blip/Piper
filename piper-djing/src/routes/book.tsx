@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { ActionButton } from '../components/action-button.tsx'
 import type { RunResult } from '../components/action-button.tsx'
@@ -20,6 +20,8 @@ import { todayInToronto } from '../lib/crm/date-request.ts'
 import { stagAllowed } from '../lib/crm/inquiry-checks.ts'
 import { WEDDING_OG_IMAGE, publicHead } from '../lib/seo.ts'
 import type { PackageId } from '../lib/crm/defaults.ts'
+import { BOOK_EVENT_TYPES, bookEventLabel, bookEventType } from '../lib/crm/book-events.ts'
+import type { BookEventType } from '../lib/crm/book-events.ts'
 
 const FONTS =
   'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap'
@@ -83,14 +85,6 @@ const PACKAGE_FOR_EVENT: Record<string, string> = {
   'Ceremony only': 'ceremony',
 }
 
-const WEDDING_INQUIRY = new Set([
-  '',
-  'Wedding',
-  'Stag and doe',
-  'Ceremony only',
-  'Anniversary',
-])
-
 function BookPage() {
   const { packages } = Route.useLoaderData()
   const { date: requestedDate = '', event: requestedEvent = '' } =
@@ -108,7 +102,13 @@ function BookPage() {
   })
   const send = useServerFn(sendInquiry)
   const sendEvent = useServerFn(sendEventInquiry)
-  const general = !WEDDING_INQUIRY.has(requestedEvent)
+  const navigate = useNavigate()
+  // Wedding unless the date checker (or the picker below) says otherwise.
+  const [eventType, setEventType] = useState<BookEventType>(() => bookEventType(requestedEvent))
+  useEffect(() => {
+    setEventType(bookEventType(requestedEvent))
+  }, [requestedEvent])
+  const general = eventType !== 'Wedding'
   const today = todayInToronto()
   const dateIsAhead = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= today
   const datePassed = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate < today
@@ -135,7 +135,10 @@ function BookPage() {
         email: String(form.get('email') ?? ''),
         phone: String(form.get('phone') ?? ''),
         eventDate: String(form.get('eventDate') ?? ''),
-        event: requestedEvent,
+        event: bookEventLabel(eventType, requestedEvent),
+        venueName: String(form.get('venueName') ?? ''),
+        venueStreet: String(form.get('venueStreet') ?? ''),
+        referral: String(form.get('referral') ?? ''),
         message: String(form.get('message') ?? ''),
       },
     })
@@ -224,6 +227,39 @@ function BookPage() {
               Tell Piper the date. The reply comes by email.
             </p>
           )}
+          {done ? null : (
+            <fieldset className="mt-8">
+              <legend className="text-sm font-medium">What is the event?</legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {BOOK_EVENT_TYPES.map((type) => (
+                  <label
+                    key={type}
+                    className={`inline-flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-sm font-semibold transition has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neon ${
+                      eventType === type ? 'border-ink bg-ink text-white' : 'border-line bg-paper text-ink hover:border-neon'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="bookEventType"
+                      value={type}
+                      checked={eventType === type}
+                      onChange={() => {
+                        setEventType(type)
+                        setMessage(null)
+                        void navigate({
+                          to: '/book',
+                          search: (prev) => ({ ...prev, event: type === 'Wedding' ? undefined : type }),
+                          replace: true,
+                        })
+                      }}
+                      className="sr-only"
+                    />
+                    {type}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           {done ? (
             <p className="mt-10 font-display text-3xl font-bold tracking-tight">
               {message}
@@ -237,39 +273,21 @@ function BookPage() {
                 void sendTheEvent(new FormData(event.currentTarget))
               }}
             >
-              <p className="font-display text-2xl font-bold">
-                {requestedEvent}
-              </p>
+              <p className="font-display text-2xl font-bold">{eventType}</p>
               <label className="text-sm font-medium">
-                Your name
-                <input
-                  name="name"
-                  required
-                  autoComplete="name"
-                  className={field}
-                />
+                Contact name
+                <input name="name" required autoComplete="name" className={field} />
               </label>
               <label className="text-sm font-medium">
                 Email
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  className={field}
-                />
+                <input name="email" type="email" required autoComplete="email" className={field} />
               </label>
               <label className="text-sm font-medium">
                 Phone
-                <input
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  className={field}
-                />
+                <input name="phone" type="tel" autoComplete="tel" className={field} />
               </label>
               <label className="text-sm font-medium">
-                Date
+                Event date
                 <input
                   key={requestedDate}
                   name="eventDate"
@@ -281,9 +299,35 @@ function BookPage() {
                 />
               </label>
               <label className="text-sm font-medium">
-                Note
-                <textarea name="message" rows={4} className={field} />
+                Venue name
+                <span className="block text-xs font-normal text-soft">
+                  Not booked yet? Leave the venue blank.
+                </span>
+                <input name="venueName" className={field} />
               </label>
+              <label className="text-sm font-medium">
+                Venue street address
+                <input name="venueStreet" autoComplete="street-address" className={field} />
+              </label>
+              <label className="text-sm font-medium">
+                Did someone refer you? If so, who? — optional
+                <input name="referral" className={field} />
+              </label>
+              <label className="text-sm font-medium">
+                Note
+                <textarea
+                  name="message"
+                  rows={4}
+                  className={field}
+                  placeholder="Tell Piper about the event: the guests, the timing and the music you have in mind."
+                />
+              </label>
+              <p
+                aria-label="Custom quote"
+                className="rounded-xl border border-line bg-mist px-4 py-3 font-semibold"
+              >
+                Custom quote — Piper replies personally within one business day.
+              </p>
               {message ? (
                 <p className="text-sm text-danger">{message}</p>
               ) : null}
@@ -302,7 +346,7 @@ function BookPage() {
                   return sendTheEvent(new FormData(form))
                 }}
               >
-                Send the inquiry
+                Request a custom quote
               </ActionButton>
             </form>
           ) : (

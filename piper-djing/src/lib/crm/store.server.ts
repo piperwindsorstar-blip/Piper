@@ -1402,6 +1402,9 @@ export async function createEventInquiry(input: {
   phone: string
   eventDate: string
   event: string
+  venueName?: string
+  venueStreet?: string
+  referral?: string
   message: string
 }): Promise<{ ok: true; unavailable: boolean } | { ok: false; error: string }> {
   try {
@@ -1417,9 +1420,21 @@ export async function createEventInquiry(input: {
     const unavailable = await dateTakenByOthers(eventDate, null)
     await ensureLeadColumns()
     await query(
-      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message)
-       VALUES ($1,$2,$3,$4,$5,$6,0,NULL,$7)`,
-      [name, '', email, optional(input.phone, 40), eventDate, event, message],
+      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message,
+         venue_name, venue_street, referral)
+       VALUES ($1,$2,$3,$4,$5,$6,0,NULL,$7,$8,$9,$10)`,
+      [
+        name,
+        '',
+        email,
+        optional(input.phone, 40),
+        eventDate,
+        event,
+        message,
+        optional(input.venueName ?? '', 120),
+        optional(input.venueStreet ?? '', 200),
+        optional(input.referral ?? '', 200),
+      ],
     )
     return { ok: true, unavailable }
   } catch (error) {
