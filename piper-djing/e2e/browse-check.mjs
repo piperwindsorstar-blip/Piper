@@ -713,6 +713,29 @@ await step('A custom-quote inquiry reaches Piper as a lead, with no booking or p
   return `lead: ${lead.slice(0, 120)}; owner emails ${mails}`
 })
 
+await step('Desk: booking the non-wedding lead makes a one-name Custom event with no portal', async () => {
+  await page.goto(BASE + '/desk/leads', { waitUntil: 'networkidle' })
+  await page.locator('article', { hasText: 'Dana Quinn' }).first().getByRole('link', { name: /Make it a booking/ }).click()
+  const form = page.locator('form', { has: page.getByRole('button', { name: 'Save as open' }) })
+  await form.waitFor({ timeout: 15000 })
+  const flagged = await form.locator('input[name="nonWedding"]').isChecked()
+  const pkg = await form.locator('[name="packageId"]').first().inputValue().catch(() => '')
+  const custom = form.locator('input[name="customTotal"]')
+  if (await custom.count()) await custom.fill('900')
+  await form.locator('input[name="venueName"]').fill('Best Western Brant Park')
+  await form.getByRole('button', { name: 'Save as open' }).click()
+  await page.waitForTimeout(2500)
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  const row = (await page.locator('main a[href*="couple="]', { hasText: 'Dana Quinn' }).first().innerText()).replace(/\s+/g, ' ')
+  await page.goto(BASE + '/desk/portals', { waitUntil: 'networkidle' })
+  const inPortals = await page.locator('main').getByText('Dana Quinn').count()
+  expect(flagged, 'Non-wedding box not ticked')
+  expect(pkg === 'custom', `Package ${pkg}`)
+  expect(!/Dana Quinn &/.test(row), `Row reads: ${row.slice(0, 80)}`)
+  expect(inPortals === 0, 'The event shows on Portals')
+  return `package ${pkg}, row "${row.slice(0, 60)}"`
+})
+
 await step('/book past date note', async () => {
   await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'networkidle' })
   await pub.getByText('That date has passed, please pick another.').waitFor({ timeout: 8000 })
