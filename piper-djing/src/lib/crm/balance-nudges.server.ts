@@ -45,7 +45,8 @@ function asCouple(booking: BookingView) {
     status: booking.status,
     sample: booking.sample,
     email: booking.email,
-    eventDate: booking.eventDate,
+    // A non-wedding event with a balance due date is reminded against that date.
+    eventDate: (booking.nonWedding && booking.balanceDueOn) || booking.eventDate,
     invoice: booking.invoice
       ? { status: booking.invoice.status, balanceCents: booking.invoice.balanceCents }
       : null,
@@ -91,7 +92,7 @@ export async function deliverBalanceNudges(
       const letter = balanceLetter({
         partnerOne: booking.partnerOne,
         partnerTwo: booking.partnerTwo,
-        eventDate: booking.eventDate,
+        eventDate: (booking.nonWedding && booking.balanceDueOn) || booking.eventDate,
         due,
         invoiceLink: publicUrl(`/p/${booking.invoice.slug}`),
         card: card.enabled,

@@ -108,6 +108,9 @@ function InvoicePage() {
               value={longDate(invoice.depositDue)}
             />
           ) : null}
+          {invoice.balanceDue ? (
+            <Row label="Balance due" value={longDate(invoice.balanceDue)} />
+          ) : null}
           <Row label="Paid so far" value={cad(invoice.receivedCents)} />
           <Row label="Remaining" value={cad(invoice.balanceCents)} />
           {invoice.cardHstCents > 0 ? (

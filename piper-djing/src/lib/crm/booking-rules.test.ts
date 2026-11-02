@@ -258,3 +258,27 @@ describe('the public date check', () => {
     )
   })
 })
+
+describe('non-wedding events', () => {
+  const base = {
+    partnerOne: 'Dana Quinn',
+    partnerTwo: '',
+    eventDate: '2026-12-18',
+    stagDate: null,
+    packageId: 'custom' as const,
+    withStag: false,
+    uplights: 0,
+    venueKm: [],
+    venueName: '',
+    venueStreet: '',
+    sample: false,
+  }
+  it('take the stag and doe deposit: a flat $350', () => {
+    const figures = figuresFor({ ...base, customTotalCents: 90000, nonWedding: true })
+    assert.equal(figures.totalCents, 90000)
+    assert.equal(figures.depositCents, 35000)
+  })
+  it('a price under $350 is the whole deposit', () => {
+    assert.equal(figuresFor({ ...base, customTotalCents: 25000, nonWedding: true }).depositCents, 25000)
+  })
+})

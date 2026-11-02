@@ -8,6 +8,10 @@ import { STREET_TRAVEL_COPY, TRAVEL_COPY } from './travel-copy.ts'
  * that still has an older sentence is brought forward.
  */
 const DEPOSIT_PARAGRAPH =
+  'A wedding or a reception on its own is deposited at 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. Ceremony only, The Aisle, is $350 paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500. A Custom event is deposited at 30% of the agreed price unless Piper sets another deposit. A non-wedding event takes the same terms as the Pre-Party: a flat $350 deposit, or the full price if it is less.'
+
+/** The deposit paragraph before non-wedding events took the Pre-Party terms (Nov 2026). */
+const PREVIOUS_DEPOSIT_CUSTOM =
   'A wedding or a reception on its own is deposited at 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. Ceremony only, The Aisle, is $350 paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500. A Custom event is deposited at 30% of the agreed price unless Piper sets another deposit.'
 
 /** The four packages and the rules around them, as /weddings states them. */
@@ -112,6 +116,11 @@ export function reviseTerms(body: string): string {
     next = next
       .replace(PREVIOUS_DEPOSIT, DEPOSIT_PARAGRAPH)
       .replace(PREVIOUS_TRAVEL, TRAVEL_PARAGRAPH)
+  }
+  // Each older deposit paragraph is a prefix of the next, so the newest older
+  // one moves first, and only while the current paragraph is missing.
+  if (!next.includes(DEPOSIT_PARAGRAPH) && next.includes(PREVIOUS_DEPOSIT_CUSTOM)) {
+    next = next.replace(PREVIOUS_DEPOSIT_CUSTOM, DEPOSIT_PARAGRAPH)
   }
   // The older deposit paragraph is a prefix of the current one, so only move it
   // when the current sentence is missing.

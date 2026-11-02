@@ -726,6 +726,8 @@ await step('Desk: booking the non-wedding lead makes a one-name Custom event wit
   const extras = (await visible('partnerTwo')) + (await visible('phone')) + (await visible('uplights')) + (await visible('emailTwo'))
   const labels = (await form.innerText()).replace(/\s+/g, ' ')
   await form.locator('input[name="customTotal"]').fill('900')
+  await form.locator('input[name="depositDueOn"]').fill('2026-11-20')
+  await form.locator('input[name="balanceDueOn"]').fill('2026-12-11')
   await form.locator('input[name="venueName"]').fill('Best Western Brant Park')
   await form.getByRole('button', { name: 'Save as open' }).click()
   await page.waitForTimeout(2500)
@@ -758,6 +760,9 @@ await step('Non-wedding invoice: one name, the event type, no wedding words or c
   const h1 = (await pub.locator('h1').first().innerText()).trim()
   expect(h1 === 'Dana Quinn', `Heading: ${h1}`)
   expect(/Event · Corporate/.test(text), 'Event type missing')
+  expect(/Deposit \$350\.00/.test(text), `Deposit amount: ${text.slice(0, 400)}`)
+  expect(/Deposit due 20 November 2026/.test(text), 'Deposit due date missing')
+  expect(/Balance due 11 December 2026/.test(text), 'Balance due date missing')
   const words = text.replace(/PiperPWeddingDJ@gmail\.com/gi, '')
   expect(!/wedding|couple|Ceremony only|Your page/i.test(words), `Wedding words: ${words.slice(0, 300)}`)
   return h1

@@ -35,6 +35,8 @@ export type WeddingInput = {
   /** A Custom booking carries the owner's agreed total and deposit. */
   customTotalCents?: number
   customDepositCents?: number
+  /** A non-wedding event: deposited like the Pre-Party (a flat $350). */
+  nonWedding?: boolean
   /** A locked booking keeps its agreed total and is never repriced. */
   lockedTotal?: boolean
   /** Automatic or manual travel; null = distance unknown; undefined = typed km. */
@@ -159,8 +161,10 @@ export function figuresFor(
     if (discountCents > totalCents) {
       throw new Error('That discount is larger than the total.')
     }
-    const depositCents =
-      input.customDepositCents != null
+    // A non-wedding event takes the stag and doe terms: a flat deposit.
+    const depositCents = input.nonWedding
+      ? Math.min(STAG_DEPOSIT_CENTS, totalCents - discountCents)
+      : input.customDepositCents != null
         ? Math.max(0, input.customDepositCents)
         : deposit30(totalCents)
     return {

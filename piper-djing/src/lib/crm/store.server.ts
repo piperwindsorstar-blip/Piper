@@ -111,6 +111,9 @@ export type BookingView = {
   nonWedding: boolean
   /** For a non-wedding event, its type (Private, Corporate…); empty otherwise. */
   eventType: string
+  /** A non-wedding event's dates the client is told; empty when not set. */
+  depositDueOn: string
+  balanceDueOn: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -196,6 +199,8 @@ type BookingRow = {
   /** 1 for a non-wedding event: email-only planning, no couple's page. */
   non_wedding?: unknown
   event_type?: string | null
+  deposit_due?: string | null
+  balance_due?: string | null
   phone: string
   event_date: string
   stag_date: string | null
@@ -409,6 +414,8 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     emailTwo: (row.email_two ?? '').trim(),
     nonWedding: flag(row.non_wedding),
     eventType: (row.event_type ?? '').trim(),
+    depositDueOn: (row.deposit_due ?? '').trim(),
+    balanceDueOn: (row.balance_due ?? '').trim(),
     phone: row.phone,
     eventDate: state.eventDate,
     stagDate: state.stagDate,
@@ -475,6 +482,9 @@ async function ensureCustomColumnsStep(): Promise<void> {
     ['non_wedding', 'integer NOT NULL DEFAULT 0'],
     // A non-wedding event's type: Private, Corporate, Community & Charity, Club night.
     ['event_type', "text NOT NULL DEFAULT ''"],
+    // A non-wedding event's deposit and balance due dates (YYYY-MM-DD or '').
+    ['deposit_due', "text NOT NULL DEFAULT ''"],
+    ['balance_due', "text NOT NULL DEFAULT ''"],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -671,6 +681,8 @@ export type BookingInput = {
   emailTwo?: string
   nonWedding?: boolean
   eventType?: string
+  depositDueOn?: string
+  balanceDueOn?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -749,6 +761,7 @@ function normalize(input: BookingInput) {
     customTotalCents: wholeOrZero(input.customTotalCents),
     customDepositCents: wholeOrZero(input.customDepositCents),
     lockedTotal: input.lockedTotal ?? false,
+    nonWedding: input.nonWedding ?? false,
   }
 }
 
@@ -1211,6 +1224,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   // New bookings start as weddings, so only a non-wedding event needs a write.
   if (input.nonWedding) await saveNonWedding(id, true)
   if (input.nonWedding) await saveEventType(id, input.eventType)
+  if (input.nonWedding) await saveDueDates(id, input.depositDueOn, input.balanceDueOn)
   try {
     return await refreshTravel(id)
   } catch (error) {
@@ -1247,6 +1261,27 @@ async function saveEventType(id: number, value: string | undefined): Promise<voi
   if (value === undefined) return
   await ensureCustomColumns()
   await query('UPDATE bookings SET event_type = $1 WHERE id = $2', [value.trim().slice(0, 60), id])
+}
+
+function dueDate(value: string | undefined, what: string): string | undefined {
+  if (value === undefined) return undefined
+  const clean = value.trim()
+  if (clean && !/^\d{4}-\d{2}-\d{2}$/.test(clean)) throw new Error(`Choose the ${what} date.`)
+  return clean
+}
+
+/** A non-wedding event's due dates. Undefined leaves each as it is; blank clears it. */
+async function saveDueDates(
+  id: number,
+  depositDueOn: string | undefined,
+  balanceDueOn: string | undefined,
+): Promise<void> {
+  const deposit = dueDate(depositDueOn, 'deposit due')
+  const balance = dueDate(balanceDueOn, 'balance due')
+  if (deposit === undefined && balance === undefined) return
+  await ensureCustomColumns()
+  if (deposit !== undefined) await query('UPDATE bookings SET deposit_due = $1 WHERE id = $2', [deposit, id])
+  if (balance !== undefined) await query('UPDATE bookings SET balance_due = $1 WHERE id = $2', [balance, id])
 }
 
 // --- travel ------------------------------------------------------------------
@@ -1845,6 +1880,8 @@ export type BookingPatch = {
   emailTwo?: string
   nonWedding?: boolean
   eventType?: string
+  depositDueOn?: string
+  balanceDueOn?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -1912,6 +1949,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
           stagDate: next.stagDate,
           packageId: next.packageId,
           withStag: next.withStag,
+          nonWedding: next.nonWedding,
           uplights: next.uplights,
           venueKm: next.venueKm,
           venueName: next.venueName,
@@ -1968,6 +2006,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   if (patch.eventType !== undefined && patch.eventType !== (current.event_type ?? '').trim()) {
     await saveEventType(current.id, patch.eventType)
   }
+  if (next.nonWedding) await saveDueDates(current.id, patch.depositDueOn, patch.balanceDueOn)
   const invoiceRow = await invoiceFor(current.id)
   if (invoiceRow && invoiceRow.status !== 'void') {
     const invoice = toInvoice(invoiceRow)
@@ -3807,6 +3846,7 @@ export async function invoiceBySlug(slugValue: string) {
     cardFeeCents: Math.max(0, Number(hst.at(0)?.fees ?? 0) || 0),
     nonWedding: view.nonWedding,
     eventType: view.eventType,
+    balanceDue: view.nonWedding ? view.balanceDueOn : '',
     partnerOne: view.partnerOne,
     partnerTwo: view.partnerTwo,
     eventDate: view.eventDate,
@@ -3816,7 +3856,7 @@ export async function invoiceBySlug(slugValue: string) {
     venueName: view.venueName,
     venueTwoName: view.venueTwoName,
     uplights: view.uplights,
-    depositDue: view.holdLastDay,
+    depositDue: (view.nonWedding && view.depositDueOn) || view.holdLastDay,
     status: view.invoice?.status ?? 'draft',
     totalCents: view.invoice?.totalCents ?? 0,
     depositCents: view.invoice?.depositCents ?? 0,

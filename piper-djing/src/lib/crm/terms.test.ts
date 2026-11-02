@@ -128,3 +128,15 @@ describe('terms', () => {
     assert.equal(reviseTerms(TERMS_BODY), TERMS_BODY)
   })
 })
+
+describe('non-wedding deposit sentence', () => {
+  it('older terms gain it once', () => {
+    const custom = 'A Custom event is deposited at 30% of the agreed price unless Piper sets another deposit.'
+    const sentence = 'A non-wedding event takes the same terms as the Pre-Party: a flat $350 deposit, or the full price if it is less.'
+    const older = TERMS_BODY.replace(` ${sentence}`, '')
+    assert.ok(older.includes(custom) && !older.includes(sentence))
+    const revised = reviseTerms(older)
+    assert.equal(revised, TERMS_BODY)
+    assert.equal(revised.split(sentence).length, 2)
+  })
+})

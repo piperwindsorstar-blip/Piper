@@ -158,6 +158,8 @@ function toLetter(booking: BookingView): LetterBooking {
     partnerTwo: booking.partnerTwo,
     nonWedding: booking.nonWedding,
     eventType: booking.eventType,
+    depositDueOn: booking.depositDueOn,
+    balanceDueOn: booking.balanceDueOn,
     eventDate: booking.eventDate,
     stagDate: booking.stagDate,
     packageName: booking.packageName,
