@@ -1,26 +1,33 @@
 import { chromium } from 'playwright'
 const browser = await chromium.launch()
 const page = await browser.newPage()
-const errors = []
-page.on('pageerror', (e) => errors.push(e.message))
 const base = 'https://piperpweddingdj.services'
-await page.goto(base + '/book?r=' + Date.now(), { waitUntil: 'networkidle' })
-const wedding = await page.evaluate(() => ({
-  checked: document.querySelector('input[name="bookEventType"]:checked')?.value,
-  est: document.querySelector('[aria-label="Price estimate"]')?.innerText.replace(/\s+/g, ' ').slice(0, 60),
+const say = (title, value) => console.log(`::notice title=${title}::${String(value).replace(/\s+/g, ' ').slice(0, 900)}`)
+async function sentences(path, re) {
+  await page.goto(base + path + '?r=' + Date.now(), { waitUntil: 'networkidle' })
+  const text = await page.evaluate(() => document.body.innerText)
+  return text.split(/(?<=[.!?])\s+/).filter((s) => re.test(s)).join(' | ')
+}
+say('terms', await sentences('/terms', /HST|card|venue|non-wedding/i))
+say('weddings copy', await sentences('/weddings', /HST|card fee|uplight|venue|quoted/i))
+const wlogo = await page.evaluate(() => [...document.querySelectorAll('header img')].map((i) => i.getAttribute('src')).join(','))
+const wreviews = await page.evaluate(() => ({ carousel: !!document.querySelector('[aria-roledescription="carousel"]'), cards: document.querySelectorAll('[aria-roledescription="slide"]').length, google: [...document.querySelectorAll('a')].filter((a) => /Read on Google/i.test(a.innerText)).length }))
+say('weddings logo+reviews', `${wlogo} ${JSON.stringify(wreviews)}`)
+say('book copy', await sentences('/book', /HST|card|uplight|venue/i))
+const book = await page.evaluate(() => ({
+  logo: [...document.querySelectorAll('header img')].map((i) => i.getAttribute('src')).join(','),
+  og: document.querySelector('meta[property="og:image"]')?.getAttribute('content'),
+  ogw: document.querySelector('meta[property="og:image:width"]')?.getAttribute('content'),
+  stagBox: !!document.querySelector('input[name="withStag"]'),
 }))
-console.log(`::notice title=book wedding::${JSON.stringify(wedding)}`)
-await page.locator('label', { hasText: 'Corporate' }).filter({ has: page.locator('input[name="bookEventType"]') }).click()
-await page.waitForTimeout(800)
-const corp = await page.evaluate(() => ({
-  quote: document.body.innerText.includes('Custom quote — Piper replies personally within one business day.'),
-  button: [...document.querySelectorAll('button')].some((b) => b.innerText.includes('Request a custom quote')),
-  estimate: !!document.querySelector('[aria-label="Price estimate"]'),
-  packages: !!document.querySelector('[name="packageId"]'),
-  url: location.search,
-}))
-console.log(`::notice title=book corporate::${JSON.stringify(corp)}`)
-await page.goto(base + '/book?event=Christmas%20party&r=' + Date.now(), { waitUntil: 'networkidle' })
-const xmas = await page.evaluate(() => document.querySelector('input[name="bookEventType"]:checked')?.value)
-console.log(`::notice title=christmas party link::${xmas} errors=${errors.join('|') || 'none'}`)
+say('book head', JSON.stringify(book))
+const stag = page.locator('input[name="withStag"]')
+if (await stag.count()) {
+  await stag.check()
+  await page.waitForTimeout(300)
+  say('book stag date field', await page.locator('input[name="stagDate"]').count())
+}
+await page.goto(base + '/?r=' + Date.now(), { waitUntil: 'networkidle' })
+const home = await page.evaluate(() => ({ carousel: !!document.querySelector('[aria-roledescription="carousel"]'), cards: document.querySelectorAll('[aria-roledescription="slide"]').length, google: [...document.querySelectorAll('a')].filter((a) => /Read on Google/i.test(a.innerText)).length }))
+say('home reviews', JSON.stringify(home))
 await browser.close()
