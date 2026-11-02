@@ -4,7 +4,7 @@ import { BALANCE_LABEL, balanceBlock, balanceDue, balanceLetter } from './balanc
 import type { BalanceDue, BalanceRow, BalanceStep } from './balance-nudges.ts'
 import { coupleAddresses, deliverToEach } from './mail.server.ts'
 import { publicUrl } from './safe-origin.ts'
-import { cardStatus } from './stripe.server.ts'
+import { cardStatus, invoiceHstOn } from './stripe.server.ts'
 import { listBookings, readSiteSetting, writeSiteSetting } from './store.server.ts'
 import type { BookingView } from './store.server.ts'
 
@@ -70,6 +70,7 @@ export async function deliverBalanceNudges(
 ): Promise<{ sent: number; failed: number; noEmail: number; off: boolean }> {
   if (!(await balanceRemindersOn())) return { sent: 0, failed: 0, noEmail: 0, off: true }
   await ensure()
+  const cardHst = await invoiceHstOn()
   const [bookings, card] = await Promise.all([
     listBookings(),
     cardStatus().catch(() => ({ enabled: false })),
@@ -94,6 +95,8 @@ export async function deliverBalanceNudges(
         due,
         invoiceLink: publicUrl(`/p/${booking.invoice.slug}`),
         card: card.enabled,
+        cardHst,
+        nonWedding: booking.nonWedding,
       })
       const to = coupleAddresses(booking)
       const result = await deliverToEach(to, letter)
@@ -149,7 +152,9 @@ export async function balanceNudgeOverview(
       const last = latest.get(booking.id)
       return {
         id: booking.id,
-        couple: `${booking.partnerOne} & ${booking.partnerTwo}`,
+        couple: booking.nonWedding || !booking.partnerTwo.trim()
+          ? booking.partnerOne
+          : `${booking.partnerOne} & ${booking.partnerTwo}`,
         eventDate: booking.eventDate,
         balanceCents: booking.invoice?.balanceCents ?? 0,
         email: booking.email.trim(),

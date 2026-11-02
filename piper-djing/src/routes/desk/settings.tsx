@@ -11,6 +11,7 @@ import {
 import {
   getSettings,
   saveCardPayments,
+  saveInvoiceHst,
   saveSettings,
 } from '../../lib/crm/desk.functions.ts'
 import { downloadBackup, getBackupStatus } from '../../lib/backup.functions.ts'
@@ -81,6 +82,7 @@ function SettingsPage() {
         {notice ? <p className="text-sm text-white/85">{notice}</p> : null}
       </form>
       <CardPaymentsSetting card={settings.card} />
+      <InvoiceHstSetting on={settings.invoiceHst} />
       <section className={deskCard}>
         <p className="text-sm leading-relaxed text-white/85">
           {`${DESK_TRAVEL_COPY ?? ''} There is no flat travel fee to type in.`}</p>
@@ -159,6 +161,36 @@ function BackupCard({ owner }: { owner: string }) {
   )
 }
 
+function InvoiceHstSetting({ on }: { on: boolean }) {
+  const save = useServerFn(saveInvoiceHst)
+  const router = useRouter()
+  return (
+    <section className={deskCard} aria-labelledby="invoice-hst">
+      <h2 id="invoice-hst" className="font-display text-xl font-bold">
+        HST on invoices
+      </h2>
+      <p className="mt-3 text-sm leading-relaxed text-white/85" data-invoice-hst={on ? 'on' : 'off'}>
+        {on
+          ? 'On. Card payments toward the balance add 13% HST, never on the deposit. E-transfer and cash have none.'
+          : 'Off. No HST on any invoice payment.'}
+      </p>
+      <ActionButton
+        className={`${on ? deskGhost : deskPrimary} mt-4 w-fit`}
+        busy={on ? 'Turning off…' : 'Turning on…'}
+        done={on ? 'Off' : 'On'}
+        surface={deskSurface}
+        onRun={async (): Promise<RunResult> => {
+          await save({ data: { on: !on } })
+          await router.invalidate()
+          return { ok: true, message: on ? 'HST is off.' : 'HST is on.' }
+        }}
+      >
+        {on ? 'Turn off HST' : 'Turn on HST'}
+      </ActionButton>
+    </section>
+  )
+}
+
 function CardPaymentsSetting({
   card,
 }: {
@@ -176,7 +208,7 @@ function CardPaymentsSetting({
         {!card.configured
           ? 'Off. Stripe is not set up: add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET to the piper-djing Worker in Cloudflare, then turn this on. Couples see no card button until then.'
           : card.enabled
-            ? `On. Invoices show a "Pay by card" button through Stripe Checkout${card.live ? '' : ' in TEST mode (no real money)'}. Card adds 13% HST on each card payment toward the balance, never on the deposit.`
+            ? `On. Invoices show a "Pay by card" button through Stripe Checkout${card.live ? '' : ' in TEST mode (no real money)'}. Card adds a 3% card fee on every card payment.`
             : `Off. Stripe is set up${card.live ? '' : ' with test keys'}; couples see e-transfer and cash only.`}
       </p>
       <ActionButton

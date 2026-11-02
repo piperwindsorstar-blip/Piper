@@ -747,6 +747,28 @@ await step('Desk: booking the non-wedding lead makes a one-name Custom event wit
   return `package ${pkg}, row "${row.slice(0, 60)}"`
 })
 
+await step('Non-wedding invoice: one name, the event type, no wedding words or couple page', async () => {
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  await page.locator('main a[href*="couple="]', { hasText: 'Dana Quinn' }).first().click()
+  const link = page.getByRole('link', { name: 'Invoice page' }).first()
+  await link.waitFor({ timeout: 15000 })
+  const href = await link.getAttribute('href')
+  await pub.goto(new URL(href, BASE).href, { waitUntil: 'networkidle' })
+  const text = (await pub.locator('main').innerText()).replace(/\s+/g, ' ')
+  const h1 = (await pub.locator('h1').first().innerText()).trim()
+  expect(h1 === 'Dana Quinn', `Heading: ${h1}`)
+  expect(/Event · Corporate/.test(text), 'Event type missing')
+  expect(!/wedding|couple|Ceremony only|Your page/i.test(text), `Wedding words: ${text.slice(0, 300)}`)
+  return h1
+})
+
+await step('Desk Settings: HST on invoices starts off', async () => {
+  await page.goto(BASE + '/desk/settings', { waitUntil: 'networkidle' })
+  const state = await page.locator('[data-invoice-hst]').getAttribute('data-invoice-hst')
+  expect(state === 'off', `HST is ${state}`)
+  return state
+})
+
 await step('/book past date note', async () => {
   await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'networkidle' })
   await pub.getByText('That date has passed, please pick another.').waitFor({ timeout: 8000 })

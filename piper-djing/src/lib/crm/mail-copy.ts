@@ -33,6 +33,8 @@ export type LetterBooking = {
   passcode?: string
   /** A non-wedding event: no couple's page, passcode or planning form. */
   nonWedding?: boolean
+  /** A non-wedding event's type, such as Corporate. */
+  eventType?: string
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -92,7 +94,9 @@ export function bookingLetter(
     greeting(booking),
     '',
     sampleLine(booking),
-    `Package: ${booking.packageName}${booking.withStag ? ', with a stag and doe' : ''}`,
+    booking.nonWedding
+      ? eventOrPackage(booking)
+      : `Package: ${booking.packageName}${booking.withStag ? ', with a stag and doe' : ''}`,
     `Date: ${longDate(booking.eventDate)}`,
     stagLine(booking),
     `Status: ${label(booking.status)}`,
@@ -136,7 +140,7 @@ export function invoiceLetter(
       ? 'This invoice is void. The balance is zero.'
       : '',
     `Date: ${longDate(booking.eventDate)}`,
-    `Package: ${booking.packageName}`,
+    eventOrPackage(booking),
     '',
     moneyBlock(
       invoice.totalCents,
@@ -163,6 +167,8 @@ export type LetterPayment = {
   cents: number
   /** Card HST paid on top of this payment; 0 for e-transfer and cash. */
   hstCents: number
+  /** The card fee paid on top of this payment; 0 for e-transfer and cash. */
+  feeCents?: number
   paidOn: string
   method: string
 }
@@ -177,8 +183,13 @@ function paymentLine(payment: LetterPayment): string {
   const when = payment.paidOn ? `${longDate(payment.paidOn)}: ` : ''
   const how = METHOD_LABEL[payment.method] ? ` by ${METHOD_LABEL[payment.method]}` : ''
   if (payment.cents < 0) return `${when}${cad(-payment.cents)} refunded`
-  if (payment.hstCents > 0) {
-    return `${when}${cad(payment.cents)}${how} + ${cad(payment.hstCents)} HST (13% on this card payment) = ${cad(payment.cents + payment.hstCents)} charged`
+  const fee = payment.feeCents ?? 0
+  if (payment.hstCents > 0 || fee > 0) {
+    const extras = [
+      payment.hstCents > 0 ? ` + ${cad(payment.hstCents)} HST (13% on this card payment)` : '',
+      fee > 0 ? ` + ${cad(fee)} card fee` : '',
+    ].join('')
+    return `${when}${cad(payment.cents)}${how}${extras} = ${cad(payment.cents + payment.hstCents + fee)} charged`
   }
   return `${when}${cad(payment.cents)}${how}`
 }
@@ -202,6 +213,11 @@ export function paymentLetter(
     (sum, payment) => sum + (payment.cents > 0 ? payment.hstCents : 0),
     0,
   )
+  const feeTotal = payments.reduce(
+    (sum, payment) => sum + (payment.cents > 0 ? (payment.feeCents ?? 0) : 0),
+    0,
+  )
+  const paidFee = paid.feeCents ?? 0
   const lines = [
     greeting(booking),
     '',
@@ -209,11 +225,15 @@ export function paymentLetter(
     'Thank you. Your payment is in.',
     '',
     `This payment: ${paymentLine(paid)}`,
-    paid.hstCents > 0
-      ? 'The HST is on top of your payment and does not count toward your balance.'
-      : '',
+    paid.hstCents > 0 && paidFee > 0
+      ? 'The HST and card fee are on top of your payment and do not count toward your balance.'
+      : paid.hstCents > 0
+        ? 'The HST is on top of your payment and does not count toward your balance.'
+        : paidFee > 0
+          ? 'The card fee is on top of your payment and does not count toward your balance.'
+          : '',
     booking.status === 'booked' ? `Your date is booked: ${longDate(booking.eventDate)}` : `Date: ${longDate(booking.eventDate)}`,
-    `Package: ${booking.packageName}`,
+    eventOrPackage(booking),
     '',
     'Payments so far:',
     ...payments.map((payment) => `- ${paymentLine(payment)}`),
@@ -221,6 +241,7 @@ export function paymentLetter(
     `Total: ${cad(invoice.totalCents)}`,
     `Paid so far: ${cad(invoice.receivedCents)}`,
     hstTotal > 0 ? `Card HST paid (on top): ${cad(hstTotal)}` : '',
+    feeTotal > 0 ? `Card fees paid (on top): ${cad(feeTotal)}` : '',
     `Remaining: ${cad(invoice.balanceCents)}`,
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
@@ -235,8 +256,14 @@ export function paymentLetter(
   }
 }
 
+function eventOrPackage(booking: LetterBooking): string {
+  return booking.nonWedding
+    ? `Event: ${booking.eventType || booking.packageName}`
+    : `Package: ${booking.packageName}`
+}
+
 function greeting(booking: LetterBooking): string {
-  return `Hello ${[booking.partnerOne, booking.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')},`
+  return `Hello ${[booking.partnerOne, booking.nonWedding ? '' : booking.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')},`
 }
 
 function sampleLine(booking: LetterBooking): string {

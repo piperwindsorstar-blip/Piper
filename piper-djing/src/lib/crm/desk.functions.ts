@@ -15,6 +15,8 @@ import {
   cardQuoteForInvoice,
   cardStatus,
   setCardPayments,
+  invoiceHstOn,
+  setInvoiceHst,
   startCheckout,
 } from './stripe.server.ts'
 import { masterFromDrafts } from '../portal/master.ts'
@@ -424,6 +426,7 @@ export const getSettings = createServerFn({ method: 'GET' }).handler(
         enabled: false,
         live: false,
       })),
+      invoiceHst: await invoiceHstOn(),
     }
   },
 )
@@ -580,6 +583,13 @@ export const saveCardPayments = createServerFn({ method: 'POST' })
       }
     }
     return { ok: true as const, card: await setCardPayments(data.on) }
+  })
+
+export const saveInvoiceHst = createServerFn({ method: 'POST' })
+  .validator((data: { on?: unknown }) => ({ on: data.on === true }))
+  .handler(async ({ data }) => {
+    await requireDesk()
+    return { ok: true as const, on: await setInvoiceHst(data.on) }
   })
 
 export const saveBooking = createServerFn({ method: 'POST' })

@@ -67,18 +67,25 @@ export function balanceLetter(input: {
   due: BalanceDue
   invoiceLink: string
   card: boolean
+  /** HST on invoice card payments (Desk → Settings); off by default. */
+  cardHst?: boolean
+  /** A non-wedding event: one client, no wedding wording. */
+  nonWedding?: boolean
 }): Letter {
   const amount = cad(input.due.balanceCents)
   const when = longDate(input.eventDate)
+  const what = input.nonWedding ? 'event' : 'wedding'
   const lead =
     input.due.step === 'one-week'
-      ? `Your wedding is almost here. Your remaining balance of ${amount} is due before ${when}.`
-      : `Your wedding is about a month away. Your remaining balance is ${amount}, due before ${when}.`
+      ? `Your ${what} is almost here. Your remaining balance of ${amount} is due before ${when}.`
+      : `Your ${what} is about a month away. Your remaining balance is ${amount}, due before ${when}.`
   const ways = input.card
-    ? `You can pay by e-transfer to ${PUBLIC_EMAIL} or by cash, with no HST, or by card on your invoice page (card adds 13% HST on the amount paid by card).`
+    ? input.cardHst
+      ? `You can pay by e-transfer to ${PUBLIC_EMAIL} or by cash, with no HST, or by card on your invoice page (card adds 13% HST and a 3% card fee on the amount paid by card).`
+      : `You can pay by e-transfer to ${PUBLIC_EMAIL} or by cash, or by card on your invoice page (card adds a 3% card fee on the amount paid by card).`
     : `You can pay by e-transfer to ${PUBLIC_EMAIL} or by cash.`
   const lines = [
-    `Hello ${[input.partnerOne, input.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')},`,
+    `Hello ${[input.partnerOne, input.nonWedding ? '' : input.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')},`,
     '',
     lead,
     ways,
@@ -92,8 +99,10 @@ export function balanceLetter(input: {
   return {
     subject:
       input.due.step === 'one-week'
-        ? `Balance reminder: ${amount} due before your wedding`
-        : `Your balance before the big day: ${amount}`,
+        ? `Balance reminder: ${amount} due before your ${what}`
+        : input.nonWedding
+          ? `Your balance before your event: ${amount}`
+          : `Your balance before the big day: ${amount}`,
     text: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
     fromName: 'Martin at DJ Piper P',
   }
