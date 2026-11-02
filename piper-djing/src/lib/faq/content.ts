@@ -31,7 +31,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'How do we book?',
-        a: 'Four steps: check your date, have one planning meeting, build the night together (music brief, timeline, mic cues, lighting — all confirmed in writing), then celebrate. A 30% deposit secures your date.',
+        a: 'Four steps: check your date, have one planning meeting, build the night together (music brief, timeline, mic cues, lighting — all confirmed in writing), then celebrate. A deposit secures your date.',
       },
       {
         q: 'What is the deposit?',
