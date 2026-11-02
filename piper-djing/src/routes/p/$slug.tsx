@@ -61,6 +61,9 @@ function InvoicePage() {
             ? invoice.partnerOne
             : `${invoice.partnerOne ?? ''} and ${invoice.partnerTwo ?? ''}`}
         </h1>
+        {invoice.businessName ? (
+          <p className="mt-2 text-lg">{invoice.businessName}</p>
+        ) : null}
         <p className="mt-4 text-ink-soft">{longDate(invoice.eventDate)}</p>
         {voided ? (
           <p className="mt-6 text-sm">

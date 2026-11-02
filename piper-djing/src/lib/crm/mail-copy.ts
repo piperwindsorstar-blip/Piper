@@ -38,6 +38,8 @@ export type LetterBooking = {
   /** A non-wedding event's due dates; empty when not set. */
   depositDueOn?: string
   balanceDueOn?: string
+  /** A non-wedding client's business name. */
+  businessName?: string
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -280,7 +282,12 @@ function dueLines(booking: LetterBooking): string {
 
 function eventOrPackage(booking: LetterBooking): string {
   return booking.nonWedding
-    ? `Event: ${booking.eventType || booking.packageName}`
+    ? [
+        booking.businessName ? `Business: ${booking.businessName}` : '',
+        `Event: ${booking.eventType || booking.packageName}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
     : `Package: ${booking.packageName}`
 }
 
