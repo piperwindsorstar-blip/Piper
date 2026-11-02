@@ -246,6 +246,15 @@ function PayByCard({ slug, quote }: { slug: string; quote: CardQuote }) {
               aria-invalid={!chosen.ok}
               className="min-h-11 w-40 rounded-lg border border-line bg-transparent px-3 tabular-nums"
             />
+            {amount !== quote.maxCents ? (
+              <button
+                type="button"
+                onClick={() => setTyped((quote.maxCents / 100).toFixed(2))}
+                className="min-h-11 rounded-full border border-line px-4 text-sm"
+              >
+                Pay in full
+              </button>
+            ) : null}
           </span>
           <span id="amount-range" className="text-xs text-muted">{`From ${cad(quote.minCents) ?? ''} up to the ${cad(quote.maxCents) ?? ''} remaining. Pay the rest later by card, e-transfer or cash.`}</span>
           {!chosen.ok ? (

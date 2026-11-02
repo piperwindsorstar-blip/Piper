@@ -39,7 +39,7 @@ test('HST is 13% of the amount given', () => {
 test('$1,650 booking: deposit $500 by card is $500.00 with no HST', () => {
   const quote = cardQuote(invoice(0), wedding)
   assert.equal(quote?.kind, 'deposit')
-  assert.equal(quote?.adjustable, false)
+  assert.equal(quote?.adjustable, true)
   assert.deepEqual(amounts(quote), { base: 50000, hst: 0, charge: 50000 })
 })
 
@@ -81,10 +81,38 @@ test('amount to pay: $50 minimum, remaining maximum', () => {
   assert.equal(cardPayment(small, 3000).ok, true)
 })
 
-test('deposit and ceremony amounts cannot be changed', () => {
+test('at the deposit, any amount from $50 up to paying in full', () => {
   const deposit = cardQuote(invoice(0), wedding)!
-  assert.equal(cardPayment(deposit, 20000).ok, false)
-  assert.equal(cardPayment(deposit, 50000).ok, true)
+  assert.equal(cardPayment(deposit, 4999).ok, false)
+  const part = cardPayment(deposit, 20000)
+  assert.ok(part.ok)
+  assert.equal(part.quote.label, 'Part of the deposit · Full wedding day')
+  assert.equal(part.quote.hstCents, 0)
+  const more = cardPayment(deposit, 80000)
+  assert.ok(more.ok)
+  assert.equal(more.quote.label, 'Deposit and part of the balance · Full wedding day')
+  // HST (when on) only on the $300 past the deposit.
+  assert.equal(more.quote.hstCents, 3900)
+  const all = cardPayment(deposit, 165000)
+  assert.ok(all.ok)
+  assert.equal(all.quote.label, 'Full wedding day, paid in full')
+  assert.equal(all.quote.hstCents, 14950)
+  assert.equal(cardPayment(deposit, 165001).ok, false)
+})
+
+test('HST off with the fee: paying in full at the deposit is the total plus 3%', () => {
+  const deposit = cardQuote(invoice(0), wedding, { hst: false, feePercent: 3 })!
+  const all = cardPayment(deposit, 165000)
+  assert.ok(all.ok)
+  assert.equal(all.quote.hstCents, 0)
+  assert.equal(all.quote.feeCents, 4950)
+  assert.equal(all.quote.chargeCents, 169950)
+})
+
+test('ceremony only stays paid in full', () => {
+  const ceremony = cardQuote(invoice(0, { totalCents: 35000, depositCents: 35000 }), wedding)!
+  assert.equal(ceremony.adjustable, false)
+  assert.equal(cardPayment(ceremony, 20000).ok, false)
 })
 
 test('e-transfer toward the deposit lowers what the card deposit takes, still no HST', () => {

@@ -43,6 +43,10 @@ export type CardQuote = {
   chargeCents: number
   /** The rules this quote was made with, kept for a chosen amount. */
   rules: CardRules
+  /** The deposit still due when this quote was made; 0 once it is paid. */
+  depositDueCents: number
+  /** The package or event name, for the line label. */
+  itemName: string
   /** True when the couple may choose how much to pay (the balance). */
   adjustable: boolean
   /** The allowed range for baseCents. */
@@ -61,9 +65,12 @@ export function feeCents(amountCents: number, percent: number): number {
   return Math.round((amountCents * percent) / 100)
 }
 
-/** Base, HST and fee for one card payment under these rules. */
-function priced(base: number, hstApplies: boolean, rules: CardRules) {
-  const hst = hstApplies && rules.hst ? hstCents(base) : 0
+/**
+ * Base, HST and fee for one card payment under these rules. HST is only on
+ * the part of the payment past the deposit (`hstBase`).
+ */
+function priced(base: number, hstBase: number, rules: CardRules) {
+  const hst = hstBase > 0 && rules.hst ? hstCents(hstBase) : 0
   const fee = feeCents(base, rules.feePercent)
   return { baseCents: base, hstCents: hst, feeCents: fee, chargeCents: base + hst + fee, rules }
 }
@@ -85,13 +92,15 @@ function fixed(
   kind: CardKind,
   label: string,
   base: number,
-  hstApplies: boolean,
   rules: CardRules,
+  itemName: string,
 ): CardQuote {
   return {
     kind,
     label,
-    ...priced(base, hstApplies, rules),
+    ...priced(base, base, rules),
+    depositDueCents: 0,
+    itemName,
     adjustable: false,
     minCents: base,
     maxCents: base,
@@ -121,16 +130,29 @@ export function cardQuote(
     booking.packageId === 'ceremony' ||
     invoice.depositCents >= invoice.totalCents
   ) {
-    return fixed('full', `${name}, paid in full`, remaining, true, rules)
+    return fixed('full', `${name}, paid in full`, remaining, rules, name)
   }
+  // The deposit is suggested; the client may pay any amount from the
+  // smallest card payment up to everything remaining.
   if (invoice.receivedCents < invoice.depositCents) {
-    const due = invoice.depositCents - invoice.receivedCents
-    return fixed('deposit', `Deposit · ${name}`, due, false, rules)
+    const due = Math.min(remaining, invoice.depositCents - invoice.receivedCents)
+    return {
+      kind: 'deposit',
+      label: `Deposit · ${name}`,
+      ...priced(due, 0, rules),
+      depositDueCents: due,
+      itemName: name,
+      adjustable: true,
+      minCents: Math.min(MIN_CARD_PAYMENT_CENTS, remaining),
+      maxCents: remaining,
+    }
   }
   return {
     kind: 'balance',
     label: `Balance · ${name}`,
-    ...priced(remaining, true, rules),
+    ...priced(remaining, remaining, rules),
+    depositDueCents: 0,
+    itemName: name,
     adjustable: true,
     minCents: Math.min(MIN_CARD_PAYMENT_CENTS, remaining),
     maxCents: remaining,
@@ -163,16 +185,25 @@ export function cardPayment(
       error: `The most you can pay is the ${dollars(quote.maxCents)} remaining.`,
     }
   }
-  // The chosen amount keeps the quote's rules.
-  const rules = quote.rules
+  // The chosen amount keeps the quote's rules; no HST on the deposit part.
+  const deposit = quote.depositDueCents
   return {
     ok: true,
     quote: {
       ...quote,
-      label: amountCents < quote.maxCents ? `Part of the balance · ${quote.label.replace(/^Balance · /, '')}` : quote.label,
-      ...priced(amountCents, true, rules),
+      label: chosenLabel(quote, amountCents),
+      ...priced(amountCents, Math.max(0, amountCents - deposit), quote.rules),
     },
   }
+}
+
+function chosenLabel(quote: CardQuote, amount: number): string {
+  const name = quote.itemName
+  if (amount >= quote.maxCents) return quote.kind === 'balance' ? `Balance · ${name}` : `${name}, paid in full`
+  if (quote.kind !== 'deposit') return `Part of the balance · ${name}`
+  if (amount < quote.depositDueCents) return `Part of the deposit · ${name}`
+  if (amount === quote.depositDueCents) return `Deposit · ${name}`
+  return `Deposit and part of the balance · ${name}`
 }
 
 /** The invoice's card fee line for one card payment. */
