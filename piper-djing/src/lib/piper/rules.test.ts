@@ -233,3 +233,11 @@ describe('a hold never runs past the event', () => {
     assert.equal(holdCovers('2026-11-02', '2026-11-27', '2026-11-28'), true)
   })
 })
+
+describe('wedding deposit due', () => {
+  it('is 7 days after the hold starts, never past the hold', async () => {
+    const { depositDueAfterHold } = await import('./rules.ts')
+    assert.equal(depositDueAfterHold('2026-11-02', '2027-06-12'), '2026-11-09')
+    assert.equal(depositDueAfterHold('2026-11-02', '2026-11-05'), '2026-11-04')
+  })
+})

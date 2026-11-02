@@ -1,3 +1,4 @@
+import { invoiceShownStatus } from './booking-rules.ts'
 import { longDate } from './dates.ts'
 import { PUBLIC_EMAIL } from './defaults.ts'
 import { cad } from './money.ts'
@@ -44,6 +45,8 @@ export type LetterBooking = {
   invoiceNote?: string
   holdStartedOn: string | null
   holdLastDay: string | null
+  /** When the deposit is due (set for an event, else 7 days after the hold starts). */
+  depositDue?: string | null
   stagReleased: boolean
   invoice: LetterInvoice | null
 }
@@ -76,6 +79,7 @@ const STATUS_LABEL: Record<string, string> = {
   released: 'Released',
   draft: 'Draft',
   sent: 'Sent',
+  paid: 'Paid',
   void: 'Void',
 }
 
@@ -143,7 +147,7 @@ export function invoiceLetter(
     greeting(booking),
     '',
     sampleLine(booking),
-    `Your invoice is ${label(invoice.status).toLowerCase()}.`,
+    `Your invoice is ${label(invoiceShownStatus(invoice)).toLowerCase()}.`,
     invoice.status === 'void'
       ? 'This invoice is void. The balance is zero.'
       : '',
@@ -268,14 +272,13 @@ export function paymentLetter(
 
 /** A non-wedding event's deposit and balance due dates, when set. */
 function dueLines(booking: LetterBooking): string {
-  if (!booking.nonWedding) return ''
-  const deposit = booking.depositDueOn || booking.holdLastDay || ''
+  const deposit = booking.depositDue || (booking.nonWedding ? booking.depositDueOn || booking.holdLastDay || '' : '')
   const invoice = booking.invoice
   return [
     deposit && invoice && invoice.receivedCents < invoice.depositCents
       ? `Deposit due: ${longDate(deposit)}`
       : '',
-    booking.balanceDueOn && invoice && invoice.balanceCents > 0
+    booking.nonWedding && booking.balanceDueOn && invoice && invoice.balanceCents > 0
       ? `Balance due: ${longDate(booking.balanceDueOn)}`
       : '',
   ]

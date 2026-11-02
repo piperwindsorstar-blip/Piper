@@ -1,3 +1,4 @@
+import { invoiceShownStatus } from '../crm/booking-rules.ts'
 import { createHash } from 'node:crypto'
 import { query } from '../db.server.ts'
 import { listEmails } from '../crm/mail.server.ts'
@@ -635,6 +636,8 @@ async function invoices(
         bookingId: booking.id,
         names: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
         ...booking.invoice,
+        // "paid" once everything is in, the same as the Desk and the invoice page.
+        status: booking.invoice ? invoiceShownStatus(booking.invoice) : 'draft',
         ...travelFields(booking),
       }))
   if (method === 'GET' && !id) return botJson({ invoices: await rows() })
@@ -697,7 +700,9 @@ async function moneyResource(
       names: `${pairNames(booking.partnerOne, booking.partnerTwo)}`,
       eventDate: booking.eventDate,
       status: booking.status,
-      invoice: booking.invoice,
+      invoice: booking.invoice
+        ? { ...booking.invoice, status: invoiceShownStatus(booking.invoice) }
+        : null,
       leftCents: owing?.leftCents ?? Math.max(0, booking.invoice?.balanceCents ?? 0),
       hasEmail: booking.email.trim().length > 0,
       payments: paymentsIn,

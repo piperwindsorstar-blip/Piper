@@ -61,6 +61,7 @@ import { firstUnanswered, overallProgress } from '../portal/progress.ts'
 import { forgetPublicSite } from './public-memory.ts'
 import {
   holdLastDay,
+  depositDueAfterHold,
   isBlockedDate,
   PACKAGE_CENTS,
   torontoToday,
@@ -115,6 +116,11 @@ export type BookingView = {
   /** A non-wedding event's dates the client is told; empty when not set. */
   depositDueOn: string
   balanceDueOn: string
+  /**
+   * When the deposit is due: what Piper set for a non-wedding event, else 7
+   * days after the hold starts. Null before the hold.
+   */
+  depositDue: string | null
   /** A non-wedding client's business name; empty when none. */
   businessName: string
   /** A non-wedding event's distance fee, set by hand. */
@@ -425,6 +431,9 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     nonWedding: flag(row.non_wedding),
     eventType: (row.event_type ?? '').trim(),
     depositDueOn: (row.deposit_due ?? '').trim(),
+    depositDue:
+      (flag(row.non_wedding) && (row.deposit_due ?? '').trim()) ||
+      (state.holdStartedOn ? depositDueAfterHold(state.holdStartedOn, state.eventDate) : null),
     balanceDueOn: (row.balance_due ?? '').trim(),
     businessName: (row.business_name ?? '').trim(),
     distanceFeeCents: Math.max(0, Number(row.distance_fee_cents ?? 0) || 0),
@@ -3978,7 +3987,7 @@ export async function invoiceBySlug(slugValue: string) {
     venueName: view.venueName,
     venueTwoName: view.venueTwoName,
     uplights: view.uplights,
-    depositDue: (view.nonWedding && view.depositDueOn) || view.holdLastDay,
+    depositDue: view.depositDue,
     status: view.invoice?.status ?? 'draft',
     totalCents: view.invoice?.totalCents ?? 0,
     depositCents: view.invoice?.depositCents ?? 0,
