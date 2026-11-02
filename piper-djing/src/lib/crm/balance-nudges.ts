@@ -78,7 +78,7 @@ export function balanceLetter(input: {
     ? `You can pay by e-transfer to ${PUBLIC_EMAIL} or by cash, with no HST, or by card on your invoice page (card adds 13% HST on the amount paid by card).`
     : `You can pay by e-transfer to ${PUBLIC_EMAIL} or by cash.`
   const lines = [
-    `Hello ${input.partnerOne} and ${input.partnerTwo},`,
+    `Hello ${[input.partnerOne, input.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')},`,
     '',
     lead,
     ways,

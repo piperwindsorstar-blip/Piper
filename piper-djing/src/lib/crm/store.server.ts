@@ -107,6 +107,8 @@ export type BookingView = {
   email: string
   /** A second address for the couple; empty when there is none. */
   emailTwo: string
+  /** A non-wedding event: planning is by email, with no couple's page. */
+  nonWedding: boolean
   phone: string
   eventDate: string
   stagDate: string | null
@@ -184,6 +186,8 @@ type BookingRow = {
   partner_two: string
   email: string
   email_two?: string | null
+  /** 1 for a non-wedding event: email-only planning, no couple's page. */
+  non_wedding?: unknown
   phone: string
   event_date: string
   stag_date: string | null
@@ -395,6 +399,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     partnerTwo: state.partnerTwo,
     email: row.email,
     emailTwo: (row.email_two ?? '').trim(),
+    nonWedding: flag(row.non_wedding),
     phone: row.phone,
     eventDate: state.eventDate,
     stagDate: state.stagDate,
@@ -457,6 +462,8 @@ async function ensureCustomColumnsStep(): Promise<void> {
     ['locked_total', 'boolean NOT NULL DEFAULT false'],
     // The couple's second email: booking, invoice, receipt and reminder emails go to both.
     ['email_two', "text NOT NULL DEFAULT ''"],
+    // Non-wedding events plan by email: no couple's page, passcode or reminders.
+    ['non_wedding', 'integer NOT NULL DEFAULT 0'],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -650,6 +657,7 @@ export type BookingInput = {
   partnerTwo: string
   email: string
   emailTwo?: string
+  nonWedding?: boolean
   phone: string
   eventDate: string
   stagDate: string | null
@@ -687,7 +695,10 @@ function wholeOrZero(value: number | undefined): number {
 
 function normalize(input: BookingInput) {
   const partnerOne = text(input.partnerOne, 80, 'The first name')
-  const partnerTwo = text(input.partnerTwo, 80, 'The second name')
+  // A non-wedding event is booked under one contact name.
+  const partnerTwo = input.nonWedding
+    ? optional(input.partnerTwo, 80)
+    : text(input.partnerTwo, 80, 'The second name')
   const packageId = asPackage(input.packageId)
   const withStag = packageId === 'full' && input.withStag
   if (input.withStag && packageId !== 'full') {
@@ -697,7 +708,7 @@ function normalize(input: BookingInput) {
   if (withStag && !stagDate) throw new Error('A stag needs its own date.')
   const eventDate = input.eventDate
   if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate))
-    throw new Error('Choose a wedding date.')
+    throw new Error(input.nonWedding ? 'Choose the event date.' : 'Choose a wedding date.')
   if (stagDate && !/^\d{4}-\d{2}-\d{2}$/.test(stagDate))
     throw new Error('Choose a stag date.')
   const venueKm = parseKm(input.venueKm)
@@ -1184,6 +1195,8 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
   await saveEmailTwo(id, input.emailTwo)
+  // New bookings start as weddings, so only a non-wedding event needs a write.
+  if (input.nonWedding) await saveNonWedding(id, true)
   try {
     return await refreshTravel(id)
   } catch (error) {
@@ -1206,6 +1219,13 @@ async function saveEmailTwo(id: number, value: string | undefined): Promise<void
   await ensureCustomColumns()
   const clean = value.trim().slice(0, 120)
   await query('UPDATE bookings SET email_two = $1 WHERE id = $2', [clean, id])
+}
+
+/** Marks a booking as a non-wedding event. Undefined leaves it as it is. */
+async function saveNonWedding(id: number, value: boolean | undefined): Promise<void> {
+  if (value === undefined) return
+  await ensureCustomColumns()
+  await query('UPDATE bookings SET non_wedding = $1 WHERE id = $2', [value ? 1 : 0, id])
 }
 
 // --- travel ------------------------------------------------------------------
@@ -1402,6 +1422,9 @@ export async function createEventInquiry(input: {
   phone: string
   eventDate: string
   event: string
+  venueName?: string
+  venueStreet?: string
+  referral?: string
   message: string
 }): Promise<{ ok: true; unavailable: boolean } | { ok: false; error: string }> {
   try {
@@ -1417,9 +1440,21 @@ export async function createEventInquiry(input: {
     const unavailable = await dateTakenByOthers(eventDate, null)
     await ensureLeadColumns()
     await query(
-      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message)
-       VALUES ($1,$2,$3,$4,$5,$6,0,NULL,$7)`,
-      [name, '', email, optional(input.phone, 40), eventDate, event, message],
+      `INSERT INTO leads (partner_one, partner_two, email, phone, event_date, package_id, with_stag, stag_date, message,
+         venue_name, venue_street, referral)
+       VALUES ($1,$2,$3,$4,$5,$6,0,NULL,$7,$8,$9,$10)`,
+      [
+        name,
+        '',
+        email,
+        optional(input.phone, 40),
+        eventDate,
+        event,
+        message,
+        optional(input.venueName ?? '', 120),
+        optional(input.venueStreet ?? '', 200),
+        optional(input.referral ?? '', 200),
+      ],
     )
     return { ok: true, unavailable }
   } catch (error) {
@@ -1787,6 +1822,7 @@ export type BookingPatch = {
   partnerTwo: string
   email: string
   emailTwo?: string
+  nonWedding?: boolean
   phone: string
   eventDate: string
   stagDate: string | null
@@ -1810,7 +1846,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   checkEmailTwo(patch.emailTwo)
   const current = await bookingRow(patch.id)
   const state = toState(current)
-  const next = normalize(patch)
+  const next = normalize({ ...patch, nonWedding: patch.nonWedding ?? flag(current.non_wedding) })
   const savedWedding = matchCustom(
     state.partnerOne,
     state.partnerTwo,
@@ -1904,6 +1940,9 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     ],
   )
   await saveEmailTwo(current.id, patch.emailTwo)
+  if (patch.nonWedding !== undefined && patch.nonWedding !== flag(current.non_wedding)) {
+    await saveNonWedding(current.id, patch.nonWedding)
+  }
   const invoiceRow = await invoiceFor(current.id)
   if (invoiceRow && invoiceRow.status !== 'void') {
     const invoice = toInvoice(invoiceRow)
@@ -3320,6 +3359,7 @@ export async function savePortalMaster(value: unknown): Promise<MasterMap> {
 export async function listCouplePortals() {
   await ensurePlanningColumn()
   await ensurePortalColumns()
+  await ensureCustomColumns()
   const master = await readPortalMaster()
   const rows = await query<
     BookingRow & { planning?: string; portal_passcode?: string }
@@ -3332,6 +3372,8 @@ export async function listCouplePortals() {
   const today = torontoToday()
   const portals = []
   for (const row of rows) {
+    // The planning portal is weddings only: no page or passcode for events.
+    if (flag(row.non_wedding)) continue
     let passcode = (row.portal_passcode ?? '').trim().toUpperCase()
     if (!passcode) {
       passcode = unusedPasscode(taken)
@@ -3405,12 +3447,14 @@ export async function listSongPlans(): Promise<SongPlan[]> {
 
 export async function listPlanProgress(): Promise<PlanProgress[]> {
   await ensurePlanningColumn()
+  await ensureCustomColumns()
   const master = await readPortalMaster()
   const rows = await query<BookingRow & { planning?: string }>(
     'SELECT * FROM bookings ORDER BY event_date, id',
   )
   const today = torontoToday()
-  return rows.map((row) => {
+  // The planning portal is weddings only: non-wedding events plan by email.
+  return rows.filter((row) => !flag(row.non_wedding)).map((row) => {
     const planning = parsePlanning(row.planning, planningSeed(row)).planning
     const progress = overallProgress(planning, master)
     return {
@@ -3447,11 +3491,13 @@ export type PlanContact = {
 /** Every couple with their contact details and plan, for reminders and the desk. Read only. */
 export async function listPlanContacts(): Promise<PlanContact[]> {
   await ensurePlanningColumn()
+  await ensureCustomColumns()
   const master = await readPortalMaster()
   const rows = await query<BookingRow & { planning?: string }>(
     'SELECT * FROM bookings ORDER BY event_date, id',
   )
-  return rows.map((row) => {
+  // The planning portal is weddings only: non-wedding events plan by email.
+  return rows.filter((row) => !flag(row.non_wedding)).map((row) => {
     const planning = parsePlanning(row.planning, planningSeed(row)).planning
     const progress = overallProgress(planning, master)
     return {

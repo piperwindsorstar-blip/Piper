@@ -1,4 +1,5 @@
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { joinNames } from '../../lib/desk-console.ts'
 import { useServerFn } from '@tanstack/react-start'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -330,7 +331,7 @@ function MoneyPage() {
               </option>
               {payable.map((booking) => (
                 <option key={booking.id} value={booking.id}>
-                  {`${booking.partnerOne ?? ''} & ${booking.partnerTwo ?? ''}`}
+                  {joinNames(booking.partnerOne ?? '', booking.partnerTwo ?? '')}
                   {booking.invoice && booking.invoice.balanceCents > 0
                     ? ` · ${dollars(booking.invoice.balanceCents)} left`
                     : ' · paid up'}

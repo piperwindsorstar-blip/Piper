@@ -74,7 +74,7 @@ import {
 } from '../../lib/crm/desk.functions.ts'
 import { invoiceShownStatus, invoiceControls } from '../../lib/crm/booking-rules.ts'
 import { hasCoupleAddress } from '../../lib/crm/mail-copy.ts'
-import { daysUntil } from '../../lib/desk-console.ts'
+import { joinNames, daysUntil } from '../../lib/desk-console.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { dollarsToCents, cad } from '../../lib/crm/money.ts'
 import { DESK_TRAVEL_COPY } from '../../lib/crm/travel-copy.ts'
@@ -191,7 +191,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
         return {
           key: `b-${booking.id}`,
           date: booking.eventDate,
-          couple: `${booking.partnerOne} & ${booking.partnerTwo}`,
+          couple: joinNames(booking.partnerOne, booking.partnerTwo),
           detail: booking.packageName,
           venue: booking.venueName,
           mine: true,
@@ -295,7 +295,9 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
                   eventDate: fromLead.eventDate ?? '',
                   stagDate: fromLead.stagDate ?? '',
                   withStag: fromLead.withStag,
-                  packageId: fromLead.packageId,
+                  // A non-wedding inquiry (its event, not a package) books as a Custom event.
+                  packageId: isPackageId(fromLead.packageId) ? fromLead.packageId : 'custom',
+                  nonWedding: !isPackageId(fromLead.packageId),
                 }
               : undefined
           }
@@ -1059,6 +1061,8 @@ function NewBooking({
     stagDate: string
     withStag: boolean
     packageId: string
+    /** From a non-wedding inquiry: a Custom event planned by email. */
+    nonWedding?: boolean
   }
 }) {
   const add = useServerFn(addBooking)
@@ -1133,6 +1137,7 @@ function NewBooking({
                   notes: '',
                   discountCents: 0,
                   customTotalCents: 0,
+                  nonWedding: prefill.nonWedding ?? false,
                   lockedTotal: false,
                 }
               : undefined
@@ -1190,6 +1195,7 @@ function NewBooking({
                   partnerTwo: String(form.get('partnerTwo') ?? ''),
                   email: String(form.get('email') ?? ''),
                   emailTwo: String(form.get('emailTwo') ?? ''),
+                  nonWedding: form.get('nonWedding') === 'on',
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2053,6 +2059,7 @@ function BookingCard({
               partnerOne: booking.partnerOne,
               partnerTwo: booking.partnerTwo,
               email: booking.email,
+              nonWedding: booking.nonWedding ?? false,
               emailTwo: booking.emailTwo ?? '',
               phone: booking.phone,
               eventDate: booking.eventDate,
@@ -2098,6 +2105,7 @@ function BookingCard({
                   partnerTwo: String(form.get('partnerTwo') ?? ''),
                   email: String(form.get('email') ?? ''),
                   emailTwo: String(form.get('emailTwo') ?? ''),
+                  nonWedding: form.get('nonWedding') === 'on',
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2805,6 +2813,7 @@ function BookingFields({
     discountCents: number
     customTotalCents: number
     lockedTotal: boolean
+    nonWedding?: boolean
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
@@ -2818,7 +2827,7 @@ function BookingFields({
       </label>
       <label className="field">
         Second partner
-        <input name="partnerTwo" required defaultValue={defaults?.partnerTwo} />
+        <input name="partnerTwo" defaultValue={defaults?.partnerTwo} placeholder="Blank for a non-wedding event" />
       </label>
       <label className="field">
         Email
@@ -2951,6 +2960,10 @@ function BookingFields({
       <label className={`field ${span}`}>
         Notes
         <textarea name="notes" rows={3} defaultValue={defaults?.notes} />
+      </label>
+      <label className={`flex items-center gap-3 text-sm text-white/85 ${span}`}>
+        <input name="nonWedding" type="checkbox" defaultChecked={defaults?.nonWedding} />
+        Non-wedding event. Planning by email: no couple's page, passcode or planning reminders.
       </label>
       <label
         className={`flex items-center gap-3 text-sm text-white/85 ${span}`}

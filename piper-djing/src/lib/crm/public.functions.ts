@@ -97,6 +97,9 @@ export const sendEventInquiry = createServerFn({ method: 'POST' })
       phone: string
       eventDate: string
       event: string
+      venueName?: string
+      venueStreet?: string
+      referral?: string
       message: string
     }) => data,
   )
@@ -116,6 +119,9 @@ export const sendEventInquiry = createServerFn({ method: 'POST' })
           data.phone.trim(),
           `Event: ${data.event.trim()}`,
           `Date: ${data.eventDate}`,
+          `Venue: ${[data.venueName?.trim(), data.venueStreet?.trim()].filter(Boolean).join(', ') || 'not given'}`,
+          `Referral: ${data.referral?.trim() || 'none'}`,
+          'Custom quote: Piper sets the price.',
           `Note: ${data.message.trim()}`,
         ].join('\n'),
       })

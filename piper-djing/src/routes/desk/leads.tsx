@@ -1,4 +1,5 @@
 import { Link, createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
+import { joinNames } from '../../lib/desk-console.ts'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { Check, Mail, Phone, TriangleAlert } from 'lucide-react'
@@ -53,7 +54,7 @@ function LeadsPage() {
         (booking.status === 'hold' || booking.status === 'booked') &&
         booking.eventDate === date,
     )
-    if (own) return `${own.partnerOne} & ${own.partnerTwo}${own.status === 'hold' ? ' (held)' : ''}`
+    if (own) return `${joinNames(own.partnerOne, own.partnerTwo)}${own.status === 'hold' ? ' (held)' : ''}`
     const other = externalDates.find((row) => !row.released && row.eventDate === date)
     return other ? `${other.company} gig` : null
   }

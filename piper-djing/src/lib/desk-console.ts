@@ -131,7 +131,7 @@ export function comingUp(
       }
       return {
         id: booking.id,
-        couple: `${booking.partnerOne} & ${booking.partnerTwo}`,
+        couple: joinNames(booking.partnerOne, booking.partnerTwo),
         eventDate: booking.eventDate,
         days: daysUntil(today, booking.eventDate),
         items,
@@ -279,6 +279,11 @@ export function channelMeter(
   return none
 }
 
+/** "Sam & Jordan", or just "Dana Quinn" for a one-contact event. */
+export function joinNames(one: string, two: string, between = '&'): string {
+  return [one, two].map((name) => (name ?? '').trim()).filter(Boolean).join(` ${between} `)
+}
+
 export function attention(
   bookings: ConsoleBooking[],
   leads: ConsoleLead[],
@@ -286,7 +291,7 @@ export function attention(
   plans: ConsolePlan[] = [],
 ): Attention[] {
   const items: Attention[] = []
-  const names = (booking: ConsoleBooking) => `${booking.partnerOne} and ${booking.partnerTwo}`
+  const names = (booking: ConsoleBooking) => joinNames(booking.partnerOne, booking.partnerTwo, 'and')
   // What wedding an alert is about: "Sat, June 13, 2027 · Full wedding day".
   const about = (date: string | null | undefined, packageName?: string) =>
     [date ? longDate(date) : 'No date yet', packageName?.trim()].filter(Boolean).join(' · ')

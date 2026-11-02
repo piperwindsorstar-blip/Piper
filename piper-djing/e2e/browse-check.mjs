@@ -634,6 +634,108 @@ await step('/book estimate with travel prompt', async () => {
   return est
 })
 
+await step('/book opened directly: Wedding form and the $1,650.00 estimate, as before', async () => {
+  await pub.goto(BASE + '/book', { waitUntil: 'networkidle' })
+  const checked = await pub.locator('input[name="bookEventType"]:checked').getAttribute('value')
+  const est = (await pub.locator('[aria-label="Price estimate"]').innerText()).replace(/\s+/g, ' ')
+  const partner = await pub.locator('input[name="partnerOneFirst"]').count()
+  const second = await pub.locator('input[name="venueTwoName"]').count() + (await pub.getByText(/second ceremony venue/i).count())
+  expect(checked === 'Wedding', `Selected: ${checked}`)
+  expect(/\$1,650\.00/.test(est), `Estimate: ${est}`)
+  expect(partner === 1 && second > 0, 'Wedding fields missing')
+  return est.slice(0, 80)
+})
+
+for (const type of ['Private', 'Corporate', 'Community & Charity', 'Club night']) {
+  await step(`/book ${type}: the custom-quote form`, async () => {
+    await pub.goto(BASE + '/book', { waitUntil: 'networkidle' })
+    await pub.locator('label', { hasText: type }).filter({ has: pub.locator('input[name="bookEventType"]') }).click()
+    await pub.getByText('Custom quote — Piper replies personally within one business day.').waitFor({ timeout: 8000 })
+    const has = async (sel) => pub.locator(sel).count()
+    const checks = {
+      contactName: await pub.getByText('Contact name', { exact: true }).count(),
+      eventDate: await pub.getByText('Event date', { exact: true }).count(),
+      email: await has('input[name="email"]'),
+      phone: await has('input[name="phone"]'),
+      venueName: await has('input[name="venueName"]'),
+      venueStreet: await has('input[name="venueStreet"]'),
+      note: await has('textarea[name="message"]'),
+      referral: await has('input[name="referral"]'),
+      partner: await has('input[name="partnerOneFirst"]'),
+      secondVenue: await has('input[name="venueTwoName"]'),
+      packages: await has('select[name="packageId"], input[name="packageId"]'),
+      stag: await has('input[name="withStag"]'),
+      estimate: await has('[aria-label="Price estimate"]'),
+      submit: await pub.getByRole('button', { name: 'Request a custom quote' }).count(),
+      heading: await pub.getByText(type, { exact: true }).count(),
+    }
+    const wrong = Object.entries(checks).filter(([k, v]) =>
+      ['partner', 'secondVenue', 'packages', 'stag', 'estimate'].includes(k) ? v !== 0 : v < 1)
+    expect(wrong.length === 0, JSON.stringify(checks))
+  })
+}
+
+await step('Date checker with a Christmas party lands on the Corporate form', async () => {
+  await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
+  await pub.selectOption('#home-event', 'Christmas party')
+  const now = new Date()
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 18))
+  const label = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(next)
+  await pub.click('button[aria-label="Next month"]')
+  await pub.click(`button[aria-label="${label}"]`)
+  await pub.waitForURL(/\/book\?.*event=Christmas/, { timeout: 10000 })
+  await pub.getByText('Custom quote — Piper replies personally within one business day.').waitFor({ timeout: 8000 })
+  const checked = await pub.locator('input[name="bookEventType"]:checked').getAttribute('value')
+  const date = await pub.locator('input[name="eventDate"]').inputValue()
+  expect(checked === 'Corporate', `Selected: ${checked}`)
+  expect(date === next.toISOString().slice(0, 10), `Date carried: ${date}`)
+  return `${checked}, ${date}`
+})
+
+await step('A custom-quote inquiry reaches Piper as a lead, with no booking or portal', async () => {
+  const before = readFileSync(SINK, 'utf8').split('MAIL-FROM').length - 1
+  await pub.fill('input[name="name"]', 'Dana Quinn')
+  await pub.fill('input[name="email"]', 'dana.quinn@example.com')
+  await pub.fill('input[name="venueName"]', 'Best Western Brant Park')
+  await pub.fill('input[name="venueStreet"]', '19 Holiday Dr, Brantford, ON')
+  await pub.fill('textarea[name="message"]', 'Office holiday party for 80.')
+  await pub.getByRole('button', { name: 'Request a custom quote' }).click()
+  await pub.getByText('Thank you. Piper will write back.').waitFor({ timeout: 15000 })
+  await page.goto(BASE + '/desk/leads', { waitUntil: 'networkidle' })
+  const lead = (await page.locator('article', { hasText: 'Dana Quinn' }).first().innerText()).replace(/\s+/g, ' ')
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  const booked = await page.locator('main').getByText('Dana Quinn').count()
+  const log = readFileSync(SINK, 'utf8')
+  const mails = log.split('MAIL-FROM').length - 1 - before
+  expect(/Corporate · Christmas party/.test(lead), `Lead: ${lead.slice(0, 200)}`)
+  expect(booked === 0, 'A booking was made')
+  expect(!log.includes('dana.quinn@example.com'), 'Something was emailed to the visitor')
+  return `lead: ${lead.slice(0, 120)}; owner emails ${mails}`
+})
+
+await step('Desk: booking the non-wedding lead makes a one-name Custom event with no portal', async () => {
+  await page.goto(BASE + '/desk/leads', { waitUntil: 'networkidle' })
+  await page.locator('article', { hasText: 'Dana Quinn' }).first().getByRole('link', { name: /Make it a booking/ }).click()
+  const form = page.locator('form', { has: page.getByRole('button', { name: 'Save as open' }) })
+  await form.waitFor({ timeout: 15000 })
+  const flagged = await form.locator('input[name="nonWedding"]').isChecked()
+  const pkg = await form.locator('[name="packageId"]').first().inputValue().catch(() => '')
+  const custom = form.locator('input[name="customTotal"]')
+  if (await custom.count()) await custom.fill('900')
+  await form.locator('input[name="venueName"]').fill('Best Western Brant Park')
+  await form.getByRole('button', { name: 'Save as open' }).click()
+  await page.waitForTimeout(2500)
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  const row = (await page.locator('main a[href*="couple="]', { hasText: 'Dana Quinn' }).first().innerText()).replace(/\s+/g, ' ')
+  await page.goto(BASE + '/desk/portals', { waitUntil: 'networkidle' })
+  const inPortals = await page.locator('main').getByText('Dana Quinn').count()
+  expect(flagged, 'Non-wedding box not ticked')
+  expect(pkg === 'custom', `Package ${pkg}`)
+  expect(!/Dana Quinn &/.test(row), `Row reads: ${row.slice(0, 80)}`)
+  expect(inPortals === 0, 'The event shows on Portals')
+  return `package ${pkg}, row "${row.slice(0, 60)}"`
+})
+
 await step('/book past date note', async () => {
   await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'networkidle' })
   await pub.getByText('That date has passed, please pick another.').waitFor({ timeout: 8000 })
