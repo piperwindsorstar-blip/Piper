@@ -40,6 +40,8 @@ export type LetterBooking = {
   balanceDueOn?: string
   /** A non-wedding client's business name. */
   businessName?: string
+  /** Notes Piper put on the invoice. */
+  invoiceNote?: string
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -157,6 +159,7 @@ export function invoiceLetter(
     ),
     dueLines(booking),
     '',
+    booking.invoiceNote ? `Notes: ${booking.invoiceNote}` : '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
     booking.nonWedding ? '' : `Your page: ${url(`/c/${booking.slug}`)}`,
     !booking.nonWedding && booking.passcode ? `Passcode: ${booking.passcode}` : '',

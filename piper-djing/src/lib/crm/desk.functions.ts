@@ -96,6 +96,7 @@ import {
   listPlanProgress,
   listSongPlans,
   setBookingNotes,
+  setInvoiceNote,
 } from './store.server.ts'
 import { planNudgeOverview, setPlanReminders } from '../portal/nudges.server.ts'
 import { balanceNudgeOverview, setBalanceReminders } from './balance-nudges.server.ts'
@@ -325,6 +326,18 @@ export const saveNotes = createServerFn({ method: 'POST' })
     await requireDesk()
     try {
       await setBookingNotes(data.id, String(data.notes ?? ''))
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const saveInvoiceNote = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; note: string }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await setInvoiceNote(data.id, String(data.note ?? ''))
       return { ok: true as const }
     } catch (error) {
       return fail(error)

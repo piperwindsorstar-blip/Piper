@@ -37,6 +37,8 @@ export type WeddingInput = {
   customDepositCents?: number
   /** A non-wedding event: deposited like the Pre-Party (a flat $350). */
   nonWedding?: boolean
+  /** A non-wedding event's distance fee, set by hand and added to the price. */
+  distanceFeeCents?: number
   /** A locked booking keeps its agreed total and is never repriced. */
   lockedTotal?: boolean
   /** Automatic or manual travel; null = distance unknown; undefined = typed km. */
@@ -154,10 +156,12 @@ export function figuresFor(
 } {
   const discountCents = input.discountCents ?? 0
   if (input.packageId === 'custom') {
-    const totalCents = input.customTotalCents ?? 0
-    if (!Number.isInteger(totalCents) || totalCents <= 0) {
+    const priceCents = input.customTotalCents ?? 0
+    if (!Number.isInteger(priceCents) || priceCents <= 0) {
       throw new Error('A Custom booking needs a price.')
     }
+    const distanceCents = input.nonWedding ? Math.max(0, input.distanceFeeCents ?? 0) : 0
+    const totalCents = priceCents + distanceCents
     if (discountCents > totalCents) {
       throw new Error('That discount is larger than the total.')
     }

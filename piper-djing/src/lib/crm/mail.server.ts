@@ -161,6 +161,7 @@ function toLetter(booking: BookingView): LetterBooking {
     depositDueOn: booking.depositDueOn,
     balanceDueOn: booking.balanceDueOn,
     businessName: booking.businessName,
+    invoiceNote: booking.invoiceNote,
     eventDate: booking.eventDate,
     stagDate: booking.stagDate,
     packageName: booking.packageName,

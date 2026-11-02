@@ -96,8 +96,20 @@ function InvoicePage() {
             {invoice.uplights > 0 ? (
               <Row label={`Wired uplights · ${invoice.uplights}`} value="" />
             ) : null}
+            {invoice.distanceFeeCents > 0 ? (
+              <Row label="Distance fee" value={cad(invoice.distanceFeeCents)} />
+            ) : null}
           </dl>
         </section>
+
+        {invoice.invoiceNote ? (
+          <section className="mt-8" aria-labelledby="invoice-notes">
+            <h2 id="invoice-notes" className="font-display text-2xl tracking-tight">
+              Notes
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed whitespace-pre-line">{invoice.invoiceNote}</p>
+          </section>
+        ) : null}
 
         <dl className="mt-8 grid gap-2 text-sm">
           {invoice.discountCents > 0 ? (
