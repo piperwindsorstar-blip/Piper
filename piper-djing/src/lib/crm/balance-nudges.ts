@@ -75,8 +75,9 @@ export function balanceLetter(input: {
   const amount = cad(input.due.balanceCents)
   const when = longDate(input.eventDate)
   const what = input.nonWedding ? 'event' : 'wedding'
-  const lead =
-    input.due.step === 'one-week'
+  const lead = input.nonWedding
+    ? `Your remaining balance of ${amount} is due by ${when}.`
+    : input.due.step === 'one-week'
       ? `Your ${what} is almost here. Your remaining balance of ${amount} is due before ${when}.`
       : `Your ${what} is about a month away. Your remaining balance is ${amount}, due before ${when}.`
   const ways = input.card

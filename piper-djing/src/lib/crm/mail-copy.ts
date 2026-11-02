@@ -35,6 +35,9 @@ export type LetterBooking = {
   nonWedding?: boolean
   /** A non-wedding event's type, such as Corporate. */
   eventType?: string
+  /** A non-wedding event's due dates; empty when not set. */
+  depositDueOn?: string
+  balanceDueOn?: string
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -111,6 +114,7 @@ export function bookingLetter(
       balance,
       booking.discountCents ?? 0,
     ),
+    dueLines(booking),
     '',
     booking.nonWedding ? '' : `Your page: ${url(`/c/${booking.slug}`)}`,
     !booking.nonWedding && booking.passcode ? `Passcode: ${booking.passcode}` : '',
@@ -149,6 +153,7 @@ export function invoiceLetter(
       invoice.balanceCents,
       booking.discountCents ?? 0,
     ),
+    dueLines(booking),
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
     booking.nonWedding ? '' : `Your page: ${url(`/c/${booking.slug}`)}`,
@@ -254,6 +259,23 @@ export function paymentLetter(
     subject: subject('Payment received · DJ Piper P', booking.sample),
     text: compact(lines),
   }
+}
+
+/** A non-wedding event's deposit and balance due dates, when set. */
+function dueLines(booking: LetterBooking): string {
+  if (!booking.nonWedding) return ''
+  const deposit = booking.depositDueOn || booking.holdLastDay || ''
+  const invoice = booking.invoice
+  return [
+    deposit && invoice && invoice.receivedCents < invoice.depositCents
+      ? `Deposit due: ${longDate(deposit)}`
+      : '',
+    booking.balanceDueOn && invoice && invoice.balanceCents > 0
+      ? `Balance due: ${longDate(booking.balanceDueOn)}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 function eventOrPackage(booking: LetterBooking): string {

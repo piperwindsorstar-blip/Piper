@@ -1205,6 +1205,8 @@ function NewBooking({
                   emailTwo: String(form.get('emailTwo') ?? ''),
                   nonWedding: form.get('nonWedding') === 'on',
                   eventType: String(form.get('eventType') ?? ''),
+                  depositDueOn: form.has('depositDueOn') ? String(form.get('depositDueOn') ?? '') : undefined,
+                  balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2070,6 +2072,8 @@ function BookingCard({
               email: booking.email,
               nonWedding: booking.nonWedding ?? false,
               eventType: booking.eventType ?? '',
+              depositDueOn: booking.depositDueOn ?? '',
+              balanceDueOn: booking.balanceDueOn ?? '',
               emailTwo: booking.emailTwo ?? '',
               phone: booking.phone,
               eventDate: booking.eventDate,
@@ -2117,6 +2121,8 @@ function BookingCard({
                   emailTwo: String(form.get('emailTwo') ?? ''),
                   nonWedding: form.get('nonWedding') === 'on',
                   eventType: String(form.get('eventType') ?? ''),
+                  depositDueOn: form.has('depositDueOn') ? String(form.get('depositDueOn') ?? '') : undefined,
+                  balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2834,6 +2840,8 @@ function BookingFields({
     nonWedding?: boolean
     eventType?: string
     emailTwo?: string
+    depositDueOn?: string
+    balanceDueOn?: string
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
@@ -2905,6 +2913,14 @@ function BookingFields({
                 : ''
             }
           />
+        </label>
+        <label className="field">
+          Deposit due
+          <input name="depositDueOn" type="date" defaultValue={defaults?.depositDueOn ?? ''} />
+        </label>
+        <label className="field">
+          Balance due
+          <input name="balanceDueOn" type="date" defaultValue={defaults?.balanceDueOn ?? ''} />
         </label>
         {/* Wedding-only details are kept as they are. */}
         <input type="hidden" name="partnerTwo" value="" />
