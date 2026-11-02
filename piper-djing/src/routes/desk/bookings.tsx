@@ -1207,6 +1207,8 @@ function NewBooking({
                   eventType: String(form.get('eventType') ?? ''),
                   depositDueOn: form.has('depositDueOn') ? String(form.get('depositDueOn') ?? '') : undefined,
                   balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
+                  businessName: form.has('businessName') ? String(form.get('businessName') ?? '') : undefined,
+                  customDepositCents: eventDeposit(form),
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -1800,6 +1802,14 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
   }
 }
 
+/** A non-wedding deposit typed in dollars; blank means the flat $350. */
+function eventDeposit(form: FormData): number | undefined {
+  if (!form.has('customDeposit')) return undefined
+  const raw = String(form.get('customDeposit') ?? '').trim()
+  if (!raw) return undefined
+  return dollarsToCents(raw)
+}
+
 function customCents(form: FormData): number {
   const raw = String(form.get('customTotal') ?? '').trim()
   if (!raw) return 0
@@ -2090,6 +2100,8 @@ function BookingCard({
               notes: booking.notes,
               discountCents: booking.discountCents,
               customTotalCents: booking.customTotalCents,
+              depositCents: booking.invoice?.depositCents ?? 0,
+              businessName: booking.businessName ?? '',
               lockedTotal: booking.lockedTotal,
             }}
           />
@@ -2123,6 +2135,8 @@ function BookingCard({
                   eventType: String(form.get('eventType') ?? ''),
                   depositDueOn: form.has('depositDueOn') ? String(form.get('depositDueOn') ?? '') : undefined,
                   balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
+                  businessName: form.has('businessName') ? String(form.get('businessName') ?? '') : undefined,
+                  customDepositCents: eventDeposit(form),
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
                   stagDate: withStag
@@ -2842,6 +2856,8 @@ function BookingFields({
     emailTwo?: string
     depositDueOn?: string
     balanceDueOn?: string
+    depositCents?: number
+    businessName?: string
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
@@ -2882,6 +2898,10 @@ function BookingFields({
           <input name="partnerOne" required defaultValue={defaults?.partnerOne} />
         </label>
         <label className="field">
+          Business name
+          <input name="businessName" maxLength={120} defaultValue={defaults?.businessName ?? ''} />
+        </label>
+        <label className="field">
           Email
           <input name="email" type="email" defaultValue={defaults?.email} />
         </label>
@@ -2912,6 +2932,15 @@ function BookingFields({
                 ? (defaults.customTotalCents / 100).toFixed(2)
                 : ''
             }
+          />
+        </label>
+        <label className="field">
+          Deposit
+          <input
+            name="customDeposit"
+            inputMode="decimal"
+            placeholder="350.00"
+            defaultValue={defaults?.depositCents ? (defaults.depositCents / 100).toFixed(2) : ''}
           />
         </label>
         <label className="field">

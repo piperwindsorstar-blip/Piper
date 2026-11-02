@@ -162,8 +162,12 @@ export function figuresFor(
       throw new Error('That discount is larger than the total.')
     }
     // A non-wedding event takes the stag and doe terms: a flat deposit.
+    // Piper can set a non-wedding deposit; it never exceeds the price.
     const depositCents = input.nonWedding
-      ? Math.min(STAG_DEPOSIT_CENTS, totalCents - discountCents)
+      ? Math.min(
+          input.customDepositCents != null ? Math.max(0, input.customDepositCents) : STAG_DEPOSIT_CENTS,
+          totalCents - discountCents,
+        )
       : input.customDepositCents != null
         ? Math.max(0, input.customDepositCents)
         : deposit30(totalCents)

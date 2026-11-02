@@ -114,6 +114,8 @@ export type BookingView = {
   /** A non-wedding event's dates the client is told; empty when not set. */
   depositDueOn: string
   balanceDueOn: string
+  /** A non-wedding client's business name; empty when none. */
+  businessName: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -200,6 +202,7 @@ type BookingRow = {
   non_wedding?: unknown
   event_type?: string | null
   deposit_due?: string | null
+  business_name?: string | null
   balance_due?: string | null
   phone: string
   event_date: string
@@ -416,6 +419,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     eventType: (row.event_type ?? '').trim(),
     depositDueOn: (row.deposit_due ?? '').trim(),
     balanceDueOn: (row.balance_due ?? '').trim(),
+    businessName: (row.business_name ?? '').trim(),
     phone: row.phone,
     eventDate: state.eventDate,
     stagDate: state.stagDate,
@@ -485,6 +489,8 @@ async function ensureCustomColumnsStep(): Promise<void> {
     // A non-wedding event's deposit and balance due dates (YYYY-MM-DD or '').
     ['deposit_due', "text NOT NULL DEFAULT ''"],
     ['balance_due', "text NOT NULL DEFAULT ''"],
+    // A non-wedding client's business name.
+    ['business_name', "text NOT NULL DEFAULT ''"],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -683,6 +689,7 @@ export type BookingInput = {
   eventType?: string
   depositDueOn?: string
   balanceDueOn?: string
+  businessName?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -759,7 +766,11 @@ function normalize(input: BookingInput) {
     notes: optional(input.notes, 2000),
     discountCents: discountAmount(input.discountCents),
     customTotalCents: wholeOrZero(input.customTotalCents),
-    customDepositCents: wholeOrZero(input.customDepositCents),
+    // A non-wedding event with no deposit typed takes the flat $350.
+    customDepositCents:
+      input.nonWedding && input.customDepositCents === undefined
+        ? undefined
+        : wholeOrZero(input.customDepositCents),
     lockedTotal: input.lockedTotal ?? false,
     nonWedding: input.nonWedding ?? false,
   }
@@ -1225,6 +1236,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   if (input.nonWedding) await saveNonWedding(id, true)
   if (input.nonWedding) await saveEventType(id, input.eventType)
   if (input.nonWedding) await saveDueDates(id, input.depositDueOn, input.balanceDueOn)
+  if (input.nonWedding) await saveBusinessName(id, input.businessName)
   try {
     return await refreshTravel(id)
   } catch (error) {
@@ -1261,6 +1273,13 @@ async function saveEventType(id: number, value: string | undefined): Promise<voi
   if (value === undefined) return
   await ensureCustomColumns()
   await query('UPDATE bookings SET event_type = $1 WHERE id = $2', [value.trim().slice(0, 60), id])
+}
+
+/** A non-wedding client's business name. Undefined leaves it as it is. */
+async function saveBusinessName(id: number, value: string | undefined): Promise<void> {
+  if (value === undefined) return
+  await ensureCustomColumns()
+  await query('UPDATE bookings SET business_name = $1 WHERE id = $2', [value.trim().slice(0, 120), id])
 }
 
 function dueDate(value: string | undefined, what: string): string | undefined {
@@ -1882,6 +1901,7 @@ export type BookingPatch = {
   eventType?: string
   depositDueOn?: string
   balanceDueOn?: string
+  businessName?: string
   phone: string
   eventDate: string
   stagDate: string | null
@@ -2007,6 +2027,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     await saveEventType(current.id, patch.eventType)
   }
   if (next.nonWedding) await saveDueDates(current.id, patch.depositDueOn, patch.balanceDueOn)
+  if (next.nonWedding) await saveBusinessName(current.id, patch.businessName)
   const invoiceRow = await invoiceFor(current.id)
   if (invoiceRow && invoiceRow.status !== 'void') {
     const invoice = toInvoice(invoiceRow)
@@ -3847,6 +3868,7 @@ export async function invoiceBySlug(slugValue: string) {
     nonWedding: view.nonWedding,
     eventType: view.eventType,
     balanceDue: view.nonWedding ? view.balanceDueOn : '',
+    businessName: view.nonWedding ? view.businessName : '',
     partnerOne: view.partnerOne,
     partnerTwo: view.partnerTwo,
     eventDate: view.eventDate,

@@ -282,3 +282,17 @@ describe('non-wedding events', () => {
     assert.equal(figuresFor({ ...base, customTotalCents: 25000, nonWedding: true }).depositCents, 25000)
   })
 })
+
+describe('non-wedding custom deposit', () => {
+  const base = {
+    partnerOne: 'Dana Quinn', partnerTwo: '', eventDate: '2026-12-18', stagDate: null,
+    packageId: 'custom' as const, withStag: false, uplights: 0, venueKm: [],
+    venueName: '', venueStreet: '', sample: false, nonWedding: true,
+  }
+  it('Piper can set it', () => {
+    assert.equal(figuresFor({ ...base, customTotalCents: 90000, customDepositCents: 20000 }).depositCents, 20000)
+  })
+  it('never more than the price', () => {
+    assert.equal(figuresFor({ ...base, customTotalCents: 30000, customDepositCents: 50000 }).depositCents, 30000)
+  })
+})

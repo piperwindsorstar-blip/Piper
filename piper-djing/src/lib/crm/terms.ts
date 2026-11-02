@@ -7,12 +7,15 @@ import { STREET_TRAVEL_COPY, TRAVEL_COPY } from './travel-copy.ts'
  * Local databases receive it once, when they are empty. An existing document
  * that still has an older sentence is brought forward.
  */
-const DEPOSIT_PARAGRAPH =
-  'A wedding or a reception on its own is deposited at 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. Ceremony only, The Aisle, is $350 paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500. A Custom event is deposited at 30% of the agreed price unless Piper sets another deposit. A non-wedding event takes the same terms as the Pre-Party: a flat $350 deposit, or the full price if it is less.'
-
-/** The deposit paragraph before non-wedding events took the Pre-Party terms (Nov 2026). */
+/** The deposit paragraph once Custom events were sold (Oct 2026). */
 const PREVIOUS_DEPOSIT_CUSTOM =
   'A wedding or a reception on its own is deposited at 30% of the total, to the nearest $25. A remainder that lands exactly halfway rounds down. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. Ceremony only, The Aisle, is $350 paid in full. A full wedding day booked with a stag and doe is one booking, and the deposit for that booking is $500. A Custom event is deposited at 30% of the agreed price unless Piper sets another deposit.'
+
+/** Non-wedding events take the Pre-Party terms; Piper can set another deposit. */
+const DEPOSIT_PARAGRAPH = `${PREVIOUS_DEPOSIT_CUSTOM} A non-wedding event takes the same terms as the Pre-Party: a flat $350 deposit, or the full price if it is less, unless Piper sets another deposit.`
+
+/** The deposit paragraph the day non-wedding events took the Pre-Party terms (Nov 2026). */
+const PREVIOUS_DEPOSIT_EVENT = `${PREVIOUS_DEPOSIT_CUSTOM} A non-wedding event takes the same terms as the Pre-Party: a flat $350 deposit, or the full price if it is less.`
 
 /** The four packages and the rules around them, as /weddings states them. */
 const PACKAGE_PARAGRAPH = `The Main Event, a full wedding day, is ${publicPackagePrice('full', PACKAGE_CENTS.full)}. The After Party, reception only, is ${publicPackagePrice('reception', PACKAGE_CENTS.reception)}. The Pre-Party, a stag and doe, is ${publicPackagePrice('stag', PACKAGE_CENTS.stag)}. The Aisle, ceremony only, is ${publicPackagePrice('ceremony', PACKAGE_CENTS.ceremony)}. The Main Event and The Pre-Party booked together are $250 off. Every package covers the night up to 1:00 a.m. Overtime after 1:00 a.m. is $250 an hour.`
@@ -29,6 +32,10 @@ const SECOND_VENUE_PARAGRAPH =
   'If the ceremony is at a separate venue from the reception, a flat $75 second-venue fee applies. Two venues is the maximum; a third venue is not offered.'
 
 const PAYMENT_PARAGRAPH =
+  'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments carry a 3% card fee on the amount paid by card. E-transfer and cash carry no fee.'
+
+/** The payment wording while invoice card payments carried HST (to Nov 2026). */
+const HST_PAYMENT_PARAGRAPH =
   'You can pay by e-transfer to PiperPWeddingDJ@gmail.com, by cash, or by card. Card payments toward the balance carry 13% HST on the amount paid by card. Deposits, e-transfer and cash carry no HST.'
 
 /** The payment wording before card HST was per card payment (Oct 2026). */
@@ -110,6 +117,7 @@ export function reviseTerms(body: string): string {
   // Older payment wording becomes the current one; a document that got both
   // (one start inserted the new paragraph beside the old) keeps one copy.
   next = next.split(PREVIOUS_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)
+  next = next.split(HST_PAYMENT_PARAGRAPH).join(PAYMENT_PARAGRAPH)
   next = keepFirst(next, PAYMENT_PARAGRAPH)
   next = keepFirst(next, AGREEMENT_PARAGRAPH)
   if (next.includes(PREVIOUS_DEPOSIT) || next.includes(PREVIOUS_TRAVEL)) {
@@ -119,6 +127,7 @@ export function reviseTerms(body: string): string {
   }
   // Each older deposit paragraph is a prefix of the next, so the newest older
   // one moves first, and only while the current paragraph is missing.
+  next = next.split(PREVIOUS_DEPOSIT_EVENT).join(DEPOSIT_PARAGRAPH)
   if (!next.includes(DEPOSIT_PARAGRAPH) && next.includes(PREVIOUS_DEPOSIT_CUSTOM)) {
     next = next.replace(PREVIOUS_DEPOSIT_CUSTOM, DEPOSIT_PARAGRAPH)
   }
