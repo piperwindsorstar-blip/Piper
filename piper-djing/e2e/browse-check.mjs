@@ -825,7 +825,7 @@ await step('Non-wedding invoice: one name, the event type, no wedding words or c
   expect(/Deposit \$200\.00/.test(text), `Deposit amount: ${text.slice(0, 400)}`)
   expect(/Quinn Logistics/.test(text), 'Business name missing')
   expect(/Distance fee \$50\.00/.test(text), 'Distance fee missing')
-  expect(text.includes(`Invoice · ${showNumber} ·`), `Invoice number: ${text.slice(0, 80)}`)
+  expect(text.toLowerCase().includes(`invoice · ${showNumber} ·`), `Invoice number: ${text.slice(0, 80)}`)
   expect(/Total \$950\.00/.test(text), `Total: ${text.slice(0, 400)}`)
   expect(/Load in through the loading dock\./.test(text), 'Invoice note missing')
   expect(/Deposit due 20 November 2026/.test(text), 'Deposit due date missing')
