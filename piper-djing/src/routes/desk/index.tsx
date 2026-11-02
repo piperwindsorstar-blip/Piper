@@ -7,7 +7,7 @@ import { externalCouple, externalVenues } from '../../lib/crm/external-dates.ts'
 import { cad } from '../../lib/crm/money.ts'
 import { todayInToronto } from '../../lib/crm/date-request.ts'
 import { moneySummary } from '../../lib/crm/money-summary.ts'
-import { attention, comingUp, daysUntil, onTheBook } from '../../lib/desk-console.ts'
+import { joinNames, attention, comingUp, daysUntil, onTheBook } from '../../lib/desk-console.ts'
 import type { Attention, WeddingChecklist } from '../../lib/desk-console.ts'
 import type { getDesk } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
@@ -83,7 +83,7 @@ function OverviewPage() {
   const days = next ? daysUntil(today, next.eventDate) : 0
   const count = todo.length
   const subline = next
-    ? `${next.partnerOne} & ${next.partnerTwo} ${days === 0 ? 'are getting married today' : `are ${days === 1 ? 'one day' : `${days} days`} out`}.${
+    ? `${next.partnerTwo.trim() ? `${joinNames(next.partnerOne, next.partnerTwo)} ${days === 0 ? 'are getting married today' : `are ${days === 1 ? 'one day' : `${days} days`} out`}` : `${next.partnerOne}'s event is ${days === 0 ? 'today' : `${days === 1 ? 'one day' : `${days} days`} out`}`}.${
         count === 0
           ? ' Nothing needs you right now.'
           : ` ${NUMBER_WORDS[count] ?? count} ${count === 1 ? 'thing needs' : 'things need'} you before then.`
@@ -372,7 +372,7 @@ function ThisWeek({ desk, today }: { desk: DeskData; today: string }) {
           key: `b-${row.id}`,
           id: row.id,
           date: row.eventDate,
-          couple: `${row.partnerOne} & ${row.partnerTwo}`,
+          couple: joinNames(row.partnerOne, row.partnerTwo),
           venue: booking?.venueName ?? '',
           pynx: false,
           company: '',

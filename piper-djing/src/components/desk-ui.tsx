@@ -216,6 +216,8 @@ export function CoupleName({
   two: string
   amp?: string
 }) {
+  // A one-contact event shows just the one name.
+  if (!(two ?? '').trim()) return <>{one ?? ''}</>
   return (
     <>
       {`${one ?? ''} `}

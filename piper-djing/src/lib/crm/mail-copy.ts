@@ -31,6 +31,8 @@ export type LetterBooking = {
   slug: string
   /** The portal passcode the couple types to open their page. */
   passcode?: string
+  /** A non-wedding event: no couple's page, passcode or planning form. */
+  nonWedding?: boolean
   holdStartedOn: string | null
   holdLastDay: string | null
   stagReleased: boolean
@@ -106,9 +108,9 @@ export function bookingLetter(
       booking.discountCents ?? 0,
     ),
     '',
-    `Your page: ${url(`/c/${booking.slug}`)}`,
-    booking.passcode ? `Passcode: ${booking.passcode}` : '',
-    'Your planning form is on that page.',
+    booking.nonWedding ? '' : `Your page: ${url(`/c/${booking.slug}`)}`,
+    !booking.nonWedding && booking.passcode ? `Passcode: ${booking.passcode}` : '',
+    booking.nonWedding ? '' : 'Your planning form is on that page.',
     booking.invoice ? `Invoice: ${url(`/p/${booking.invoice.slug}`)}` : '',
     '',
     signOff(),
@@ -145,8 +147,8 @@ export function invoiceLetter(
     ),
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
-    `Your page: ${url(`/c/${booking.slug}`)}`,
-    booking.passcode ? `Passcode: ${booking.passcode}` : '',
+    booking.nonWedding ? '' : `Your page: ${url(`/c/${booking.slug}`)}`,
+    !booking.nonWedding && booking.passcode ? `Passcode: ${booking.passcode}` : '',
     '',
     signOff(),
   ]
@@ -222,8 +224,8 @@ export function paymentLetter(
     `Remaining: ${cad(invoice.balanceCents)}`,
     '',
     `Invoice: ${url(`/p/${invoice.slug}`)}`,
-    `Your page: ${url(`/c/${booking.slug}`)}`,
-    booking.passcode ? `Passcode: ${booking.passcode}` : '',
+    booking.nonWedding ? '' : `Your page: ${url(`/c/${booking.slug}`)}`,
+    !booking.nonWedding && booking.passcode ? `Passcode: ${booking.passcode}` : '',
     '',
     signOff(),
   ]
@@ -234,7 +236,7 @@ export function paymentLetter(
 }
 
 function greeting(booking: LetterBooking): string {
-  return `Hello ${booking.partnerOne} and ${booking.partnerTwo},`
+  return `Hello ${[booking.partnerOne, booking.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')},`
 }
 
 function sampleLine(booking: LetterBooking): string {

@@ -137,7 +137,8 @@ export async function emailPayment(
 }
 
 async function withPasscode(letter: LetterBooking): Promise<LetterBooking> {
-  if (letter.sample) return letter
+  // Non-wedding events plan by email: no passcode is ever made for them.
+  if (letter.sample || letter.nonWedding) return letter
   try {
     return { ...letter, passcode: await ensureCouplePasscode(letter.slug) }
   } catch {
@@ -155,6 +156,7 @@ function toLetter(booking: BookingView): LetterBooking {
   return {
     partnerOne: booking.partnerOne,
     partnerTwo: booking.partnerTwo,
+    nonWedding: booking.nonWedding,
     eventDate: booking.eventDate,
     stagDate: booking.stagDate,
     packageName: booking.packageName,

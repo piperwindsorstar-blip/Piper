@@ -40,6 +40,36 @@ const sample: LetterBooking = {
   },
 }
 
+describe('non-wedding event emails', () => {
+  const event: LetterBooking = {
+    ...sample,
+    partnerOne: 'Dana Quinn',
+    partnerTwo: '',
+    withStag: false,
+    packageName: 'Custom event',
+    nonWedding: true,
+    passcode: 'ABC123',
+  }
+
+  it('leave out the couple page, passcode and planning form', () => {
+    for (const letter of [
+      bookingLetter(event, url),
+      invoiceLetter(event, url),
+      paymentLetter(event, [{ id: 1, cents: 50000, hstCents: 0, paidOn: '2026-11-02', method: 'e-transfer' }], 1, url),
+    ]) {
+      assert.doesNotMatch(letter.text, /Your page|Passcode|planning form|\/c\//)
+      assert.match(letter.text, /Hello Dana Quinn,/)
+    }
+  })
+
+  it('still include them for a wedding', () => {
+    const letter = bookingLetter({ ...sample, passcode: 'ABC123' }, url)
+    assert.match(letter.text, /Your page: https:\/\/piperpweddingdj\.services\/c\/mara-quinn/)
+    assert.match(letter.text, /Passcode: ABC123/)
+    assert.match(letter.text, /Hello Mara and Quinn,/)
+  })
+})
+
 describe('couple emails', () => {
   it('refuses a booking with no address', () => {
     assert.throws(() => coupleAddress(''), /no email address/)
