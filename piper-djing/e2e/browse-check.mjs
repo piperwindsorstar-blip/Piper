@@ -675,6 +675,29 @@ for (const type of ['Private', 'Corporate', 'Community & Charity', 'Club night']
   })
 }
 
+await step('Date checker with Corporate lands on the Corporate form', async () => {
+  await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
+  const options = await pub.locator('#home-event option').allTextContents()
+  await pub.selectOption('#home-event', 'Corporate')
+  const now = new Date()
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 19))
+  const label = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(next)
+  await pub.click('button[aria-label="Next month"]')
+  await pub.click(`button[aria-label="${label}"]`)
+  await pub.waitForURL(/\/book\?.*event=Corporate/, { timeout: 10000 })
+  await pub.getByText('Custom quote — Piper replies personally within one business day.').waitFor({ timeout: 8000 })
+  const checked = await pub.locator('input[name="bookEventType"]:checked').getAttribute('value')
+  const date = await pub.locator('input[name="eventDate"]').inputValue()
+  const contact = await pub.getByLabel('Contact name').count()
+  const packages = await pub.locator('select[name="packageId"]').count()
+  const estimate = await pub.getByText('Your estimate').count()
+  expect(options.join('|') === 'Wedding|Stag and doe|Ceremony only|Anniversary|Birthday party|Christmas party|Corporate|Something else', `Options: ${options.join('|')}`)
+  expect(checked === 'Corporate', `Selected: ${checked}`)
+  expect(date === next.toISOString().slice(0, 10), `Date carried: ${date}`)
+  expect(contact === 1 && packages === 0 && estimate === 0, `contact ${contact}, packages ${packages}, estimate ${estimate}`)
+  return `${options.join(', ')} → ${checked}, ${date}`
+})
+
 await step('Date checker with a Christmas party lands on the Corporate form', async () => {
   await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
   await pub.selectOption('#home-event', 'Christmas party')
