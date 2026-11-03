@@ -718,7 +718,7 @@ await step('Date checker with Corporate lands on the Corporate form', async () =
   const contact = await pub.getByLabel('Contact name').count()
   const packages = await pub.locator('select[name="packageId"]').count()
   const estimate = await pub.getByText('Your estimate').count()
-  expect(options.join('|') === 'Wedding|Stag and doe|Ceremony only|Anniversary|Birthday party|Christmas party|Corporate (Christmas party/office party)|Something else', `Options: ${options.join('|')}`)
+  expect(options.join('|') === 'Wedding|Stag and doe|Ceremony only|Anniversary|Birthday party|Christmas party|Corporate party|Something else', `Options: ${options.join('|')}`)
   expect(checked === 'Corporate', `Selected: ${checked}`)
   expect(date === next.toISOString().slice(0, 10), `Date carried: ${date}`)
   expect(contact === 1 && packages === 0 && estimate === 0, `contact ${contact}, packages ${packages}, estimate ${estimate}`)

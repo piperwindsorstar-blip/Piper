@@ -12,9 +12,9 @@ export const BOOK_EVENT_TYPES = [
 
 export type BookEventType = (typeof BOOK_EVENT_TYPES)[number]
 
-/** How an event type reads on a picker: Corporate says what it covers. */
+/** How an event type reads on a picker: Corporate reads "Corporate party". */
 export function eventTypeLabel(type: string): string {
-  return type === 'Corporate' ? 'Corporate (Christmas party/office party)' : type
+  return type === 'Corporate' ? 'Corporate party' : type
 }
 
 /** Events that have always opened the wedding form. */
