@@ -55,7 +55,7 @@ function InvoicePage() {
           className="h-20 w-auto"
         />
         <p className="mt-6 text-sm tracking-wide text-muted uppercase">
-          {`${invoice.sample ? 'TEST invoice' : 'Invoice'} · ${shown}`}
+          {[invoice.sample ? 'TEST invoice' : 'Invoice', invoice.showNumber, shown].filter(Boolean).join(' · ')}
         </p>
         <h1 className="mt-3 font-display text-4xl tracking-tight">
           {invoice.nonWedding || !invoice.partnerTwo?.trim()

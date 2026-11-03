@@ -34,6 +34,8 @@ export type LetterBooking = {
   passcode?: string
   /** A non-wedding event: no couple's page, passcode or planning form. */
   nonWedding?: boolean
+  /** The show number, such as 26-01. */
+  showNumber?: string
   /** A non-wedding event's type, such as Corporate. */
   eventType?: string
   /** A non-wedding event's due dates; empty when not set. */
@@ -108,6 +110,7 @@ export function bookingLetter(
     booking.nonWedding
       ? eventOrPackage(booking)
       : `Package: ${booking.packageName}${booking.withStag ? ', with a stag and doe' : ''}`,
+    booking.showNumber ? `Show: ${booking.showNumber}` : '',
     `Date: ${longDate(booking.eventDate)}`,
     stagLine(booking),
     `Status: ${label(booking.status)}`,
@@ -151,6 +154,7 @@ export function invoiceLetter(
     invoice.status === 'void'
       ? 'This invoice is void. The balance is zero.'
       : '',
+    booking.showNumber ? `Show: ${booking.showNumber}` : '',
     `Date: ${longDate(booking.eventDate)}`,
     eventOrPackage(booking),
     '',
@@ -246,6 +250,7 @@ export function paymentLetter(
         : paidFee > 0
           ? 'The card fee is on top of your payment and does not count toward your balance.'
           : '',
+    booking.showNumber ? `Show: ${booking.showNumber}` : '',
     booking.status === 'booked' ? `Your date is booked: ${longDate(booking.eventDate)}` : `Date: ${longDate(booking.eventDate)}`,
     eventOrPackage(booking),
     '',
