@@ -251,7 +251,7 @@ export const getRsvpSale = createServerFn({ method: 'GET' }).handler(
   },
 )
 
-/** The price, HST and total for what the couple typed. Server-side only. */
+/** The price, card fee and total for what the couple typed. Server-side only. */
 export const quoteRsvpCard = createServerFn({ method: 'POST' })
   .validator((data: Record<string, unknown>) => data)
   .handler(async ({ data }) => {

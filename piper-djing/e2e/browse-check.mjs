@@ -913,6 +913,20 @@ await step('/weddings second venue and uplight wording; /book share image size',
   return og
 })
 
+await step('/terms logo and share image; home JSON-LD logo', async () => {
+  await pub.goto(BASE + '/terms', { waitUntil: 'networkidle' })
+  const terms = await pub.evaluate(() => ({
+    logo: document.querySelector('main img')?.getAttribute('src'),
+    og: [...document.querySelectorAll('meta[property^="og:image"]')].map((m) => m.getAttribute('content')).join(' '),
+  }))
+  await pub.goto(BASE + '/', { waitUntil: 'networkidle' })
+  const ld = await pub.evaluate(() => [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => s.textContent).join(' '))
+  expect(terms.logo === '/brand/dj-piper-p-lined.png', `terms logo ${terms.logo}`)
+  expect(/brand-beam\.jpg 1152 864/.test(terms.og), `terms og ${terms.og}`)
+  expect(!ld.includes('logo-inverted') && ld.includes('/brand/dj-piper-p.png'), 'home JSON-LD image')
+  return `${terms.logo}; ${terms.og}`
+})
+
 await step('/book past date note', async () => {
   await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'networkidle' })
   await pub.getByText('That date has passed, please pick another.').waitFor({ timeout: 8000 })
@@ -923,7 +937,7 @@ await step('/rsvp prices', async () => {
   const text = (await pub.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ')
   expect(/Free With a DJ Piper P booking/i.test(text), 'Free price missing')
   expect(/\$40 On its own/i.test(text), '$40 price missing')
-  expect(/13% HST/.test(text), 'HST note missing')
+  expect(/Paying by card adds a 3% card fee\./.test(text) && !/13% HST/.test(text), 'Card fee note missing')
 })
 
 await step('/rsvp price boxes are tappable and jump to the form', async () => {

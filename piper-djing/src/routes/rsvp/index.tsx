@@ -89,7 +89,7 @@ function RsvpProduct() {
               </a>
             </div>
             <p className="mt-3 text-sm text-[var(--text-faint)]">
-              Prices in CAD. Paying by card adds 13% HST.
+              Prices in CAD. Paying by card adds a 3% card fee.
             </p>
           </div>
           <p className="text-sm text-[var(--text-faint)]">

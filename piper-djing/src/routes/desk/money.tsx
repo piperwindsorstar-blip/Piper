@@ -187,7 +187,10 @@ function MoneyPage() {
             {`${dollars(totals.collectedCents) ?? ''} collected of ${dollars(totals.bookedCents) ?? ''} booked, across ${totals.weddings ?? ''} ${totals.weddings === 1 ? 'wedding' : 'weddings'}. Pynx dates are paid by Pynx and are not counted.`}</p>
         </section>
         <SmallTotal label="Refunded" value={dollars(totals.refundedCents)} note={totals.refundedCents === 0 ? 'Nothing sent back' : 'Sent back to couples'} />
-        <SmallTotal label="Card HST" value={dollars(totals.cardHstCents)} note="On top, never part of a balance" />
+        <SmallTotal label="Card fees" value={dollars(totals.cardFeeCents)} note="On top, never part of a balance" />
+        {totals.cardHstCents > 0 ? (
+          <SmallTotal label="Card HST" value={dollars(totals.cardHstCents)} note="On top, never part of a balance" />
+        ) : null}
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
@@ -642,7 +645,7 @@ function RsvpPurchaseRow({
         </div>
         <div className="shrink-0 text-right">
           <p className="font-semibold tabular-nums">{cad(row.baseCents)}</p>
-          <p className="text-xs text-[#5b5370] tabular-nums">{`+ ${cad(row.hstCents) ?? ''} HST`}</p>
+          <p className="text-xs text-[#5b5370] tabular-nums">{`+ ${cad(row.hstCents) ?? ''} card fee`}</p>
         </div>
       </div>
     </li>
