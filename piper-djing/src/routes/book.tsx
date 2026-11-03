@@ -20,7 +20,7 @@ import { todayInToronto } from '../lib/crm/date-request.ts'
 import { stagAllowed } from '../lib/crm/inquiry-checks.ts'
 import { WEDDING_OG_IMAGE, publicHead } from '../lib/seo.ts'
 import type { PackageId } from '../lib/crm/defaults.ts'
-import { BOOK_EVENT_TYPES, bookEventLabel, bookEventType } from '../lib/crm/book-events.ts'
+import { BOOK_EVENT_TYPES, bookEventLabel, bookEventType, eventTypeLabel } from '../lib/crm/book-events.ts'
 import type { BookEventType } from '../lib/crm/book-events.ts'
 
 const FONTS =
@@ -258,7 +258,7 @@ function BookPage() {
                       }}
                       className="sr-only"
                     />
-                    {type}
+                    {eventTypeLabel(type)}
                   </label>
                 ))}
               </div>
