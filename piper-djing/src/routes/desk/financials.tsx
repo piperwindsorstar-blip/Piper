@@ -18,6 +18,7 @@ import { deskHead } from '../../lib/desk-head.ts'
 import {
   INCOME_CATEGORIES,
   MONTH_NAMES,
+  PAY_ANCHOR,
   categoryLabel,
   dollars,
   hoursText,
@@ -29,6 +30,7 @@ import {
   weeklyHours,
 } from '../../lib/fin/fin.ts'
 import type { IncomeEntry, Rate, Shift } from '../../lib/fin/fin.ts'
+import { longDate } from '../../lib/crm/dates.ts'
 import { deleteFinRow, getFinancials, saveIncome, saveRate, saveShift } from '../../lib/fin/fin.functions.ts'
 
 /** Private: Martin's income and Pynx hours. Never shown on the public site. */
@@ -50,15 +52,19 @@ const field = (form: FormData, name: string) => String(form.get(name) ?? '')
 
 function FinancialsPage() {
   const data = Route.useLoaderData()
+  // Every year with income or shifts, plus this year and last year, newest first.
+  const thisYear = new Date().getFullYear().toString()
   const years = useMemo(() => {
     const set = new Set<string>([
       ...data.income.map((row) => row.date.slice(0, 4)),
       ...data.shifts.map((row) => row.date.slice(0, 4)),
-      new Date().getFullYear().toString(),
+      thisYear,
+      String(Number(thisYear) - 1),
     ])
-    return [...set].sort().reverse()
-  }, [data])
-  const [year, setYear] = useState(years[0] ?? '2026')
+    return [...set].filter((item) => /^\d{4}$/.test(item)).sort().reverse()
+  }, [data, thisYear])
+  // Opens on the newest year that is not in the future.
+  const [year, setYear] = useState(years.find((item) => item <= thisYear) ?? years[0] ?? thisYear)
   const [tab, setTab] = useState<Tab>('income')
 
   const income = data.income.filter((row) => row.date.startsWith(year))
@@ -127,7 +133,9 @@ function FinancialsPage() {
       </div>
 
       {tab === 'income' ? <IncomeTab income={income} byMonth={totals.byMonth} /> : null}
-      {tab === 'periods' ? <PeriodsTab periods={periods} rates={data.rates} /> : null}
+      {tab === 'periods' ? (
+        <PeriodsTab periods={periods} rates={data.rates} earlyShifts={shifts.filter((row) => row.date < PAY_ANCHOR).length} />
+      ) : null}
       {tab === 'weekly' ? <WeeklyTab shifts={shifts} year={year} /> : null}
       {tab === 'shifts' ? <ShiftsTab shifts={shifts} /> : null}
     </div>
@@ -344,7 +352,15 @@ function EditForm({ children, onSave }: { children: ReactNode; onSave: (form: Fo
 
 // --- Pay periods ---------------------------------------------------------------
 
-function PeriodsTab({ periods, rates }: { periods: ReturnType<typeof payPeriods>; rates: Rate[] }) {
+function PeriodsTab({
+  periods,
+  rates,
+  earlyShifts,
+}: {
+  periods: ReturnType<typeof payPeriods>
+  rates: Rate[]
+  earlyShifts: number
+}) {
   const router = useRouter()
   const save = useServerFn(saveRate)
   return (
@@ -354,11 +370,21 @@ function PeriodsTab({ periods, rates }: { periods: ReturnType<typeof payPeriods>
         week. It is already inside your Pynx pay, so it is never added to income again.
       </p>
       <ul className="grid gap-3 md:grid-cols-2" aria-label="Pay periods">
-        {periods.length === 0 ? <li className="text-sm text-[#4a4262]">No shifts this year yet.</li> : null}
+        {periods.length === 0 && earlyShifts === 0 ? <li className="text-sm text-[#4a4262]">No shifts this year yet.</li> : null}
+        {earlyShifts > 0 ? (
+          <li className="text-sm text-[#4a4262] md:col-span-2">
+            {`Pay periods start ${longDate(PAY_ANCHOR)}. ${earlyShifts} earlier ${earlyShifts === 1 ? 'shift shows its' : 'shifts show their'} hours in Weekly hours and Shifts, with no pay figure.`}
+          </li>
+        ) : null}
         {periods.map((period) => (
           <li key={period.start} className={`${deskCard} grid gap-1`} data-fin-period={period.start}>
             <p className="text-sm font-semibold text-[#4a4262]">{`${shortDay(period.start)} – ${shortDay(period.end)}`}</p>
-            <p className="font-display text-3xl font-extrabold tabular-nums">{dollars(period.cents)}</p>
+            <p className="font-display text-3xl font-extrabold tabular-nums">
+              {period.unratedHours >= period.hours && period.hours > 0 ? 'No rate' : dollars(period.cents)}
+            </p>
+            {period.unratedHours > 0 && period.unratedHours < period.hours ? (
+              <p className="text-sm text-[#4a4262]">{`${hoursText(period.unratedHours)} hours have no rate on file and are not priced.`}</p>
+            ) : null}
             <p className="text-sm text-[#4a4262]">
               {`${hoursText(period.hours)} hours`}
               {period.overtimeHours > 0 ? ` · ${hoursText(period.overtimeHours)} overtime` : ''}

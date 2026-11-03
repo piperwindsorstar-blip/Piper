@@ -125,11 +125,15 @@ export type PeriodPay = {
   cents: number
   shifts: number
   gigs: string[]
+  /** Hours worked on a day with no rate on file: shown without a pay figure. */
+  unratedHours: number
 }
 
 /**
  * Estimated Pynx hourly pay per pay period. Overtime is worked out per
  * payroll week, shift by shift in order, at the rate on each shift's date.
+ * Pay periods start on PAY_ANCHOR: earlier shifts get no invented period,
+ * and hours with no rate on file are counted but never priced.
  */
 export function payPeriods(shifts: Shift[], rates: Pick<Rate, 'from' | 'cents'>[]): PeriodPay[] {
   const sorted = [...shifts].sort((a, b) =>
@@ -138,10 +142,11 @@ export function payPeriods(shifts: Shift[], rates: Pick<Rate, 'from' | 'cents'>[
   const periods = new Map<string, PeriodPay>()
   const weekHours = new Map<string, number>()
   for (const shift of sorted) {
+    if (shift.date < PAY_ANCHOR) continue
     const start = periodStart(shift.date)
     const period =
       periods.get(start) ??
-      ({ start, end: addDays(start, 13), hours: 0, overtimeHours: 0, cents: 0, shifts: 0, gigs: [] } as PeriodPay)
+      ({ start, end: addDays(start, 13), hours: 0, overtimeHours: 0, cents: 0, shifts: 0, gigs: [], unratedHours: 0 } as PeriodPay)
     periods.set(start, period)
     if (shift.kind === 'gig') {
       period.gigs.push(shift.code || 'Wedding')
@@ -154,6 +159,7 @@ export function payPeriods(shifts: Shift[], rates: Pick<Rate, 'from' | 'cents'>[
     const overtime = hours - regular
     weekHours.set(week, before + hours)
     const rate = rateOn(shift.date, rates)
+    if (rate <= 0) period.unratedHours += hours
     period.hours += hours
     period.overtimeHours += overtime
     period.shifts += 1
