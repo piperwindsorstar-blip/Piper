@@ -12,6 +12,7 @@ import {
 } from '../../lib/crm/date-request.ts'
 import { checkDate } from '../../lib/crm/public.functions.ts'
 import { Eyebrow } from './ui.tsx'
+import { eventTypeLabel } from '../../lib/crm/book-events.ts'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -136,7 +137,9 @@ export function DateChecker() {
           className={field}
         >
           {HOME_EVENT_TYPES.map((item) => (
-            <option key={item}>{item}</option>
+            <option key={item} value={item}>
+              {eventTypeLabel(item)}
+            </option>
           ))}
           <option>{CUSTOM_EVENT}</option>
         </select>
