@@ -82,3 +82,17 @@ describe('financials in the book', { skip: liveBook }, () => {
     await assert.rejects(() => addIncome({ date: '2026-10-28', name: 'x', amount: '-1', category: 'tip' }), /dollars/)
   })
 })
+
+describe('years before the pay periods', () => {
+  it('a 2025 shift gets no invented pay period; a shift with no rate is counted but not priced', () => {
+    const rates = [{ from: '2026-01-04', cents: 2100 }]
+    assert.deepEqual(payPeriods([shift('2025-12-18', '09:00', '17:00')], rates), [])
+    const [period] = payPeriods([shift('2026-01-05', '09:00', '17:00')], [])
+    assert.equal(period?.hours, 8)
+    assert.equal(period?.unratedHours, 8)
+    assert.equal(period?.cents, 0)
+    const [priced] = payPeriods([shift('2026-01-05', '09:00', '17:00')], rates)
+    assert.equal(priced?.unratedHours, 0)
+    assert.equal(priced?.cents, 16800)
+  })
+})
