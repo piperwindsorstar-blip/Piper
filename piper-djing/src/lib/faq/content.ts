@@ -31,11 +31,11 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'How do we book?',
-        a: 'Four steps: check your date, have one planning meeting, build the night together (music brief, timeline, mic cues, lighting — all confirmed in writing), then celebrate. A deposit secures your date.',
+        a: 'Four steps: check your date, have one planning meeting, build the night together (music brief, timeline, mic cues, lighting — all confirmed in writing), then celebrate. A deposit secures your date. For a non-wedding event, pick the event type on the booking page and send your contact name and event date. There is no package to choose. Custom quote — Piper replies personally within one business day.',
       },
       {
         q: 'What is the deposit?',
-        a: 'For The Main Event, a full wedding day, or The After Party, reception only, the deposit is 30% of the total. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. The Aisle, ceremony only, is $350, paid in full. The Main Event booked with The Pre-Party, a full wedding day with a stag and doe, is a flat $500 deposit.',
+        a: 'For The Main Event, a full wedding day, or The After Party, reception only, the deposit is 30% of the total. The Pre-Party, a stag and doe on its own, is a flat $350 deposit. The Aisle, ceremony only, is $350, paid in full. The Main Event booked with The Pre-Party, a full wedding day with a stag and doe, is a flat $500 deposit. A Custom event is deposited at 30% of the agreed price unless Piper sets another deposit. A non-wedding event deposit is set at Piper\'s discretion.',
       },
     ],
   },
