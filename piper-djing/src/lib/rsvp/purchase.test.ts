@@ -31,7 +31,7 @@ const booked: PriceBooking = {
 }
 
 describe('RSVP page price', () => {
-  it('matched booking: free, no HST', () => {
+  it('matched booking: free, no card fee', () => {
     assert.equal(matchesPaidBooking(purchase, [booked]), true)
     const quote = rsvpQuote(true)
     assert.deepEqual(
@@ -41,14 +41,14 @@ describe('RSVP page price', () => {
     assert.equal(paidLabel(quote), 'Free with your Piper booking')
   })
 
-  it('unmatched: $40 + $5.20 HST = $45.20', () => {
+  it('unmatched: $40 + $1.20 card fee = $41.20', () => {
     assert.equal(matchesPaidBooking({ ...purchase, email: 'someone@else.ca' }, [booked]), false)
     const quote = rsvpQuote(false)
     assert.deepEqual(
       { base: quote.baseCents, hst: quote.hstCents, total: quote.chargeCents, kind: quote.kind },
-      { base: 4000, hst: 520, total: 4520, kind: 'standalone' },
+      { base: 4000, hst: 120, total: 4120, kind: 'standalone' },
     )
-    assert.equal(paidLabel(quote), '$40.00 + $5.20 HST = $45.20')
+    assert.equal(paidLabel(quote), '$40.00 + $1.20 card fee = $41.20')
   })
 
   it('matches by booking email or invoice code typed in the optional box', () => {
@@ -84,8 +84,8 @@ describe('RSVP page price', () => {
     assert.equal(form.get('currency'), 'cad')
     assert.equal(form.get('adaptive_pricing[enabled]'), 'false')
     assert.equal(form.get('line_items[0][price_data][unit_amount]'), '4000')
-    assert.equal(form.get('line_items[1][price_data][unit_amount]'), '520')
-    assert.equal(form.get('line_items[1][price_data][product_data][name]'), 'HST 13% on this card payment of $40.00')
+    assert.equal(form.get('line_items[1][price_data][unit_amount]'), '120')
+    assert.equal(form.get('line_items[1][price_data][product_data][name]'), 'Card fee 3% on this card payment of $40.00')
     const currencies = [...form].filter(([key]) => key.endsWith('[currency]')).map(([, v]) => v)
     assert.deepEqual([...new Set(currencies)], ['cad'])
     assert.equal(form.get('metadata[purpose]'), 'rsvp')

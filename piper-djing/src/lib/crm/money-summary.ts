@@ -88,8 +88,10 @@ export type MoneySummary = {
     /** Every payment in, before refunds and HST. */
     receivedCents: number
     refundedCents: number
-    /** Card HST on booking payments and RSVP sales. Sits on top; never a balance. */
+    /** Card HST on booking payments. Sits on top; never a balance. */
     cardHstCents: number
+    /** Card fees on booking payments and RSVP sales. Sit on top; never a balance. */
+    cardFeeCents: number
     weddings: number
   }
   whoOwes: OwingCouple[]
@@ -138,8 +140,10 @@ export function moneySummary(
 
   const receivedCents = payments.filter((p) => p.cents > 0).reduce((sum, p) => sum + p.cents, 0)
   const refundedCents = payments.filter((p) => p.cents < 0).reduce((sum, p) => sum - p.cents, 0)
-  const cardHstCents =
-    payments.reduce((sum, p) => sum + (p.cents > 0 ? Math.max(0, p.hstCents) : 0), 0) +
+  const cardHstCents = payments.reduce((sum, p) => sum + (p.cents > 0 ? Math.max(0, p.hstCents) : 0), 0)
+  // An RSVP sale's on-top amount is the card fee.
+  const cardFeeCents =
+    payments.reduce((sum, p) => sum + (p.cents > 0 ? Math.max(0, p.feeCents ?? 0) : 0), 0) +
     rsvpSales.reduce((sum, sale) => sum + Math.max(0, sale.hstCents), 0)
 
   const months = new Map<string, PaymentMonth>()
@@ -169,6 +173,7 @@ export function moneySummary(
       receivedCents,
       refundedCents,
       cardHstCents,
+      cardFeeCents,
       weddings: counted.length,
     },
     whoOwes,

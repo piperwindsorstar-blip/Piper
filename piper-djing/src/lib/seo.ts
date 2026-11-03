@@ -231,7 +231,7 @@ export function personJsonLd(): string {
     alternateName: 'Piper DJing',
     url: lockedUrl('/'),
     image: [
-      `${site.url}/photos/logo-inverted.png`,
+      `${site.url}/brand/dj-piper-p.png`,
       `${site.url}/photos/dj-piper-at-the-booth.jpg`,
     ],
     description: HOME_DESCRIPTION,

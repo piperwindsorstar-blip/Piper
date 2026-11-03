@@ -211,7 +211,7 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
 
 /**
  * The RSVP page price for what the couple typed, worked out here only:
- * free with a Piper booking whose deposit is in, else $40, plus card HST.
+ * free with a Piper booking whose deposit is in, else $40, plus the 3% card fee.
  * Null when card payments are off (the page shows "Contact us").
  */
 export async function quoteRsvpPurchase(

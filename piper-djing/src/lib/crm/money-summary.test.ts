@@ -102,7 +102,8 @@ describe('money summary', () => {
     ])
     assert.equal(totals.refundedCents, 5000)
     assert.equal(totals.receivedCents, 200000)
-    assert.equal(totals.cardHstCents, 2860)
+    assert.equal(totals.cardHstCents, 2600)
+    assert.equal(totals.cardFeeCents, 260)
     assert.deepEqual(paymentsIn.map((m) => [m.month, m.netCents]), [['2026-10', 15000], ['2026-09', 180000]])
     const october = paymentsIn[0]?.payments ?? []
     assert.deepEqual(october.map((p) => [p.id, p.kind, p.chargedCents]), [[7, 'refund', 5000], [6, 'payment', 22600]])

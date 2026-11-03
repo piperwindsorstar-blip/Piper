@@ -1,12 +1,13 @@
-import { dollars, hstCents, HST_RATE_PERCENT } from '../crm/card-pay.ts'
+import { CARD_FEE_PERCENT, dollars, feeCents } from '../crm/card-pay.ts'
 import { PIPER_RSVP_CENTS, STANDALONE_RSVP_CENTS, coupleSlug } from './model.ts'
 import type { PriceKind } from './model.ts'
 
 /**
  * Buying an RSVP page by card. Pure rules, so the page, the checkout and the
  * webhook agree: free for a couple whose Piper booking has its deposit in,
- * $40 for anyone else, plus 13% HST on the card payment. The price is only
- * ever worked out on the server.
+ * $40 for anyone else, plus a 3% card fee on the card payment. The price is
+ * only ever worked out on the server. The card fee rides in `hstCents`, the
+ * name the stored purchases and Stripe metadata already use.
  */
 
 export type RsvpPurchase = {
@@ -22,6 +23,7 @@ export type RsvpQuote = {
   kind: PriceKind
   label: string
   baseCents: number
+  /** The card fee (3%), on top of the price. */
   hstCents: number
   chargeCents: number
 }
@@ -109,7 +111,7 @@ export function matchesPaidBooking(
 
 export function rsvpQuote(matched: boolean): RsvpQuote {
   const base = matched ? PIPER_RSVP_CENTS : STANDALONE_RSVP_CENTS
-  const hst = hstCents(base)
+  const hst = feeCents(base, CARD_FEE_PERCENT)
   return {
     kind: matched ? 'piper' : 'standalone',
     label: matched
@@ -122,13 +124,13 @@ export function rsvpQuote(matched: boolean): RsvpQuote {
 }
 
 export function rsvpHstLabel(baseCents: number): string {
-  return `HST ${HST_RATE_PERCENT}% on this card payment of ${dollars(baseCents)}`
+  return `Card fee ${CARD_FEE_PERCENT}% on this card payment of ${dollars(baseCents)}`
 }
 
-/** "$40.00 + $5.20 HST = $45.20" for receipts. */
+/** "$40.00 + $1.20 card fee = $41.20" for receipts. */
 export function paidLabel(quote: { baseCents: number; hstCents: number }): string {
   if (quote.baseCents + quote.hstCents === 0) return 'Free with your Piper booking'
-  return `${dollars(quote.baseCents)} + ${dollars(quote.hstCents)} HST = ${dollars(quote.baseCents + quote.hstCents)}`
+  return `${dollars(quote.baseCents)} + ${dollars(quote.hstCents)} card fee = ${dollars(quote.baseCents + quote.hstCents)}`
 }
 
 /**
