@@ -14,6 +14,7 @@ import { DateDraftProvider } from './date-draft.tsx'
 import { Faq } from './faq.tsx'
 import { FinalCta } from './final-cta.tsx'
 import { GearSection } from './gear-section.tsx'
+import { UplightingSection } from './uplighting-section.tsx'
 import { Header } from './header.tsx'
 import { Hero } from './hero.tsx'
 import { Packages } from './packages.tsx'
@@ -66,6 +67,7 @@ export function WeddingsPage({
           <AreaMarquee />
           <Process />
           <GearSection />
+          <UplightingSection />
           <BrandStrip brands={brands} tone="light" />
           {display === 'mine' ? null : (
             <GoogleReviewsSection

@@ -927,6 +927,34 @@ await step('/terms logo and share image; home JSON-LD logo', async () => {
   return `${terms.logo}; ${terms.og}`
 })
 
+await step('/weddings uplighting section under The Booth & Gear, at 390 and 1280', async () => {
+  const out = []
+  for (const width of [390, 1280]) {
+    const v = await browser.newPage({ viewport: { width, height: 900 } })
+    await v.goto(BASE + '/weddings', { waitUntil: 'networkidle' })
+    const r = await v.evaluate(() => {
+      const gear = document.getElementById('the-booth')
+      const up = document.getElementById('uplighting')
+      const imgs = up ? [...up.querySelectorAll('img')].map((i) => i.getAttribute('alt')) : []
+      return {
+        after: Boolean(gear && up && gear.nextElementSibling === up),
+        heading: up?.querySelector('h2')?.textContent,
+        price: up?.innerText.includes('Wired uplights are $15 each.'),
+        imgs,
+        button: up ? [...up.querySelectorAll('button')].map((b) => b.innerText.trim()).join() : '',
+        overflow: document.documentElement.scrollWidth > window.innerWidth,
+      }
+    })
+    await v.locator('#uplighting').screenshot({ path: `${SHOTS}/uplighting-${width}.png` }).catch(() => {})
+    out.push(`${width}: ${JSON.stringify(r)}`)
+    expect(r.after && r.heading === 'Light that changes the whole room.' && r.price, `${width}: ${JSON.stringify(r)}`)
+    expect(r.imgs.join('|') === 'Blue and pink uplighting on a brick venue wall|Red and blue uplighting in a reception room|Blue and purple uplighting at a set dinner reception', `alts ${r.imgs}`)
+    expect(r.button === 'Check Wedding Dates' && !r.overflow, `${width}: button ${r.button}, overflow ${r.overflow}`)
+    await v.close()
+  }
+  return out.join(' ; ')
+})
+
 await step('/book past date note', async () => {
   await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'networkidle' })
   await pub.getByText('That date has passed, please pick another.').waitFor({ timeout: 8000 })
