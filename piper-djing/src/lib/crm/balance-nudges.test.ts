@@ -60,3 +60,35 @@ describe('balance reminders', () => {
     assert.match(noCard.text, /about a month away/)
   })
 })
+
+describe('friendly automated line', () => {
+  it('opens the balance reminder right after the greeting', () => {
+    const letter = balanceLetter({
+      partnerOne: 'Jordan Biggs',
+      partnerTwo: '',
+      eventDate: '2026-11-27',
+      due: { step: 'one-week', balanceCents: 50000 } as Parameters<typeof balanceLetter>[0]['due'],
+      invoiceLink: 'https://piperpweddingdj.services/p/2KUVJ7XPwBHI',
+      card: true,
+      nonWedding: true,
+    })
+    assert.equal(
+      letter.text,
+      [
+        'Hello Jordan Biggs,',
+        '',
+        'This is a friendly automated email.',
+        '',
+        'Your remaining balance of $500.00 is due by 27 November 2026.',
+        'You can pay by e-transfer to PiperPWeddingDJ@gmail.com or by cash, or by card on your invoice page (card adds a 3% card fee on the amount paid by card).',
+        '',
+        'Your invoice: https://piperpweddingdj.services/p/2KUVJ7XPwBHI',
+        '',
+        'If it is already on its way, thank you, and you can ignore this.',
+        '',
+        'Martin · DJ Piper P',
+        'PiperPWeddingDJ@gmail.com',
+      ].join('\n'),
+    )
+  })
+})

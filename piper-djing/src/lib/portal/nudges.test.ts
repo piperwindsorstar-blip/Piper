@@ -81,3 +81,21 @@ describe('plan reminders', () => {
     assert.doesNotMatch(fresh.text, /Next up/)
   })
 })
+
+describe('friendly automated line', () => {
+  it('opens the plan reminder right after the greeting', () => {
+    const letter = nudgeLetter({
+      partnerOne: 'Pat',
+      partnerTwo: 'Sam',
+      eventDate: '2026-12-12',
+      link: 'https://piperpweddingdj.services/c/abc',
+      due: { step: 'two-days', finish: '2026-12-07', days: 1 },
+      answered: 10,
+      total: 38,
+      percent: 26,
+      next: 'First dance',
+    })
+    assert.match(letter.text, /^Hello Pat and Sam,\n\nThis is a friendly automated email\.\n\nYour music plan is 26% done/)
+    assert.equal(letter.subject, 'Your music plan is due soon')
+  })
+})
