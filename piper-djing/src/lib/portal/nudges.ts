@@ -128,6 +128,8 @@ export function nudgeLetter(input: {
   const lines = [
     `Hello ${pairNames(input.partnerOne, input.partnerTwo)},`,
     '',
+    'This is a friendly automated email.',
+    '',
     `${where} ${ask}`,
     input.next ? `Next up: ${input.next}.` : '',
     '',

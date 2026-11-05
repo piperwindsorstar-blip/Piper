@@ -88,6 +88,8 @@ export function balanceLetter(input: {
   const lines = [
     `Hello ${[input.partnerOne, input.nonWedding ? '' : input.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')},`,
     '',
+    'This is a friendly automated email.',
+    '',
     lead,
     ways,
     '',
