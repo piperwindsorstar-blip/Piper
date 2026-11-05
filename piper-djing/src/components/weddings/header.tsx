@@ -1,0 +1,53 @@
+import { Link } from '@tanstack/react-router'
+import { LOGO_ALT, LOGO_SRC, NAV } from './content.ts'
+import { useDateDraft } from './date-draft.tsx'
+
+export function Header({
+  sectionBase = '',
+}: {
+  sectionBase?: '' | '/weddings'
+}) {
+  const { openCalendar } = useDateDraft()
+  return (
+    <header
+      className="sticky top-0 z-40 border-b border-white/10 bg-ink/95 backdrop-blur-md"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
+        <Link
+          to="/"
+          aria-label={LOGO_ALT}
+          className="inline-flex shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+        >
+          <img src={LOGO_SRC} alt="" className="h-12 w-auto sm:h-14" />
+        </Link>
+        <nav className="hidden gap-8 text-sm font-medium text-white/75 md:flex">
+          {NAV.map(([label, href]) => (
+            <a
+              key={label}
+              href={href.startsWith('/') ? href : `${sectionBase}${href}`}
+              className="hover:text-white"
+            >
+              {label}
+            </a>
+          ))}
+          <Link to="/rsvp" className="hover:text-white">
+            RSVP
+          </Link>
+        </nav>
+        <div className="flex items-center gap-3">
+          <Link to="/rsvp" className="text-sm font-medium text-white/75 md:hidden">
+            RSVP
+          </Link>
+          <button
+            type="button"
+            onClick={openCalendar}
+            className="rounded-lg bg-neon px-4 py-2 text-sm font-semibold text-white transition hover:bg-hot"
+          >
+            Check Dates
+          </button>
+        </div>
+      </div>
+    </header>
+  )
+}

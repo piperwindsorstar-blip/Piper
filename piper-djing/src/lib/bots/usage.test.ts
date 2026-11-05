@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+import { isDeskUsageRoot } from './desk-rest.ts'
+import { usageDocument } from './usage.ts'
+import { ownerAddress } from '../crm/mail.server.ts'
+
+describe('desk usage', () => {
+  it('describes this book and the saved package prices', () => {
+    assert.equal(isDeskUsageRoot('/api/bots/v1'), true)
+    assert.equal(isDeskUsageRoot('/api/bots/v1/'), true)
+    assert.equal(isDeskUsageRoot('/api/bots/v1/packages'), false)
+
+    const usage = usageDocument([
+      { id: 'full', name: 'Full wedding day', cents: 165000 },
+      { id: 'reception', name: 'Reception only', cents: 155000 },
+      { id: 'stag', name: 'A stag and doe', cents: 75000 },
+      { id: 'ceremony', name: 'Ceremony only', cents: 35000 },
+    ])
+    const text = JSON.stringify(usage)
+    assert.equal(usage.book, 'piperpweddingdj.services')
+    assert.equal(usage.packages[2]?.priceCents, 75000)
+    assert.match(text, /Names and prices can be changed/)
+    assert.doesNotMatch(text, /prices stay locked/)
+    assert.match(text, /CJ and Laura 2027-03-12 total 100000 deposit 30000/)
+    assert.match(text, /These four packages stay/)
+    assert.match(text, /DELETE \/api\/bots\/v1\/bookings/)
+    assert.match(text, /DELETE \/api\/bots\/v1\/externals/)
+    assert.match(text, /discountCents or discountDollars/)
+    assert.match(text, /PATCH \/api\/bots\/v1\/venues/)
+    assert.match(text, /GET \/api\/bots\/v1\/rsvps/)
+    assert.match(text, /GET \/api\/bots\/v1\/money returns/)
+    assert.match(text, /one Money page in place of separate Invoices and Payments/)
+    assert.match(text, /hasEmail false means/)
+    assert.match(text, /Money is read only/)
+    assert.match(text, /The CEO bot only/)
+    assert.match(text, /questions\?open=true/)
+    assert.match(text, /questions\/\{qid\}\/reply/)
+    assert.match(text, /guests\/\{guestId\}/)
+    assert.match(text, /partyId/)
+    assert.match(text, /plusOnes/)
+    assert.match(text, /DELETE \/api\/bots\/v1\/venues/)
+    assert.doesNotMatch(text, /instead of deleting it/)
+    assert.match(text, /payByCard/)
+    assert.match(text, /externalId/)
+    assert.match(text, /duplicate:true/)
+  })
+
+  it('sends owner mail to the saved desk address', () => {
+    assert.equal(ownerAddress('piper@example.com'), 'piper@example.com')
+    assert.equal(ownerAddress('  '), 'PiperPWeddingDJ@gmail.com')
+  })
+})
