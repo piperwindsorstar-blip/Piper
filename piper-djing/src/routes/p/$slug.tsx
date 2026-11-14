@@ -90,6 +90,7 @@ function InvoicePage() {
               venueTwoName: invoice.nonWedding ? '' : (invoice.venueTwoName ?? ''),
               travelFeeCents: invoice.travelFeeCents ?? 0,
               distanceFeeCents: invoice.distanceFeeCents ?? 0,
+              lineItems: invoice.lineItems ?? [],
             }).map(([label, cents]) => (
               <Row key={label} label={label} value={cad(cents)} />
             ))}

@@ -33,3 +33,33 @@ test('an agreed or locked price is one line', () => {
   assert.deepEqual(invoiceLines({ ...wedding, packageId: 'custom', totalCents: 250000 }), [['Agreed price', 250000]])
   assert.deepEqual(invoiceLines({ ...wedding, lockedTotal: true, totalCents: 200000 }), [['Full wedding day', 200000]])
 })
+
+test('custom lines follow the package lines, in order, and everything adds up', () => {
+  const lines = invoiceLines({
+    ...wedding,
+    uplights: 0,
+    venueTwoName: '',
+    travelFeeCents: 0,
+    totalCents: 130000,
+    lineItems: [{ label: 'MG Event Planning Preferred Discount', cents: -35000 }],
+  })
+  assert.deepEqual(lines, [
+    ['Full wedding day', 165000],
+    ['MG Event Planning Preferred Discount', -35000],
+  ])
+})
+
+test('a positive and a negative custom line, with the Discount field too', () => {
+  const lines = invoiceLines({
+    ...wedding,
+    totalCents: wedding.totalCents + 15000 - 5000 - 10000,
+    discountCents: 10000,
+    lineItems: [
+      { label: 'Extra hour', cents: 15000 },
+      { label: 'Loyalty credit', cents: -5000 },
+    ],
+  })
+  assert.deepEqual(lines.slice(-2), [['Extra hour', 15000], ['Loyalty credit', -5000]])
+  assert.equal(lines[0]?.[1], 165000)
+  assert.equal(lines.reduce((sum, [, cents]) => sum + cents, 0), wedding.totalCents + 15000 - 5000)
+})

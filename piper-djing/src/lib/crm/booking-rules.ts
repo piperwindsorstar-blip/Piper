@@ -1,6 +1,7 @@
 import type { PackageId } from './defaults.ts'
 import {
   applyDiscount,
+  depositForTotal,
   CEREMONY_DEPOSIT_CENTS,
   deposit30,
   FULL_PLUS_STAG_DEPOSIT_CENTS,
@@ -13,6 +14,8 @@ import {
   requiredDeposit,
   torontoToday,
 } from '../piper/rules.ts'
+import { lineItemsCents } from './line-items.ts'
+import type { LineItem } from './line-items.ts'
 
 export type BookingStatus =
   'open' | 'hold' | 'booked' | 'cancelled' | 'released'
@@ -39,6 +42,8 @@ export type WeddingInput = {
   nonWedding?: boolean
   /** A non-wedding event's distance fee, set by hand and added to the price. */
   distanceFeeCents?: number
+  /** Custom invoice lines (label and amount, negative for a credit), added before the Discount. */
+  lineItems?: LineItem[]
   /** A locked booking keeps its agreed total and is never repriced. */
   lockedTotal?: boolean
   /** Automatic or manual travel; null = distance unknown; undefined = typed km. */
@@ -161,7 +166,8 @@ export function figuresFor(
       throw new Error('A Custom booking needs a price.')
     }
     const distanceCents = input.nonWedding ? Math.max(0, input.distanceFeeCents ?? 0) : 0
-    const totalCents = priceCents + distanceCents
+    const totalCents = priceCents + distanceCents + lineItemsCents(input.lineItems)
+    if (totalCents < 0) throw new Error('The line items take the total below zero.')
     if (discountCents > totalCents) {
       throw new Error('That discount is larger than the total.')
     }
@@ -187,17 +193,26 @@ export function figuresFor(
     input.eventDate,
   )
   if (custom) {
-    if (discountCents > 0) throw new Error('That agreed total stays.')
+    if (discountCents > 0 || lineItemsCents(input.lineItems) !== 0) throw new Error('That agreed total stays.')
     return {
       totalCents: custom.totalCents,
       depositCents: custom.depositClearedCents,
       discountCents: 0,
     }
   }
-  return applyDiscount(quote(input, prices), discountCents, {
-    packageId: input.packageId,
-    withStag: input.withStag,
-  })
+  const shape = { packageId: input.packageId, withStag: input.withStag }
+  const quoted = quote(input, prices)
+  // Custom lines join the quote first; the deposit follows the new total.
+  const lines = lineItemsCents(input.lineItems)
+  const withLines =
+    lines === 0
+      ? quoted
+      : (() => {
+          const totalCents = quoted.totalCents + lines
+          if (totalCents < 0) throw new Error('The line items take the total below zero.')
+          return { ...quoted, totalCents, depositCents: depositForTotal(totalCents, shape) }
+        })()
+  return applyDiscount(withLines, discountCents, shape)
 }
 
 export function assertBookableNames(
