@@ -13,6 +13,8 @@ export type InvoiceLineInput = {
   venueTwoName: string
   travelFeeCents: number
   distanceFeeCents: number
+  /** Custom lines Piper added, shown after the rest in the order set. */
+  lineItems?: { label: string; cents: number }[]
 }
 
 /**
@@ -21,6 +23,14 @@ export type InvoiceLineInput = {
  * do not, so an agreed or older price never shows a wrong sum.
  */
 export function invoiceLines(input: InvoiceLineInput): [string, number][] {
+  const custom = (input.lineItems ?? []).map((item): [string, number] => [item.label, item.cents])
+  const customCents = custom.reduce((sum, [, cents]) => sum + cents, 0)
+  // Everything before the Discount field, less the custom lines, which follow in order.
+  const before = input.totalCents + Math.max(0, input.discountCents) - customCents
+  return [...baseLines({ ...input, totalCents: before, discountCents: 0 }), ...custom]
+}
+
+function baseLines(input: InvoiceLineInput): [string, number][] {
   const before = input.totalCents + Math.max(0, input.discountCents)
   if (input.nonWedding) {
     const distance = Math.max(0, input.distanceFeeCents)

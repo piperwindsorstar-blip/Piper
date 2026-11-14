@@ -247,6 +247,17 @@ export function quote(
   return { totalCents, depositCents, hotel: travel.hotel }
 }
 
+/** The deposit for a total, by package shape: the same rules a discount uses. */
+export function depositForTotal(totalCents: number, shape: { packageId: PackageId; withStag: boolean }): number {
+  return shape.packageId === 'ceremony'
+    ? totalCents
+    : shape.packageId === 'stag'
+      ? Math.min(STAG_DEPOSIT_CENTS, totalCents)
+      : shape.packageId === 'full' && shape.withStag
+        ? Math.min(FULL_PLUS_STAG_DEPOSIT_CENTS, totalCents)
+        : deposit30(totalCents)
+}
+
 /** A custom discount comes off the quoted total. The deposit is calculated again. */
 export function applyDiscount(
   quoted: { totalCents: number; depositCents: number; hotel: boolean },

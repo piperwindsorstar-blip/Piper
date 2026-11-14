@@ -18,7 +18,7 @@ import {
   Plus,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { PortalDeskFields } from '../../components/portal/desk-fields.tsx'
 import {
   Bar,
@@ -86,6 +86,7 @@ import type { TravelSource } from '../../lib/crm/travel.ts'
 import {
   applyDiscount,
   deposit30,
+  depositForTotal,
   PACKAGE_CENTS,
   quote,
 } from '../../lib/piper/rules.ts'
@@ -686,7 +687,8 @@ function CouplePage({ booking }: { booking: BookingRow }) {
   const days = daysUntil(today, booking.eventDate)
   const event = booking.nonWedding === true
   const travelFee = event ? (booking.distanceFeeCents ?? 0) : (booking.travel.feeCents ?? 0)
-  const base = total + booking.discountCents - travelFee
+  const customLines = booking.lineItems ?? []
+  const base = total + booking.discountCents - travelFee - customLines.reduce((sum, item) => sum + item.cents, 0)
   const sent = invoice ? invoice.status === 'sent' : false
   const firstPaid = own.find((payment) => payment.cents > 0)
   const depositDone = paid > 0 && paid >= deposit
@@ -838,6 +840,12 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               <dl className="grid grid-cols-[1fr_auto] content-start gap-x-4 gap-y-1.5 text-sm">
                 <dt className="text-[#5b5370]">{event ? booking.eventType || booking.packageName : booking.packageName}</dt>
                 <dd className="text-right tabular-nums">{cad(base)}</dd>
+                {customLines.map((item, index) => (
+                  <Fragment key={`${index}-${item.label}`}>
+                    <dt className="text-[#5b5370]" data-line-item>{item.label}</dt>
+                    <dd className="text-right tabular-nums">{cad(item.cents)}</dd>
+                  </Fragment>
+                ))}
                 {booking.discountCents > 0 ? (
                   <>
                     <dt className="text-[#5b5370]">Discount</dt>
@@ -1292,6 +1300,7 @@ function NewBooking({
                   balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
                   businessName: form.has('businessName') ? String(form.get('businessName') ?? '') : undefined,
                   customDepositCents: eventDeposit(form),
+                  lineItems: formLineItems(form),
                   distanceFeeCents: form.has('distanceFee') ? dollarsOrZero(form, 'distanceFee') : undefined,
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
@@ -1920,11 +1929,18 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
     (km) => Number.isFinite(km) && km >= 0,
   )
   const rawDiscount = String(data.get('discount') ?? '').trim()
+  // The Line items rows as typed (read straight from the inputs, so the estimate never lags).
+  const lines = [...form.querySelectorAll('[data-line-row]')]
+    .map((row) => row.querySelectorAll('input')[1]?.value ?? '')
+    .filter((value) => value.trim())
+    .map(signedCents)
+  if (lines.some((cents) => !Number.isFinite(cents))) return null
+  const lineCents = lines.reduce((sum, cents) => sum + cents, 0)
   try {
     const discountCents = rawDiscount ? dollarsToCents(rawDiscount) : 0
     if (packageId === 'custom') {
       const rawTotal = String(data.get('customTotal') ?? '').trim()
-      const total = rawTotal ? dollarsToCents(rawTotal) : 0
+      const total = (rawTotal ? dollarsToCents(rawTotal) : 0) + lineCents
       if (total <= 0 || discountCents > total) return null
       return {
         totalCents: total - discountCents,
@@ -1942,13 +1958,103 @@ function liveQuote(form: HTMLFormElement, prices: Record<PackageId, number>) {
       },
       prices,
     )
-    return applyDiscount(quoted, discountCents, {
-      packageId,
-      withStag: packageId === 'full' && data.get('withStag') === 'on',
-    })
+    const shape = { packageId, withStag: packageId === 'full' && data.get('withStag') === 'on' }
+    const withLines =
+      lineCents === 0
+        ? quoted
+        : { ...quoted, totalCents: quoted.totalCents + lineCents, depositCents: depositForTotal(quoted.totalCents + lineCents, shape) }
+    if (withLines.totalCents < 0) return null
+    return applyDiscount(withLines, discountCents, shape)
   } catch {
     return null
   }
+}
+
+/** The Line items editor's lines, or undefined when the form has none. */
+function formLineItems(form: FormData): { label: string; cents: number }[] | undefined {
+  if (!form.has('lineItems')) return undefined
+  try {
+    const rows = JSON.parse(String(form.get('lineItems') ?? '[]'))
+    return Array.isArray(rows) ? rows : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** "-350", "-$350.00" or "125.5" to cents; NaN when it doesn't read. */
+function signedCents(text: string): number {
+  const clean = text.replace(/[$,\s]/g, '')
+  if (!/^-?\d+(\.\d{1,2})?$/.test(clean)) return Number.NaN
+  const negative = clean.startsWith('-')
+  const cents = dollarsToCents(clean.replace('-', ''))
+  return negative ? -cents : cents
+}
+
+type LineRow = { key: number; label: string; amount: string }
+
+/** Custom invoice lines: a label and an amount (negative for a discount or credit). */
+function LineItemsField({ defaults }: { defaults?: { label: string; cents: number }[] }) {
+  const [rows, setRows] = useState<LineRow[]>(() =>
+    (defaults ?? []).map((item, index) => ({ key: index, label: item.label, amount: (item.cents / 100).toFixed(2) })),
+  )
+  const [nextKey, setNextKey] = useState((defaults ?? []).length)
+  const sent = rows
+    .filter((row) => row.label.trim() || row.amount.trim())
+    .map((row) => ({ label: row.label.trim(), cents: signedCents(row.amount) }))
+  const change = (key: number, patch: Partial<LineRow>) =>
+    setRows((list) => list.map((row) => (row.key === key ? { ...row, ...patch } : row)))
+  const move = (index: number, by: number) =>
+    setRows((list) => {
+      const next = [...list]
+      const [row] = next.splice(index, 1)
+      if (row) next.splice(index + by, 0, row)
+      return next
+    })
+  return (
+    <fieldset className="grid gap-2 md:col-span-full" data-line-items>
+      <legend className="text-sm font-semibold">Line items</legend>
+      <input type="hidden" name="lineItems" value={JSON.stringify(sent.map((row) => ({ ...row, cents: Number.isFinite(row.cents) ? row.cents : 0 })))} />
+      {rows.map((row, index) => (
+        <div key={row.key} className="grid grid-cols-[1fr_8rem] gap-2 sm:grid-cols-[1fr_8rem_auto]" data-line-row>
+          <input
+            aria-label={`Line ${index + 1} label`}
+            value={row.label}
+            maxLength={80}
+            placeholder="MG Event Planning Preferred Discount"
+            onChange={(event) => change(row.key, { label: event.target.value })}
+          />
+          <input
+            aria-label={`Line ${index + 1} amount`}
+            value={row.amount}
+            inputMode="decimal"
+            placeholder="-350.00"
+            onChange={(event) => change(row.key, { amount: event.target.value })}
+          />
+          <span className="col-span-2 flex gap-1 sm:col-span-1">
+            <button type="button" className={deskGhost} aria-label={`Move line ${index + 1} up`} disabled={index === 0} onClick={() => move(index, -1)}>
+              ↑
+            </button>
+            <button type="button" className={deskGhost} aria-label={`Move line ${index + 1} down`} disabled={index === rows.length - 1} onClick={() => move(index, 1)}>
+              ↓
+            </button>
+            <button type="button" className={deskGhost} aria-label={`Remove line ${index + 1}`} onClick={() => setRows((list) => list.filter((item) => item.key !== row.key))}>
+              Remove
+            </button>
+          </span>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={`${deskGhost} w-fit`}
+        onClick={() => {
+          setRows((list) => [...list, { key: nextKey, label: '', amount: '' }])
+          setNextKey((key) => key + 1)
+        }}
+      >
+        Add a line
+      </button>
+    </fieldset>
+  )
 }
 
 function dollarsOrZero(form: FormData, name: string): number {
@@ -2039,6 +2145,7 @@ function BookingCard({
     businessName?: string
     distanceFeeCents?: number
     showNumber?: string
+    lineItems?: { label: string; cents: number }[]
     travel: {
       km: number | null
       feeCents: number | null
@@ -2267,6 +2374,7 @@ function BookingCard({
               customTotalCents: booking.customTotalCents,
               depositCents: booking.invoice?.depositCents ?? 0,
               distanceFeeCents: booking.distanceFeeCents ?? 0,
+              lineItems: booking.lineItems ?? [],
               businessName: booking.businessName ?? '',
               lockedTotal: booking.lockedTotal,
             }}
@@ -2303,6 +2411,7 @@ function BookingCard({
                   balanceDueOn: form.has('balanceDueOn') ? String(form.get('balanceDueOn') ?? '') : undefined,
                   businessName: form.has('businessName') ? String(form.get('businessName') ?? '') : undefined,
                   customDepositCents: eventDeposit(form),
+                  lineItems: formLineItems(form),
                   distanceFeeCents: form.has('distanceFee') ? dollarsOrZero(form, 'distanceFee') : undefined,
                   phone: String(form.get('phone') ?? ''),
                   eventDate: String(form.get('eventDate') ?? ''),
@@ -3026,6 +3135,7 @@ function BookingFields({
     depositCents?: number
     businessName?: string
     distanceFeeCents?: number
+    lineItems?: { label: string; cents: number }[]
   }
 }) {
   const span = columns === 3 ? 'md:col-span-3' : 'md:col-span-2'
@@ -3128,6 +3238,7 @@ function BookingFields({
           Balance due
           <input name="balanceDueOn" type="date" defaultValue={defaults?.balanceDueOn ?? ''} />
         </label>
+        <LineItemsField defaults={defaults?.lineItems} />
         {/* Wedding-only details are kept as they are. */}
         <input type="hidden" name="partnerTwo" value="" />
         <input type="hidden" name="emailTwo" defaultValue={defaults?.emailTwo ?? ''} />
@@ -3271,6 +3382,7 @@ function BookingFields({
           }
         />
       </label>
+      <LineItemsField defaults={defaults?.lineItems} />
       <VenuePair
         venues={venues}
         chooseLabel="Choose a venue"

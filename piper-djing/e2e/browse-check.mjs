@@ -955,6 +955,66 @@ await step('/weddings uplighting section under The Booth & Gear, at 390 and 1280
   return out.join(' ; ')
 })
 
+async function bookingWithLines(one, two, day, fill) {
+  const now = new Date()
+  const iso = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 3, day)).toISOString().slice(0, 10)
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: /New booking/ }).first().click()
+  const form = page.locator('form', { has: page.getByRole('button', { name: 'Save as open' }) })
+  await form.locator('input[name="partnerOne"]').fill(one)
+  await form.locator('input[name="partnerTwo"]').fill(two)
+  await form.locator('input[name="email"]').fill(`${one.split(' ')[0].toLowerCase()}@example.com`)
+  await form.locator('input[name="eventDate"]').fill(iso)
+  await fill(form)
+  await form.getByRole('button', { name: 'Save as open' }).click()
+  await page.waitForTimeout(2500)
+  await page.goto(BASE + '/desk/bookings', { waitUntil: 'networkidle' })
+  await page.locator('main a[href*="couple="]', { hasText: one }).first().click()
+  const link = page.getByRole('link', { name: 'Invoice page' }).first()
+  await link.waitFor({ timeout: 15000 })
+  const deskLines = await page.locator('[data-line-item]').allInnerTexts()
+  const desk = (await page.locator('main').innerText()).replace(/\s+/g, ' ')
+  await pub.goto(new URL(await link.getAttribute('href'), BASE).href, { waitUntil: 'networkidle' })
+  const invoice = (await pub.locator('main').innerText()).replace(/\s+/g, ' ')
+  return { deskLines, desk, invoice }
+}
+
+await step('Desk: custom line items (one positive, one negative) on the Desk and the invoice', async () => {
+  const { deskLines, desk, invoice } = await bookingWithLines('Lina Linetest', 'Omar Linetest', 25, async (form) => {
+    await form.getByRole('button', { name: 'Add a line' }).click()
+    await form.getByLabel('Line 1 label').fill('Extra hour of ceremony music')
+    await form.getByLabel('Line 1 amount').fill('150')
+    await form.getByRole('button', { name: 'Add a line' }).click()
+    await form.getByLabel('Line 2 label').fill('MG Event Planning Preferred Discount')
+    await form.getByLabel('Line 2 amount').fill('-350')
+  })
+  expect(deskLines.join('|') === 'Extra hour of ceremony music|MG Event Planning Preferred Discount', `Desk lines: ${deskLines}`)
+  expect(/Full wedding day \$1,650\.00 Extra hour of ceremony music \$150\.00 MG Event Planning Preferred Discount -\$350\.00/.test(desk), `Desk money: ${desk.slice(desk.indexOf('Full wedding day'), desk.indexOf('Full wedding day') + 200)}`)
+  expect(/Total \$1,450\.00/.test(desk), 'Desk total')
+  expect(/Full wedding day \$1,650\.00 Extra hour of ceremony music \$150\.00 MG Event Planning Preferred Discount -\$350\.00/.test(invoice), `Invoice lines: ${invoice.slice(0, 500)}`)
+  expect(/Total \$1,450\.00/.test(invoice) && /Deposit \$425\.00/.test(invoice), `Invoice total/deposit: ${invoice.slice(0, 600)}`)
+  return 'lines in order; total $1,450.00; deposit $425.00'
+})
+
+await step('Desk: the worked example: $1,650 with a -$350 line is $1,300, deposit $400', async () => {
+  const { invoice } = await bookingWithLines('Sara Worked', 'Ben Worked', 26, async (form) => {
+    await form.getByRole('button', { name: 'Add a line' }).click()
+    await form.getByLabel('Line 1 label').fill('MG Event Planning Preferred Discount')
+    await form.getByLabel('Line 1 amount').fill('-350')
+  })
+  expect(/Total \$1,300\.00/.test(invoice) && /Deposit \$400\.00/.test(invoice), `Worked example: ${invoice.slice(0, 600)}`)
+  return 'total $1,300.00; deposit $400.00'
+})
+
+await step('Desk: a $350 Discount field (like 27-05) still gives $1,300 and $400, with no lines', async () => {
+  const { deskLines, invoice } = await bookingWithLines('Sam Discounted', 'Blair Discounted', 27, async (form) => {
+    await form.locator('input[name="discount"]').fill('350')
+  })
+  expect(deskLines.length === 0, `Unexpected lines: ${deskLines}`)
+  expect(/Total \$1,300\.00/.test(invoice) && /Deposit \$400\.00/.test(invoice) && /Discount \$350\.00/.test(invoice), `Discount invoice: ${invoice.slice(0, 600)}`)
+  return 'total $1,300.00; deposit $400.00; Discount $350.00'
+})
+
 await step('/book past date note', async () => {
   await pub.goto(BASE + '/book?date=2024-05-04&event=Wedding', { waitUntil: 'networkidle' })
   await pub.getByText('That date has passed, please pick another.').waitFor({ timeout: 8000 })

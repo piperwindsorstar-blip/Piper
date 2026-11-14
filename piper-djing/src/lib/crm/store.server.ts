@@ -68,6 +68,8 @@ import {
 } from '../piper/rules.ts'
 import { pairNames } from './names.ts'
 import { missingNumbers } from './show-numbers.ts'
+import { cleanLineItems, parseLineItems, sameLineItems } from './line-items.ts'
+import type { LineItem } from './line-items.ts'
 
 /**
  * Table and column set-up only adds what is missing, so each step runs once per
@@ -130,6 +132,8 @@ export type BookingView = {
   invoiceNote: string
   /** The show number, such as 26-01; empty for a test sample. */
   showNumber: string
+  /** Custom invoice lines, in the order set. */
+  lineItems: LineItem[]
   phone: string
   eventDate: string
   stagDate: string | null
@@ -220,6 +224,7 @@ type BookingRow = {
   distance_fee_cents?: unknown
   invoice_note?: string | null
   show_number?: string | null
+  line_items?: string | null
   balance_due?: string | null
   phone: string
   event_date: string
@@ -342,6 +347,7 @@ function toState(row: BookingRow): BookingState {
     discountCents: whole(row.discount_cents ?? 0, 'Discount'),
     customTotalCents: whole(row.custom_total_cents ?? 0, 'Custom price'),
     lockedTotal: flag(row.locked_total),
+    lineItems: parseLineItems(row.line_items),
     holdStartedOn: row.hold_started_on,
     stagReleased: flag(row.stag_released),
     ...travelPricing(row),
@@ -462,6 +468,7 @@ function toView(row: BookingRow, invoice: InvoiceRow | null): BookingView {
     discountCents: state.discountCents,
     customTotalCents: state.customTotalCents ?? 0,
     lockedTotal: state.lockedTotal ?? false,
+    lineItems: state.lineItems ?? [],
     holdStartedOn: state.holdStartedOn,
     holdLastDay: state.holdStartedOn ? holdLastDay(state.holdStartedOn, state.eventDate) : null,
     stagReleased: state.stagReleased,
@@ -520,6 +527,8 @@ async function ensureCustomColumnsStep(): Promise<void> {
     ['invoice_note', "text NOT NULL DEFAULT ''"],
     // The show number, such as 26-01: event year and its running count.
     ['show_number', "text NOT NULL DEFAULT ''"],
+    // Custom invoice lines as JSON: [{ label, cents }], in the order set.
+    ['line_items', "text NOT NULL DEFAULT '[]'"],
   ] as const) {
     try {
       await query(`SELECT ${name} FROM bookings LIMIT 0`)
@@ -730,6 +739,8 @@ export type BookingInput = {
   balanceDueOn?: string
   businessName?: string
   distanceFeeCents?: number
+  /** Custom invoice lines; left out on an update, the saved lines stay. */
+  lineItems?: unknown
   phone: string
   eventDate: string
   stagDate: string | null
@@ -814,6 +825,7 @@ function normalize(input: BookingInput) {
     lockedTotal: input.lockedTotal ?? false,
     nonWedding: input.nonWedding ?? false,
     distanceFeeCents: input.nonWedding ? wholeOrZero(input.distanceFeeCents) : 0,
+    lineItems: input.lineItems === undefined ? undefined : cleanLineItems(input.lineItems),
   }
 }
 
@@ -1245,6 +1257,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   const figures = figuresFor(
     {
       ...next,
+      lineItems: next.lineItems ?? [],
       venueName: next.venueName,
       venueStreet: next.venueStreet,
     },
@@ -1296,6 +1309,7 @@ export async function createBooking(input: BookingInput): Promise<BookingView> {
   await rememberVenue(next.venueName, next.venueStreet)
   await rememberVenue(next.venueTwoName, next.venueTwoStreet)
   await saveEmailTwo(id, input.emailTwo)
+  if ((next.lineItems ?? []).length > 0) await saveLineItems(id, next.lineItems ?? [])
   if (!next.sample) await numberShows()
   // New bookings start as weddings, so only a non-wedding event needs a write.
   if (input.nonWedding) await saveNonWedding(id, true)
@@ -1339,6 +1353,11 @@ async function saveEventType(id: number, value: string | undefined): Promise<voi
   if (value === undefined) return
   await ensureCustomColumns()
   await query('UPDATE bookings SET event_type = $1 WHERE id = $2', [value.trim().slice(0, 60), id])
+}
+
+async function saveLineItems(id: number, items: LineItem[]): Promise<void> {
+  await ensureCustomColumns()
+  await query('UPDATE bookings SET line_items = $1 WHERE id = $2', [JSON.stringify(items), id])
 }
 
 async function saveDistanceFee(id: number, cents: number): Promise<void> {
@@ -2017,6 +2036,8 @@ export type BookingPatch = {
   balanceDueOn?: string
   businessName?: string
   distanceFeeCents?: number
+  /** Custom invoice lines; left out on an update, the saved lines stay. */
+  lineItems?: unknown
   phone: string
   eventDate: string
   stagDate: string | null
@@ -2075,6 +2096,11 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
   if (locked && next.discountCents > 0 && next.discountCents !== state.discountCents) {
     throw new Error('That agreed total stays.')
   }
+  // Lines left out keep what is saved; a locked total keeps its lines too.
+  const lineItems: LineItem[] = next.lineItems ?? state.lineItems ?? []
+  if (locked && !sameLineItems(lineItems, state.lineItems ?? [])) {
+    throw new Error('That agreed total stays.')
+  }
   const figures = locked
     ? {
         totalCents: state.totalCents,
@@ -2099,6 +2125,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
           discountCents: next.discountCents,
           customTotalCents: next.customTotalCents,
           customDepositCents: next.customDepositCents,
+          lineItems,
           ...travelPricing({
             ...current,
             venue_two_name: next.venueTwoName,
@@ -2155,6 +2182,7 @@ export async function updateBooking(patch: BookingPatch): Promise<BookingView> {
     await saveEventType(current.id, patch.eventType)
   }
   if (next.nonWedding) await saveDueDates(current.id, patch.depositDueOn, patch.balanceDueOn)
+  if (!sameLineItems(lineItems, state.lineItems ?? [])) await saveLineItems(current.id, lineItems)
   if (next.nonWedding) await saveBusinessName(current.id, patch.businessName)
   if (next.nonWedding) await saveDistanceFee(current.id, next.distanceFeeCents)
   const invoiceRow = await invoiceFor(current.id)
@@ -4012,6 +4040,7 @@ export async function invoiceBySlug(slugValue: string) {
     distanceFeeCents: view.nonWedding ? view.distanceFeeCents : 0,
     invoiceNote: view.invoiceNote,
     showNumber: view.showNumber,
+    lineItems: view.lineItems,
     packageId: view.packageId,
     withStag: view.withStag,
     lockedTotal: view.lockedTotal,
