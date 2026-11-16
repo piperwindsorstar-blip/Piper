@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   DeskTitle,
   deskCard,
@@ -21,11 +21,28 @@ export const Route = createFileRoute('/desk/terms')({
   component: TermsPage,
 })
 
+/** Layout effect in the browser; a plain effect where there is no layout. */
+const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+
 function TermsPage() {
   const data = Route.useLoaderData()
   const save = useServerFn(saveTerms)
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
+  const box = useRef<HTMLTextAreaElement>(null)
+  // The box grows to fit the whole document, so nothing scrolls inside it and
+  // no line is cut off. Only its height changes; the text is never touched.
+  const fit = useCallback(() => {
+    const area = box.current
+    if (!area) return
+    area.style.height = 'auto'
+    area.style.height = `${area.scrollHeight + 2}px`
+  }, [])
+  useIsoLayoutEffect(fit, [fit, data.body])
+  useEffect(() => {
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [fit])
 
   return (
     <form className="grid gap-5" onSubmit={(event) => event.preventDefault()}>
@@ -39,15 +56,17 @@ function TermsPage() {
           Terms
         </label>
         <textarea
+          ref={box}
           id="terms"
           name="body"
           rows={16}
           required
           defaultValue={data.body}
-          className="leading-relaxed"
+          onInput={fit}
+          className="block min-h-96 w-full resize-none overflow-y-auto text-base leading-relaxed"
         />
         <ActionButton
-          className={`${deskPrimary} mt-4`}
+          className={`${deskPrimary} mt-5`}
           checkForm
           busy="Saving…"
           done="Saved"

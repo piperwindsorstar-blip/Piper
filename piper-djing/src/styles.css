@@ -1410,3 +1410,33 @@ button:focus-visible,
   object-fit: cover;
   object-position: 50% 30%;
 }
+
+/* ---------------------------------------------------------------------------
+   Desk on a phone.
+--------------------------------------------------------------------------- */
+/* A strip that scrolls sideways shows a soft shadow on any side with more to
+   see. The white covers travel with the content and hide the shadow at each
+   end; the shadows stay put at the edges. */
+.scroll-cue {
+  background:
+    linear-gradient(to right, #fff 40%, rgba(255, 255, 255, 0)) left center,
+    linear-gradient(to left, #fff 40%, rgba(255, 255, 255, 0)) right center,
+    linear-gradient(to right, rgba(28, 21, 51, 0.22), rgba(28, 21, 51, 0)) left center,
+    linear-gradient(to left, rgba(28, 21, 51, 0.22), rgba(28, 21, 51, 0)) right center;
+  background-repeat: no-repeat;
+  background-size:
+    2.5rem 100%,
+    2.5rem 100%,
+    1rem 100%,
+    1rem 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* Tab rows wrap onto more lines instead of running off the side, so no tab is
+   cut off mid-word. */
+@media (max-width: 39.99rem) {
+  .desk [role='tablist'] {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}

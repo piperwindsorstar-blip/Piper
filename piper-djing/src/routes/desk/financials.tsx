@@ -490,7 +490,8 @@ function WeeklyTab({ shifts, year }: { shifts: Shift[]; year: string }) {
           Download CSV
         </button>
       </div>
-      <div className="overflow-x-auto">
+      {/* On a phone the table scrolls sideways; a shadow marks the hidden side. */}
+      <div className="scroll-cue overflow-x-auto">
         <table className="w-full min-w-[40rem] text-sm tabular-nums">
           <thead>
             <tr className="text-left text-plum-soft">
