@@ -13,7 +13,7 @@ import type { getDesk } from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 
 export const Route = createFileRoute('/desk/')({
-  head: () => deskHead('Overview · DJ Piper P'),
+  head: () => deskHead('Today · DJ Piper P'),
   component: OverviewPage,
 })
 
@@ -118,14 +118,15 @@ function OverviewPage() {
         </div>
       </header>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(17rem,1fr)]">
-        {next ? <NextWedding booking={next} days={days} plans={plans} /> : <QuietHero />}
-        <ThisWeek desk={desk} today={today} />
-      </div>
-
+      {/* What needs Piper comes first; the next wedding follows. */}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(19rem,2fr)]">
         <NeedsYou items={todo} />
         <MoneyCard summary={money} />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(17rem,1fr)]">
+        {next ? <NextWedding booking={next} days={days} plans={plans} /> : <QuietHero />}
+        <ThisWeek desk={desk} today={today} />
       </div>
 
       <ComingUp
