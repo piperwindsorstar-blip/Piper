@@ -1,3 +1,4 @@
+import type { PackageOffer } from '../../lib/crm/packages.ts'
 import type { PublicReview } from '../../lib/crm/reviews.ts'
 import type {
   GoogleReviews,
@@ -27,11 +28,14 @@ export function HomePage({
   google = null,
   display = 'both',
   brands = [],
+  packages = [],
 }: {
   reviews: PublicReview[]
   google?: GoogleReviews | null
   display?: ReviewDisplay
   brands?: PublicBrand[]
+  /** Desk package prices; the built-in prices stand in when empty. */
+  packages?: PackageOffer[]
 }) {
   // "Google only" with nothing from Google still shows the site's own
   // reviews, so the page never loses its reviews or the #reviews anchor.
@@ -52,7 +56,7 @@ export function HomePage({
         <Hero />
         <VenueBand />
         <BrandStrip brands={brands} tone="dark" />
-        <Packages />
+        <Packages packages={packages} />
         <About />
         <PromiseTabs />
         <EventCards />

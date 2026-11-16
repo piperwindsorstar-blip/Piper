@@ -1,9 +1,20 @@
 import { Link } from '@tanstack/react-router'
+import type { PackageId } from '../../lib/crm/defaults.ts'
+import { publicPackagePrice } from '../../lib/crm/packages.ts'
+import type { PackageOffer } from '../../lib/crm/packages.ts'
+import { PACKAGE_CENTS } from '../../lib/piper/rules.ts'
 import { TIERS } from '../weddings/content.ts'
 import { LINKS } from './content.ts'
 
-/** The wedding packages as four big rows, priced from the weddings page. */
-export function Packages() {
+const TIER_IDS = ['full', 'reception', 'stag', 'ceremony'] as const
+
+/**
+ * The wedding packages as four big rows. Names come from the weddings page
+ * and prices from the Desk, the same way the weddings page prices them.
+ */
+export function Packages({ packages }: { packages: PackageOffer[] }) {
+  const centsFor = (id: PackageId) =>
+    packages.find((item) => item.id === id)?.cents ?? PACKAGE_CENTS[id]
   return (
     <section id="packages" aria-labelledby="home-packages-title" className="scroll-mt-24">
       <div className="bp-pad pb-8">
@@ -15,8 +26,10 @@ export function Packages() {
       </div>
       <ul>
         {TIERS.map((tier, index) => {
+          const id = TIER_IDS[index] ?? 'full'
+          const full = publicPackagePrice(id, centsFor(id))
           // "$350 paid in full" shows as the price, with the rest beside the name.
-          const [price = tier.price, ...rest] = tier.price.split(' ')
+          const [price = full, ...rest] = full.split(' ')
           const note = rest.join(' ')
           return (
             <li key={tier.n} className={`bp-row ${tier.hl ? 'bp-row--on' : ''}`}>
