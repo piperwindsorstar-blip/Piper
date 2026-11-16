@@ -1440,3 +1440,9 @@ button:focus-visible,
     overflow: visible;
   }
 }
+
+/* A shorter photo banner for inner pages in the bold look. */
+.bp-banner {
+  min-height: min(56svh, 30rem);
+  justify-content: flex-end;
+}
