@@ -16,7 +16,8 @@ import { eventTypeLabel } from '../../lib/crm/book-events.ts'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-export function DateChecker() {
+/** `embedded` is the compact card inside the home hero. */
+export function DateChecker({ embedded = false }: { embedded?: boolean }) {
   const check = useServerFn(checkDate)
   const navigate = useNavigate()
   const today = todayInToronto()
@@ -103,16 +104,36 @@ export function DateChecker() {
   return (
     <section
       id="check-a-date"
-      className="mx-auto max-w-xl scroll-mt-24 px-5 py-24"
+      className={
+        embedded
+          ? 'bp-check w-full scroll-mt-24'
+          : 'mx-auto max-w-xl scroll-mt-24 px-5 py-24'
+      }
     >
-      <Eyebrow>Check a date</Eyebrow>
-      <h2 className="mt-4 font-display text-4xl font-bold text-balance md:text-6xl">
+      {embedded ? (
+        <p className="bp-k bp-pink">Free · no commitment</p>
+      ) : (
+        <Eyebrow>Check a date</Eyebrow>
+      )}
+      <h2
+        className={
+          embedded
+            ? 'bp-h3 mt-2'
+            : 'mt-4 font-display text-4xl font-bold text-balance md:text-6xl'
+        }
+      >
         See if Piper is free.
       </h2>
-      <p className="mt-4 text-white/70">
+      <p className={embedded ? 'mt-2 text-sm text-white/75' : 'mt-4 text-white/70'}>
         Pick the event, then a day. An open date continues to the inquiry.
       </p>
-      <div className="relative mt-8 rounded-3xl border border-white/10 bg-ink-900 p-5 sm:p-7">
+      <div
+        className={
+          embedded
+            ? 'relative mt-4'
+            : 'relative mt-8 rounded-3xl border border-white/10 bg-ink-900 p-5 sm:p-7'
+        }
+      >
         <label
           htmlFor="home-event"
           className="block text-xs font-bold tracking-widest text-white/55 uppercase"

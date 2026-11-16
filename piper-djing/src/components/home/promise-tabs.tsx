@@ -1,7 +1,5 @@
 import { useRef, useState } from 'react'
-import { PILLARS } from './content.ts'
-import { Icon } from './icon.tsx'
-import { Eyebrow } from './ui.tsx'
+import { PILLARS, SCENES } from './content.ts'
 
 export function PromiseTabs() {
   const [active, setActive] = useState(0)
@@ -15,22 +13,17 @@ export function PromiseTabs() {
   }
 
   return (
-    <section
-      id="promise"
-      className="scroll-mt-24 border-y border-white/10 bg-ink-900"
-    >
-      <div className="mx-auto max-w-7xl px-5 py-24">
-        <Eyebrow>The Piper P Promise</Eyebrow>
-        <h2 className="mt-4 max-w-4xl font-display text-4xl leading-tight font-bold text-balance md:text-6xl">
-          {'Five things you get with '}
-          <span className="text-neon">every</span>
-          {' event, big or small.'}
-        </h2>
-        <div className="mt-12 grid gap-6 lg:grid-cols-[320px_1fr]">
-          <div
-            role="tablist"
-            aria-label="The Piper P Promise"
-            className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible"
+    <section id="promise" className="bp-full bp-full--dim bp-pad scroll-mt-24">
+      <img src={SCENES.promise} alt="" className="bp-bg" loading="lazy" sizes="100vw" />
+      <p className="bp-k bp-pink">The Piper P Promise</p>
+      <h2 className="mt-3 max-w-2xl text-xl font-bold text-balance">
+        Five things you get with every event, big or small.
+      </h2>
+      <div className="bp-promise">
+        <div
+          role="tablist"
+          aria-label="The Piper P Promise"
+          className="bp-words"
             onKeyDown={(event) => {
               if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
                 event.preventDefault()
@@ -51,70 +44,40 @@ export function PromiseTabs() {
             }}
           >
             {PILLARS.map((item, index) => {
-              const selected = active === index
-              return (
-                <button
-                  key={item.k}
-                  ref={(node) => {
-                    buttons.current[index] = node
-                  }}
-                  id={`pillar-tab-${index}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  aria-controls="pillar-panel"
-                  tabIndex={selected ? 0 : -1}
-                  onClick={() => setActive(index)}
-                  className={`group flex shrink-0 items-center gap-3 rounded-2xl border px-5 py-4 text-left transition ${
-                    selected
-                      ? 'border-neon bg-neon/10 shadow-[0_0_32px_rgba(255,0,127,0.25)]'
-                      : 'border-white/10 bg-white/[0.03] hover:border-white/30'
-                  }`}
-                >
-                  <span
-                    className={`grid h-10 w-10 place-items-center rounded-full transition ${
-                      selected ? 'bg-neon text-white' : 'bg-white/5 text-hot'
-                    }`}
-                  >
-                    <Icon n={item.i} />
-                  </span>
-                  <span className="font-display text-lg font-bold">
-                    {item.k}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          <div
-            id="pillar-panel"
-            role="tabpanel"
-            aria-labelledby={`pillar-tab-${active}`}
-            className="relative overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-white/[0.06] to-transparent p-8 backdrop-blur-xl md:p-12"
-          >
-            <div className="pulse-glow pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-neon/25 blur-3xl" />
-            <p className="relative font-mono text-xs tracking-[0.22em] text-hot uppercase">
-              {pillar.k}
-            </p>
-            <h3 className="relative mt-3 font-display text-4xl leading-tight font-extrabold text-balance md:text-5xl">
-              {pillar.h}
-            </h3>
-            <p className="relative mt-5 max-w-xl text-lg leading-relaxed text-white/75">
-              {pillar.d}
-            </p>
-            <ul className="relative mt-8 space-y-3 border-t border-white/10 pt-6">
-              {pillar.pts.map((point) => (
-                <li
-                  key={point}
-                  className="flex items-start gap-3 text-white/85"
-                >
-                  <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-neon/15 text-neon">
-                    <Icon n="check" className="h-3 w-3" />
-                  </span>
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
+            const selected = active === index
+            return (
+              <button
+                key={item.k}
+                ref={(node) => {
+                  buttons.current[index] = node
+                }}
+                id={`pillar-tab-${index}`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls="pillar-panel"
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setActive(index)}
+                className="bp-word"
+              >
+                {item.k}
+              </button>
+            )
+          })}
+        </div>
+        <div
+          id="pillar-panel"
+          role="tabpanel"
+          aria-labelledby={`pillar-tab-${active}`}
+          className="bp-promise__panel"
+        >
+          <h3 className="bp-h3">{pillar.h}</h3>
+          <p className="mt-4 text-lg leading-relaxed font-medium">{pillar.d}</p>
+          <ul className="mt-5">
+            {pillar.pts.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

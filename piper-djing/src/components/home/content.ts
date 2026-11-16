@@ -7,6 +7,14 @@ export const PHOTOS = {
   stack: '/photos/brand/brand-stack.jpg',
 }
 
+/** The full-bleed photos behind the home page's big sections. */
+export const SCENES = {
+  hero: '/photos/wedding-first-dance.jpg',
+  promise: '/photos/wedding-reception-dance.jpg',
+  reviews: '/photos/spotlight.jpg',
+  closing: '/photos/dance.jpg',
+}
+
 /** Set this to a portrait path to replace the labeled placeholder. */
 export const LOGO_SRC = '/brand/dj-piper-p.png'
 export const LOGO_ALT = 'DJ Piper P'
@@ -33,26 +41,16 @@ export const LINKS = {
   bulls: 'https://www.facebook.com/share/1CHxV2PubR/',
 } as const
 
+/** The menu, in the header and the phone menu. "#" links are home sections. */
 export const NAV = [
-  { label: 'About', href: '#about' },
-  { label: 'Promise', href: '#promise' },
+  { label: 'Weddings', href: '/weddings' },
   { label: 'Events', href: '#events' },
-  { label: 'Process', href: '#process' },
   { label: 'Reviews', href: '#reviews' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Vendors', href: '/wedding-vendors' },
+  { label: 'RSVP', href: '/rsvp' },
+  { label: 'Couples sign in', href: '/portal' },
 ] as const
-
-export const TAGS = [
-  'Weddings',
-  'Private Events',
-  'Charity Events',
-  'Community Events',
-  'Club Nights',
-  'Open Format',
-  'Custom Playlists',
-  'Pro Sound & Light',
-]
 
 export const PILLARS = [
   {
@@ -119,12 +117,12 @@ export const WORLDS = [
     cta: 'Explore Weddings',
     to: LINKS.weddings,
     big: true,
-    img: PHOTOS.stack,
+    img: SCENES.promise,
   },
   {
     t: 'Private Events',
     d: 'Milestone birthdays, anniversaries, retirement parties and backyard bashes. I build the set around your people and scale the sound and lighting to fit the space.',
-    img: PHOTOS.mixer,
+    img: SCENES.closing,
   },
   {
     t: 'Community & Charity',
