@@ -1,100 +1,50 @@
 import { Link } from '@tanstack/react-router'
-import { LINKS, LOGO_ALT, LOGO_SRC, PHOTOS, VENUES_PLAYED } from './content.ts'
-import { SpinningBadge } from './spinning-badge.tsx'
-import { ButtonGhost, ButtonPrimary, Eyebrow } from './ui.tsx'
+import { DateChecker } from './date-checker.tsx'
+import { LINKS, SCENES } from './content.ts'
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden">
+    <section className="bp-full bp-pad">
       <img
-        src={PHOTOS.mixer}
-        alt="DJ mixer and headphones under pink light"
-        className="absolute inset-0 -z-10 h-full w-full object-cover opacity-80"
+        src={SCENES.hero}
+        alt="A couple sharing their first dance while their guests look on"
+        className="bp-bg"
+        style={{ objectPosition: '50% 30%' }}
         fetchPriority="high"
       />
-      <div className="absolute inset-0 -z-10 bg-linear-to-t from-ink-950 via-ink-950/40 to-ink-950/20" />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(50%_50%_at_20%_60%,rgba(255,0,127,0.18),transparent)]" />
-      <div className="mx-auto max-w-7xl px-5 pt-10 pb-24 md:pt-16 md:pb-32">
-        <img
-          src={LOGO_SRC}
-          alt={LOGO_ALT}
-          width={600}
-          height={412}
-          className="h-36 w-auto sm:h-48"
-        />
-        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-          <Eyebrow>Brantford wedding DJ · Ontario</Eyebrow>
-          <ButtonPrimary to={LINKS.weddings} className="px-6 py-3">
-            Weddings
-          </ButtonPrimary>
-        </div>
-        <h1 className="mt-6 max-w-full font-display text-[clamp(3.4rem,13vw,11rem)] font-extrabold leading-[0.88] tracking-tight text-balance">
-          Hi, I’m <br />
-          <span className="text-neon text-glow">Piper P.</span>
-        </h1>
-        <div className="mt-10 grid items-end gap-10 lg:grid-cols-[1fr_auto]">
-          <div>
-            <p className="max-w-2xl font-serif text-3xl leading-snug text-white/90 italic md:text-4xl">
-              The DJ who makes the night about you.
-            </p>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/70">
-              I bring big energy, a kind heart and a plan for everything. From
-              the first call to the last song, you get a DJ who listens, adapts
-              and genuinely cares how your night feels.
-            </p>
-            <p className="mt-3 max-w-xl text-base text-white/60">
-              Serving Brantford, Hamilton, Cambridge, Paris and Brant County.
-            </p>
-            <p className="mt-1 max-w-xl text-base text-white/60">
-              {'Proud member of the '}
-              <a
-                href="https://cpdja.ca"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2 hover:text-white"
-              >
-                Canadian Professional Disc Jockey Association (CPDJA)
-              </a>
-              .
-            </p>
-            <div className="mt-6 max-w-xl">
-              <h2 className="font-display text-xl font-bold text-white">
-                Venues I’ve played
-              </h2>
-              <ul className="mt-2 grid gap-1 text-base text-white/70">
-                {VENUES_PLAYED.map((venue) => (
-                  <li key={venue}>{venue}</li>
-                ))}
-              </ul>
-              <p className="mt-2 text-base text-white/60">
-                Getting married somewhere else? I’ll scout the room and plan with your venue ahead of time.
-              </p>
-              <p className="mt-2 text-base">
-                <Link
-                  to="/wedding-vendors"
-                  className="font-semibold text-white underline underline-offset-2 hover:text-hot"
-                >
-                  Vendors I love working with
-                </Link>
-              </p>
-            </div>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="#check-a-date"
-                className="group inline-flex items-center justify-center gap-2 rounded-full bg-neon px-7 py-3.5 font-semibold text-white shadow-[0_0_28px_rgba(255,0,127,0.45)] transition hover:bg-hot hover:shadow-[0_0_44px_rgba(255,20,147,0.7)]"
-              >
-                Check a date
-              </a>
-              <ButtonPrimary to={LINKS.weddings}>
-                Explore Weddings
-              </ButtonPrimary>
-              <ButtonGhost to={LINKS.book}>Say Hello</ButtonGhost>
-            </div>
+      <div className="bp-hero">
+        <div>
+          <p className="bp-k bp-pink">Brantford wedding DJ</p>
+          <h1 className="bp-h1 mt-4">
+            Hi, I’m <br />
+            <span className="bp-pink">Piper P.</span>
+          </h1>
+          <p className="bp-hero__sub">The DJ who makes the night about you.</p>
+          <p className="mt-3 max-w-xl leading-relaxed text-white/85">
+            I bring big energy, a kind heart and a plan for everything. Serving
+            Brantford, Hamilton, Cambridge, Paris and Brant County.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <a href="#check-a-date" className="bp-btn lg:hidden">
+              Check a date
+            </a>
+            <Link to={LINKS.weddings} className="bp-btn bp-btn--line">
+              Explore weddings
+            </Link>
           </div>
-          <div className="hidden lg:block">
-            <SpinningBadge />
-          </div>
+          <p className="bp-hero__proof">
+            <a href={LINKS.review} target="_blank" rel="noreferrer">
+              <span aria-hidden="true" className="text-amber-300">
+                ★★★★★{' '}
+              </span>
+              Google reviews
+            </a>
+            <a href="https://cpdja.ca" target="_blank" rel="noreferrer">
+              Member of the Canadian Professional Disc Jockey Association
+            </a>
+          </p>
         </div>
+        <DateChecker embedded />
       </div>
     </section>
   )

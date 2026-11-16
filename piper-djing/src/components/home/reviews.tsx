@@ -4,23 +4,22 @@ import { ReviewCarousel } from '../review-carousel.tsx'
 import { ReviewQuote } from '../review-quote.tsx'
 import { ReviewLink, ReviewStars } from '../review-stars.tsx'
 import { LINKS } from './content.ts'
-import { Eyebrow } from './ui.tsx'
 
 export function Reviews({ reviews }: { reviews: PublicReview[] }) {
   return (
-    <section id="reviews" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-24">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <section id="reviews" className="bp-pad scroll-mt-24">
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <Eyebrow>Kind words</Eyebrow>
-          <h2 className="mt-4 font-display text-4xl font-bold md:text-6xl">
-            What people say.
+          <p className="bp-k bp-pink">Kind words</p>
+          <h2 className="bp-h2 mt-3">
+            What people <span className="bp-pink">say.</span>
           </h2>
         </div>
         <a
           href={LINKS.review}
           target="_blank"
           rel="noreferrer"
-          className="font-semibold text-hot hover:underline"
+          className="bp-btn bp-btn--line bp-btn--small"
         >
           Read or leave a Google review →
         </a>
@@ -31,7 +30,7 @@ export function Reviews({ reviews }: { reviews: PublicReview[] }) {
           {reviews.map((review) => (
             <figure
               key={review.id}
-              className="flex w-full flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl transition hover:border-neon/50"
+              className="flex w-full flex-col border-2 border-white/25 bg-black/70 p-6 backdrop-blur-xl transition hover:border-neon"
             >
               <ReviewStars stars={review.stars} />
               <ReviewQuote

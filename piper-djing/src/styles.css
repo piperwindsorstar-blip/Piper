@@ -677,3 +677,669 @@ button:focus-visible,
 .portal input[type='radio'] {
   accent-color: var(--pink);
 }
+
+/* ---------------------------------------------------------------------------
+   Home page, "bold photos" look: black, white and solid pink blocks, all-caps
+   display type, and full-bleed photos behind the big moments.
+--------------------------------------------------------------------------- */
+@layer components {
+  .home.bp {
+    background: #000;
+    color: #fff;
+  }
+
+  .bp-h1,
+  .bp-h2,
+  .bp-h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+  .bp-h1 {
+    font-size: clamp(3.6rem, 11vw, 7.6rem);
+  }
+  .bp-h2 {
+    font-size: clamp(2.5rem, 7vw, 5.25rem);
+  }
+  .bp-h3 {
+    font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .bp-pink {
+    color: var(--color-neon);
+  }
+  .bp-k {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .bp-btn {
+    display: inline-flex;
+    min-height: 3.4rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0 1.9rem;
+    background: var(--color-neon);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: center;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+  .bp-btn:hover {
+    background: #fff;
+    color: #000;
+  }
+  .bp-btn--white {
+    background: #fff;
+    color: #000;
+  }
+  .bp-btn--white:hover {
+    background: #000;
+    color: #fff;
+  }
+  .bp-btn--black {
+    background: #000;
+    color: #fff;
+  }
+  .bp-btn--black:hover {
+    background: var(--color-neon);
+    color: #fff;
+  }
+  .bp-btn--line {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px #fff;
+  }
+  .bp-btn--small {
+    min-height: 2.9rem;
+    padding: 0 1.3rem;
+    font-size: 0.8rem;
+  }
+
+  .bp-pad {
+    padding: clamp(3.25rem, 7vw, 5rem) clamp(1.25rem, 4.4vw, 3.5rem);
+  }
+
+  /* Header */
+  .bp-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  .bp-header__bar {
+    display: flex;
+    align-items: center;
+    gap: 1.6rem;
+    padding: 0.7rem clamp(1.25rem, 4.4vw, 3.5rem);
+  }
+  .bp-header__nav {
+    display: none;
+    flex: 1;
+    justify-content: flex-end;
+    gap: 1.7rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .bp-header__nav a:hover,
+  .bp-menu a:hover {
+    color: var(--color-neon);
+  }
+  .bp-header__actions {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+  }
+  .bp-menu-button {
+    display: grid;
+    width: 2.9rem;
+    height: 2.9rem;
+    place-items: center;
+    box-shadow: inset 0 0 0 2px #fff;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+  .bp-menu {
+    display: grid;
+    gap: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 0.4rem clamp(1.25rem, 4.4vw, 3.5rem) 1rem;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+  }
+  .bp-menu a {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  @media (min-width: 64rem) {
+    .bp-header__nav {
+      display: flex;
+    }
+    .bp-header__actions {
+      flex: none;
+    }
+    .bp-menu-button,
+    .bp-menu {
+      display: none;
+    }
+  }
+
+  /* Full-bleed photo sections */
+  .bp-full {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .bp-full > img.bp-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .bp-full::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.5),
+      rgba(0, 0, 0, 0.3) 35%,
+      rgba(0, 0, 0, 0.88)
+    );
+  }
+  .bp-full--dim::before {
+    background: rgba(0, 0, 0, 0.74);
+  }
+
+  /* Hero */
+  .bp-hero {
+    display: grid;
+    gap: 2.5rem;
+    align-items: end;
+    min-height: min(92svh, 56rem);
+  }
+  .bp-hero__sub {
+    margin-top: 1.25rem;
+    max-width: 30rem;
+    font-size: clamp(1.15rem, 2vw, 1.4rem);
+    font-weight: 700;
+  }
+  .bp-hero__proof {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
+    margin-top: 1.4rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .bp-hero__proof a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  @media (min-width: 64rem) {
+    .bp-hero {
+      grid-template-columns: minmax(0, 1fr) 26rem;
+      align-items: center;
+    }
+  }
+
+  /* The date checker card inside the hero */
+  .bp-check {
+    background: rgba(0, 0, 0, 0.78);
+    box-shadow: inset 0 0 0 2px #fff;
+    backdrop-filter: blur(10px);
+    padding: 1.4rem;
+  }
+
+  /* Pink band */
+  .bp-band {
+    background: var(--color-neon);
+    color: #000;
+    padding: 0.9rem clamp(1.25rem, 4.4vw, 3.5rem);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .bp-band ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem 1.4rem;
+  }
+  @media (min-width: 48rem) {
+    .bp-band ul {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .bp-band li + li::before {
+      content: '✦';
+      margin-right: 1.4rem;
+      color: #fff;
+    }
+  }
+  .bp-band strong {
+    color: #fff;
+    font-weight: 800;
+  }
+
+  /* Package rows */
+  .bp-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.25rem 1rem;
+    align-items: center;
+    padding: 1.3rem clamp(1.25rem, 4.4vw, 3.5rem);
+    border-bottom: 2px solid #222;
+    transition: background-color 0.15s;
+  }
+  .bp-row:hover {
+    background: #141414;
+  }
+  .bp-row__n {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--color-neon);
+  }
+  .bp-row__name,
+  .bp-row__price {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-size: clamp(1.5rem, 4.4vw, 3.3rem);
+  }
+  .bp-row__plain {
+    text-transform: uppercase;
+    margin-top: 0.4rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .bp-row__cta {
+    display: none;
+  }
+  .bp-row--on,
+  .bp-row--on:hover {
+    background: var(--color-neon);
+  }
+  .bp-row--on .bp-row__n,
+  .bp-row--on .bp-row__plain {
+    color: #000;
+  }
+  @media (min-width: 48rem) {
+    .bp-row {
+      grid-template-columns: 4.5rem minmax(0, 1fr) auto auto;
+      gap: 1.8rem;
+      padding-top: 1.7rem;
+      padding-bottom: 1.7rem;
+    }
+    .bp-row__cta {
+      display: inline-flex;
+    }
+  }
+
+  /* Split: photo beside a white panel */
+  .bp-split {
+    display: grid;
+  }
+  .bp-split__photo {
+    min-height: 24rem;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 20%;
+  }
+  .bp-white {
+    background: #fff;
+    color: #000;
+  }
+  .bp-white p {
+    font-weight: 500;
+  }
+  @media (min-width: 56rem) {
+    .bp-split {
+      grid-template-columns: 1fr 1fr;
+    }
+    .bp-split__panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+  }
+
+  /* Promise: big outlined words that work as tabs */
+  .bp-words {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 1.2rem;
+  }
+  .bp-word {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    font-size: clamp(2.6rem, 9vw, 6.4rem);
+    color: transparent;
+    -webkit-text-stroke: 2px #fff;
+    text-align: left;
+    transition: color 0.15s;
+  }
+  .bp-word:hover {
+    color: rgba(255, 255, 255, 0.25);
+  }
+  .bp-word[aria-selected='true'] {
+    color: var(--color-neon);
+    -webkit-text-stroke: 0;
+  }
+  .bp-promise {
+    display: grid;
+    gap: 2rem;
+  }
+  .bp-promise__panel {
+    align-self: end;
+    background: #fff;
+    color: #000;
+    padding: clamp(1.4rem, 3vw, 2.4rem);
+  }
+  .bp-promise__panel li {
+    display: flex;
+    gap: 0.7rem;
+    padding: 0.7rem 0;
+    border-top: 2px solid #000;
+    font-weight: 600;
+  }
+  .bp-promise__panel li::before {
+    content: '✦';
+    color: var(--color-neon);
+  }
+  @media (min-width: 64rem) {
+    .bp-promise {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    }
+  }
+
+  /* Event quadrants */
+  .bp-quads {
+    display: grid;
+  }
+  .bp-quad {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    min-height: 15rem;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    padding: clamp(1.25rem, 3vw, 2.25rem);
+  }
+  .bp-quad > img {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s;
+  }
+  .bp-quad:hover > img {
+    transform: scale(1.04);
+  }
+  .bp-quad::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 20%, rgba(0, 0, 0, 0.9));
+  }
+  .bp-quad__name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+    font-size: clamp(1.9rem, 4vw, 2.9rem);
+  }
+  .bp-quad p {
+    margin-top: 0.6rem;
+    max-width: 32rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  @media (min-width: 48rem) {
+    .bp-quads {
+      grid-template-columns: 1fr 1fr;
+    }
+    .bp-quad {
+      min-height: 24rem;
+    }
+  }
+
+  /* Process: pink block with numbered steps */
+  .bp-pinkbg {
+    background: var(--color-neon);
+    color: #000;
+  }
+  .bp-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 2px solid #000;
+  }
+  .bp-step {
+    padding: 1.4rem clamp(1.25rem, 2vw, 1.6rem) 1.8rem;
+    border-bottom: 2px solid #000;
+  }
+  .bp-step:nth-child(odd) {
+    border-right: 2px solid #000;
+  }
+  .bp-step__n {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2.8rem, 5vw, 4rem);
+    line-height: 1;
+    color: #fff;
+  }
+  .bp-step__t {
+    margin-top: 0.5rem;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: #fff;
+  }
+  .bp-step p {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  @media (min-width: 64rem) {
+    .bp-steps {
+      grid-template-columns: repeat(6, 1fr);
+    }
+    .bp-step,
+    .bp-step:nth-child(odd) {
+      border-bottom: 0;
+      border-right: 2px solid #000;
+    }
+    .bp-step:last-child {
+      border-right: 0;
+    }
+  }
+
+  /* Instagram, edge to edge */
+  .bp-insta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .bp-insta a {
+    position: relative;
+    display: block;
+    aspect-ratio: 1;
+    overflow: hidden;
+  }
+  .bp-insta img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s;
+  }
+  .bp-insta a:hover img {
+    transform: scale(1.05);
+  }
+  @media (min-width: 64rem) {
+    .bp-insta {
+      grid-template-columns: repeat(6, 1fr);
+    }
+  }
+
+  /* Closing banner and footer */
+  .bp-cta {
+    min-height: min(80svh, 44rem);
+    align-items: center;
+    text-align: center;
+  }
+  .bp-footer {
+    display: grid;
+    gap: 2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 2.1;
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .bp-footer h2 {
+    color: var(--color-neon);
+    font-weight: 800;
+  }
+  .bp-footer a:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  @media (min-width: 48rem) {
+    .bp-footer {
+      grid-template-columns: 1.2fr 1fr 1fr 1.3fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bp-quad > img,
+    .bp-insta img,
+    .bp-btn,
+    .bp-row,
+    .bp-word {
+      transition: none;
+    }
+  }
+}
+
+/* On pink, the focus ring is black so it stays visible. */
+.home .bp-pinkbg :focus-visible,
+.home .bp-band :focus-visible,
+.home .bp-row--on :focus-visible {
+  outline-color: #000;
+}
+
+/* ---------------------------------------------------------------------------
+   Town pages: the weddings sections in the home page's bold, dark look. The
+   theme colours are swapped for dark ones here, so the shared wedding sections
+   follow without each needing its own dark styles.
+--------------------------------------------------------------------------- */
+.weddings.bp-town {
+  --color-paper: #000;
+  --color-ink: #fff;
+  --color-line: #303030;
+  --color-soft: #cfcfcf;
+  --color-mist: #141414;
+  --color-ice: #141414;
+  --color-lilac: #1c1c1c;
+  --color-blush: rgba(255, 0, 127, 0.22);
+  --color-violet: #ff5fae;
+  --town-accent: var(--color-neon);
+  --town-on-accent: #000;
+  color-scheme: dark;
+}
+.weddings.bp-town--violet {
+  --town-accent: #a78bfa;
+  --town-block: #7c3aed;
+  --town-on-accent: #fff;
+}
+.weddings.bp-town--yellow {
+  --town-accent: #ffe14d;
+  --town-on-accent: #000;
+}
+.weddings.bp-town :focus-visible {
+  outline-color: #fff;
+}
+.bp-town *,
+.bp-town *::before,
+.bp-town *::after {
+  border-radius: 0 !important;
+}
+.bp-town h2,
+.bp-town h3 {
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+.bp-town__accent {
+  color: var(--town-accent);
+}
+.bp-town__local {
+  background: var(--town-block, var(--town-accent));
+  color: var(--town-on-accent);
+}
+.bp-town__lead {
+  max-width: 62rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.6vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+/* Places the wedding sections paint with "ink" as a dark fill. */
+.bp-town .bg-ink,
+.bp-town .bg-ink\/95 {
+  background-color: #000;
+}
+.bp-town .bg-ink\/40 {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+.bp-town .hover\:bg-ink:hover {
+  background-color: #fff;
+  color: #000;
+}

@@ -1,83 +1,58 @@
 import { Link } from '@tanstack/react-router'
-import { LINKS } from './content.ts'
-import { Icon } from './icon.tsx'
+import { LINKS, LOGO_SRC } from './content.ts'
 import { CpdjaBadge } from '../cpdja-badge.tsx'
 import { TOWN_LIST } from '../weddings/towns.ts'
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/10 px-5 py-10 text-sm text-white/60">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+    <footer className="border-t border-white/15 bg-black">
+      <div className="bp-pad bp-footer">
         <div>
-          <p className="font-display text-lg font-bold text-white">
-            DJ Piper P
-          </p>
-          <p className="mt-1 flex items-center gap-1.5">
-            <Icon n="pin" className="h-4 w-4 text-hot" />
-            Wedding & event DJ · Brantford, Ontario
-          </p>
-          <p className="mt-1">
-            {'Wedding DJ in '}
-            {TOWN_LIST.map((town, index) => (
-              <span key={town.path}>
-                {index > 0 ? ' · ' : ''}
-                <a href={town.path} className="underline underline-offset-2 hover:text-white">
-                  {town.name}
-                </a>
-              </span>
-            ))}
-          </p>
+          <img src={LOGO_SRC} alt="" className="h-16 w-auto" loading="lazy" />
+          <p className="mt-3 font-bold text-white">DJ Piper P</p>
+          <p>Wedding & event DJ · Brantford, Ontario</p>
+          <div className="mt-3">
+            <CpdjaBadge />
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <nav aria-labelledby="footer-site" className="flex flex-col items-start">
+          <h2 id="footer-site">Site</h2>
+          <Link to="/weddings">Weddings</Link>
+          <Link to="/faq">FAQ</Link>
+          <Link to="/wedding-vendors">Vendors</Link>
+          <Link to="/contact">Contact</Link>
+          <a href={LINKS.review} target="_blank" rel="noreferrer">
+            Google reviews
+          </a>
+        </nav>
+        <nav aria-labelledby="footer-couples" className="flex flex-col items-start">
+          <h2 id="footer-couples">Couples</h2>
+          <Link to="/portal">Couples sign in</Link>
+          <Link to="/rsvp">RSVP</Link>
+          <h2 id="footer-contact" className="mt-4">
+            Contact
+          </h2>
           <a
             href={`mailto:${LINKS.email}`}
-            className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-white underline underline-offset-4 hover:text-white"
-          >
-            <Icon n="mail" className="h-4 w-4 text-hot" />{`Email Piper: ${LINKS.email ?? ''}`}
-          </a>
-          <a
-            href={LINKS.insta}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 hover:text-white"
-          >
-            <Icon n="insta" className="h-4 w-4 text-hot" />
+            className="inline-flex min-h-11 items-center break-all text-white normal-case underline underline-offset-4"
+          >{`Email Piper: ${LINKS.email ?? ''}`}</a>
+          <a href={LINKS.insta} target="_blank" rel="noreferrer">
             @DJ_PIPERP
           </a>
           {LINKS.facebook ? (
-            <a
-              href={LINKS.facebook}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 hover:text-white"
-            >
-              <Icon n="facebook" className="h-4 w-4 text-hot" />
+            <a href={LINKS.facebook} target="_blank" rel="noreferrer">
               Facebook
             </a>
           ) : null}
-          <Link to="/contact" className="hover:text-white">
-            Contact
-          </Link>
-          <Link to="/faq" className="hover:text-white">
-            FAQ
-          </Link>
-          <Link to="/wedding-vendors" className="hover:text-white">
-            Vendors
-          </Link>
-          <Link to="/rsvp" className="hover:text-white">
-            RSVP
-          </Link>
-          <a
-            href={LINKS.review}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 hover:text-white"
-          >
-            <Icon n="star" className="h-4 w-4 text-hot" />
-            Google reviews
-          </a>
-          <CpdjaBadge />
-        </div>
+        </nav>
+        <nav aria-labelledby="footer-towns" className="flex flex-col items-start">
+          <h2 id="footer-towns">Wedding DJ in</h2>
+          {TOWN_LIST.map((town) => (
+            <a key={town.path} href={town.path}>
+              {town.name}
+            </a>
+          ))}
+        </nav>
       </div>
     </footer>
   )

@@ -27,13 +27,15 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const { reviews, google, reviewDisplay, brands } = Route.useLoaderData()
+  const { reviews, google, reviewDisplay, brands, packages } =
+    Route.useLoaderData()
   return (
     <HomePage
       reviews={reviews}
       google={google}
       display={reviewDisplay.home}
       brands={brands}
+      packages={packages}
     />
   )
 }
