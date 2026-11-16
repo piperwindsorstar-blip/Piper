@@ -618,8 +618,9 @@ function Season({ desk, today }: { desk: DeskData; today: string }) {
           </span>
         </span>
       </div>
-      <div className="no-scrollbar overflow-x-auto">
-        <div className="grid min-w-[40rem] grid-cols-12 items-end gap-2">
+      {/* All twelve months fit the card at any width, so nothing scrolls. */}
+      <div className="min-w-0">
+        <div className="grid grid-cols-12 items-end gap-1 sm:gap-2">
           {months.map((row) => {
             const n = row.yours + row.pynx
             return (
@@ -628,17 +629,19 @@ function Season({ desk, today }: { desk: DeskData; today: string }) {
                 to="/desk/bookings"
                 search={{ view: 'calendar', month: row.key }}
                 aria-label={`${row.name}: ${n === 0 ? 'nothing booked' : `${n} ${n === 1 ? 'wedding' : 'weddings'}`}`}
-                className="group grid gap-2 text-plum"
+                className="group grid min-w-0 gap-2 text-plum"
               >
-                <span className="flex h-28 flex-col-reverse gap-1 rounded-[10px] bg-[#f7f4fd] p-1.5 group-hover:bg-[#efe9fb]">
+                <span className="flex h-28 flex-col-reverse gap-1 rounded-md bg-[#f7f4fd] p-0.5 group-hover:bg-[#efe9fb] sm:rounded-[10px] sm:p-1.5">
                   {Array.from({ length: row.yours }, (_, i) => (
-                    <span key={`y${i}`} className="h-5 shrink-0 rounded-md bg-[#ff007f]" />
+                    <span key={`y${i}`} className="h-5 shrink-0 rounded bg-[#ff007f] sm:rounded-md" />
                   ))}
                   {Array.from({ length: row.pynx }, (_, i) => (
-                    <span key={`p${i}`} className="h-5 shrink-0 rounded-md bg-[#b3a6dc]" />
+                    <span key={`p${i}`} className="h-5 shrink-0 rounded bg-[#b3a6dc] sm:rounded-md" />
                   ))}
                 </span>
-                <span className="text-center text-[13px] font-semibold">{row.name}</span>
+                <span className="text-center text-[10px] font-semibold tracking-tight sm:text-[13px] sm:tracking-normal">
+                  {row.name}
+                </span>
               </Link>
             )
           })}
