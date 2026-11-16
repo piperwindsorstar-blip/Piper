@@ -2,6 +2,17 @@ import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { LOGO_ALT, LOGO_SRC, NAV } from './content.ts'
 
+/** The phone menu: the same items, order and destinations as the inner pages. */
+const MENU = [
+  ['Home', '/'],
+  ['Weddings', '/weddings'],
+  ['Vendors', '/wedding-vendors'],
+  ['FAQ', '/faq'],
+  ['Book', '/book'],
+  ['RSVP', '/rsvp'],
+  ['Couples Sign In', '/portal'],
+] as const
+
 export function Header({ anchorBase = '' }: { anchorBase?: '' | '/' }) {
   const [open, setOpen] = useState(false)
   const links = NAV.map((item) => ({
@@ -49,9 +60,9 @@ export function Header({ anchorBase = '' }: { anchorBase?: '' | '/' }) {
       </div>
       {open ? (
         <nav id="site-menu" aria-label="Menu" className="bp-menu">
-          {links.map((item) => (
-            <a key={item.href} href={item.href} onClick={() => setOpen(false)}>
-              {item.label}
+          {MENU.map(([label, href]) => (
+            <a key={href} href={href} onClick={() => setOpen(false)}>
+              {label}
             </a>
           ))}
         </nav>
