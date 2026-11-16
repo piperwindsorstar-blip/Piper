@@ -24,17 +24,28 @@ function VendorsPage() {
   const { groups } = Route.useLoaderData()
   return (
     <DateDraftProvider>
-      <div className="weddings min-h-screen overflow-x-clip bg-paper font-sans text-ink">
+      <div className="weddings bp-town min-h-screen overflow-x-clip bg-paper font-sans text-ink">
         <Header sectionBase="/weddings" />
         <DateCalendarDialog />
-        <main className="mx-auto w-full max-w-6xl px-5 py-16">
-          <h1 className="font-display text-4xl font-extrabold tracking-tight text-balance md:text-5xl">
-            Vendors I love working with
-          </h1>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-soft">
-            These are the Brantford-area wedding pros I’ve worked alongside and
-            trust. Click a logo to visit their site.
-          </p>
+        <main>
+          <section className="bp-full bp-pad bp-banner">
+            <img
+              src="/photos/uplighting/uplighting-reception-room.jpg"
+              alt=""
+              className="bp-bg"
+              fetchPriority="high"
+              sizes="100vw"
+            />
+            <p className="bp-k bp-town__accent">Brantford wedding vendors</p>
+            <h1 className="bp-h1 mt-4 max-w-4xl text-[clamp(2.6rem,7vw,5.2rem)]">
+              Vendors I love working with
+            </h1>
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed font-medium">
+              These are the Brantford-area wedding pros I’ve worked alongside and
+              trust. Click a logo to visit their site.
+            </p>
+          </section>
+          <div className="mx-auto w-full max-w-6xl px-5 pt-2 pb-16">
           {groups.map((group) => (
             <section key={group.id} className="mt-12">
               <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
@@ -49,6 +60,7 @@ function VendorsPage() {
               </ul>
             </section>
           ))}
+          </div>
         </main>
         <SiteFooter />
       </div>
@@ -62,7 +74,7 @@ function VendorCard({ vendor }: { vendor: PublicVendor }) {
       href={vendor.href}
       target="_blank"
       rel="noopener"
-      className="group flex h-full flex-col items-center gap-3 rounded-2xl border border-line bg-white p-4 text-center transition hover:-translate-y-0.5 hover:border-neon focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon"
+      className="group flex h-full flex-col items-center gap-3 rounded-2xl border border-line bg-white p-4 text-center text-plum transition hover:-translate-y-0.5 hover:border-neon focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon"
     >
       {vendor.logo ? (
         <>
@@ -80,7 +92,7 @@ function VendorCard({ vendor }: { vendor: PublicVendor }) {
         </>
       ) : (
         <span className="flex min-h-24 w-full flex-1 items-center justify-center rounded-xl bg-blush px-3 py-4">
-          <span className="font-serif text-2xl leading-tight text-ink italic group-hover:text-neon">
+          <span className="font-serif text-2xl leading-tight text-plum italic group-hover:text-neon">
             {vendor.name}
           </span>
         </span>

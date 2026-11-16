@@ -226,23 +226,34 @@ function BookPage() {
 
   return (
     <DateDraftProvider>
-      <div className="weddings min-h-screen overflow-x-clip bg-paper font-sans text-ink">
+      <div className="weddings bp-town min-h-screen overflow-x-clip bg-paper font-sans text-ink">
         <Header sectionBase="/weddings" />
         <DateCalendarDialog />
-        <main className="mx-auto w-full max-w-xl px-5 py-16">
-          <p className="font-mono text-xs tracking-[0.22em] text-violet uppercase">
-            {general ? 'Events' : 'Weddings'}
-          </p>
-          <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-balance md:text-5xl">
-            {general
-              ? 'Book your Brantford event DJ'
-              : 'Book your Brantford wedding DJ'}
-          </h1>
-          <p className="mt-4 text-lg text-soft">
-            {general
-              ? 'Welcome to your first step of finding a DJ that truly cares about every part of your night.'
-              : 'Welcome to your first step of finding a DJ that truly cares about every aspect of your wedding.'}
-          </p>
+        <main>
+          <section className="bp-full bp-pad bp-banner">
+            <img
+              src="/photos/wedding-first-dance.jpg"
+              alt=""
+              className="bp-bg"
+              style={{ objectPosition: '50% 30%' }}
+              fetchPriority="high"
+              sizes="100vw"
+            />
+            <p className="bp-k bp-town__accent">
+              {general ? 'Events' : 'Weddings'}
+            </p>
+            <h1 className="bp-h1 mt-4 max-w-4xl text-[clamp(2.6rem,7vw,5.2rem)]">
+              {general
+                ? 'Book your Brantford event DJ'
+                : 'Book your Brantford wedding DJ'}
+            </h1>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed font-medium">
+              {general
+                ? 'Welcome to your first step of finding a DJ that truly cares about every part of your night.'
+                : 'Welcome to your first step of finding a DJ that truly cares about every aspect of your wedding.'}
+            </p>
+          </section>
+          <div className="mx-auto w-full max-w-xl px-5 py-12">
           {dateIsAhead && !done ? (
             <p className="mt-6 rounded-xl border border-neon/40 bg-neon/10 px-4 py-3 text-lg font-semibold">
               {`${openDateLabel(requestedDate) ?? ''} is open. Tell Piper a little more and the reply comes by email.`}</p>
@@ -612,6 +623,7 @@ function BookPage() {
               </ActionButton>
             </form>
           )}
+          </div>
         </main>
         <SiteFooter />
       </div>
