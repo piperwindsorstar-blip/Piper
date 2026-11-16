@@ -1,40 +1,42 @@
 import { CHECKLIST, RINGS_LOGO_ALT, RINGS_LOGO_SRC } from './content.ts'
 import { DateCheckForm } from './date-check-form.tsx'
-import { Icon } from './icon.tsx'
 import { ButtonOutline, ButtonPrimary } from './ui.tsx'
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden bg-linear-to-b from-ice/70 via-paper to-paper">
-      <div className="grid-lines grid-fade absolute inset-0 -z-10 opacity-60" />
-      <div className="absolute -top-32 -right-32 -z-10 h-96 w-96 rounded-full bg-lilac blur-3xl" />
-      <div className="absolute top-48 -left-24 -z-10 h-72 w-72 rounded-full bg-blush blur-3xl" />
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pt-14 pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-20">
+    <section className="bp-full bp-pad">
+      <img
+        src="/photos/wedding-reception-dance.jpg"
+        alt=""
+        className="bp-bg"
+        fetchPriority="high"
+        sizes="100vw"
+      />
+      <div className="bp-hero">
         <div className="min-w-0">
           <img
             src={RINGS_LOGO_SRC}
             alt={RINGS_LOGO_ALT}
             width={1137}
             height={1088}
-            className="mx-auto mb-8 block h-auto w-full max-w-[22rem] sm:max-w-[28rem]"
+            className="mb-6 block h-24 w-auto bg-white p-2 sm:h-28"
           />
-          <h1 className="font-display text-[clamp(2.5rem,6vw,4.9rem)] leading-[0.98] font-extrabold tracking-tight text-balance">
+          <p className="bp-k bp-town__accent">Brantford wedding DJ</p>
+          <h1 className="bp-h1 mt-4 text-[clamp(2.3rem,5.4vw,4.4rem)]">
             {'Your wedding date is only available '}
-            <span className="font-serif font-normal text-neon italic">
-              once.
-            </span>
+            <span className="bp-town__accent">once.</span>
             {' Lock in your Brantford wedding DJ.'}
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-soft">
+          <p className="mt-5 max-w-xl text-lg leading-relaxed font-medium">
             Exciting dance floors, seamless track selection, and zero stress
             for Brantford and area couples. Check your date in 30 seconds and hear
             back within one business day.
           </p>
-          <ul className="mt-6 grid gap-2 sm:grid-cols-2">
+          <ul className="mt-6 grid gap-2 font-semibold sm:grid-cols-2">
             {CHECKLIST.map((item) => (
-              <li key={item} className="flex items-center gap-2 font-medium">
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-blush text-neon">
-                  <Icon n="check" className="h-3 w-3" />
+              <li key={item} className="flex items-center gap-2">
+                <span className="bp-town__accent" aria-hidden="true">
+                  ✦
                 </span>
                 {item}
               </li>
