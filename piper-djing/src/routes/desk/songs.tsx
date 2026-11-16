@@ -58,7 +58,7 @@ function SongsPage() {
 
       {picked + data.doNotPlay.length === 0 ? (
         <section className={deskCard}>
-          <p className="text-[#4a4262]">
+          <p className="text-plum-soft">
             No songs yet. They show here as couples fill in their plans.
           </p>
         </section>
@@ -114,7 +114,7 @@ function SongsPage() {
             ))}
           </div>
           {data.guestRequests.length ? (
-            <ul className="mt-4 grid gap-1 text-sm text-[#4a4262]">
+            <ul className="mt-4 grid gap-1 text-sm text-plum-soft">
               {data.guestRequests.map((row) => (
                 <li key={row.choice}>
                   {`${row.choice ?? ''} · ${row.count ?? ''}`}
@@ -144,11 +144,11 @@ function SongsPage() {
                   </p>
                 ) : null}
                 {row.guestRequests ? (
-                  <p className="mt-2 text-sm text-[#4a4262]">{`Guest requests: ${row.guestRequests ?? ''}`}
+                  <p className="mt-2 text-sm text-plum-soft">{`Guest requests: ${row.guestRequests ?? ''}`}
                   </p>
                 ) : null}
                 {row.dedications ? (
-                  <p className="mt-2 text-sm whitespace-pre-line text-[#4a4262]">{`Dedications: ${row.dedications ?? ''}`}
+                  <p className="mt-2 text-sm whitespace-pre-line text-plum-soft">{`Dedications: ${row.dedications ?? ''}`}
                   </p>
                 ) : null}
                 {row.playlists.length ? (
@@ -160,7 +160,7 @@ function SongsPage() {
                   </p>
                 ) : null}
                 {row.specialPlaylists ? (
-                  <p className="mt-2 text-sm whitespace-pre-line text-[#4a4262]">
+                  <p className="mt-2 text-sm whitespace-pre-line text-plum-soft">
                     {row.specialPlaylists}
                   </p>
                 ) : null}
@@ -188,7 +188,7 @@ function Stat({ value, label }: { value: number; label: string }) {
   return (
     <p className="min-w-0">
       <span className="block font-display text-3xl font-extrabold">{value}</span>
-      <span className="text-sm text-[#4a4262]">{label}</span>
+      <span className="text-sm text-plum-soft">{label}</span>
     </p>
   )
 }
@@ -248,7 +248,7 @@ function SafeLink({ href, children }: { href: string; children: ReactNode }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer nofollow"
-      className="text-[#d1006b] underline-offset-2 hover:underline"
+      className="text-pink-deep underline-offset-2 hover:underline"
     >
       {children}
     </a>

@@ -101,7 +101,7 @@ function BrandsPage() {
       </form>
 
       {brands.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[#d6cce8] p-6 text-center text-sm text-[#4a4262]">
+        <p className="rounded-xl border border-dashed border-[#d6cce8] p-6 text-center text-sm text-plum-soft">
           No brands yet. The strip stays hidden.
         </p>
       ) : (
@@ -141,7 +141,7 @@ function BrandRow({ brand, first, last }: { brand: DeskBrand; first: boolean; la
       .finally(() => setMoving(false))
   }
   const arrow =
-    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#d6cce8] bg-white text-lg font-semibold text-[#1c1533] transition hover:border-[#ff007f] disabled:opacity-30'
+    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#d6cce8] bg-white text-lg font-semibold text-plum transition hover:border-[#ff007f] disabled:opacity-30'
 
   return (
     <li className={`${deskCard} !p-4`}>
@@ -153,12 +153,12 @@ function BrandRow({ brand, first, last }: { brand: DeskBrand; first: boolean; la
               href={brand.href}
               target="_blank"
               rel="noopener"
-              className="block truncate text-sm text-[#d1006b] underline"
+              className="block truncate text-sm text-pink-deep underline"
             >
               {brand.href}
             </a>
           ) : (
-            <p className="text-sm text-[#4a4262]">No link</p>
+            <p className="text-sm text-plum-soft">No link</p>
           )}
         </div>
         <div className="flex gap-1">

@@ -10,9 +10,6 @@ import {
 } from '../../lib/portal/portal.functions.ts'
 import { privateHead } from '../../lib/seo.ts'
 
-const FONTS =
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Display:wght@800;900&display=swap'
-
 export const Route = createFileRoute('/portal')({
   // Private page: its data loading rides in the same lazy chunk as its
   // screen, so the server calls it imports stay off the public pages.
@@ -21,7 +18,6 @@ export const Route = createFileRoute('/portal')({
     const head = privateHead('Your plan · DJ Piper P')
     return {
       ...head,
-      links: [{ rel: 'stylesheet', href: FONTS }],
     }
   },
   loader: () => getPortal(),

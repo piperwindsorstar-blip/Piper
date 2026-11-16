@@ -335,14 +335,14 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
                   onClick={() => setFilter(id)}
                   className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-semibold ${
                     filter === id
-                      ? 'bg-[#1c1533] !text-white'
-                      : 'border border-[#d6cce8] bg-white text-[#1c1533] hover:border-[#ff007f]'
+                      ? 'bg-plum !text-white'
+                      : 'border border-[#d6cce8] bg-white text-plum hover:border-[#ff007f]'
                   }`}
                 >
                   {label}
                   <span
                     className={`rounded-full px-1.5 text-xs font-bold ${
-                      filter === id ? 'bg-[#ff007f] text-[#1c1533]' : 'bg-[#efe9fb] text-[#4b3f72]'
+                      filter === id ? 'bg-[#ff007f] text-plum' : 'bg-[#efe9fb] text-[#4b3f72]'
                     }`}
                   >
                     {count}
@@ -366,7 +366,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
               onClick={() => void navigate({ search: (prev) => ({ ...prev, view: id }) })}
               className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-sm ${
                 view === id
-                  ? 'bg-white font-bold text-[#1c1533] shadow-[0_1px_2px_rgba(28,21,51,0.14)]'
+                  ? 'bg-white font-bold text-plum shadow-[0_1px_2px_rgba(28,21,51,0.14)]'
                   : 'font-semibold text-[#4b3f72]'
               }`}
             >
@@ -392,7 +392,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
       ) : (
         <div className="grid gap-5">
           {upcoming.length === 0 && past.length === 0 ? (
-            <p className={`${deskCard} text-[#5b5370]`}>
+            <p className={`${deskCard} text-plum-muted`}>
               {q ? 'No booking matches that search.' : filter === 'archive' ? 'No past weddings yet.' : 'Nothing here yet.'}
             </p>
           ) : null}
@@ -413,7 +413,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
             <button
               type="button"
               onClick={() => setFilter('archive')}
-              className="min-h-11 w-fit px-1 text-sm font-semibold text-[#d1006b] hover:underline"
+              className="min-h-11 w-fit px-1 text-sm font-semibold text-pink-deep hover:underline"
             >
               {`${archivedMatches} past ${archivedMatches === 1 ? 'wedding matches' : 'weddings match'} in the Archive`}
             </button>
@@ -421,7 +421,7 @@ function BookingsPage({ notFound }: { notFound: boolean }) {
         </div>
       )}
 
-      <label className="flex min-h-11 w-fit items-center gap-2 text-sm text-[#5b5370]">
+      <label className="flex min-h-11 w-fit items-center gap-2 text-sm text-plum-muted">
         <input type="checkbox" checked={samples} onChange={(event) => setSamples(event.target.checked)} />
         Show test samples
       </label>
@@ -453,7 +453,7 @@ function MonthGroup({ label, rows, today }: { label: string; rows: ListRow[]; to
     <section className="grid gap-2">
       <h2 className="flex items-baseline gap-2.5 px-1 font-display text-xl font-extrabold tracking-tight">
         {label}
-        <span className="font-sans text-sm font-medium text-[#5b5370]">
+        <span className="font-sans text-sm font-medium text-plum-muted">
           {`${rows.length ?? ''} ${rows.length === 1 ? 'wedding' : 'weddings'}`}
         </span>
       </h2>
@@ -479,7 +479,7 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
           {row.couple}
           {row.sample ? <Chip tone="red">Test</Chip> : null}
         </span>
-        <span className="truncate text-sm text-[#5b5370]">
+        <span className="truncate text-sm text-plum-muted">
           {`${when ?? ''} · ${row.detail ?? ''}`}
           <span className="md:hidden">{row.venue ? ` · ${row.venue}` : ''}</span>
         </span>
@@ -488,7 +488,7 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
             <span className="flex-1">
               <Bar value={(row.paidCents / row.totalCents) * 100} label={`${cad(row.paidCents)} of ${cad(row.totalCents)} paid`} height="h-1.5" />
             </span>
-            <span className="text-xs whitespace-nowrap text-[#5b5370]">
+            <span className="text-xs whitespace-nowrap text-plum-muted">
               {`${dollars(row.paidCents) ?? ''} of ${dollars(row.totalCents) ?? ''}`}
             </span>
           </span>
@@ -505,18 +505,18 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
           row.totalCents > 0 ? (
             <span className="grid gap-1">
               <Bar value={(row.paidCents / row.totalCents) * 100} label={`${cad(row.paidCents)} of ${cad(row.totalCents)} paid`} height="h-1.5" />
-              <span className="text-[13px] text-[#5b5370]">
+              <span className="text-[13px] text-plum-muted">
                 {`${dollars(row.paidCents) ?? ''} of ${dollars(row.totalCents) ?? ''} paid`}</span>
             </span>
           ) : (
-            <span className="text-[13px] text-[#5b5370]">No price yet</span>
+            <span className="text-[13px] text-plum-muted">No price yet</span>
           )
         ) : (
-          <span className="text-[13px] text-[#5b5370]">Pynx pays you</span>
+          <span className="text-[13px] text-plum-muted">Pynx pays you</span>
         )}
       </span>
       {row.bookingId ? (
-        <ChevronRight className="h-5 w-5 text-[#d1006b]" aria-hidden="true" />
+        <ChevronRight className="h-5 w-5 text-pink-deep" aria-hidden="true" />
       ) : (
         <span aria-hidden="true" />
       )}
@@ -525,7 +525,7 @@ function BookingLine({ row, today }: { row: ListRow; today: string }) {
   const grid =
     'grid min-h-[4.5rem] grid-cols-[3rem_minmax(0,1fr)_1.25rem] items-center gap-4 px-4 py-3 md:grid-cols-[3rem_minmax(0,1.3fr)_minmax(0,1fr)_6.5rem_minmax(0,1fr)_1.25rem] md:px-5'
   return row.bookingId ? (
-    <Link to="/desk/bookings" search={{ couple: row.bookingId }} className={`${grid} text-[#1c1533] hover:bg-[#faf8fe]`}>
+    <Link to="/desk/bookings" search={{ couple: row.bookingId }} className={`${grid} text-plum hover:bg-[#faf8fe]`}>
       {inner}
     </Link>
   ) : (
@@ -581,7 +581,7 @@ function MonthCalendar({
       </div>
       <div className="grid grid-cols-7 gap-1 md:gap-1.5">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-          <span key={day} className="px-1 text-center text-[11px] font-bold tracking-[0.1em] text-[#5b5370] uppercase md:text-left md:px-2">
+          <span key={day} className="px-1 text-center text-[11px] font-bold tracking-[0.1em] text-plum-muted uppercase md:text-left md:px-2">
             <span className="md:hidden">{day.charAt(0)}</span>
             <span className="hidden md:inline">{day}</span>
           </span>
@@ -600,9 +600,9 @@ function MonthCalendar({
                 isToday
                   ? 'border-2 border-[#ff007f] bg-[#fff5fa]'
                   : `border border-[#f0ebf8] ${weekend ? 'bg-[#f7f4fd]' : 'bg-[#fcfbfe]'}`
-              } ${events.length > 0 ? (mine ? 'max-md:bg-[#d1006b] max-md:text-white' : 'max-md:bg-[#e2dbf5]') : off ? 'max-md:bg-[#d9d4e3]' : ''}`}
+              } ${events.length > 0 ? (mine ? 'max-md:bg-pink-deep max-md:text-white' : 'max-md:bg-[#e2dbf5]') : off ? 'max-md:bg-[#d9d4e3]' : ''}`}
             >
-              <span className={`text-center text-[13px] font-semibold md:text-left ${isToday ? 'text-[#d1006b]' : ''} ${events.length ? 'max-md:font-extrabold' : ''}`}>
+              <span className={`text-center text-[13px] font-semibold md:text-left ${isToday ? 'text-pink-deep' : ''} ${events.length ? 'max-md:font-extrabold' : ''}`}>
                 {Number(iso.slice(8))}
               </span>
               {off ? (
@@ -616,7 +616,7 @@ function MonthCalendar({
                     key={row.key}
                     to="/desk/bookings"
                     search={{ couple: row.bookingId }}
-                    className="hidden truncate rounded-md bg-[#d1006b] px-2 py-1 text-xs font-semibold !text-white md:block"
+                    className="hidden truncate rounded-md bg-pink-deep px-2 py-1 text-xs font-semibold !text-white md:block"
                   >
                     {row.couple}
                   </Link>
@@ -634,12 +634,12 @@ function MonthCalendar({
         <ul className="grid gap-1 border-t border-[#f0ebf8] pt-3 md:hidden">
           {inMonth.map((row) => (
             <li key={row.key} className="flex min-h-11 items-center gap-3">
-              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${row.mine ? 'bg-[#d1006b]' : 'bg-[#b3a6dc]'}`} aria-hidden="true" />
-              <span className="w-16 text-[13px] font-bold text-[#4a4262]">
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${row.mine ? 'bg-pink-deep' : 'bg-[#b3a6dc]'}`} aria-hidden="true" />
+              <span className="w-16 text-[13px] font-bold text-plum-soft">
                 {new Date(`${row.date}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })}
               </span>
               {row.bookingId ? (
-                <Link to="/desk/bookings" search={{ couple: row.bookingId }} className="font-semibold text-[#1c1533]">
+                <Link to="/desk/bookings" search={{ couple: row.bookingId }} className="font-semibold text-plum">
                   {row.couple}
                 </Link>
               ) : (
@@ -649,11 +649,11 @@ function MonthCalendar({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-[#5b5370]">Nothing booked this month.</p>
+        <p className="text-sm text-plum-muted">Nothing booked this month.</p>
       )}
-      <p className="flex flex-wrap gap-4 text-[13px] text-[#4a4262]">
+      <p className="flex flex-wrap gap-4 text-[13px] text-plum-soft">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded bg-[#d1006b]" aria-hidden="true" />
+          <span className="h-3 w-3 rounded bg-pink-deep" aria-hidden="true" />
           Your wedding
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -732,13 +732,13 @@ function CouplePage({ booking }: { booking: BookingRow }) {
 
   return (
     <div className="grid gap-5">
-      <Link to="/desk/bookings" className="inline-flex min-h-10 w-fit items-center gap-1.5 text-sm font-semibold text-[#d1006b] hover:underline">
+      <Link to="/desk/bookings" className="inline-flex min-h-10 w-fit items-center gap-1.5 text-sm font-semibold text-pink-deep hover:underline">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         All bookings
       </Link>
 
-      <header className="grid overflow-hidden rounded-[20px] bg-[#1c1533] text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] sm:grid-cols-[8.5rem_minmax(0,1fr)]">
-        <div className="flex items-center justify-between gap-3 bg-[#ff007f] px-5 py-3 text-[#1c1533] sm:flex-col sm:justify-center sm:gap-0.5 sm:py-6 sm:text-center">
+      <header className="grid overflow-hidden rounded-[20px] bg-plum text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+        <div className="flex items-center justify-between gap-3 bg-[#ff007f] px-5 py-3 text-plum sm:flex-col sm:justify-center sm:gap-0.5 sm:py-6 sm:text-center">
           <span className="text-[13px] font-bold tracking-[0.16em]">
             {day.toLocaleDateString('en-CA', { weekday: 'short', timeZone: 'UTC' }).toUpperCase()}
           </span>
@@ -786,7 +786,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                 Their plan
               </Link>
             )}
-            <Link to="/desk/money" className="inline-flex min-h-11 items-center rounded-lg bg-[#ff007f] px-4 font-bold text-[#1c1533] hover:bg-[#ff3d9a]">
+            <Link to="/desk/money" className="inline-flex min-h-11 items-center rounded-lg bg-[#ff007f] px-4 font-bold text-plum hover:bg-[#ff3d9a]">
               Record a payment
             </Link>
           </div>
@@ -814,7 +814,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                 {step.name}
                 <span className="sr-only">{step.state === 'done' ? ', done' : step.state === 'now' ? ', next' : ''}</span>
               </span>
-              <span className="text-sm text-[#5b5370]">{step.note}</span>
+              <span className="text-sm text-plum-muted">{step.note}</span>
             </span>
           </li>
         ))}
@@ -827,10 +827,10 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               <div>
                 <p id="couple-money" className={deskKicker}>Money</p>
                 <p className="mt-1 flex flex-wrap items-baseline gap-2">
-                  <span className="font-display text-5xl leading-none font-extrabold tracking-[-0.03em] text-[#1c1533] tabular-nums">
+                  <span className="font-display text-5xl leading-none font-extrabold tracking-[-0.03em] text-plum tabular-nums">
                     {dollars(left)}
                   </span>
-                  <span className="text-[#5b5370]">{`left of ${dollars(total) ?? ''}`}</span>
+                  <span className="text-plum-muted">{`left of ${dollars(total) ?? ''}`}</span>
                 </p>
               </div>
               {invoice ? <Chip tone={invoiceTone(invoiceShownStatus(invoice))}>{`Invoice ${invoiceShownStatus(invoice)}`}</Chip> : <Chip>No invoice</Chip>}
@@ -838,21 +838,21 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             <Bar value={total > 0 ? (paid / total) * 100 : 0} label={`${cad(paid)} of ${cad(total)} paid`} height="h-2.5" />
             <div className="grid gap-5 sm:grid-cols-2">
               <dl className="grid grid-cols-[1fr_auto] content-start gap-x-4 gap-y-1.5 text-sm">
-                <dt className="text-[#5b5370]">{event ? booking.eventType || booking.packageName : booking.packageName}</dt>
+                <dt className="text-plum-muted">{event ? booking.eventType || booking.packageName : booking.packageName}</dt>
                 <dd className="text-right tabular-nums">{cad(base)}</dd>
                 {customLines.map((item, index) => (
                   <Fragment key={`${index}-${item.label}`}>
-                    <dt className="text-[#5b5370]" data-line-item>{item.label}</dt>
+                    <dt className="text-plum-muted" data-line-item>{item.label}</dt>
                     <dd className="text-right tabular-nums">{cad(item.cents)}</dd>
                   </Fragment>
                 ))}
                 {booking.discountCents > 0 ? (
                   <>
-                    <dt className="text-[#5b5370]">Discount</dt>
+                    <dt className="text-plum-muted">Discount</dt>
                     <dd className="text-right tabular-nums">{`−${cad(booking.discountCents) ?? ''}`}</dd>
                   </>
                 ) : null}
-                <dt className="text-[#5b5370]">{event ? 'Distance fee' : 'Travel'}</dt>
+                <dt className="text-plum-muted">{event ? 'Distance fee' : 'Travel'}</dt>
                 <dd className="text-right tabular-nums">
                   {event
                     ? travelFee > 0 ? cad(travelFee) : 'None'
@@ -864,7 +864,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               <div className="grid content-start gap-2">
                 <p className="text-xs font-bold tracking-[0.14em] text-[#6b5fa0] uppercase">Payments</p>
                 {own.length === 0 ? (
-                  <p className="text-sm text-[#5b5370]">Nothing paid yet.</p>
+                  <p className="text-sm text-plum-muted">Nothing paid yet.</p>
                 ) : (
                   own.map((payment) => (
                     <p
@@ -873,7 +873,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                     >
                       <span>
                         <span className="block font-semibold">{payment.cents < 0 ? 'Refund' : payment.note || 'Payment'}</span>
-                        <span className="text-[#5b5370]">
+                        <span className="text-plum-muted">
                           {[payment.paidOn ? shortDay(payment.paidOn) : '', METHOD_NAME[payment.method] ?? ''].filter(Boolean).join(' · ')}
                         </span>
                       </span>
@@ -913,15 +913,15 @@ function CouplePage({ booking }: { booking: BookingRow }) {
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${booking.venueName} ${booking.venueStreet}`)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-[#d1006b] underline underline-offset-2"
+                  className="text-sm text-pink-deep underline underline-offset-2"
                 >
                   {booking.venueStreet}
                 </a>
               ) : (
-                <p className="text-sm text-[#5b5370]">Add the venue name and street below. The hold starts when both are in.</p>
+                <p className="text-sm text-plum-muted">Add the venue name and street below. The hold starts when both are in.</p>
               )}
               {booking.venueTwoName ? (
-                <p className="mt-2 text-sm text-[#4a4262]">{`Ceremony at ${booking.venueTwoName ?? ''}`}
+                <p className="mt-2 text-sm text-plum-soft">{`Ceremony at ${booking.venueTwoName ?? ''}`}
                   {booking.venueTwoStreet ? `, ${booking.venueTwoStreet}` : ''}
                 </p>
               ) : null}
@@ -929,12 +929,12 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-[#efe9f8] bg-[#faf8fe] p-4">
                 <p className="font-semibold">{event ? booking.eventType || booking.packageName : booking.packageName}</p>
-                {offer?.detail && !event ? <p className="mt-1 text-sm text-[#4a4262]">{offer.detail}</p> : null}
+                {offer?.detail && !event ? <p className="mt-1 text-sm text-plum-soft">{offer.detail}</p> : null}
                 {booking.withStag && booking.stagDate ? (
-                  <p className="mt-2 text-sm text-[#4a4262]">{`Stag and doe on ${longDate(booking.stagDate) ?? ''}.`}</p>
+                  <p className="mt-2 text-sm text-plum-soft">{`Stag and doe on ${longDate(booking.stagDate) ?? ''}.`}</p>
                 ) : null}
                 {booking.uplights > 0 ? (
-                  <p className="mt-1 text-sm text-[#4a4262]">{`${booking.uplights ?? ''} uplights.`}</p>
+                  <p className="mt-1 text-sm text-plum-soft">{`${booking.uplights ?? ''} uplights.`}</p>
                 ) : null}
               </div>
               {event ? null : <TravelPanel booking={booking} />}
@@ -951,14 +951,14 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             {hasContact ? (
               <div className="grid gap-1">
                 {booking.email ? (
-                  <a href={`mailto:${booking.email}`} className="flex min-h-11 items-center gap-2.5 text-[#1c1533] hover:text-[#d1006b]">
-                    <Mail className="h-4.5 w-4.5 text-[#d1006b]" aria-hidden="true" />
+                  <a href={`mailto:${booking.email}`} className="flex min-h-11 items-center gap-2.5 text-plum hover:text-pink-deep">
+                    <Mail className="h-4.5 w-4.5 text-pink-deep" aria-hidden="true" />
                     {booking.email}
                   </a>
                 ) : null}
                 {booking.phone ? (
-                  <a href={`tel:${booking.phone.replace(/[^\d+]/g, '')}`} className="flex min-h-11 items-center gap-2.5 text-[#1c1533] hover:text-[#d1006b]">
-                    <Phone className="h-4.5 w-4.5 text-[#d1006b]" aria-hidden="true" />
+                  <a href={`tel:${booking.phone.replace(/[^\d+]/g, '')}`} className="flex min-h-11 items-center gap-2.5 text-plum hover:text-pink-deep">
+                    <Phone className="h-4.5 w-4.5 text-pink-deep" aria-hidden="true" />
                     {booking.phone}
                   </a>
                 ) : null}
@@ -966,7 +966,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
             ) : (
               <div className="rounded-2xl border border-dashed border-[#f3b6d3] bg-[#fff5fa] p-4">
                 <p className="font-semibold">No email or phone yet</p>
-                <p className="mt-1 text-sm text-[#4a4262]">
+                <p className="mt-1 text-sm text-plum-soft">
                   {event ? 'Add one so the invoice and card link can reach them.' : 'Add one so the invoice, card link and portal link can reach them.'}
                 </p>
                 <a href="#everything" className={`${deskPrimary} mt-3`}>
@@ -982,16 +982,16 @@ function CouplePage({ booking }: { booking: BookingRow }) {
               <h2 id="couple-plan" className={deskH2}>
                 Their plan
               </h2>
-              {plan ? <span className="font-display text-2xl font-extrabold text-[#d1006b]">{`${plan.percent ?? ''}%`}</span> : null}
+              {plan ? <span className="font-display text-2xl font-extrabold text-pink-deep">{`${plan.percent ?? ''}%`}</span> : null}
             </div>
             {plan ? (
               <>
                 <Bar value={plan.percent} label={`${plan.percent}% planned`} color="bg-[#ff007f]" />
-                <p className="text-sm text-[#4a4262]">
+                <p className="text-sm text-plum-soft">
                   {`${plan.answered ?? ''} of ${plan.total ?? ''} answers in.`}</p>
               </>
             ) : (
-              <p className="text-sm text-[#5b5370]">Their plan has not started.</p>
+              <p className="text-sm text-plum-muted">Their plan has not started.</p>
             )}
             <div className="flex flex-wrap gap-2">
               <Link to="/desk/portals/$slug/plan" params={{ slug: booking.slug }} className={deskGhost}>
@@ -1013,7 +1013,7 @@ function CouplePage({ booking }: { booking: BookingRow }) {
         <h2 id="everything-title" className="font-display text-xl font-extrabold">
           Details, invoice and status
         </h2>
-        <p className="text-sm text-[#5b5370]">
+        <p className="text-sm text-plum-muted">
           {event
             ? "Edit the client's name, contact, date, venue and price; send or void the invoice; release, cancel or delete the booking."
             : 'Edit their names, contact, date, venue and price; send or void the invoice; release, cancel or delete the booking.'}
@@ -1065,7 +1065,7 @@ function InvoiceNoteCard({ id, note }: { id: number; note: string }) {
       <h2 id={`invoice-note-${id}`} className={deskH2}>
         Invoice notes
       </h2>
-      <label htmlFor={`invoice-note-text-${id}`} className="text-sm text-[#5b5370]">
+      <label htmlFor={`invoice-note-text-${id}`} className="text-sm text-plum-muted">
         Shown on the invoice
       </label>
       <textarea
@@ -1083,7 +1083,7 @@ function InvoiceNoteCard({ id, note }: { id: number; note: string }) {
         <button type="button" className={deskGhost} disabled={!dirty || state === 'saving'} onClick={() => void commit()}>
           {state === 'saving' ? 'Saving…' : 'Save invoice notes'}
         </button>
-        <span className="text-sm text-[#5b5370]" role="status">
+        <span className="text-sm text-plum-muted" role="status">
           {state === 'saved' ? 'Saved.' : state === 'error' ? 'That did not save. Try again.' : ''}
         </span>
       </div>
@@ -1109,7 +1109,7 @@ function NotesCard({ id, notes }: { id: number; notes: string }) {
       <h2 id={`notes-${id}`} className={deskH2}>
         Your notes
       </h2>
-      <label htmlFor={`notes-text-${id}`} className="text-sm text-[#5b5370]">
+      <label htmlFor={`notes-text-${id}`} className="text-sm text-plum-muted">
         Only you see these
       </label>
       <textarea
@@ -1128,7 +1128,7 @@ function NotesCard({ id, notes }: { id: number; notes: string }) {
         <button type="button" className={deskGhost} disabled={!dirty || state === 'saving'} onClick={() => void commit()}>
           {state === 'saving' ? 'Saving…' : 'Save notes'}
         </button>
-        <span className="text-sm text-[#5b5370]" role="status">
+        <span className="text-sm text-plum-muted" role="status">
           {state === 'saved' ? 'Saved.' : state === 'error' ? 'That did not save. Try again.' : ''}
         </span>
       </div>
@@ -1396,7 +1396,7 @@ function BlockedDates({ dates }: { dates: { eventDate: string; note: string }[] 
             <li key={row.eventDate} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6def4] px-4 py-2.5" data-blocked={row.eventDate}>
               <span>
                 <span className="font-semibold">{longDate(row.eventDate)}</span>
-                {row.note ? <span className="text-sm text-[#5b5370]">{` · ${row.note}`}</span> : null}
+                {row.note ? <span className="text-sm text-plum-muted">{` · ${row.note}`}</span> : null}
               </span>
               <ActionButton
                 className={deskGhost}

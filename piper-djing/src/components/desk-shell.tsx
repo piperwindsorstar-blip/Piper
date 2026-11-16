@@ -237,7 +237,7 @@ export function DeskShell({
                   to={item.to}
                   aria-current={on ? 'page' : undefined}
                   className={`flex min-h-13 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] ${
-                    on ? 'bg-[#ff007f] font-bold text-[#1c1533]' : 'font-semibold text-[#e4ddf3]'
+                    on ? 'bg-[#ff007f] font-bold text-plum' : 'font-semibold text-[#e4ddf3]'
                   }`}
                 >
                   <span className="relative">
@@ -342,7 +342,7 @@ function MainNav({
                 aria-current={on ? 'page' : undefined}
                 className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] transition ${
                   on
-                    ? 'bg-[#ff007f] font-bold text-[#1c1533]'
+                    ? 'bg-[#ff007f] font-bold text-plum'
                     : 'font-medium text-[#e4ddf3] hover:bg-white/8 hover:text-white'
                 }`}
               >
@@ -436,7 +436,7 @@ function Count({
   return (
     <span
       className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold ${
-        dark ? 'bg-[#1c1533] text-white' : 'bg-[#ff007f] text-[#1c1533]'
+        dark ? 'bg-plum text-white' : 'bg-[#ff007f] text-plum'
       } ${floating ? 'absolute -top-1.5 -right-3' : ''}`}
       aria-label={`${n} waiting`}
     >

@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import appCss from '../styles.css?url'
+import { SITE_FONTS } from '../lib/site-fonts.ts'
 
 /**
  * Older phones and tablets (Safari before 15.4, Chrome before 93, older
@@ -43,7 +44,7 @@ export const Route = createRootRoute({
       },
       {
         rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600;700;800&display=swap',
+        href: SITE_FONTS,
       },
       { rel: 'manifest', href: '/manifest.webmanifest' },
       { rel: 'apple-touch-icon', href: '/icons/icon-180.png' },

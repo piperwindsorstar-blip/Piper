@@ -130,7 +130,7 @@ function VendorsPage() {
       </form>
 
       {vendorCount === 0 ? (
-        <p className="rounded-xl border border-dashed border-[#d6cce8] p-6 text-center text-sm text-[#4a4262]">
+        <p className="rounded-xl border border-dashed border-[#d6cce8] p-6 text-center text-sm text-plum-soft">
           No vendors yet. The public page shows just its heading and intro until you add one.
         </p>
       ) : null}
@@ -190,7 +190,7 @@ function MoveButtons({
     void onMove(direction).finally(() => setBusy(false))
   }
   const button =
-    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#d6cce8] bg-white text-lg font-semibold text-[#1c1533] transition hover:border-[#ff007f] disabled:opacity-30'
+    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#d6cce8] bg-white text-lg font-semibold text-plum transition hover:border-[#ff007f] disabled:opacity-30'
   return (
     <div className="flex gap-1">
       <button
@@ -252,7 +252,7 @@ function CategoryCard({
             }}
           />
         </div>
-        <p className="text-sm text-[#4a4262]">
+        <p className="text-sm text-plum-soft">
           {category.vendors.length === 0
             ? 'No vendors yet · hidden on the site'
             : `${category.vendors.length} ${category.vendors.length === 1 ? 'vendor' : 'vendors'} · ${visible} shown${visible === 0 ? ' · hidden on the site' : ''}`}
@@ -333,7 +333,7 @@ function VendorRow({
           {vendor.logo ? (
             <img src={vendor.logo} alt="" className="max-h-10 max-w-full object-contain" />
           ) : (
-            <span className="text-[10px] font-semibold text-[#4a4262]">No logo</span>
+            <span className="text-[10px] font-semibold text-plum-soft">No logo</span>
           )}
         </span>
         <div className="min-w-0 flex-1">
@@ -342,7 +342,7 @@ function VendorRow({
             href={vendor.href}
             target="_blank"
             rel="noopener"
-            className="block truncate text-sm text-[#d1006b] underline"
+            className="block truncate text-sm text-pink-deep underline"
           >
             {vendor.href}
           </a>

@@ -5,9 +5,6 @@ import { getCouplePortalDesk } from '../../../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../../../lib/desk-head.ts'
 import { overallProgress } from '../../../../lib/portal/progress.ts'
 
-const FONTS =
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Display:wght@800;900&display=swap'
-
 export const Route = createFileRoute('/desk/portals/$slug/plan')({
   // Private page: its data loading rides in the same lazy chunk as its
   // screen, so the server calls it imports stay off the public pages.
@@ -16,7 +13,6 @@ export const Route = createFileRoute('/desk/portals/$slug/plan')({
     const head = deskHead('Wedding plan · DJ Piper P')
     return {
       ...head,
-      links: [{ rel: 'stylesheet', href: FONTS }],
     }
   },
   loader: async ({ params }) => {

@@ -102,12 +102,12 @@ function GearPage() {
 
       <section className={`${deskCard} flex flex-wrap items-end justify-between gap-3`}>
         <div>
-          <p className="text-sm font-semibold text-[#4a4262]">Total replacement value</p>
+          <p className="text-sm font-semibold text-plum-soft">Total replacement value</p>
           <p className="font-display text-4xl font-extrabold" data-gear-total>
             {gearDollars(total)}
           </p>
         </div>
-        <p className="text-sm text-[#4a4262]">
+        <p className="text-sm text-plum-soft">
           {`${items.length} ${items.length === 1 ? 'item' : 'items'}${unpriced > 0 ? ` · ${unpriced} not priced yet` : ''}`}
         </p>
       </section>
@@ -135,7 +135,7 @@ function GearPage() {
       </form>
 
       {items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[#d6cce8] p-6 text-center text-sm text-[#4a4262]">
+        <p className="rounded-xl border border-dashed border-[#d6cce8] p-6 text-center text-sm text-plum-soft">
           No gear yet.
         </p>
       ) : (
@@ -161,7 +161,7 @@ function GearRow({ item }: { item: GearItem }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{item.item}</p>
-          <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#4a4262]">
+          <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-plum-soft">
             <div className="flex gap-1">
               <dt>Serial:</dt>
               <dd className="font-mono">{item.serial || '—'}</dd>
@@ -171,11 +171,11 @@ function GearRow({ item }: { item: GearItem }) {
               <dd>{item.purchased ? gearDateLabel(item.purchased) : '—'}</dd>
             </div>
           </dl>
-          {item.notes ? <p className="mt-1 text-sm text-[#1c1533]">{item.notes}</p> : null}
+          {item.notes ? <p className="mt-1 text-sm text-plum">{item.notes}</p> : null}
         </div>
         <p className="font-display text-xl font-bold whitespace-nowrap">
           {item.valueCents === null ? (
-            <span className="text-sm font-semibold text-[#4a4262]">Not priced</span>
+            <span className="text-sm font-semibold text-plum-soft">Not priced</span>
           ) : (
             gearDollars(item.valueCents)
           )}

@@ -101,7 +101,7 @@ function OverviewPage() {
             {`${greeting() ?? ''}, `}
             <em className="font-serif font-normal tracking-normal text-[#ff007f] italic">Piper.</em>
           </h1>
-          <p className="max-w-2xl text-base text-[#4a4262] md:text-lg">{subline}</p>
+          <p className="max-w-2xl text-base text-plum-soft md:text-lg">{subline}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
           <Link to="/desk/money" className={deskGhost}>
@@ -110,7 +110,7 @@ function OverviewPage() {
           <Link
             to="/desk/bookings"
             search={{ add: true }}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#d1006b] px-5 text-sm font-semibold !text-white hover:bg-[#a30054]"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-pink-deep px-5 text-sm font-semibold !text-white hover:bg-[#a30054]"
           >
             <Plus className="h-4.5 w-4.5" aria-hidden="true" />
             New booking
@@ -153,7 +153,7 @@ function ComingUp({ rows }: { rows: WeddingChecklist[] }) {
         <h2 id="coming-up" className={deskH2}>
           Coming up
         </h2>
-        <span className="text-sm text-[#5b5370]">Next 30 days</span>
+        <span className="text-sm text-plum-muted">Next 30 days</span>
       </div>
       <ul className="grid gap-2.5">
         {rows.map((row) => (
@@ -161,7 +161,7 @@ function ComingUp({ rows }: { rows: WeddingChecklist[] }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="grid min-w-0">
                 <span className="font-semibold">{row.couple}</span>
-                <span className="text-sm text-[#5b5370]">
+                <span className="text-sm text-plum-muted">
                   {`${shortDate(row.eventDate) ?? ''} · ${inDays(row.days) ?? ''} · `}
                   {row.open === 0 ? 'Ready' : `${row.open} still to sort`}
                 </span>
@@ -234,9 +234,9 @@ function NextWedding({
   return (
     <section
       aria-labelledby="next-up"
-      className="grid min-w-0 overflow-hidden rounded-[20px] bg-[#1c1533] text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] sm:grid-cols-[9.5rem_minmax(0,1fr)]"
+      className="grid min-w-0 overflow-hidden rounded-[20px] bg-plum text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] sm:grid-cols-[9.5rem_minmax(0,1fr)]"
     >
-      <div className="flex items-center justify-between gap-3 bg-[#ff007f] px-5 py-3 text-[#1c1533] sm:flex-col sm:justify-center sm:gap-0.5 sm:py-7 sm:text-center">
+      <div className="flex items-center justify-between gap-3 bg-[#ff007f] px-5 py-3 text-plum sm:flex-col sm:justify-center sm:gap-0.5 sm:py-7 sm:text-center">
         <span className="text-[13px] font-bold tracking-[0.16em]">{dow}</span>
         <span className="font-display text-3xl leading-[0.9] font-extrabold tracking-[-0.04em] sm:text-[76px]">
           {day.getUTCDate()}
@@ -288,7 +288,7 @@ function NextWedding({
           <Link
             to="/desk/bookings"
             search={{ couple: booking.id }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#ff007f] px-5 font-bold text-[#1c1533] hover:bg-[#ff3d9a]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#ff007f] px-5 font-bold text-plum hover:bg-[#ff3d9a]"
           >
             Open their booking
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -334,7 +334,7 @@ function QuietHero() {
   return (
     <section
       aria-labelledby="quiet-up"
-      className="grid content-center gap-3.5 rounded-[20px] bg-[#1c1533] p-7 text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] sm:p-9"
+      className="grid content-center gap-3.5 rounded-[20px] bg-plum p-7 text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] sm:p-9"
     >
       <p className="text-xs font-bold tracking-[0.16em] text-[#ff8cc6] uppercase">
         Nothing on the book yet
@@ -351,7 +351,7 @@ function QuietHero() {
         <Link
           to="/desk/bookings"
           search={{ add: true }}
-          className="inline-flex min-h-11 items-center rounded-lg bg-[#ff007f] px-5 font-bold text-[#1c1533]"
+          className="inline-flex min-h-11 items-center rounded-lg bg-[#ff007f] px-5 font-bold text-plum"
         >
           New booking
         </Link>
@@ -408,7 +408,7 @@ function ThisWeek({ desk, today }: { desk: DeskData; today: string }) {
         </h2>
       </div>
       {rows.length === 0 ? (
-        <p className="text-[#5b5370]">No weddings in the next seven days, yours or Pynx's.</p>
+        <p className="text-plum-muted">No weddings in the next seven days, yours or Pynx's.</p>
       ) : (
         <ol className="grid">
           {rows.map((row, index) => {
@@ -425,13 +425,13 @@ function ThisWeek({ desk, today }: { desk: DeskData; today: string }) {
                 <span className="grid min-w-0 pb-4">
                   <span className="text-[13px] font-bold text-[#6b5fa0]">{when}</span>
                   {row.id ? (
-                    <Link to="/desk/bookings" search={{ couple: row.id }} className="font-semibold text-[#1c1533] hover:text-[#d1006b]">
+                    <Link to="/desk/bookings" search={{ couple: row.id }} className="font-semibold text-plum hover:text-pink-deep">
                       {row.couple}
                     </Link>
                   ) : (
                     <span className="font-semibold">{row.couple}</span>
                   )}
-                  <span className="truncate text-sm text-[#5b5370]">
+                  <span className="truncate text-sm text-plum-muted">
                     {[row.venue, row.pynx ? row.company : ''].filter(Boolean).join(' · ')}
                   </span>
                 </span>
@@ -443,7 +443,7 @@ function ThisWeek({ desk, today }: { desk: DeskData; today: string }) {
       <Link
         to="/desk/bookings"
         search={{ view: 'calendar' }}
-        className="mt-auto inline-flex min-h-11 items-center gap-1.5 font-semibold text-[#d1006b] hover:underline"
+        className="mt-auto inline-flex min-h-11 items-center gap-1.5 font-semibold text-pink-deep hover:underline"
       >
         See the calendar
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -468,7 +468,7 @@ function NeedsYou({ items }: { items: Attention[] }) {
         <h2 id="needs-you" className={deskH2}>
           Needs you
         </h2>
-        <span className="text-sm text-[#5b5370]">
+        <span className="text-sm text-plum-muted">
           {items.length === 0 ? 'Nothing' : `${items.length} ${items.length === 1 ? 'thing' : 'things'}`}
         </span>
       </div>
@@ -486,12 +486,12 @@ function NeedsYou({ items }: { items: Attention[] }) {
                 key={item.id}
                 className="flex flex-wrap items-center gap-3.5 rounded-2xl border border-[#efe9f8] bg-[#faf8fe] p-3.5"
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[#ffe3f0] text-[#d1006b]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[#ffe3f0] text-pink-deep">
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span className="grid min-w-0 flex-[1_1_14rem]">
                   <span className="font-semibold">{item.title}</span>
-                  <span className="text-sm text-[#5b5370]">{item.detail}</span>
+                  <span className="text-sm text-plum-muted">{item.detail}</span>
                 </span>
                 {item.to === '/desk/bookings' ? (
                   <Link
@@ -543,12 +543,12 @@ function MoneyCard({ summary }: { summary: ReturnType<typeof moneySummary> }) {
         <h2 id="money-card" className={deskH2}>
           Money on the book
         </h2>
-        <Link to="/desk/money" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#d1006b] hover:underline">
+        <Link to="/desk/money" className="inline-flex min-h-11 items-center text-sm font-semibold text-pink-deep hover:underline">
           Money
         </Link>
       </div>
       <div className="grid gap-0.5">
-        <span className="text-sm text-[#4a4262]">Still to collect</span>
+        <span className="text-sm text-plum-soft">Still to collect</span>
         <span className="font-display text-[56px] leading-none font-extrabold tracking-[-0.03em] tabular-nums">
           {dollars(totals.stillToCollectCents)}
         </span>
@@ -556,16 +556,16 @@ function MoneyCard({ summary }: { summary: ReturnType<typeof moneySummary> }) {
       <Bar
         value={totals.bookedCents > 0 ? (totals.collectedCents / totals.bookedCents) * 100 : 0}
         label={`${cad(totals.collectedCents)} of ${cad(totals.bookedCents)} collected`}
-        color="bg-[#1c1533]"
-        track="bg-[#1c1533]/10"
+        color="bg-plum"
+        track="bg-plum/10"
         height="h-2.5"
       />
-      <div className="flex justify-between gap-3 text-sm text-[#4a4262]">
+      <div className="flex justify-between gap-3 text-sm text-plum-soft">
         <span>
-          <strong className="text-[#1c1533]">{dollars(totals.collectedCents)}</strong> collected
+          <strong className="text-plum">{dollars(totals.collectedCents)}</strong> collected
         </span>
         <span>
-          <strong className="text-[#1c1533]">{dollars(totals.bookedCents)}</strong> booked
+          <strong className="text-plum">{dollars(totals.bookedCents)}</strong> booked
         </span>
       </div>
       {due ? (
@@ -579,7 +579,7 @@ function MoneyCard({ summary }: { summary: ReturnType<typeof moneySummary> }) {
           </span>
         </div>
       ) : null}
-      <p className="text-[13px] text-[#4a4262]">{`Your ${totals.weddings ?? ''} ${totals.weddings === 1 ? 'wedding' : 'weddings'}. Pynx pays you for its dates separately.`}</p>
+      <p className="text-[13px] text-plum-soft">{`Your ${totals.weddings ?? ''} ${totals.weddings === 1 ? 'wedding' : 'weddings'}. Pynx pays you for its dates separately.`}</p>
     </section>
   )
 }
@@ -606,7 +606,7 @@ function Season({ desk, today }: { desk: DeskData; today: string }) {
           <h2 id="season" className={deskH2}>
             {`${total ?? ''} ${total === 1 ? 'wedding' : 'weddings'} in the next 12 months`}</h2>
         </div>
-        <span className="flex gap-4 text-[13px] text-[#4a4262]">
+        <span className="flex gap-4 text-[13px] text-plum-soft">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-3 w-3 rounded bg-[#ff007f]" aria-hidden="true" />
             Yours
@@ -627,7 +627,7 @@ function Season({ desk, today }: { desk: DeskData; today: string }) {
                 to="/desk/bookings"
                 search={{ view: 'calendar', month: row.key }}
                 aria-label={`${row.name}: ${n === 0 ? 'nothing booked' : `${n} ${n === 1 ? 'wedding' : 'weddings'}`}`}
-                className="group grid gap-2 text-[#1c1533]"
+                className="group grid gap-2 text-plum"
               >
                 <span className="flex h-28 flex-col-reverse gap-1 rounded-[10px] bg-[#f7f4fd] p-1.5 group-hover:bg-[#efe9fb]">
                   {Array.from({ length: row.yours }, (_, i) => (
