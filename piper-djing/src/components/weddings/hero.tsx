@@ -1,51 +1,51 @@
 import { CHECKLIST, RINGS_LOGO_ALT, RINGS_LOGO_SRC } from './content.ts'
 import { DateCheckForm } from './date-check-form.tsx'
-import { Icon } from './icon.tsx'
-import { ButtonOutline, ButtonPrimary } from './ui.tsx'
+import { ButtonOutline, ButtonPrimary, Eyebrow } from './ui.tsx'
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden bg-linear-to-b from-ice/70 via-paper to-paper">
-      <div className="grid-lines grid-fade absolute inset-0 -z-10 opacity-60" />
-      <div className="absolute -top-32 -right-32 -z-10 h-96 w-96 rounded-full bg-lilac blur-3xl" />
-      <div className="absolute top-48 -left-24 -z-10 h-72 w-72 rounded-full bg-blush blur-3xl" />
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pt-14 pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-20">
-        <div className="min-w-0">
-          <img
-            src={RINGS_LOGO_SRC}
-            alt={RINGS_LOGO_ALT}
-            width={1137}
-            height={1088}
-            className="mx-auto mb-8 block h-auto w-full max-w-[22rem] sm:max-w-[28rem]"
-          />
-          <h1 className="font-display text-[clamp(2.5rem,6vw,4.9rem)] leading-[0.98] font-extrabold tracking-tight text-balance">
-            {'Your wedding date is only available '}
-            <span className="font-serif font-normal text-neon italic">
-              once.
-            </span>
-            {' Lock in your Brantford wedding DJ.'}
-          </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-soft">
-            Exciting dance floors, seamless track selection, and zero stress
-            for Brantford and area couples. Check your date in 30 seconds and hear
-            back within one business day.
-          </p>
-          <ul className="mt-6 grid gap-2 sm:grid-cols-2">
-            {CHECKLIST.map((item) => (
-              <li key={item} className="flex items-center gap-2 font-medium">
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-blush text-neon">
-                  <Icon n="check" className="h-3 w-3" />
-                </span>
-                {item}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <ButtonPrimary>Check Wedding Dates</ButtonPrimary>
-            <ButtonOutline>Explore Wedding Packages</ButtonOutline>
-          </div>
+    <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 pt-10 pb-16 lg:grid-cols-2 lg:gap-16 lg:pt-14 lg:pb-24">
+      <div className="min-w-0">
+        <img
+          src={RINGS_LOGO_SRC}
+          alt={RINGS_LOGO_ALT}
+          width={1137}
+          height={1088}
+          className="mb-7 block h-28 w-auto sm:h-32"
+        />
+        <Eyebrow>Brantford wedding DJ</Eyebrow>
+        <h1 className="mt-4 font-display text-[clamp(2.4rem,5vw,3.9rem)] leading-[1.06] text-balance">
+          {'Your wedding date is only available '}
+          <em className="text-neon">once.</em>
+          {' Lock in your Brantford wedding DJ.'}
+        </h1>
+        <p className="mt-5 max-w-xl text-lg leading-relaxed text-soft">
+          Exciting dance floors, seamless track selection, and zero stress
+          for Brantford and area couples. Check your date in 30 seconds and hear
+          back within one business day.
+        </p>
+        <ul className="wed-checks mt-6 grid gap-2.5 sm:grid-cols-2">
+          {CHECKLIST.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <ButtonPrimary>Check Wedding Dates</ButtonPrimary>
+          <ButtonOutline>Explore Wedding Packages</ButtonOutline>
         </div>
-        <div className="relative min-w-0">
+      </div>
+      <div className="min-w-0">
+        <div className="wed-arch">
+          <img
+            src="/photos/wedding-first-dance.jpg"
+            alt="A couple sharing their first dance"
+            width={1024}
+            height={1024}
+            fetchPriority="high"
+            sizes="(min-width: 1024px) 34rem, 100vw"
+          />
+        </div>
+        <div className="relative mx-4 -mt-32 sm:mx-10">
           <DateCheckForm />
         </div>
       </div>

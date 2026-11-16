@@ -1343,3 +1343,70 @@ button:focus-visible,
   background-color: #fff;
   color: #000;
 }
+
+/* ---------------------------------------------------------------------------
+   The weddings page, "elegant": white and cream, serif headings, thin gold
+   lines. Set by swapping the weddings theme colours and the heading face, so
+   the shared wedding sections follow.
+--------------------------------------------------------------------------- */
+.weddings.wed-elegant {
+  --color-paper: #fff;
+  --color-ink: #221d2b;
+  --color-line: #eadfca;
+  --color-soft: #655c6e;
+  --color-mist: #fbf7f0;
+  --color-ice: #fbf7f0;
+  --color-lilac: #fbf7f0;
+  --color-blush: #fdeef5;
+  --color-violet: #8a6d35;
+  --font-display: 'Instrument Serif', Georgia, serif;
+}
+.weddings.wed-elegant :focus-visible {
+  outline-color: #8a6d35;
+}
+/* The serif has one weight, so headings are never faux-bolded. */
+.wed-elegant .font-display {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.wed-elegant h1 em {
+  font-style: italic;
+}
+/* Hard offset shadows become a soft glow. */
+.wed-elegant [class*='shadow-[8px_8px'] {
+  box-shadow: 0 22px 55px -18px rgba(120, 96, 50, 0.35);
+  border-color: #d9c59c;
+}
+/* The strip under the hero is cream, not ink. */
+.wed-elegant main .bg-ink {
+  background-color: #fbf7f0;
+  border-color: #eadfca;
+  color: #221d2b;
+}
+.wed-checks li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 500;
+}
+.wed-checks li::before {
+  content: '';
+  flex: none;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #d9c59c;
+}
+.wed-arch {
+  border: 1px solid #d9c59c;
+  border-radius: 999px 999px 0.75rem 0.75rem;
+  padding: 0.7rem;
+}
+.wed-arch img {
+  display: block;
+  width: 100%;
+  height: clamp(24rem, 46vw, 36rem);
+  border-radius: 999px 999px 0.4rem 0.4rem;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
