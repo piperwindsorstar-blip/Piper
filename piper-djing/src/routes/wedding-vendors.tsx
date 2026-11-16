@@ -77,19 +77,14 @@ function VendorCard({ vendor }: { vendor: PublicVendor }) {
       className="group flex h-full flex-col items-center gap-3 rounded-2xl border border-line bg-white p-4 text-center text-plum transition hover:-translate-y-0.5 hover:border-neon focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon"
     >
       {vendor.logo ? (
-        <>
-          <span className="flex h-24 w-full items-center justify-center">
-            <img
-              src={vendor.logo}
-              alt={`${vendor.name} logo`}
-              loading="lazy"
-              className="max-h-24 max-w-full object-contain"
-            />
-          </span>
-          <span className="font-semibold leading-snug group-hover:text-neon">
-            {vendor.name}
-          </span>
-        </>
+        <span className="flex h-24 w-full flex-1 items-center justify-center">
+          <img
+            src={vendor.logo}
+            alt={`${vendor.name} logo`}
+            loading="lazy"
+            className="max-h-24 max-w-full object-contain"
+          />
+        </span>
       ) : (
         <span className="flex min-h-24 w-full flex-1 items-center justify-center rounded-xl bg-blush px-3 py-4">
           <span className="font-serif text-2xl leading-tight text-plum italic group-hover:text-neon">
