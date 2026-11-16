@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { ActionButton } from '../components/action-button.tsx'
 import type { RunResult } from '../components/action-button.tsx'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
 import { DateCalendarDialog } from '../components/weddings/date-calendar.tsx'
 import { DateDraftProvider } from '../components/weddings/date-draft.tsx'
 import { Header } from '../components/weddings/header.tsx'
@@ -22,6 +22,30 @@ import { WEDDING_OG_IMAGE, publicHead } from '../lib/seo.ts'
 import type { PackageId } from '../lib/crm/defaults.ts'
 import { BOOK_EVENT_TYPES, bookEventLabel, bookEventType, eventTypeLabel } from '../lib/crm/book-events.ts'
 import type { BookEventType } from '../lib/crm/book-events.ts'
+
+/** The names alone, for the closed dropdown on a phone. */
+const PACKAGE_NAMES: Record<PackageId, string> = {
+  full: 'The Main Event',
+  reception: 'The After Party',
+  stag: 'The Pre-Party',
+  ceremony: 'The Aisle',
+  custom: 'Custom event',
+}
+
+const PHONE = '(max-width: 639px)'
+
+/** True at phone width. False on the server and until the page is live. */
+function usePhoneWidth(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = window.matchMedia(PHONE)
+      query.addEventListener('change', notify)
+      return () => query.removeEventListener('change', notify)
+    },
+    () => window.matchMedia(PHONE).matches,
+    () => false,
+  )
+}
 
 const PACKAGE_TITLES: Record<PackageId, string> = {
   full: 'The Main Event (Full Wedding Day',
@@ -92,14 +116,18 @@ function BookPage() {
   const packageChoices = (
     ['full', 'reception', 'stag', 'ceremony', 'custom'] as const
   ).map((id) => {
-    if (id === 'custom') return { id, label: 'Custom event' }
+    if (id === 'custom') return { id, label: 'Custom event', short: 'Custom event' }
     const cents =
       packages.find((item) => item.id === id)?.cents ?? PACKAGE_CENTS[id]
+    const price = publicPackagePrice(id, cents)
     return {
       id,
-      label: `${PACKAGE_TITLES[id]}, ${publicPackagePrice(id, cents)})`,
+      label: `${PACKAGE_TITLES[id]}, ${price})`,
+      // The full label is cut off in the closed dropdown on a phone.
+      short: `${PACKAGE_NAMES[id]} — ${price}`,
     }
   })
+  const phone = usePhoneWidth()
   const send = useServerFn(sendInquiry)
   const sendEvent = useServerFn(sendEventInquiry)
   const navigate = useNavigate()
@@ -497,7 +525,7 @@ function BookPage() {
                 >
                   {packageChoices.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.label}
+                      {phone ? item.short : item.label}
                     </option>
                   ))}
                 </select>
