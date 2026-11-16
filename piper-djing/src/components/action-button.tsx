@@ -142,7 +142,7 @@ export function ActionButton({
   const { phase, message, start } = useAction(onRun)
   const good = surface === 'light' ? 'text-emerald-600' : 'text-emerald-400'
   const bad = surface === 'light' ? 'text-rose-600' : 'text-rose-400'
-  const hint = surface === 'light' ? 'text-[#5b5370]' : 'text-[#a9a9b2]'
+  const hint = surface === 'light' ? 'text-plum-muted' : 'text-[#a9a9b2]'
 
   const label =
     phase === 'busy' ? (

@@ -73,9 +73,9 @@ function LeadsPage() {
           <div className="grid max-w-xl gap-2">
             <h2 id="no-leads" className="font-display text-3xl leading-[1.05] font-extrabold tracking-[-0.02em] sm:text-[40px]">
               {"No new inquiries. "}
-              <em className="font-serif font-normal tracking-normal text-[#d1006b] italic">Yet.</em>
+              <em className="font-serif font-normal tracking-normal text-pink-deep italic">Yet.</em>
             </h2>
-            <p className="text-[#4a4262] sm:text-lg">
+            <p className="text-plum-soft sm:text-lg">
               When a couple checks a date on the website, it lands here with their date already
               checked against your book.
             </p>
@@ -155,7 +155,7 @@ function LeadCard({
           <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
             {lead.partnerTwo ? <CoupleName one={lead.partnerOne} two={lead.partnerTwo} /> : names}
           </h2>
-          <p className="mt-0.5 text-[#4a4262]">
+          <p className="mt-0.5 text-plum-soft">
             {lead.eventDate ? longDate(lead.eventDate) : 'No date yet'}
             {lead.packageName ? ` · ${lead.packageName}` : ''}
             {lead.withStag ? ' · with a stag and doe' : ''}

@@ -124,7 +124,7 @@ function FinancialsPage() {
             aria-selected={tab === id}
             onClick={() => setTab(id)}
             className={`inline-flex min-h-11 shrink-0 items-center rounded-lg px-3.5 text-sm font-semibold ${
-              tab === id ? 'bg-[#1c1533] !text-white' : 'border border-[#d6cce8] bg-white text-[#1c1533] hover:border-[#ff007f]'
+              tab === id ? 'bg-plum !text-white' : 'border border-[#d6cce8] bg-white text-plum hover:border-[#ff007f]'
             }`}
           >
             {label}
@@ -145,11 +145,11 @@ function FinancialsPage() {
 function Stat({ label, value, hint, big = false }: { label: string; value: string; hint: string; big?: boolean }) {
   return (
     <div className={`${deskCard} grid gap-1`}>
-      <p className="text-sm font-semibold text-[#4a4262]">{label}</p>
+      <p className="text-sm font-semibold text-plum-soft">{label}</p>
       <p className={`font-display font-extrabold ${big ? 'text-4xl' : 'text-3xl'}`} data-fin-stat={label}>
         {value}
       </p>
-      <p className="text-sm text-[#4a4262]">{hint}</p>
+      <p className="text-sm text-plum-soft">{hint}</p>
     </div>
   )
 }
@@ -198,7 +198,7 @@ function IncomeTab({ income, byMonth }: { income: IncomeEntry[]; byMonth: number
         <ul className="grid h-48 grid-cols-12 items-end gap-1.5" aria-label="Income by month">
           {byMonth.map((cents, index) => (
             <li key={MONTH_NAMES[index]} className="flex h-full flex-col items-center justify-end gap-1">
-              <span className="text-[10px] font-semibold text-[#4a4262] tabular-nums">
+              <span className="text-[10px] font-semibold text-plum-soft tabular-nums">
                 {cents > 0 ? `${Math.round(cents / 100000) > 0 ? `${(cents / 100000).toFixed(1)}k` : dollars(cents)}` : ''}
               </span>
               <span
@@ -206,7 +206,7 @@ function IncomeTab({ income, byMonth }: { income: IncomeEntry[]; byMonth: number
                 style={{ height: `${Math.max(cents > 0 ? 3 : 0, (cents / peak) * 100)}%` }}
                 title={`${MONTH_NAMES[index] ?? ''}: ${dollars(cents)}`}
               />
-              <span className="text-[11px] text-[#4a4262]">{MONTH_NAMES[index]}</span>
+              <span className="text-[11px] text-plum-soft">{MONTH_NAMES[index]}</span>
             </li>
           ))}
         </ul>
@@ -237,7 +237,7 @@ function IncomeTab({ income, byMonth }: { income: IncomeEntry[]; byMonth: number
       </form>
 
       <ul className="grid gap-2" aria-label="Income">
-        {income.length === 0 ? <li className="text-sm text-[#4a4262]">No income this year yet.</li> : null}
+        {income.length === 0 ? <li className="text-sm text-plum-soft">No income this year yet.</li> : null}
         {income.map((entry) => (
           <Row
             key={entry.id}
@@ -301,7 +301,7 @@ function Row({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{title}</p>
-          <p className="text-sm text-[#4a4262]">{meta}</p>
+          <p className="text-sm text-plum-soft">{meta}</p>
         </div>
         <p className="font-display text-xl font-bold whitespace-nowrap tabular-nums">{amount}</p>
         <button type="button" className={`${deskGhost} !min-h-11 !px-4`} onClick={() => setOpen(!open)}>
@@ -365,33 +365,33 @@ function PeriodsTab({
   const save = useServerFn(saveRate)
   return (
     <div className="grid gap-5">
-      <p className="text-sm text-[#4a4262]">
+      <p className="text-sm text-plum-soft">
         Every two weeks from Sunday, January 4. Estimated Pynx hourly pay at your rate, 1.5× after 44 hours in a
         week. It is already inside your Pynx pay, so it is never added to income again.
       </p>
       <ul className="grid gap-3 md:grid-cols-2" aria-label="Pay periods">
-        {periods.length === 0 && earlyShifts === 0 ? <li className="text-sm text-[#4a4262]">No shifts this year yet.</li> : null}
+        {periods.length === 0 && earlyShifts === 0 ? <li className="text-sm text-plum-soft">No shifts this year yet.</li> : null}
         {earlyShifts > 0 ? (
-          <li className="text-sm text-[#4a4262] md:col-span-2">
+          <li className="text-sm text-plum-soft md:col-span-2">
             {`Pay periods start ${longDate(PAY_ANCHOR)}. ${earlyShifts} earlier ${earlyShifts === 1 ? 'shift shows its' : 'shifts show their'} hours in Weekly hours and Shifts, with no pay figure.`}
           </li>
         ) : null}
         {periods.map((period) => (
           <li key={period.start} className={`${deskCard} grid gap-1`} data-fin-period={period.start}>
-            <p className="text-sm font-semibold text-[#4a4262]">{`${shortDay(period.start)} – ${shortDay(period.end)}`}</p>
+            <p className="text-sm font-semibold text-plum-soft">{`${shortDay(period.start)} – ${shortDay(period.end)}`}</p>
             <p className="font-display text-3xl font-extrabold tabular-nums">
               {period.unratedHours >= period.hours && period.hours > 0 ? 'No rate' : dollars(period.cents)}
             </p>
             {period.unratedHours > 0 && period.unratedHours < period.hours ? (
-              <p className="text-sm text-[#4a4262]">{`${hoursText(period.unratedHours)} hours have no rate on file and are not priced.`}</p>
+              <p className="text-sm text-plum-soft">{`${hoursText(period.unratedHours)} hours have no rate on file and are not priced.`}</p>
             ) : null}
-            <p className="text-sm text-[#4a4262]">
+            <p className="text-sm text-plum-soft">
               {`${hoursText(period.hours)} hours`}
               {period.overtimeHours > 0 ? ` · ${hoursText(period.overtimeHours)} overtime` : ''}
               {` · ${period.shifts} ${period.shifts === 1 ? 'shift' : 'shifts'}`}
             </p>
             {period.gigs.length > 0 ? (
-              <p className="text-sm text-[#4a4262]">{`Pynx weddings: ${period.gigs.join(', ')}`}</p>
+              <p className="text-sm text-plum-soft">{`Pynx weddings: ${period.gigs.join(', ')}`}</p>
             ) : null}
           </li>
         ))}
@@ -401,7 +401,7 @@ function PeriodsTab({
         <h2 id="rates" className={deskH2}>
           Hourly rate
         </h2>
-        <p className="text-sm text-[#4a4262]">A new rate applies from its start date on, never backwards.</p>
+        <p className="text-sm text-plum-soft">A new rate applies from its start date on, never backwards.</p>
         <ul className="grid gap-2">
           {rates.map((rate) => (
             <Row
@@ -493,7 +493,7 @@ function WeeklyTab({ shifts, year }: { shifts: Shift[]; year: string }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] text-sm tabular-nums">
           <thead>
-            <tr className="text-left text-[#4a4262]">
+            <tr className="text-left text-plum-soft">
               <th className="py-2 pr-3 font-semibold">Week of</th>
               {days.map((day) => (
                 <th key={day} className="px-2 py-2 text-right font-semibold">
@@ -613,7 +613,7 @@ function ShiftsTab({ shifts }: { shifts: Shift[] }) {
         </ActionButton>
       </form>
       <ul className="grid gap-2" aria-label="Shifts">
-        {shifts.length === 0 ? <li className="text-sm text-[#4a4262]">No shifts this year yet.</li> : null}
+        {shifts.length === 0 ? <li className="text-sm text-plum-soft">No shifts this year yet.</li> : null}
         {shifts.map((shift) => (
           <Row
             key={shift.id}

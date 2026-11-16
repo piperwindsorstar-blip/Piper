@@ -23,9 +23,6 @@ import type { PackageId } from '../lib/crm/defaults.ts'
 import { BOOK_EVENT_TYPES, bookEventLabel, bookEventType, eventTypeLabel } from '../lib/crm/book-events.ts'
 import type { BookEventType } from '../lib/crm/book-events.ts'
 
-const FONTS =
-  'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap'
-
 const PACKAGE_TITLES: Record<PackageId, string> = {
   full: 'The Main Event (Full Wedding Day',
   reception: 'The After Party (Reception Only',
@@ -60,7 +57,6 @@ export const Route = createFileRoute('/book')({
     })
     return {
       ...head,
-      links: [...head.links, { rel: 'stylesheet', href: FONTS }],
       meta: [
         ...head.meta.map((item) =>
           'property' in item && item.property === 'og:image'

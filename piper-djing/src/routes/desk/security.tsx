@@ -64,7 +64,7 @@ function SecurityPage() {
           <h2 id="backup" className={deskH2}>
             Backup codes
           </h2>
-          <p className="text-sm text-[#4a4262]">
+          <p className="text-sm text-plum-soft">
             Making a new set stops every old code from working. You need a current code from your app.
           </p>
           {codes ? (
@@ -115,7 +115,7 @@ function SecurityPage() {
           </h2>
           {phone ? (
             <form className="grid gap-3" onSubmit={(event) => event.preventDefault()}>
-              <p className="text-sm text-[#4a4262]">Scan this with the new phone, or type the key. Then enter its code.</p>
+              <p className="text-sm text-plum-soft">Scan this with the new phone, or type the key. Then enter its code.</p>
               <div
                 className="w-52 rounded-xl border border-[#e6def4] bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
                 role="img"
@@ -147,7 +147,7 @@ function SecurityPage() {
             </form>
           ) : (
             <form className="grid gap-3 sm:flex sm:items-end" onSubmit={(event) => event.preventDefault()}>
-              <p className="text-sm text-[#4a4262] sm:basis-full">
+              <p className="text-sm text-plum-soft sm:basis-full">
                 Moving to a new phone? Enter a current code from the old phone, or an unused backup code.
               </p>
               <label className="field sm:w-56">
@@ -179,11 +179,11 @@ function SecurityPage() {
         <h2 id="devices" className={deskH2}>
           Trusted devices
         </h2>
-        <p className="text-sm text-[#4a4262]">
+        <p className="text-sm text-plum-soft">
           These browsers skip the code for 30 days after you ticked “Trust this device”. They still need the password.
         </p>
         {status.devices.length === 0 ? (
-          <p className="text-sm text-[#4a4262]">No trusted devices.</p>
+          <p className="text-sm text-plum-soft">No trusted devices.</p>
         ) : (
           <ul className="grid gap-2" aria-label="Trusted devices">
             {status.devices.map((device) => (
@@ -191,7 +191,7 @@ function SecurityPage() {
                 <span>
                   <span className="font-semibold">{device.label}</span>
                   {device.current ? <span className="ml-2 text-sm text-[#0b5e41]">This browser</span> : null}
-                  <span className="block text-sm text-[#4a4262]">{`Added ${day(device.createdAt)} · until ${day(device.expiresAt)}`}</span>
+                  <span className="block text-sm text-plum-soft">{`Added ${day(device.createdAt)} · until ${day(device.expiresAt)}`}</span>
                 </span>
                 <ConfirmDelete
                   className={deskDanger}
@@ -230,7 +230,7 @@ function SecurityPage() {
           <code className="rounded bg-[#efe9fb] px-1">DELETE FROM desk_2fa; DELETE FROM desk_backup_codes; DELETE FROM desk_trusted;</code>
           {' and the next sign-in with the password sets it up again from the start.'}
         </p>
-        <p className="text-sm text-[#4a4262]">
+        <p className="text-sm text-plum-soft">
           The app secret is stored encrypted with the DESK_2FA_KEY secret on the Worker. Do not delete or change that
           secret: without it the stored secret cannot be read, and recovery is the database reset above.
         </p>

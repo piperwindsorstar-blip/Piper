@@ -16,19 +16,19 @@ export type ChipTone = keyof typeof TONE
 export const deskSurface = 'light' as const
 
 export const deskPrimary =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#d1006b] px-5 py-2 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#a30054] disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-pink-deep px-5 py-2 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#a30054] disabled:opacity-40 desk-motion'
 /** The ink button: the one main action inside a white card. */
 export const deskDark =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#1c1533] px-5 py-2 text-sm font-semibold !text-white transition hover:bg-[#2f2550] disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-plum px-5 py-2 text-sm font-semibold !text-white transition hover:bg-[#2f2550] disabled:opacity-40 desk-motion'
 export const deskGhost =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#d6cce8] bg-white px-5 py-2 text-sm font-semibold text-[#1c1533] transition hover:border-[#ff007f] hover:text-[#d1006b] disabled:opacity-40 desk-motion'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#d6cce8] bg-white px-5 py-2 text-sm font-semibold text-plum transition hover:border-[#ff007f] hover:text-pink-deep disabled:opacity-40 desk-motion'
 export const deskDanger =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-5 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-40 desk-motion'
 export const deskCard =
   'min-w-0 rounded-[20px] border border-[#e6def4] bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(28,21,51,0.04)]'
 /** The small pink label above a heading. */
 export const deskKicker =
-  'text-xs font-bold tracking-[0.16em] text-[#d1006b] uppercase'
+  'text-xs font-bold tracking-[0.16em] text-pink-deep uppercase'
 /** A section heading inside a card. */
 export const deskH2 = 'font-display text-2xl font-extrabold tracking-tight'
 
@@ -48,7 +48,7 @@ export function DeskTitle({
         {title}
       </h1>
       {children ? (
-        <div className="mt-2 max-w-2xl text-base leading-relaxed text-[#4a4262] md:text-lg">
+        <div className="mt-2 max-w-2xl text-base leading-relaxed text-plum-soft md:text-lg">
           {children}
         </div>
       ) : null}
@@ -151,7 +151,7 @@ export function MoneyBar({
         />
         {depositPct > 0 && depositPct < 100 ? (
           <span
-            className="absolute inset-y-0 w-0.5 bg-[#1c1533]/40"
+            className="absolute inset-y-0 w-0.5 bg-plum/40"
             style={{ left: `${depositPct}%` }}
             title="Deposit"
           />
@@ -242,7 +242,7 @@ export function DateBlock({
     <span
       className={`grid shrink-0 place-items-center rounded-[10px] text-center leading-[1.05] ${
         size === 'sm' ? 'w-11 py-1.5' : 'w-12 py-1.5'
-      } ${mine ? 'bg-[#ff007f] text-[#1c1533]' : 'bg-[#efe9fb] text-[#2f2550]'}`}
+      } ${mine ? 'bg-[#ff007f] text-plum' : 'bg-[#efe9fb] text-[#2f2550]'}`}
     >
       <span className="text-[10px] font-bold tracking-[0.12em]">{dow}</span>
       <span className="font-display text-[22px] font-extrabold">{day.getUTCDate()}</span>

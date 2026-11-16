@@ -169,7 +169,7 @@ function MoneyPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <section
           aria-labelledby="still-to-collect"
-          className="col-span-2 grid gap-3 rounded-[20px] bg-[#1c1533] p-6 text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] lg:col-span-1"
+          className="col-span-2 grid gap-3 rounded-[20px] bg-plum p-6 text-[#fff] shadow-[0_18px_40px_-24px_rgba(28,21,51,0.6)] lg:col-span-1"
         >
           <p id="still-to-collect" className="text-xs font-bold tracking-[0.16em] text-[#ff8cc6] uppercase">
             Still to collect
@@ -210,14 +210,14 @@ function MoneyPage() {
                   onClick={() => setTab(id)}
                   className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-4 text-[15px] transition ${
                     tab === id
-                      ? 'bg-white font-bold text-[#1c1533] shadow-[0_1px_2px_rgba(28,21,51,0.14)]'
-                      : 'font-semibold text-[#4b3f72] hover:text-[#1c1533]'
+                      ? 'bg-white font-bold text-plum shadow-[0_1px_2px_rgba(28,21,51,0.14)]'
+                      : 'font-semibold text-[#4b3f72] hover:text-plum'
                   }`}
                 >
                   {label}
                   <span
                     className={`rounded-full px-2 text-xs font-bold ${
-                      tab === id ? 'bg-[#ff007f] text-[#1c1533]' : 'bg-white text-[#4b3f72]'
+                      tab === id ? 'bg-[#ff007f] text-plum' : 'bg-white text-[#4b3f72]'
                     }`}
                   >
                     {count}
@@ -237,14 +237,14 @@ function MoneyPage() {
                       ? 'None of these couples has an email yet.'
                       : `${noEmail} of these couples ${noEmail === 1 ? 'has' : 'have'} no email yet.`}
                   </p>
-                  <p className="mt-1 text-sm text-[#4a4262]">
+                  <p className="mt-1 text-sm text-plum-soft">
                     Invoices and card links can only go out by email once you add one on their
                     booking.
                   </p>
                 </div>
               ) : null}
               {whoOwes.length === 0 ? (
-                <p className={`${deskCard} text-[#5b5370]`}>
+                <p className={`${deskCard} text-plum-muted`}>
                   Nobody owes anything right now. Every held or booked couple is paid up.
                 </p>
               ) : (
@@ -270,7 +270,7 @@ function MoneyPage() {
 
           {tab === 'paid' ? (
             data.payments.length === 0 ? (
-              <p className="text-sm text-[#5b5370]">No payments yet.</p>
+              <p className="text-sm text-plum-muted">No payments yet.</p>
             ) : (
               <div className="grid gap-4">
                 {summary.paymentsIn.map((month) => (
@@ -294,7 +294,7 @@ function MoneyPage() {
 
           {tab === 'invoices' ? (
             invoices.length === 0 ? (
-              <p className="text-sm text-[#5b5370]">No invoices yet.</p>
+              <p className="text-sm text-plum-muted">No invoices yet.</p>
             ) : (
               <ul className="grid gap-3">
                 {invoices.map((booking) => (
@@ -373,7 +373,7 @@ function MoneyPage() {
               ).map(([value, label]) => (
                 <label
                   key={value}
-                  className="flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#d6cce8] px-1.5 text-[13px] font-semibold whitespace-nowrap has-[:checked]:border-2 has-[:checked]:border-[#1c1533]"
+                  className="flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#d6cce8] px-1.5 text-[13px] font-semibold whitespace-nowrap has-[:checked]:border-2 has-[:checked]:border-plum"
                 >
                   <input type="radio" name="method" value={value} defaultChecked={value === 'e-transfer'} />
                   {label}
@@ -408,11 +408,11 @@ function MoneyPage() {
             </ActionButton>
           </div>
           {notice ? (
-            <p className="text-sm text-[#1c1533]" role="status">
+            <p className="text-sm text-plum" role="status">
               {notice}
             </p>
           ) : null}
-          <p className="text-sm text-[#5b5370]">
+          <p className="text-sm text-plum-muted">
             Card payments record themselves when Stripe confirms them.
           </p>
         </form>
@@ -426,7 +426,7 @@ function SmallTotal({ label, value, note }: { label: string; value: string; note
     <div className="grid min-w-0 content-start gap-1 rounded-[20px] border border-[#e6def4] bg-white p-4 sm:p-5">
       <p className="text-xs font-bold tracking-[0.14em] text-[#6b5fa0] uppercase">{label}</p>
       <p className="font-display text-2xl font-extrabold tabular-nums sm:text-3xl">{value}</p>
-      <p className="text-sm text-[#5b5370]">{note}</p>
+      <p className="text-sm text-plum-muted">{note}</p>
     </div>
   )
 }
@@ -446,9 +446,9 @@ function BalanceReminders({ on }: { on: boolean }) {
   return (
     <section className={`${deskCard} flex flex-wrap items-center justify-between gap-3`} aria-labelledby="balance-reminders">
       <div className="min-w-0 flex-[1_1_20rem]">
-        <h2 id="balance-reminders" className="font-semibold text-[#1c1533]">{`Balance reminders ${on ? 'are on' : 'are off'}`}
+        <h2 id="balance-reminders" className="font-semibold text-plum">{`Balance reminders ${on ? 'are on' : 'are off'}`}
         </h2>
-        <p className="mt-1 text-sm text-[#5b5370]">
+        <p className="mt-1 text-sm text-plum-muted">
           {on
             ? 'Booked couples who still owe get a friendly email with their invoice link about a month before the wedding and again in the last week. Each goes once, and nothing goes once they have paid in full.'
             : 'No balance reminders go out. You can still send an invoice by hand.'}
@@ -508,25 +508,25 @@ function OwingCard({
           <Link
             to="/desk/bookings"
             search={{ couple: row.bookingId }}
-            className="text-lg font-bold text-[#1c1533] hover:text-[#d1006b]"
+            className="text-lg font-bold text-plum hover:text-pink-deep"
           >
             {row.names.replace(' and ', ' & ')}
           </Link>
           {sample ? <span className="ml-2 align-middle"><Chip tone="red">Test</Chip></span> : null}
-          <p className="text-sm text-[#5b5370]">{`Wedding ${longDate(row.eventDate) ?? ''}`}
+          <p className="text-sm text-plum-muted">{`Wedding ${longDate(row.eventDate) ?? ''}`}
             {row.invoiceStatus ? ` · Invoice ${row.invoiceStatus}` : ''}
           </p>
         </div>
         <div className="text-right">
-          <p className="font-display text-3xl leading-none font-extrabold text-[#d1006b] tabular-nums">
+          <p className="font-display text-3xl leading-none font-extrabold text-pink-deep tabular-nums">
             {dollars(row.leftCents)}
           </p>
-          <p className="mt-1 text-xs text-[#5b5370]">{`left of ${dollars(row.totalCents) ?? ''}`}</p>
+          <p className="mt-1 text-xs text-plum-muted">{`left of ${dollars(row.totalCents) ?? ''}`}</p>
         </div>
       </div>
       <Bar value={paidPct} label={`${cad(row.paidCents)} of ${cad(row.totalCents)} paid`} />
       {reminder ? (
-        <p className={`text-sm ${reminder.block === 'No email on file' ? 'font-semibold text-[#a3004f]' : 'text-[#5b5370]'}`}>
+        <p className={`text-sm ${reminder.block === 'No email on file' ? 'font-semibold text-[#a3004f]' : 'text-plum-muted'}`}>
           {reminderText(reminder)}
         </p>
       ) : null}
@@ -554,7 +554,7 @@ function OwingCard({
           <Link
             to="/p/$slug"
             params={{ slug: row.invoiceSlug }}
-            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[#d1006b] hover:underline"
+            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-pink-deep hover:underline"
           >
             Invoice page
           </Link>
@@ -636,16 +636,16 @@ function RsvpPurchaseRow({
             </span>
             {stripe ? <StripeTag live={row.live} href={stripe} /> : null}
           </p>
-          <p className="mt-0.5 text-xs text-[#5b5370]">
+          <p className="mt-0.5 text-xs text-plum-muted">
             {`${shortDay(row.paidOn) ?? ''} · ${row.priceKind === 'piper' ? 'Piper couple price' : 'Standalone'} · ${RSVP_OUTCOME[row.outcome] ?? row.outcome ?? ''}`}
           </p>
-          <p className="text-xs text-[#5b5370]">
+          <p className="text-xs text-plum-muted">
             {`${row.email ?? ''} · /rsvp/${row.slug ?? ''}`}
           </p>
         </div>
         <div className="shrink-0 text-right">
           <p className="font-semibold tabular-nums">{cad(row.baseCents)}</p>
-          <p className="text-xs text-[#5b5370] tabular-nums">{`+ ${cad(row.hstCents) ?? ''} card fee`}</p>
+          <p className="text-xs text-plum-muted tabular-nums">{`+ ${cad(row.hstCents) ?? ''} card fee`}</p>
         </div>
       </div>
     </li>
@@ -680,7 +680,7 @@ function PaymentCard({
       <details className="group">
         <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 px-5 py-3 hover:bg-[#faf8fd] [&::-webkit-details-marker]:hidden">
           <span className="w-10 shrink-0 text-center leading-tight">
-            <span className="block text-[10px] font-bold tracking-[0.12em] text-[#d1006b] uppercase">
+            <span className="block text-[10px] font-bold tracking-[0.12em] text-pink-deep uppercase">
               {shortDay(payment.paidOn).split(' ')[0] || '—'}
             </span>
             <span className="block font-display text-xl font-extrabold">
@@ -697,7 +697,7 @@ function PaymentCard({
               ) : null}
               {stripe ? <StripeTag live={stripe.live} href={stripe.dashboardUrl} /> : null}
             </span>
-            <span className="block truncate text-xs text-[#5b5370]">
+            <span className="block truncate text-xs text-plum-muted">
               {METHOD[payment.method] ?? 'Method not set'}
               {note ? ` · ${note}` : ''}
             </span>
@@ -708,10 +708,10 @@ function PaymentCard({
               {cad(Math.abs(payment.cents))}
             </span>
             {payment.hstCents > 0 ? (
-              <span className="block text-xs text-[#5b5370] tabular-nums">{`+ ${cad(payment.hstCents) ?? ''} HST`}</span>
+              <span className="block text-xs text-plum-muted tabular-nums">{`+ ${cad(payment.hstCents) ?? ''} HST`}</span>
             ) : null}
             {(payment.feeCents ?? 0) > 0 ? (
-              <span className="block text-xs text-[#5b5370] tabular-nums">{`+ ${cad(payment.feeCents ?? 0) ?? ''} card fee`}</span>
+              <span className="block text-xs text-plum-muted tabular-nums">{`+ ${cad(payment.feeCents ?? 0) ?? ''} card fee`}</span>
             ) : null}
           </span>
         </summary>
@@ -720,10 +720,10 @@ function PaymentCard({
           onSubmit={(event) => event.preventDefault()}
         >
           {payment.hstCents > 0 ? (
-            <p className="text-sm text-[#5b5370] sm:col-span-2">{`Card HST ${cad(payment.hstCents) ?? ''} (13% of this payment) · charged ${cad(Math.abs(payment.cents) + payment.hstCents + (payment.feeCents ?? 0))} in total. HST is on top and does not count toward the balance.`}</p>
+            <p className="text-sm text-plum-muted sm:col-span-2">{`Card HST ${cad(payment.hstCents) ?? ''} (13% of this payment) · charged ${cad(Math.abs(payment.cents) + payment.hstCents + (payment.feeCents ?? 0))} in total. HST is on top and does not count toward the balance.`}</p>
           ) : null}
           {(payment.feeCents ?? 0) > 0 ? (
-            <p className="text-sm text-[#5b5370] sm:col-span-2">{`Card fee ${cad(payment.feeCents ?? 0) ?? ''} on top of this payment; it does not count toward the balance.`}</p>
+            <p className="text-sm text-plum-muted sm:col-span-2">{`Card fee ${cad(payment.feeCents ?? 0) ?? ''} on top of this payment; it does not count toward the balance.`}</p>
           ) : null}
           <label className="field">
             Amount
@@ -810,7 +810,7 @@ function PaymentCard({
             </button>
           </div>
           {notice ? (
-            <p className="text-sm text-[#1c1533] sm:col-span-2" role="status">
+            <p className="text-sm text-plum sm:col-span-2" role="status">
               {notice}
             </p>
           ) : null}

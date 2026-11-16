@@ -22,9 +22,6 @@ import {
   rsvpGhost,
 } from '../../components/rsvp/shell.tsx'
 
-const FONTS =
-  'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&display=swap'
-
 export const Route = createFileRoute('/rsvp/')({
   // Private page: its data loading rides in the same lazy chunk as its
   // screen, so the server calls it imports stay off the public pages.
@@ -33,7 +30,6 @@ export const Route = createFileRoute('/rsvp/')({
     const head = rsvpHead('Wedding RSVP · DJ Piper P', true)
     return {
       ...head,
-      links: [...head.links, { rel: 'stylesheet', href: FONTS }],
     }
   },
   validateSearch: (search: Record<string, unknown>): { session?: string } =>
