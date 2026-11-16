@@ -3,6 +3,7 @@ import { useServerFn } from '@tanstack/react-start'
 import {
   Calendar,
   ExternalLink,
+  Heart,
   House,
   LogOut,
   Mail,
@@ -24,10 +25,14 @@ import type {
   ConsoleReview,
 } from '../lib/desk-console.ts'
 
-type MainPath = '/desk' | '/desk/leads' | '/desk/bookings' | '/desk/money'
+type MainPath =
+  | '/desk'
+  | '/desk/leads'
+  | '/desk/bookings'
+  | '/desk/portals'
+  | '/desk/money'
 
 type SmallPath =
-  | '/desk/portals'
   | '/desk/songs'
   | '/desk/rsvp'
   | '/desk/packages'
@@ -43,21 +48,27 @@ type SmallPath =
   | '/desk/settings'
   | '/desk/security'
 
-const ICONS = { home: House, mail: Mail, calendar: Calendar, wallet: Wallet } as const
+const ICONS = {
+  home: House,
+  mail: Mail,
+  calendar: Calendar,
+  heart: Heart,
+  wallet: Wallet,
+} as const
 
-/** The four places Piper goes every day. Everything else is a small link. */
+/** The five places Piper goes every day. Everything else is a small link. */
 const MAIN: { name: string; to: MainPath; icon: keyof typeof ICONS }[] = [
-  { name: 'Overview', to: '/desk', icon: 'home' },
+  { name: 'Today', to: '/desk', icon: 'home' },
   { name: 'Leads', to: '/desk/leads', icon: 'mail' },
   { name: 'Bookings', to: '/desk/bookings', icon: 'calendar' },
+  { name: 'Couples', to: '/desk/portals', icon: 'heart' },
   { name: 'Money', to: '/desk/money', icon: 'wallet' },
 ]
 
 const SMALL: { name: string; links: { name: string; to: SmallPath }[] }[] = [
   {
-    name: 'Couples',
+    name: 'Guests & music',
     links: [
-      { name: 'Portals', to: '/desk/portals' },
       { name: 'Songs', to: '/desk/songs' },
       { name: 'RSVP', to: '/desk/rsvp' },
     ],
@@ -143,7 +154,7 @@ export function DeskShell({
 
   /** A small count beside a section: things that need Piper there. */
   function badge(name: string): number {
-    if (name === 'Overview') return waiting
+    if (name === 'Today') return waiting
     if (name === 'Leads' || name === 'Reviews') {
       return channelMeter(name, meterInput, today).badge
     }
@@ -185,7 +196,7 @@ export function DeskShell({
         Skip to content
       </a>
 
-      {/* Computer: the four daily places up top, the rest as small links. */}
+      {/* Computer: the five daily places up top, the rest as small links. */}
       <aside className="desk-header sticky top-0 hidden h-screen flex-col gap-5 overflow-y-auto px-3.5 py-5 lg:flex">
         <Brand />
         <FindButton />
@@ -221,12 +232,12 @@ export function DeskShell({
         </main>
       </div>
 
-      {/* Phone: the four daily places, plus More for the rest. */}
+      {/* Phone: the five daily places, plus More for the rest. */}
       <nav
         aria-label="Quick sections"
         className="desk-header fixed inset-x-0 bottom-0 z-30 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden"
       >
-        <ul className="mx-auto grid max-w-md grid-cols-5 gap-0.5 px-2 pt-2">
+        <ul className="mx-auto grid max-w-md grid-cols-6 gap-0.5 px-1.5 pt-2">
           {MAIN.map((item) => {
             const Icon = ICONS[item.icon]
             const on = activePath(pathname, item.to)
