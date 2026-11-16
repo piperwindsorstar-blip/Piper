@@ -17,6 +17,8 @@ export type TownPath =
   | '/guelph-wedding-dj'
   | '/oakville-wedding-dj'
 
+export type TownAccent = 'pink' | 'violet' | 'yellow'
+
 export type Town = {
   path: TownPath
   name: string
@@ -29,6 +31,10 @@ export type Town = {
   nearby?: string
   /** A venue line under the town section, only for venues Piper has played. */
   venueLine?: string
+  /** The photo behind this town's heading. */
+  photo: string
+  /** The colour of this town's local block, so the pages are not identical. */
+  accent: TownAccent
   faq: (readonly [string, string])[]
 }
 
@@ -72,6 +78,8 @@ export const TOWNS: Record<TownPath, Town> = {
   '/hamilton-wedding-dj': {
     path: '/hamilton-wedding-dj',
     name: 'Hamilton',
+    photo: '/photos/wedding-reception-dance.jpg',
+    accent: 'pink',
     title: 'Hamilton wedding DJ | DJ Piper P',
     description:
       'Wedding DJ for Hamilton couples. Custom playlists, dancefloor lighting and a real planning meeting from DJ Piper P, just down the 403 in Brantford.',
@@ -89,6 +97,8 @@ export const TOWNS: Record<TownPath, Town> = {
   '/cambridge-wedding-dj': {
     path: '/cambridge-wedding-dj',
     name: 'Cambridge',
+    photo: '/photos/spin.jpg',
+    accent: 'violet',
     title: 'Cambridge wedding DJ | DJ Piper P',
     description:
       'Wedding DJ for Cambridge couples, from Galt to Hespeler. Custom playlists, dancefloor lighting and a real planning meeting from DJ Piper P.',
@@ -106,6 +116,8 @@ export const TOWNS: Record<TownPath, Town> = {
   '/paris-wedding-dj': {
     path: '/paris-wedding-dj',
     name: 'Paris',
+    photo: '/photos/spotlight.jpg',
+    accent: 'yellow',
     title: 'Paris, Ontario wedding DJ | DJ Piper P',
     description:
       'Wedding DJ for Paris, Ontario couples, 15 minutes from Brantford. Custom playlists, dancefloor lighting and travel included, from DJ Piper P.',
@@ -125,6 +137,8 @@ export const TOWNS: Record<TownPath, Town> = {
   '/woodstock-wedding-dj': {
     path: '/woodstock-wedding-dj',
     name: 'Woodstock',
+    photo: '/photos/uplighting/uplighting-dinner-setup.jpg',
+    accent: 'pink',
     title: 'Woodstock wedding DJ | DJ Piper P',
     description: townDescription('Woodstock'),
     intro:
@@ -140,6 +154,8 @@ export const TOWNS: Record<TownPath, Town> = {
   '/burlington-wedding-dj': {
     path: '/burlington-wedding-dj',
     name: 'Burlington',
+    photo: '/photos/dance.jpg',
+    accent: 'violet',
     title: 'Burlington wedding DJ | DJ Piper P',
     description: townDescription('Burlington'),
     intro:
@@ -155,6 +171,8 @@ export const TOWNS: Record<TownPath, Town> = {
   '/guelph-wedding-dj': {
     path: '/guelph-wedding-dj',
     name: 'Guelph',
+    photo: '/photos/uplighting/uplighting-brick-wall.jpg',
+    accent: 'yellow',
     title: 'Guelph wedding DJ | DJ Piper P',
     description: townDescription('Guelph'),
     intro:
@@ -170,6 +188,8 @@ export const TOWNS: Record<TownPath, Town> = {
   '/oakville-wedding-dj': {
     path: '/oakville-wedding-dj',
     name: 'Oakville',
+    photo: '/photos/uplighting/uplighting-reception-room.jpg',
+    accent: 'pink',
     title: 'Oakville wedding DJ | DJ Piper P',
     description: townDescription('Oakville'),
     intro:

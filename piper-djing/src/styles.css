@@ -1274,3 +1274,72 @@ button:focus-visible,
 .home .bp-row--on :focus-visible {
   outline-color: #000;
 }
+
+/* ---------------------------------------------------------------------------
+   Town pages: the weddings sections in the home page's bold, dark look. The
+   theme colours are swapped for dark ones here, so the shared wedding sections
+   follow without each needing its own dark styles.
+--------------------------------------------------------------------------- */
+.weddings.bp-town {
+  --color-paper: #000;
+  --color-ink: #fff;
+  --color-line: #303030;
+  --color-soft: #cfcfcf;
+  --color-mist: #141414;
+  --color-ice: #141414;
+  --color-lilac: #1c1c1c;
+  --color-blush: rgba(255, 0, 127, 0.22);
+  --color-violet: #ff5fae;
+  --town-accent: var(--color-neon);
+  --town-on-accent: #000;
+  color-scheme: dark;
+}
+.weddings.bp-town--violet {
+  --town-accent: #a78bfa;
+  --town-block: #7c3aed;
+  --town-on-accent: #fff;
+}
+.weddings.bp-town--yellow {
+  --town-accent: #ffe14d;
+  --town-on-accent: #000;
+}
+.weddings.bp-town :focus-visible {
+  outline-color: #fff;
+}
+.bp-town *,
+.bp-town *::before,
+.bp-town *::after {
+  border-radius: 0 !important;
+}
+.bp-town h2,
+.bp-town h3 {
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+.bp-town__accent {
+  color: var(--town-accent);
+}
+.bp-town__local {
+  background: var(--town-block, var(--town-accent));
+  color: var(--town-on-accent);
+}
+.bp-town__lead {
+  max-width: 62rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.6vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+/* Places the wedding sections paint with "ink" as a dark fill. */
+.bp-town .bg-ink,
+.bp-town .bg-ink\/95 {
+  background-color: #000;
+}
+.bp-town .bg-ink\/40 {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+.bp-town .hover\:bg-ink:hover {
+  background-color: #fff;
+  color: #000;
+}
