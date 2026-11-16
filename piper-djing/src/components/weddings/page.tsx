@@ -47,7 +47,7 @@ export function WeddingsPage({
   const showMine = display !== 'google' || !googleShown
   return (
     <DateDraftProvider>
-      <div className="weddings bp-town overflow-x-clip bg-paper pb-20 font-sans text-ink">
+      <div className="weddings bp-town bp-town--light overflow-x-clip bg-paper pb-20 font-sans text-ink">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

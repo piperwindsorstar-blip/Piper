@@ -1344,3 +1344,29 @@ button:focus-visible,
   background-color: #fff;
   color: #000;
 }
+
+/* The weddings page is the same bold look on white: black type, pink accents. */
+.weddings.bp-town--light {
+  --color-paper: #fff;
+  --color-ink: #000;
+  --color-line: #d6d6d6;
+  --color-soft: #3d3d3d;
+  --color-mist: #f4f4f4;
+  --color-ice: #f4f4f4;
+  --color-lilac: #ffe6f2;
+  --color-blush: #ffe6f2;
+  --color-violet: var(--color-pink-deep);
+  --town-accent: var(--color-pink-deep);
+  --town-on-accent: #fff;
+  color-scheme: light;
+}
+.weddings.bp-town--light :focus-visible {
+  outline-color: #000;
+}
+.bp-town--light .bg-ink\/40 {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+.bp-town--light .hover\:bg-ink:hover {
+  background-color: #000;
+  color: #fff;
+}
