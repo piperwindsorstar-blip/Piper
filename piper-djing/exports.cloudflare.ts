@@ -1,0 +1,317 @@
+import { DurableObject } from 'cloudflare:workers'
+import { reviseTerms, TERMS_BODY } from './src/lib/crm/terms.ts'
+
+const EDGE_SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS sessions (
+    id text PRIMARY KEY,
+    created_at text NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS bookings (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    slug text NOT NULL UNIQUE,
+    partner_one text NOT NULL,
+    partner_two text NOT NULL,
+    email text NOT NULL DEFAULT '',
+    phone text NOT NULL DEFAULT '',
+    event_date text NOT NULL,
+    stag_date text,
+    package_id text NOT NULL,
+    with_stag integer NOT NULL DEFAULT 0,
+    uplights integer NOT NULL DEFAULT 0,
+    venue_km text NOT NULL DEFAULT '[]',
+    venue_name text NOT NULL DEFAULT '',
+    venue_street text NOT NULL DEFAULT '',
+    venue_two_name text NOT NULL DEFAULT '',
+    venue_two_street text NOT NULL DEFAULT '',
+    sample integer NOT NULL DEFAULT 0,
+    status text NOT NULL,
+    total_cents integer NOT NULL,
+    deposit_cents integer NOT NULL,
+    discount_cents integer NOT NULL DEFAULT 0,
+    hold_started_on text,
+    stag_released integer NOT NULL DEFAULT 0,
+    notes text NOT NULL DEFAULT '',
+    planning text NOT NULL DEFAULT '',
+    portal_passcode text NOT NULL DEFAULT '',
+    portal_share text NOT NULL DEFAULT '',
+    portal_share_on integer NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS invoices (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    slug text NOT NULL UNIQUE,
+    booking_id integer NOT NULL UNIQUE REFERENCES bookings (id),
+    status text NOT NULL,
+    total_cents integer NOT NULL,
+    deposit_cents integer NOT NULL,
+    received_cents integer NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS payments (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    invoice_id integer NOT NULL REFERENCES invoices (id),
+    cents integer NOT NULL,
+    note text NOT NULL DEFAULT '',
+    created_at text NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS leads (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    partner_one text NOT NULL,
+    partner_two text NOT NULL,
+    email text NOT NULL,
+    phone text NOT NULL DEFAULT '',
+    event_date text,
+    package_id text NOT NULL,
+    with_stag integer NOT NULL DEFAULT 0,
+    stag_date text,
+    message text NOT NULL DEFAULT '',
+    created_at text NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS terms (
+    id integer PRIMARY KEY CHECK (id = 1),
+    body text NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS site (
+    id integer PRIMARY KEY CHECK (id = 1),
+    kind_words integer NOT NULL DEFAULT 0,
+    portal_master text
+  )`,
+  `CREATE TABLE IF NOT EXISTS partners (
+    id integer PRIMARY KEY,
+    name text NOT NULL,
+    href text NOT NULL,
+    mime text NOT NULL,
+    logo text NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS reviews (
+    id integer PRIMARY KEY,
+    quote text NOT NULL,
+    names text NOT NULL,
+    when_label text NOT NULL DEFAULT ''
+  )`,
+  `CREATE TABLE IF NOT EXISTS questions (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    prompt text NOT NULL,
+    sort integer NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS media (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    title text NOT NULL,
+    url text NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS bots (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    name text NOT NULL,
+    token text NOT NULL UNIQUE,
+    role text NOT NULL CHECK (role IN ('reader', 'writer', 'ceo'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS emails (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    booking_id integer REFERENCES bookings (id),
+    kind text NOT NULL CHECK (kind IN ('booking', 'invoice')),
+    to_address text NOT NULL,
+    subject text NOT NULL,
+    body text NOT NULL,
+    delivered integer NOT NULL,
+    detail text NOT NULL DEFAULT '',
+    created_at text NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS venues (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    name text NOT NULL,
+    street text NOT NULL DEFAULT ''
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS venues_name_key ON venues (lower(name))`,
+  `CREATE TABLE IF NOT EXISTS hidden_venues (
+    name text PRIMARY KEY
+  )`,
+  `CREATE TABLE IF NOT EXISTS external_dates (
+    id integer PRIMARY KEY AUTOINCREMENT,
+    event_date text NOT NULL,
+    kind text NOT NULL,
+    company text NOT NULL,
+    label text NOT NULL DEFAULT '',
+    partner_one text NOT NULL DEFAULT '',
+    partner_two text NOT NULL DEFAULT '',
+    venue_name text NOT NULL DEFAULT '',
+    venue_street text NOT NULL DEFAULT '',
+    venue_two_name text NOT NULL DEFAULT '',
+    venue_two_street text NOT NULL DEFAULT '',
+    notes text NOT NULL DEFAULT '',
+    released integer NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS rsvp_weddings (
+    slug text PRIMARY KEY,
+    email text NOT NULL DEFAULT '',
+    paid integer NOT NULL DEFAULT 0,
+    sample integer NOT NULL DEFAULT 0,
+    price_cents integer NOT NULL DEFAULT 3000,
+    body text NOT NULL DEFAULT '{}'
+  )`,
+  `CREATE INDEX IF NOT EXISTS rsvp_weddings_email ON rsvp_weddings (lower(email))`,
+  `CREATE TABLE IF NOT EXISTS rsvp_emails (
+    id text PRIMARY KEY,
+    slug text NOT NULL,
+    party_id text NOT NULL DEFAULT '',
+    kind text NOT NULL,
+    to_address text NOT NULL,
+    subject text NOT NULL,
+    delivered integer NOT NULL DEFAULT 0,
+    detail text NOT NULL DEFAULT '',
+    sent_at text NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS rsvp_emails_slug ON rsvp_emails (slug)`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photos (
+    slug text PRIMARY KEY,
+    mime text NOT NULL,
+    shape text NOT NULL DEFAULT 'full',
+    version text NOT NULL,
+    width integer NOT NULL DEFAULT 0,
+    height integer NOT NULL DEFAULT 0,
+    bytes integer NOT NULL DEFAULT 0,
+    updated_at text NOT NULL,
+    crop_zoom integer NOT NULL DEFAULT 1,
+    crop_pan_x integer NOT NULL DEFAULT 0,
+    crop_pan_y integer NOT NULL DEFAULT 0,
+    crop_shape text NOT NULL DEFAULT '',
+    crop_version text NOT NULL DEFAULT ''
+  )`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photo_parts (
+    slug text NOT NULL,
+    idx integer NOT NULL,
+    data text NOT NULL,
+    PRIMARY KEY (slug, idx)
+  )`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photo_crops (
+    slug text PRIMARY KEY,
+    shape text NOT NULL,
+    version text NOT NULL,
+    bytes integer NOT NULL DEFAULT 0,
+    updated_at text NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS rsvp_photo_crop_parts (
+    slug text NOT NULL,
+    idx integer NOT NULL,
+    data text NOT NULL,
+    PRIMARY KEY (slug, idx)
+  )`,
+]
+
+export class Book extends DurableObject {
+  private ready: Promise<void> | null = null
+
+  async query(
+    sql: string,
+    params: unknown[] = [],
+  ): Promise<Record<string, unknown>[]> {
+    await this.ensure()
+    return this.ctx.storage.sql.exec(sql, ...params).toArray()
+  }
+
+  /** Several statements in one durable-object call. */
+  async batch(
+    statements: { sql: string; params?: unknown[] }[],
+  ): Promise<Record<string, unknown>[][]> {
+    await this.ensure()
+    return statements.map((statement) =>
+      this.ctx.storage.sql
+        .exec(statement.sql, ...(statement.params ?? []))
+        .toArray(),
+    )
+  }
+
+  private ensure(): Promise<void> {
+    if (!this.ready) {
+      this.ready = this.init().catch((error: unknown) => {
+        this.ready = null
+        throw error
+      })
+    }
+    return this.ready
+  }
+
+  private async init(): Promise<void> {
+    for (const statement of EDGE_SCHEMA) this.ctx.storage.sql.exec(statement)
+    // A photo table written before the couple could position a crop keeps the
+    // centre of the photo until they move it.
+    const photoNames = new Set(
+      this.ctx.storage.sql
+        .exec('PRAGMA table_info(rsvp_photos)')
+        .toArray()
+        .map((column) => String(column.name)),
+    )
+    for (const [name, definition] of [
+      ['crop_zoom', 'integer NOT NULL DEFAULT 1'],
+      ['crop_pan_x', 'integer NOT NULL DEFAULT 0'],
+      ['crop_pan_y', 'integer NOT NULL DEFAULT 0'],
+      ['crop_shape', "text NOT NULL DEFAULT ''"],
+      ['crop_version', "text NOT NULL DEFAULT ''"],
+    ] as const) {
+      if (photoNames.has(name)) continue
+      this.ctx.storage.sql.exec(
+        `ALTER TABLE rsvp_photos ADD COLUMN ${name} ${definition}`,
+      )
+    }
+    const columns = this.ctx.storage.sql
+      .exec('PRAGMA table_info(bookings)')
+      .toArray()
+    const hasPlanning = columns.some((column) => column.name === 'planning')
+    if (!hasPlanning) {
+      this.ctx.storage.sql.exec(
+        "ALTER TABLE bookings ADD COLUMN planning text NOT NULL DEFAULT ''",
+      )
+    }
+    const existing = this.ctx.storage.sql
+      .exec('SELECT body FROM terms WHERE id = 1')
+      .toArray()
+    if (existing.length === 0) {
+      this.ctx.storage.sql.exec(
+        'INSERT INTO terms (id, body) VALUES (1, ?)',
+        TERMS_BODY,
+      )
+    } else {
+      const body = String(existing[0]?.body ?? '')
+      const next = reviseTerms(body)
+      if (next !== body) {
+        this.ctx.storage.sql.exec(
+          'UPDATE terms SET body = ? WHERE id = 1',
+          next,
+        )
+      }
+    }
+    const leadColumns = this.ctx.storage.sql
+      .exec('PRAGMA table_info(leads)')
+      .toArray()
+    const leadNames = new Set(leadColumns.map((column) => column.name))
+    if (!leadNames.has('with_stag')) {
+      this.ctx.storage.sql.exec(
+        'ALTER TABLE leads ADD COLUMN with_stag integer NOT NULL DEFAULT 0',
+      )
+    }
+    if (!leadNames.has('stag_date')) {
+      this.ctx.storage.sql.exec('ALTER TABLE leads ADD COLUMN stag_date text')
+    }
+    const site = this.ctx.storage.sql.exec('SELECT id FROM site').toArray()
+    if (site.length === 0) {
+      this.ctx.storage.sql.exec(
+        'INSERT INTO site (id, kind_words) VALUES (1, 0)',
+      )
+    }
+    const reviewColumns = this.ctx.storage.sql
+      .exec('PRAGMA table_info(reviews)')
+      .toArray()
+    const reviewNames = new Set(reviewColumns.map((column) => column.name))
+    const reviewAdds: [string, string][] = [
+      ['event_type', "text NOT NULL DEFAULT ''"],
+      ['town', "text NOT NULL DEFAULT ''"],
+      ['reviewed_on', "text NOT NULL DEFAULT ''"],
+      ['source', "text NOT NULL DEFAULT 'other'"],
+      ['show_on_site', 'integer NOT NULL DEFAULT 0'],
+    ]
+    for (const [name, definition] of reviewAdds) {
+      if (!reviewNames.has(name)) {
+        this.ctx.storage.sql.exec(
+          `ALTER TABLE reviews ADD COLUMN ${name} ${definition}`,
+        )
+      }
+    }
+  }
+}
