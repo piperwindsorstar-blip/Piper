@@ -242,6 +242,11 @@ function LeadCard({
           </button>
         )}
       </div>
+      {notice ? (
+        <p className="text-sm text-white/85" role="status">
+          {notice}
+        </p>
+      ) : null}
       {lead.message.trim() ? (
         <p className="rounded-xl bg-[#faf8fe] px-4 py-3 text-sm whitespace-pre-line text-[#3b3352]">
           {lead.message}
@@ -387,7 +392,6 @@ function LeadCard({
           </button>
         )}
       </div>
-      {notice ? <p className="text-sm text-white/85" role="status">{notice}</p> : null}
     </form>
       </details>
     </article>
