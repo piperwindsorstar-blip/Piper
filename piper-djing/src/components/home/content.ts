@@ -5,6 +5,7 @@ export const PHOTOS = {
   phones: '/photos/brand/brand-phones.jpg',
   beam: '/photos/brand/brand-beam.jpg',
   stack: '/photos/brand/brand-stack.jpg',
+  community: '/photos/community-charity.jpg',
 }
 
 /** The full-bleed photos behind the home page's big sections. */
@@ -131,7 +132,7 @@ export const WORLDS = [
       l: 'See Running With The Bulls',
       h: LINKS.bulls,
     },
-    img: PHOTOS.phones,
+    img: PHOTOS.community,
   },
   {
     t: 'Club & Corporate',
