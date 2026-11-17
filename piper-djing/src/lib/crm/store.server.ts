@@ -189,6 +189,8 @@ export type LeadView = {
   withStag: boolean
   stagDate: string | null
   message: string
+  /** Piper has answered this inquiry; clears it from the badge and Today list. */
+  responded: boolean
   /** From the event form on /book; empty for older inquiries. */
   venueName?: string
   venueStreet?: string
@@ -2382,6 +2384,7 @@ async function ensureLeadColumnsStep(): Promise<void> {
   await addLeadColumn('venue_two_name', "text NOT NULL DEFAULT ''")
   await addLeadColumn('venue_two_street', "text NOT NULL DEFAULT ''")
   await addLeadColumn('referral', "text NOT NULL DEFAULT ''")
+  await addLeadColumn('responded', 'integer NOT NULL DEFAULT 0')
 }
 
 async function addLeadColumn(name: string, definition: string): Promise<void> {
@@ -2408,6 +2411,7 @@ export async function listLeads(): Promise<LeadView[]> {
     with_stag: unknown
     stag_date: string | null
     message: string
+    responded?: unknown
     venue_name?: string | null
     venue_street?: string | null
   }>('SELECT * FROM leads ORDER BY id DESC')
@@ -2423,6 +2427,7 @@ export async function listLeads(): Promise<LeadView[]> {
     withStag: flag(row.with_stag),
     stagDate: row.stag_date,
     message: row.message,
+    responded: flag(row.responded),
     venueName: (row.venue_name ?? '').trim(),
     venueStreet: (row.venue_street ?? '').trim(),
   }))
@@ -2491,6 +2496,19 @@ export async function removeLead(id: number): Promise<void> {
   const rows = await query<{ id: number }>(
     'DELETE FROM leads WHERE id = $1 RETURNING id',
     [leadId],
+  )
+  if (!rows.at(0)) throw new Error('That inquiry is not on the desk.')
+}
+
+export async function setLeadResponded(
+  id: number,
+  responded: boolean,
+): Promise<void> {
+  const leadId = positiveId(id, 'That inquiry is not on the desk.')
+  await ensureLeadColumns()
+  const rows = await query<{ id: number }>(
+    'UPDATE leads SET responded = $1 WHERE id = $2 RETURNING id',
+    [responded ? 1 : 0, leadId],
   )
   if (!rows.at(0)) throw new Error('That inquiry is not on the desk.')
 }

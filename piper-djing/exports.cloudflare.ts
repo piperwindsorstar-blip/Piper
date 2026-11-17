@@ -289,6 +289,11 @@ export class Book extends DurableObject {
     if (!leadNames.has('stag_date')) {
       this.ctx.storage.sql.exec('ALTER TABLE leads ADD COLUMN stag_date text')
     }
+    if (!leadNames.has('responded')) {
+      this.ctx.storage.sql.exec(
+        'ALTER TABLE leads ADD COLUMN responded integer NOT NULL DEFAULT 0',
+      )
+    }
     const site = this.ctx.storage.sql.exec('SELECT id FROM site').toArray()
     if (site.length === 0) {
       this.ctx.storage.sql.exec(

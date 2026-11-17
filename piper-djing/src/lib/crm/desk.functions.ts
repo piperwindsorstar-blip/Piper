@@ -88,6 +88,7 @@ import {
   removeMedia,
   updateLead,
   removeLead,
+  setLeadResponded,
   updatePayment,
   removePayment,
   deskProfile,
@@ -837,6 +838,18 @@ export const deleteLead = createServerFn({ method: 'POST' })
     await requireDesk()
     try {
       await removeLead(data.id)
+      return { ok: true as const }
+    } catch (error) {
+      return fail(error)
+    }
+  })
+
+export const markLeadResponded = createServerFn({ method: 'POST' })
+  .validator((data: { id: number; responded: boolean }) => data)
+  .handler(async ({ data }) => {
+    await requireDesk()
+    try {
+      await setLeadResponded(data.id, data.responded)
       return { ok: true as const }
     } catch (error) {
       return fail(error)

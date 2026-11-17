@@ -14,7 +14,12 @@ import {
   deskSurface,
 } from '../../components/desk-ui.tsx'
 import { longDate } from '../../lib/crm/dates.ts'
-import { deleteLead, getLeads, saveLead } from '../../lib/crm/desk.functions.ts'
+import {
+  deleteLead,
+  getLeads,
+  markLeadResponded,
+  saveLead,
+} from '../../lib/crm/desk.functions.ts'
 import { deskHead } from '../../lib/desk-head.ts'
 import { ActionButton } from '../../components/action-button.tsx'
 import type { RunResult } from '../../components/action-button.tsx'
@@ -134,11 +139,13 @@ function LeadCard({
     withStag: boolean
     stagDate: string | null
     message: string
+    responded: boolean
   }
   packages: { id: string; name: string }[]
 }) {
   const save = useServerFn(saveLead)
   const remove = useServerFn(deleteLead)
+  const markResponded = useServerFn(markLeadResponded)
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
   const [withStag, setWithStag] = useState(lead.withStag)
@@ -195,6 +202,44 @@ function LeadCard({
           <Link to="/desk/bookings" search={{ lead: lead.id }} className={deskDark}>
             Make it a booking
           </Link>
+        )}
+        {lead.responded ? (
+          <>
+            <span className="inline-flex items-center gap-2 rounded-[10px] bg-[#dcf3e7] px-3 py-2 text-sm font-bold text-[#0b5e41]">
+              <Check className="h-4 w-4" aria-hidden="true" />
+              Responded
+            </span>
+            <button
+              type="button"
+              className={deskGhost}
+              onClick={() => {
+                void markResponded({
+                  data: { id: lead.id, responded: false },
+                }).then(async (result) => {
+                  setNotice(result.ok ? 'Marked as not responded.' : result.error)
+                  if (result.ok) await router.invalidate()
+                })
+              }}
+            >
+              Undo
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className={deskGhost}
+            onClick={() => {
+              void markResponded({
+                data: { id: lead.id, responded: true },
+              }).then(async (result) => {
+                setNotice(result.ok ? 'Marked as responded.' : result.error)
+                if (result.ok) await router.invalidate()
+              })
+            }}
+          >
+            <Check className="h-4 w-4" aria-hidden="true" />
+            Mark responded
+          </button>
         )}
       </div>
       {lead.message.trim() ? (

@@ -30,6 +30,8 @@ export type ConsoleLead = {
   email: string
   eventDate: string | null
   packageName?: string
+  /** Answered inquiries stop counting as waiting. */
+  responded?: boolean
 }
 
 export type ConsoleReview = { show: boolean }
@@ -213,10 +215,11 @@ export function channelMeter(
     }
   }
   if (channel === 'Leads') {
+    const waiting = input.leads.filter((lead) => !lead.responded).length
     return {
-      fill: input.leads.length / 5,
-      led: input.leads.length > 0 ? 'pink' : 'green',
-      badge: input.leads.length,
+      fill: waiting / 5,
+      led: waiting > 0 ? 'pink' : 'green',
+      badge: waiting,
     }
   }
   if (channel === 'Bookings') {
@@ -339,6 +342,7 @@ export function attention(
     })
   }
   for (const lead of leads) {
+    if (lead.responded) continue
     items.push({
       id: `lead-${lead.id}`,
       title: `Answer ${[lead.partnerOne, lead.partnerTwo].map((name) => name.trim()).filter(Boolean).join(' and ')}`,
